@@ -1,74 +1,51 @@
-# Token Optimization Guide
+# Performance Optimization Guide for [projectName]
 
-## User Request Patterns (How to Ask)
+## Resource Usage Reference Table
 
-### File Updates (50-70% token reduction)
+| Resource Type  | File           | Usage Guide       |
+| -------------- | -------------- | ----------------- |
+| [resourceType] | [resourceFile] | [resourcePattern] |
 
-```
-Update [file]:
-1. Change [specific item] status to [value]
-2. Add note: "[brief note]"
-3. [other specific changes]
-```
+## Performance Metrics
 
-### Code Implementation (40-60% token reduction)
+### Memory Management
 
-```
-Implement [component]:
-1. Use [pattern/model] for structure
-2. Reference [similar component]
-3. Focus on [specific functionality]
-```
+[memoryManagement]
 
-## Tool Usage Optimization
+### Resource Management
 
-### Search Before Reading
+[resourceManagement]
 
-- ALWAYS use search_files before reading entire files:
-  {{searchPattern}}
+### Response Optimization
 
-### Read Only What's Needed
-
-- Use line ranges to target specific sections:
-  {{readPattern}}
-
-### Memory Bank Reference Table
-
-| Information           | File                    | Line Range                   | Search Pattern            |
-| --------------------- | ----------------------- | ---------------------------- | ------------------------- |
-| Domain/Tier Structure | {{domainStructureFile}} | {{domainStructureLineRange}} | {{domainStructureSearch}} |
-| Project Tech          | {{projectTechFile}}     | {{projectTechLineRange}}     | {{projectTechSearch}}     |
+[responseOptimization]
 
 ## Mode-Specific Guidelines
 
-### Boomerang Mode
+### Standard Mode
 
-1. Search for status info before reading entire files
-2. Reference line numbers from the table above
-3. Use only essential context in mode transitions
+[standardModeOptimization]
 
-### Architect Mode
+### Custom Modes
 
-1. Reference templates by name, don't include them
-2. Write concise subtask descriptions
-3. Focus on changes from standard patterns
+[customModeOptimization]
 
-### Code Mode
+## Best Practices
 
-1. Check specific code sections before full files
-2. Update only changed status sections
-3. Use line numbers in file operations
+[performanceBestPractices]
 
-## System Prompt Enhancements
+## Monitoring and Optimization
 
-Add this block to each system prompt:
+### Monitoring Strategy
 
-```
-## TOKEN OPTIMIZATION
+[monitoringStrategy]
 
-1. SEARCH before reading entire files
-2. Use LINE RANGES for targeted reading
-3. Reference memory-bank/token-optimization-guide.md
-4. Update only CHANGED sections of files
-5. Use CONCISE language in all operations
-```
+### Optimization Approach
+
+[optimizationApproach]
+
+## Version Information
+
+- **Last Updated**: [lastUpdated]
+- **Version**: [version]
+- **Status**: [status]

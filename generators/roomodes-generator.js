@@ -49,4 +49,6 @@ function generateRoomodesFile(projectConfig, writeFile) {
   writeFile(path.join(projectConfig.baseDir, ".roomodes"), content);
 }
 
-module.exports = generateRoomodesFile;
+module.exports = {
+  generateRoomodesFile,
+};

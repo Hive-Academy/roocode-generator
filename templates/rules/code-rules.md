@@ -9,19 +9,36 @@
 ## Token Optimization Protocol
 
 1. **Code Implementation Efficiency:**
-   - Check specific parts of files before reading entire files:
-     {{codeSearchPattern}}
+
+   ```
+   <search_files>
+   <path>src</path>
+   <regex>function.*implement|class.*extend</regex>
+   </search_files>
+   ```
+
 2. **Status Update Efficiency:**
 
-   - Search for specific status markers before reading implementation plans
-   - Update only the changed status fields
-   - Use line numbers in file references
+   ```
+   <read_file>
+   <path>docs/implementation-plan.md</path>
+   <start_line>20</start_line>
+   <end_line>25</end_line>
+   ```
 
 3. **Targeted File Operations:**
-   - Read only function definitions when examining components:
-     {{functionReadPattern}}
-   - Search for patterns before opening files
-   - Update only changed sections of files
+
+   ```
+   <search_files>
+   <path>src/components</path>
+   <regex>export.*class|export.*function</regex>
+   </search_files>
+   ```
+
+4. **Memory Bank References:**
+   - Project patterns: memory-bank/TechnicalArchitecture.md:50-60
+   - Coding standards: memory-bank/DeveloperGuide.md:30-40
+   - Test patterns: memory-bank/DeveloperGuide.md:80-90
 
 ## Initial Task Receipt Protocol
 
@@ -29,8 +46,11 @@
    - Begin with explicit acknowledgment of the implementation plan
    - List all memory-bank files you'll reference for implementation
    - Confirm understanding of each subtask
-2. ALWAYS check this file before implementation:
-   - `memory-bank/core-reference.md`
+2. ALWAYS check these files before implementation:
+   - `memory-bank/ProjectOverview.md`
+   - `memory-bank/TechnicalArchitecture.md`
+   - `memory-bank/DevelopmentStatus.md`
+   - `memory-bank/DeveloperGuide.md`
 3. Reference specific patterns or standards in your implementation
 
 ## Process Steps
@@ -86,22 +106,49 @@
 
 ## IMPORTANT: ALWAYS check these references before performing common tasks
 
-- **For Commands**: ALWAYS reference `memory-bank/code-mode-quickref.md`
-- **For Component Structure**: Check `memory-bank/architecture-mode-quickref.md`
-- **For Coding Standards**: Follow `memory-bank/architect-mode-quickref.md`
-- **For Status Updates**: Use templates from `memory-bank/templates/implementation-plan-template.md`
+1. Implementation Guidance:
+
+   - Review TechnicalArchitecture.md Main Components section for affected areas
+   - Check DeveloperGuide.md Coding Standards for implementation patterns
+   - Verify current work in DevelopmentStatus.md to avoid conflicts
+   - Follow test requirements in DeveloperGuide.md Testing section
+
+2. Status Updates:
+   - Use status format defined in DevelopmentStatus.md Current Milestone
+   - Update task status following DevelopmentStatus.md conventions
+   - Reference completion criteria from DeveloperGuide.md
 
 ## First Steps for New Tasks
 
-1. Read the implementation plan thoroughly
-2. Check `memory-bank/code-mode-quickref.md` for critical references
-3. Follow library structure in `memory-bank/architect-mode-quickref.md`
+1. Review implementation plan thoroughly
+2. Read referenced sections in memory bank files:
+   - TechnicalArchitecture.md for component design
+   - DeveloperGuide.md for coding standards
+   - DevelopmentStatus.md for related work
+3. Validate implementation approach against standards
 
 ## Common Errors to Avoid
 
-- Using incorrect generation commands - always copy from quickref files
-- Creating components in wrong directory structure - verify against architecture-mode-quickref
-- Not following project conventions: {{projectPatterns}}
+- Not checking DeveloperGuide.md before starting implementation
+- Misaligning with patterns defined in TechnicalArchitecture.md
+- Deviating from standards documented in:
+  - DeveloperGuide.md Coding Standards
+  - TechnicalArchitecture.md Architecture Patterns
+  - ProjectOverview.md Technical Goals
+
+## Key Points for Effective Implementation
+
+- Follow patterns documented in TechnicalArchitecture.md
+- Implement according to standards in DeveloperGuide.md
+- Track progress using DevelopmentStatus.md conventions
+- Use documentation style from DeveloperGuide.md:
+  ```typescript
+  /**
+   * @description [Follow DeveloperGuide.md documentation standards]
+   * @param {type} name [Use types from TechnicalArchitecture.md]
+   * @returns {type} [Document following project standards]
+   */
+  ```
 
 # Task Delegation Process
 
@@ -147,7 +194,14 @@ Review required: Implementation of [subtask name/task name] is complete. Code Re
 - Include any deviations from the implementation plan
 - Note any challenges encountered during implementation
 - Be prepared to address review feedback
-- Use project-specific comment style: {{commentStyle}}
+- Use project-specific comment style:
+  ```typescript
+  /**
+   * @description Short description
+   * @param {type} name - Parameter description
+   * @returns {type} Return value description
+   */
+  ```
 
 ## Handling Review Feedback
 
