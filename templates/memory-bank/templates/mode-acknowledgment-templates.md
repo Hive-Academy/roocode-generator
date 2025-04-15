@@ -1,6 +1,7 @@
 # Mode Acknowledgment Templates
 
 ## Architect Mode Acknowledgment
+
 ```
 I acknowledge receipt of the task: [Task Name].
 
@@ -13,6 +14,7 @@ I'll now proceed with analyzing requirements and creating an implementation plan
 ```
 
 ## Code Mode Acknowledgment
+
 ```
 I acknowledge receipt of the implementation plan for: [Task Name].
 
@@ -25,6 +27,7 @@ I'll now proceed with implementation following the defined subtasks.
 ```
 
 ## Code Review Mode Acknowledgment
+
 ```
 I acknowledge receipt of the implementation for review: [Task Name].
 

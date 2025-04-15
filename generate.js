@@ -86,26 +86,22 @@ const questions = [
   },
   {
     property: "folderStructure",
-    question:
-      "Project folder structure type (standard, feature-based, domain-driven):",
+    question: "Project folder structure type (standard, feature-based, domain-driven):",
     default: "feature-based",
   },
   {
     property: "domains",
-    question:
-      "List project domains (comma-separated, e.g. ai-agent,auth,knowledge-base,shared):",
+    question: "List project domains (comma-separated, e.g. ai-agent,auth,knowledge-base,shared):",
     default: "ai-agent,auth,knowledge-base,shared",
   },
   {
     property: "tiers",
-    question:
-      "List project tiers (comma-separated, e.g. backend,frontend,data-access,ui,util):",
+    question: "List project tiers (comma-separated, e.g. backend,frontend,data-access,ui,util):",
     default: "backend,frontend,data-access,ui,util",
   },
   {
     property: "libraries",
-    question:
-      "List core libraries or library format (comma-separated or format string):",
+    question: "List core libraries or library format (comma-separated or format string):",
     default: "libs/<domain>/<tier>/[type-]<feature|util>",
   },
   {
@@ -126,8 +122,7 @@ const questions = [
   },
   {
     property: "infrastructure",
-    question:
-      "Infrastructure (comma-separated, e.g. Docker,CI/CD,NX monorepo):",
+    question: "Infrastructure (comma-separated, e.g. Docker,CI/CD,NX monorepo):",
     default: "Docker,CI/CD,NX monorepo",
   },
   {
@@ -178,8 +173,7 @@ const questions = [
   {
     property: "searchPattern",
     question: "Example search_files pattern (XML or leave blank):",
-    default:
-      "<search_files><path>docs</path><regex>Status.*Not Started</regex></search_files>",
+    default: "<search_files><path>docs</path><regex>Status.*Not Started</regex></search_files>",
   },
   {
     property: "readPattern",
@@ -313,44 +307,33 @@ function generateConfiguration() {
 
 // Start the configuration process
 function start() {
-  rl.question(
-    "Load configuration from roocode.config.json? (y/N): ",
-    (answer) => {
-      if (answer.trim().toLowerCase() === "y") {
-        const loaded = loadConfigFromFile();
-        if (loaded) {
-          Object.assign(projectConfig, loaded);
-          console.log("Loaded configuration. Preview:");
-          console.log(JSON.stringify(projectConfig, null, 2));
-          rl.question("Proceed with this configuration? (Y/n): ", (proceed) => {
-            if (proceed.trim().toLowerCase() === "n") {
-              askQuestions();
-            } else {
-              generateConfiguration();
-            }
-          });
-          return;
-        } else {
-          console.log(
-            "No valid config found. Proceeding with interactive setup."
-          );
-        }
+  rl.question("Load configuration from roocode.config.json? (y/N): ", (answer) => {
+    if (answer.trim().toLowerCase() === "y") {
+      const loaded = loadConfigFromFile();
+      if (loaded) {
+        Object.assign(projectConfig, loaded);
+        console.log("Loaded configuration. Preview:");
+        console.log(JSON.stringify(projectConfig, null, 2));
+        rl.question("Proceed with this configuration? (Y/n): ", (proceed) => {
+          if (proceed.trim().toLowerCase() === "n") {
+            askQuestions();
+          } else {
+            generateConfiguration();
+          }
+        });
+        return;
+      } else {
+        console.log("No valid config found. Proceeding with interactive setup.");
       }
-      askQuestions();
     }
-  );
+    askQuestions();
+  });
 }
 
 console.log("RooCode Workflow Generator");
 console.log("=========================");
-console.log(
-  "This script will create a custom RooCode workflow for your project."
-);
-console.log(
-  "Please answer the following questions to customize your configuration."
-);
-console.log(
-  "Press Enter to accept the default value (shown in parentheses).\n"
-);
+console.log("This script will create a custom RooCode workflow for your project.");
+console.log("Please answer the following questions to customize your configuration.");
+console.log("Press Enter to accept the default value (shown in parentheses).\n");
 
 start();
