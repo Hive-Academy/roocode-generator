@@ -1,63 +1,133 @@
 const fs = require("fs");
 const path = require("path");
+const { LLMProvider } = require("./llm-provider");
+const chalk = require("chalk").default;
 
-// Helper to fill template with projectConfig values
-function fillTemplate(template, projectConfig) {
-  return template
-    .replace(/{{domains}}/g, projectConfig.domains || "")
-    .replace(/{{tiers}}/g, projectConfig.tiers || "")
-    .replace(/{{libraries}}/g, projectConfig.libraries || "")
-    .replace(/{{backendStack}}/g, projectConfig.backend || "")
-    .replace(/{{frontendStack}}/g, projectConfig.frontend || "")
-    .replace(/{{infrastructure}}/g, projectConfig.infrastructure || "")
-    .replace(/{{currentFocus}}/g, projectConfig.currentFocus || "")
-    .replace(/{{fileReferences}}/g, projectConfig.fileReferences || "")
-    .replace(/{{domainStructureLineRange}}/g, projectConfig.domainStructureLineRange || "")
-    .replace(/{{domainStructure}}/g, projectConfig.domainStructure || "")
-    .replace(/{{architecturePatterns}}/g, projectConfig.architecturePatterns || "")
-    .replace(/{{libraryStructure}}/g, projectConfig.libraryStructure || "")
-    .replace(/{{componentStructure}}/g, projectConfig.componentStructure || "")
-    .replace(/{{commandsReference}}/g, projectConfig.commandsReference || "")
-    .replace(/{{technicalStandards}}/g, projectConfig.technicalStandards || "")
-    .replace(/{{reviewChecklist}}/g, projectConfig.reviewChecklist || "")
-    .replace(/{{feedbackGuidelines}}/g, projectConfig.feedbackGuidelines || "")
-    .replace(/{{commitProcess}}/g, projectConfig.commitProcess || "");
+// Required memory bank files that must be present
+const REQUIRED_MEMORY_BANK_FILES = [
+  "ProjectOverview.md",
+  "TechnicalArchitecture.md",
+  "DevelopmentStatus.md",
+  "DeveloperGuide.md",
+];
+
+// Required template files that must be present
+const REQUIRED_TEMPLATE_FILES = [
+  "completion-report-template.md",
+  "implementation-plan-template.md",
+  "mode-acknowledgment-templates.md",
+  "task-description-template.md",
+];
+
+// Validates that all required memory bank files and templates exist
+function validateMemoryBankFiles(baseDir) {
+  const memoryBankDir = path.join(baseDir, "templates", "memory-bank");
+  const templateDir = path.join(memoryBankDir, "templates");
+  const missing = [];
+  REQUIRED_MEMORY_BANK_FILES.forEach((file) => {
+    const filePath = path.join(memoryBankDir, file);
+    if (!fs.existsSync(filePath)) {
+      missing.push(`Missing required memory bank file: ${file}`);
+    }
+  });
+  REQUIRED_TEMPLATE_FILES.forEach((file) => {
+    const filePath = path.join(templateDir, file);
+    if (!fs.existsSync(filePath)) {
+      missing.push(`Missing required template file: ${file}`);
+    }
+  });
+  return missing;
 }
 
-function generateMemoryBank(projectConfig, writeFile) {
-  const files = [
-    { name: "core-reference.md" },
-    { name: "boomerang-mode-quickref.md" },
-    { name: "architect-mode-quickref.md" },
-    { name: "code-mode-quickref.md" },
-    { name: "code-review-mode-quickref.md" },
-    { name: "token-optimization-guide.md" },
-  ];
+async function generateMemoryBank(projectConfig, writeFile) {
+  const baseDir = path.join(__dirname, "..");
+  const missingFiles = validateMemoryBankFiles(baseDir);
+  if (missingFiles.length > 0) {
+    console.error(chalk.red("Error: Missing required memory bank files:"));
+    missingFiles.forEach((msg) => console.error(chalk.red(`- ${msg}`)));
+    throw new Error("Cannot generate memory bank: missing required template files");
+  }
 
-  files.forEach(({ name }) => {
-    const templatePath = path.join(__dirname, "..", "templates", "memory-bank", name);
+  const coreFiles = [
+    { name: "ProjectOverview.md" },
+    { name: "DeveloperGuide.md" },
+    { name: "DevelopmentStatus.md" },
+    { name: "TechnicalArchitecture.md" },
+  ];
+  const optionalFiles = [{ name: "token-optimization-guide.md", condition: true }];
+
+  const llm = new LLMProvider();
+  const templateDir = path.join(baseDir, "templates", "memory-bank");
+
+  // Helper to generate content using LLM
+  async function generateWithLLM(templateContent, fileName) {
+    const systemPrompt = `You are an expert technical writer. Given a project configuration and a template, generate a complete, high-quality Markdown file for ${fileName}.`;
+    const userPrompt = `Project configuration (JSON):\n${JSON.stringify(projectConfig, null, 2)}\n\nTemplate:\n${templateContent}`;
+    return await llm.getCompletion(systemPrompt, userPrompt);
+  }
+
+  // Process core files
+  for (const { name } of coreFiles) {
+    const templatePath = path.join(templateDir, name);
     if (!fs.existsSync(templatePath)) {
-      console.warn(`Template not found: ${templatePath}`);
-      return;
+      console.warn(chalk.yellow(`Template not found: ${templatePath}`));
+      continue;
     }
     const raw = fs.readFileSync(templatePath, "utf8");
-    const filled = fillTemplate(raw, projectConfig);
     const outDir = path.join(projectConfig.baseDir, "memory-bank");
     const outPath = path.join(outDir, name);
-    writeFile(outPath, filled);
-  });
+    fs.mkdirSync(outDir, { recursive: true });
+    try {
+      const generated = await generateWithLLM(raw, name);
+      writeFile(outPath, generated);
+      console.log(chalk.green(`Generated memory bank file: ${name}`));
+    } catch (err) {
+      console.error(chalk.red(`LLM generation failed for ${name}: ${err.message}`));
+    }
+  }
 
-  // Copy templates in memory-bank/templates/
-  const templatesDir = path.join(__dirname, "..", "templates", "memory-bank", "templates");
-  const outTemplatesDir = path.join(projectConfig.baseDir, "memory-bank", "templates");
+  // Process optional files
+  for (const { name, condition } of optionalFiles) {
+    if (condition) {
+      const templatePath = path.join(templateDir, name);
+      if (!fs.existsSync(templatePath)) {
+        console.warn(chalk.yellow(`Template not found: ${templatePath}`));
+        continue;
+      }
+      const raw = fs.readFileSync(templatePath, "utf8");
+      const outDir = path.join(projectConfig.baseDir, "memory-bank");
+      const outPath = path.join(outDir, name);
+      fs.mkdirSync(outDir, { recursive: true });
+      try {
+        const generated = await generateWithLLM(raw, name);
+        writeFile(outPath, generated);
+        console.log(chalk.green(`Generated memory bank file: ${name}`));
+      } catch (err) {
+        console.error(chalk.red(`LLM generation failed for ${name}: ${err.message}`));
+      }
+    }
+  }
+
+  // Process templates folder (copy, but do not LLM-generate)
+  const templatesDir = path.join(templateDir, "templates");
   if (fs.existsSync(templatesDir)) {
-    fs.readdirSync(templatesDir).forEach((file) => {
-      const src = path.join(templatesDir, file);
-      const dest = path.join(outTemplatesDir, file);
-      fs.copyFileSync(src, dest);
-      console.log(`Copied template: ${dest}`);
+    const outTemplatesDir = path.join(projectConfig.baseDir, "memory-bank", "templates");
+    fs.mkdirSync(outTemplatesDir, { recursive: true });
+    REQUIRED_TEMPLATE_FILES.forEach((template) => {
+      const src = path.join(templatesDir, template);
+      const dest = path.join(outTemplatesDir, template);
+      if (fs.existsSync(src)) {
+        const content = fs.readFileSync(src, "utf8");
+        fs.writeFileSync(dest, content, "utf8");
+        console.log(chalk.cyan(`Copied template: ${template}`));
+      } else {
+        console.warn(chalk.yellow(`Template not found: ${template}`));
+      }
     });
   }
 }
 
-module.exports = generateMemoryBank;
+module.exports = {
+  generateMemoryBank,
+  validateMemoryBankFiles,
+};

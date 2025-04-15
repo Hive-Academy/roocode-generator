@@ -9,8 +9,7 @@
 ## Token Optimization Protocol
 
 1. **Review Efficiency:**
-   - Focus on changed files first using search_files:
-     {{reviewSearchPattern}}
+   - Focus on changed files first using search_files with patterns from TechnicalArchitecture.md
 2. **Feedback Optimization:**
 
    - Provide focused, line-specific feedback
@@ -22,6 +21,17 @@
    - Verify only completed subtasks, not entire plans
    - Use targeted searches for verification criteria
 
+## Review Search Pattern
+
+Use search patterns based on project tech stack from TechnicalArchitecture.md:
+
+```
+<search_files>
+<path>src</path>
+<regex>[Follow patterns from TechnicalArchitecture.md and DeveloperGuide.md]</regex>
+</search_files>
+```
+
 ## Process Steps
 
 1. **Review Changes** - Examine completed subtask implementation
@@ -29,17 +39,41 @@
 3. **Validate Status** - Confirm status is accurately updated
 4. **Commit** - Coordinate committing approved changes
 
-## Review Checklist
+## Memory Bank Reference Protocol
 
-- Code meets quality standards and follows patterns: {{projectPatterns}}
-- Verification steps were completed successfully
-- Implementation plan status is accurate
-- All automated checks (lint, build) pass
+- ALWAYS review the following memory-bank files for project context, standards, and technical criteria:
+  - `memory-bank/ProjectOverview.md` (project summary, goals, stakeholders)
+  - `memory-bank/TechnicalArchitecture.md` (system architecture, stack, integration points)
+  - `memory-bank/DevelopmentStatus.md` (current progress, blockers)
+  - `memory-bank/DeveloperGuide.md` (best practices, onboarding, coding standards)
+- Reference these files explicitly in your review notes and checklist.
+
+## Code Review Checklist
+
+- Verify code against standards from memory bank:
+  - Architecture patterns from TechnicalArchitecture.md
+  - Coding standards from DeveloperGuide.md
+  - Test coverage requirements from DeveloperGuide.md
+  - Project conventions from ProjectOverview.md
+- Implementation aligns with current milestone in DevelopmentStatus.md
+- All automated checks defined in DeveloperGuide.md pass
+- Documentation follows standards in DeveloperGuide.md
+
+## Review Process
+
+1. Review changed files from implementation
+2. Use source control process defined in DeveloperGuide.md
+3. Verify test coverage meets requirements from DeveloperGuide.md
+4. Check code against technical standards:
+   - Follow architecture patterns in TechnicalArchitecture.md
+   - Apply coding standards from DeveloperGuide.md
+   - Verify integration points from TechnicalArchitecture.md
+   - Match test patterns from DeveloperGuide.md
 
 ## Commit Process
 
 1. Verify all changes are ready for commit
-2. Use project-specific tools to commit (e.g., GitHub MCP, {{commitTool}})
+2. Use GitHub as the primary commit tool
 3. Confirm successful commit
 4. Return to Code Mode for next subtask
 
@@ -97,7 +131,11 @@ Implementation complete: All subtasks have been implemented, reviewed, and appro
 ## Key Points for Effective Review
 
 - Provide specific, actionable feedback when requesting changes
-- Use the project's technical standards as review criteria: {{techStack}}, {{projectPatterns}}
+- Use the project's technical standards as defined in:
+  - TechnicalArchitecture.md Technology Stack section
+  - DeveloperGuide.md Coding Standards section
+  - DeveloperGuide.md Testing section
+  - DeveloperGuide.md Deployment section
 - Verify all subtasks in the implementation plan are complete
 - Coordinate committing approved changes
 - Be explicit about which parts need changes and which are approved

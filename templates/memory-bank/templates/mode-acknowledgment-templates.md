@@ -1,40 +1,52 @@
 # Mode Acknowledgment Templates
 
-## Architect Mode Acknowledgment
+## Task Receipt Template
 
-```
-I acknowledge receipt of the task: [Task Name].
+I acknowledge receipt of this task and confirm the following:
 
-**Initial Assessment:**
-- Business context: [1-2 sentence summary]
-- Technical scope: [Affected domains/components]
-- Memory-bank references checked: [List files reviewed]
+### Task Parameters
 
-I'll now proceed with analyzing requirements and creating an implementation plan.
-```
+- Task Type: [Type]
+- Priority: [Priority]
+- Due Date: [Date]
 
-## Code Mode Acknowledgment
+### References
 
-```
-I acknowledge receipt of the implementation plan for: [Task Name].
+- [Reference documents]
+- [Related files]
+- [Dependencies]
 
-**Initial Assessment:**
-- Plan complexity: [Simple/Moderate/Complex]
-- Subtasks to implement: [Number of subtasks]
-- Memory-bank references to use: [List files]
+## Mode-Specific Acknowledgments
 
-I'll now proceed with implementation following the defined subtasks.
-```
+### Architect Mode
 
-## Code Review Mode Acknowledgment
+I will proceed with architectural planning:
 
-```
-I acknowledge receipt of the implementation for review: [Task Name].
+- [ ] Requirements reviewed
+- [ ] Design approach determined
+- [ ] Dependencies identified
+- [ ] Constraints understood
 
-**Initial Assessment:**
-- Implementation completeness: [Complete/Partial]
-- Verification evidence provided: [Yes/No]
-- Focus areas for review: [List specific areas]
+### Implementation Mode
 
-I'll now proceed with reviewing the implementation against the original plan and technical standards.
-```
+I will proceed with implementation:
+
+- [ ] Requirements clear
+- [ ] Design approach verified
+- [ ] Test criteria understood
+- [ ] Dependencies available
+
+### Review Mode
+
+I will proceed with review:
+
+- [ ] Review scope clear
+- [ ] Standards identified
+- [ ] Test results available
+- [ ] Documentation ready
+
+## Next Steps
+
+1. [First action]
+2. [Second action]
+3. [Third action]

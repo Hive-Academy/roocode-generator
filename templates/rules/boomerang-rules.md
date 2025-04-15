@@ -11,15 +11,28 @@
 
 1. **Search Before Reading:**
 
-   {{boomerangSearchPattern}}
+   ```
+   <search_files>
+   <path>docs</path>
+   <regex>Status.*Not Started|In Progress</regex>
+   </search_files>
+   ```
 
 2. **Use Line Ranges:**
 
-   {{boomerangReadPattern}}
+   ```
+   <read_file>
+   <path>memory-bank/ProjectOverview.md</path>
+   <start_line>10</start_line>
+   <end_line>20</end_line>
+   </read_file>
+   ```
 
 3. **Memory Bank Targeted Reading:**
 
-   - For domain structure: {{domainStructureReference}}
+   - For domain structure: memory-bank/ProjectOverview.md:25-29
+   - For tech stack: memory-bank/TechnicalArchitecture.md:15-25
+   - For status: memory-bank/DevelopmentStatus.md:5-15
 
 4. **Task Description Efficiency:**
    - Be concise in business context descriptions
@@ -30,10 +43,12 @@
 
 1. **Optimize User Query:** Refine the user's request for conciseness and clarity, referencing `memory-bank/token-optimization-guide.md` for best practices.
 
-2. ALWAYS begin by checking these memory-bank file in order:
+2. ALWAYS begin by checking these memory-bank files in order:
 
-   - `memory-bank/core-reference.md`
-   - `memory-bank/boomerang-mode-quickref.md`
+   - `memory-bank/ProjectOverview.md`
+   - `memory-bank/TechnicalArchitecture.md`
+   - `memory-bank/DevelopmentStatus.md`
+   - `memory-bank/DeveloperGuide.md`
 
 3. Document which files were reviewed in your first response
 4. Include specific quotes or references from these files when creating task descriptions
@@ -53,22 +68,28 @@
 
 ## Business Context
 
-[Brief description of business need]
+[Use context from memory-bank/ProjectOverview.md Purpose and Key Features sections]
 
 ## Technical Scope
 
-- **Domains**: {{domains}}
-- **Tiers**: {{tiers}}
-- **Libraries**: {{libraries}}
+[Reference latest architecture from memory-bank/TechnicalArchitecture.md]
+
+- **Domains**: [List affected domains from TechnicalArchitecture.md Main Components]
+- **Tiers**: [List affected tiers from TechnicalArchitecture.md System Diagram]
+- **Libraries**: [List affected libraries from TechnicalArchitecture.md Technology Stack]
 
 ## Acceptance Criteria
+
+[Derive from ProjectOverview.md Key Features and DeveloperGuide.md standards]
 
 - [Criterion 1]
 - [Criterion 2]
 
 ## Dependencies
 
-- [Any dependencies or prerequisites]
+[Check DevelopmentStatus.md for related work and blockers]
+
+- [List dependencies from memory-bank references]
 ```
 
 ## During Interruptions
@@ -78,25 +99,43 @@
 3. Determine if Architect Mode needs to update plan
 4. Ensure context is preserved before resuming
 
+## Memory Bank Integration Steps
+
+1. For each new task:
+
+   - Read ProjectOverview.md Purpose section for business alignment
+   - Check TechnicalArchitecture.md for current system structure
+   - Verify active work in DevelopmentStatus.md
+   - Review standards in DeveloperGuide.md
+
+2. When filling out the task template:
+   - Pull domain structure from TechnicalArchitecture.md Main Components
+   - Reference system tiers from TechnicalArchitecture.md System Diagram
+   - List relevant libraries from TechnicalArchitecture.md Technology Stack
+   - Check DevelopmentStatus.md for potential blockers or dependencies
+
 # Memory Bank References
 
 ## IMPORTANT: ALWAYS check these references before breaking down tasks
 
 - **For Task Descriptions**: Use template from `memory-bank/templates/task-description-template.md`
-- **For Project Overview**: Reference `memory-bank/core-reference.md`
+- **For Project Overview**: Reference `memory-bank/ProjectOverview.md`
+- **For Architecture**: Reference `memory-bank/TechnicalArchitecture.md`
+- **For Development Status**: Reference `memory-bank/DevelopmentStatus.md`
+- **For Developer Guide**: Reference `memory-bank/DeveloperGuide.md`
 
 ## First Steps for New Tasks
 
 1. Understand the business context
-2. Check `memory-bank/boomerang-mode-quickref.md` for domain structure
+2. Check `memory-bank/TechnicalArchitecture.md` for domain structure
 3. Create task description following the established template
 
 ## Domain Structure Reference
 
 Always verify the latest domain structure in memory-bank files before creating task breakdowns. The project uses:
 
-- Domain-based organization: {{domains}}
-- Tier-based libraries: {{libraries}}
+- Domain-based organization: frontend, backend, shared
+- Tier-based libraries: core-lib, shared-components, utils
 
 # Task Delegation Process
 
