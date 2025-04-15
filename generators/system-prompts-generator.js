@@ -10,27 +10,15 @@ function fillTemplate(template, projectConfig) {
     .replace(/{{os}}/g, projectConfig.os || "")
     .replace(/{{shell}}/g, projectConfig.shell || "")
     .replace(/{{allowedDirs}}/g, projectConfig.allowedDirs || "")
-    .replace(
-      /{{searchPatternExample}}/g,
-      projectConfig.searchPatternExample || ""
-    )
+    .replace(/{{searchPatternExample}}/g, projectConfig.searchPatternExample || "")
     .replace(/{{readPatternExample}}/g, projectConfig.readPatternExample || "")
-    .replace(
-      /{{domainStructureReference}}/g,
-      projectConfig.domainStructureReference || ""
-    )
-    .replace(
-      /{{projectOverviewReference}}/g,
-      projectConfig.projectOverviewReference || ""
-    )
+    .replace(/{{domainStructureReference}}/g, projectConfig.domainStructureReference || "")
+    .replace(/{{projectOverviewReference}}/g, projectConfig.projectOverviewReference || "")
     .replace(
       /{{taskDescriptionTemplateReference}}/g,
       projectConfig.taskDescriptionTemplateReference || ""
     )
-    .replace(
-      /{{reviewSearchPattern}}/g,
-      projectConfig.reviewSearchPattern || ""
-    );
+    .replace(/{{reviewSearchPattern}}/g, projectConfig.reviewSearchPattern || "");
 }
 
 function generateSystemPrompts(projectConfig, writeFile) {
@@ -42,13 +30,7 @@ function generateSystemPrompts(projectConfig, writeFile) {
   ];
 
   modes.forEach(({ slug, template }) => {
-    const templatePath = path.join(
-      __dirname,
-      "..",
-      "templates",
-      "system-prompts",
-      template
-    );
+    const templatePath = path.join(__dirname, "..", "templates", "system-prompts", template);
     if (!fs.existsSync(templatePath)) {
       console.warn(`Template not found: ${templatePath}`);
       return;

@@ -21,13 +21,7 @@ function generateRuleFiles(projectConfig, writeFile) {
   ];
 
   modes.forEach(({ slug, template }) => {
-    const templatePath = path.join(
-      __dirname,
-      "..",
-      "templates",
-      "rules",
-      template
-    );
+    const templatePath = path.join(__dirname, "..", "templates", "rules", template);
     if (!fs.existsSync(templatePath)) {
       console.warn(`Template not found: ${templatePath}`);
       return;

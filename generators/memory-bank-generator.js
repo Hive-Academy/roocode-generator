@@ -12,15 +12,9 @@ function fillTemplate(template, projectConfig) {
     .replace(/{{infrastructure}}/g, projectConfig.infrastructure || "")
     .replace(/{{currentFocus}}/g, projectConfig.currentFocus || "")
     .replace(/{{fileReferences}}/g, projectConfig.fileReferences || "")
-    .replace(
-      /{{domainStructureLineRange}}/g,
-      projectConfig.domainStructureLineRange || ""
-    )
+    .replace(/{{domainStructureLineRange}}/g, projectConfig.domainStructureLineRange || "")
     .replace(/{{domainStructure}}/g, projectConfig.domainStructure || "")
-    .replace(
-      /{{architecturePatterns}}/g,
-      projectConfig.architecturePatterns || ""
-    )
+    .replace(/{{architecturePatterns}}/g, projectConfig.architecturePatterns || "")
     .replace(/{{libraryStructure}}/g, projectConfig.libraryStructure || "")
     .replace(/{{componentStructure}}/g, projectConfig.componentStructure || "")
     .replace(/{{commandsReference}}/g, projectConfig.commandsReference || "")
@@ -41,13 +35,7 @@ function generateMemoryBank(projectConfig, writeFile) {
   ];
 
   files.forEach(({ name }) => {
-    const templatePath = path.join(
-      __dirname,
-      "..",
-      "templates",
-      "memory-bank",
-      name
-    );
+    const templatePath = path.join(__dirname, "..", "templates", "memory-bank", name);
     if (!fs.existsSync(templatePath)) {
       console.warn(`Template not found: ${templatePath}`);
       return;
@@ -60,18 +48,8 @@ function generateMemoryBank(projectConfig, writeFile) {
   });
 
   // Copy templates in memory-bank/templates/
-  const templatesDir = path.join(
-    __dirname,
-    "..",
-    "templates",
-    "memory-bank",
-    "templates"
-  );
-  const outTemplatesDir = path.join(
-    projectConfig.baseDir,
-    "memory-bank",
-    "templates"
-  );
+  const templatesDir = path.join(__dirname, "..", "templates", "memory-bank", "templates");
+  const outTemplatesDir = path.join(projectConfig.baseDir, "memory-bank", "templates");
   if (fs.existsSync(templatesDir)) {
     fs.readdirSync(templatesDir).forEach((file) => {
       const src = path.join(templatesDir, file);
