@@ -1,0 +1,18 @@
+# .npmignore
+node_modules/
+.git/
+.gitignore
+.env
+*.log
+dist/
+test/
+coverage/
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*.bak
+*.tmp
+README.md
+LICENSE

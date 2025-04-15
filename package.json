@@ -1,0 +1,31 @@
+{
+  "name": "roocode-generator",
+  "version": "1.0.0",
+  "description": "A CLI tool to generate RooCode workflow configuration files for any tech stack.",
+  "main": "generate.js",
+  "bin": {
+    "roocode-generator": "bin/roocode-generator.js"
+  },
+  "scripts": {
+    "start": "node bin/roocode-generator.js",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "keywords": [
+    "roocode",
+    "workflow",
+    "generator",
+    "cli",
+    "automation"
+  ],
+  "author": "Your Name <your@email.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/roocode-generator.git"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

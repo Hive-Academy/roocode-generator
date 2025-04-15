@@ -1,0 +1,14 @@
+node_modules/
+.env
+*.log
+dist/
+.roocode/
+.roocode-cache/
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*.bak
+*.tmp
+coverage/
