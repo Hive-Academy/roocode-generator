@@ -49,5 +49,4 @@ MCP enhances GitHub Copilot's agent mode by allowing connection to MCP-compatibl
 
 Find MCP servers in the [official repository](https://github.com/modelcontextprotocol/servers) or create your own using available SDKs.
 
-
-**Rule:** Always use tools from the defined MCP servers whenever possible.**
+**Rule:** Always use tools from the defined MCP servers whenever possible.\*\*
