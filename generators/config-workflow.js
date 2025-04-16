@@ -272,56 +272,65 @@ async function runConfigWorkflow(projectConfig, generateConfiguration) {
     }
   }
 
-  // Auto-detect flow
-  const { useAutoDetect } = await inquirer.prompt([
+  // Always perform and show project analysis/scan on first run
+  let analysis = null;
+  let suggestedConfig = null;
+  try {
+    const { analyzeProjectWithLLM } = require("./llm-agent");
+    analysis = await analyzeProjectWithLLM(projectConfig.baseDir);
+    suggestedConfig = {
+      ...analysis.suggestedConfig,
+      baseDir: projectConfig.baseDir,
+    };
+    console.log("\n========================");
+    console.log("Project Scan Complete!");
+    console.log(
+      `Scanned ${analysis.fileList ? analysis.fileList.length : 0} files in your project directory.`
+    );
+    console.log("========================");
+    console.log("Project Analysis Results (from LLM scan):");
+    console.log("------------------------");
+    Object.entries(suggestedConfig).forEach(([key, value]) => {
+      if (key !== "baseDir" && value) {
+        console.log(`${key}: ${value}`);
+      }
+    });
+    console.log("------------------------");
+  } catch (error) {
+    console.error("Error analyzing project:", error.message);
+    suggestedConfig = {
+      name: "",
+      description: "",
+      workflow: "trunk-based",
+      baseDir: projectConfig.baseDir,
+      folderStructure: "",
+    };
+  }
+
+  // Prompt user for action on the scanned config
+  const { action } = await inquirer.prompt([
     {
-      type: "confirm",
-      name: "useAutoDetect",
-      message: "Use LLM-powered auto-detect for project config?",
-      default: true,
+      type: "list",
+      name: "action",
+      message: "Do you want to accept, edit, or reject this configuration?",
+      choices: [
+        { name: "Accept and continue", value: "accept" },
+        { name: "Edit values", value: "edit" },
+        { name: "Reject and use manual setup", value: "reject" },
+      ],
     },
   ]);
 
-  if (useAutoDetect) {
-    try {
-      const analysis = await analyzeProjectWithLLM(projectConfig.baseDir);
-      if (analysis.suggestedConfig) {
-        const suggestedConfig = {
-          ...analysis.suggestedConfig,
-          baseDir: projectConfig.baseDir, // Preserve the actual project path
-        };
-
-        console.log("\nAuto-detected configuration:");
-        console.log(suggestedConfig);
-
-        const { action } = await inquirer.prompt([
-          {
-            type: "list",
-            name: "action",
-            message: "Do you want to accept, edit, or reject this configuration?",
-            choices: [
-              { name: "Accept and continue", value: "accept" },
-              { name: "Edit values", value: "edit" },
-              { name: "Reject and use manual setup", value: "reject" },
-            ],
-          },
-        ]);
-
-        if (action === "accept") {
-          await generateConfiguration(suggestedConfig);
-          return;
-        } else if (action === "edit") {
-          await interactiveEditConfig(suggestedConfig);
-          await generateConfiguration(suggestedConfig);
-          return;
-        }
-      }
-    } catch (error) {
-      console.error("Error analyzing project:", error.message);
-    }
+  if (action === "accept") {
+    await generateConfiguration(suggestedConfig);
+    return;
+  } else if (action === "edit") {
+    await interactiveEditConfig(suggestedConfig);
+    await generateConfiguration(suggestedConfig);
+    return;
   }
 
-  // Fallback to interactive setup
+  // Fallback to interactive setup if rejected
   await askQuestions(projectConfig, generateConfiguration);
 }
 

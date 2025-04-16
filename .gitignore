@@ -6,7 +6,6 @@ dist/
 .roocode-cache/
 .DS_Store
 .idea/
-.vscode/
 *.swp
 *.swo
 *.bak

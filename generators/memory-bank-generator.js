@@ -39,6 +39,14 @@ function validateMemoryBankFiles(baseDir) {
   return missing;
 }
 
+// Helper to strip code block wrappers from markdown
+function stripMarkdownCodeBlock(content) {
+  // Remove triple backtick code block with optional 'markdown' language
+  return content
+    .replace(/^```markdown\s*([\s\S]*?)\s*```$/im, "$1")
+    .replace(/^```\s*([\s\S]*?)\s*```$/im, "$1");
+}
+
 async function generateMemoryBank(projectConfig, writeFile) {
   const baseDir = path.join(__dirname, "..");
   const missingFiles = validateMemoryBankFiles(baseDir);
@@ -78,7 +86,8 @@ async function generateMemoryBank(projectConfig, writeFile) {
     const outPath = path.join(outDir, name);
     fs.mkdirSync(outDir, { recursive: true });
     try {
-      const generated = await generateWithLLM(raw, name);
+      let generated = await generateWithLLM(raw, name);
+      generated = stripMarkdownCodeBlock(generated);
       writeFile(outPath, generated);
       console.log(chalk.green(`Generated memory bank file: ${name}`));
     } catch (err) {
@@ -99,7 +108,8 @@ async function generateMemoryBank(projectConfig, writeFile) {
       const outPath = path.join(outDir, name);
       fs.mkdirSync(outDir, { recursive: true });
       try {
-        const generated = await generateWithLLM(raw, name);
+        let generated = await generateWithLLM(raw, name);
+        generated = stripMarkdownCodeBlock(generated);
         writeFile(outPath, generated);
         console.log(chalk.green(`Generated memory bank file: ${name}`));
       } catch (err) {

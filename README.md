@@ -1,21 +1,28 @@
 # RooCode Generator
 
-A CLI tool to generate RooCode workflow configuration files for any tech stack or project structure.
+## Overview
+
+RooCode Generator is a CLI tool designed to streamline the setup and integration of RooCode workflows into your projects. It provides a set of generators for various tasks, including configuration, memory bank creation, and VS Code Copilot rules generation.
 
 ## Features
 
-- Interactive CLI for custom workflow setup
-- Supports config file import/export for repeatable runs
-- Generates all RooCode config, rules, system prompts, and memory bank files
-- Flexible: works with any frontend, backend, or architecture
+- **Interactive CLI:** Simplifies the setup process with an interactive command-line interface.
+- **Configuration Workflow:** Guides you through setting up a custom RooCode workflow tailored to your project's specific needs.
+- **Memory Bank Generation:** Creates a memory bank to store and manage project-related information, enhancing code understanding and generation.
+- **VS Code Copilot Rules Generation:** Generates custom rules for VS Code Copilot, enabling intelligent code suggestions and automated code reviews.
+- **LLM-Powered Auto-Detection:** Analyzes your project using a Large Language Model (LLM) to automatically detect project settings and suggest a configuration.
+- **Flexible Configuration:** Supports manual configuration for existing projects or new projects with RooCode best practices.
+- **Trunk-Based Development:** Encourages trunk-based development practices for efficient collaboration and release management.
 
 ## Installation
+
+To install RooCode Generator globally, run:
 
 ```bash
 npm install -g roocode-generator
 ```
 
-Or use with npx (no install required):
+Alternatively, you can use it with `npx` without installation:
 
 ```bash
 npx roocode-generator
@@ -23,18 +30,52 @@ npx roocode-generator
 
 ## Usage
 
+To start the RooCode Generator, run:
+
 ```bash
 roocode-generator
 ```
 
-- Answer the prompts to generate your configuration
-- Or use a saved `roocode.config.json` for non-interactive setup
+The CLI will guide you through the following steps:
+
+1.  **Project Mode Selection:** Choose between auto-detect mode (LLM-powered), integrating RooCode into an existing project, or starting a new project with RooCode best practices.
+2.  **Configuration:**
+    - If you select auto-detect mode, the CLI will analyze your project and suggest a configuration. You can then accept, edit, or reject the configuration.
+    - If you select manual configuration, the CLI will prompt you for the necessary information.
+3.  **File Generation:** The CLI will generate all configuration files, including memory bank files, rule files, and system prompts.
 
 ## Project Structure
 
-- `bin/` - CLI entry point
-- `generators/` - File generation logic
-- `templates/` - All templates for rules, system prompts, memory bank, etc.
+The project structure is as follows:
+
+```
+roocode-generator/
+├── bin/
+│   ├── roocode-generator.js  # CLI entry point
+│   └── roocode-llm-config.js # LLM configuration utility
+├── generators/             # File generation logic
+│   ├── config-workflow.js  # Configuration workflow logic
+│   ├── memory-bank-generator.js # Memory bank generation logic
+│   ├── rules-generator.js  # Rule file generation logic
+│   ├── system-prompts-generator.js # System prompt generation logic
+│   ├── roomodes-generator.js # Roomodes file generation logic
+│   ├── llm-agent.js        # LLM agent for project analysis
+│   └── vscode-copilot-rules-generator.js # VS Code Copilot rules generator
+├── templates/              # All templates for rules, system prompts, memory bank, etc.
+├── memory-bank/            # Memory bank files
+├── docs/                   # Documentation files
+├── .vscode/                # VS Code configuration files
+├── package.json            # Project dependencies and scripts
+└── README.md               # This file
+```
+
+## Configuration Files
+
+The RooCode Generator creates the following configuration files:
+
+- `.roo/` (or `.vscode/`): Contains the generated configuration files, including rule files and system prompts.
+- `memory-bank/`: Contains the generated memory bank files.
+- `roocode.config.json`: Contains the project configuration.
 
 ## Trunk-Based Development & Release Automation
 
@@ -71,18 +112,21 @@ Add a `.releaserc.json` or update your workflow for semantic-release (see their 
 
 ### Release Process
 
-1. Make sure your branch is up to date with `main`.
-2. Run all tests and lint checks locally.
-3. Merge your feature branch to `main` via PR.
-4. Bump the version and tag:
-   ```bash
-   npm version patch   # or minor/major
-   git push --follow-tags
-   ```
-5. CI will:
-   - Run lint, format, and tests
-   - Publish to npm (if NPM_TOKEN is set)
-   - Create a GitHub Release with notes
+1.  Make sure your branch is up to date with `main`.
+2.  Run all tests and lint checks locally.
+3.  Merge your feature branch to `main` via PR.
+4.  Bump the version and tag:
+
+    ```bash
+    npm version patch   # or minor/major
+    git push --follow-tags
+    ```
+
+5.  CI will:
+
+    - Run lint, format, and tests
+    - Publish to npm (if NPM_TOKEN is set)
+    - Create a GitHub Release with notes
 
 ---
 
