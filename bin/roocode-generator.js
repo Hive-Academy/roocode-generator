@@ -7,51 +7,12 @@ const { generateMemoryBank } = require("../generators/memory-bank-generator");
 const { generateRuleFiles } = require("../generators/rules-generator");
 const { generateSystemPrompts } = require("../generators/system-prompts-generator");
 const { generateRoomodesFile } = require("../generators/roomodes-generator");
-const { LLMAgent } = require("../generators/llm-agent");
-const { LLMProvider } = require("../generators/llm-provider");
-
-async function analyzeProject(baseDir) {
-  const llmProvider = new LLMProvider();
-  const llmAgent = new LLMAgent(llmProvider);
-
-  console.log("\nAnalyzing project structure and files...");
-
-  // Scan for key files
-  const keyFiles = ["package.json", "README.md", "tsconfig.json", "nx.json"];
-  const projectFiles = {};
-
-  for (const file of keyFiles) {
-    try {
-      const content = await fs.readFile(path.join(baseDir, file), "utf8");
-      projectFiles[file] = content;
-    } catch (err) {
-      // File doesn't exist, skip
-    }
-  }
-
-  // Use LLM to analyze project structure
-  const projectAnalysis = await llmAgent.analyzeProject(projectFiles, baseDir);
-
-  return {
-    name: projectAnalysis.name || "",
-    description: projectAnalysis.description || "",
-    workflow: projectAnalysis.workflow || "trunk-based",
-    baseDir: baseDir,
-    folderStructure: projectAnalysis.folderStructure || "",
-    // Optional fields - only include if detected
-    ...(projectAnalysis.architecture ? { architecture: projectAnalysis.architecture } : {}),
-    ...(projectAnalysis.testing ? { testing: projectAnalysis.testing } : {}),
-    ...(projectAnalysis.domains ? { domains: projectAnalysis.domains } : {}),
-    ...(projectAnalysis.tiers ? { tiers: projectAnalysis.tiers } : {}),
-    ...(projectAnalysis.libraries ? { libraries: projectAnalysis.libraries } : {}),
-  };
-}
 
 // Main generation function
-async function generateConfiguration(projectConfig) {
+async function generateConfiguration(projectConfig, mode = "roo") {
   try {
-    // Create output directory
-    const outDir = path.join(projectConfig.baseDir, ".roo");
+    // Determine output directory based on mode
+    const outDir = path.join(projectConfig.baseDir, mode === "vscode" ? ".vscode" : ".roo");
     await fs.mkdir(outDir, { recursive: true });
 
     // Helper function to write files
@@ -64,12 +25,21 @@ async function generateConfiguration(projectConfig) {
 
     // Generate all configuration files
     await generateMemoryBank(projectConfig, writeFile);
-    await generateRuleFiles(projectConfig, writeFile);
-    await generateSystemPrompts(projectConfig, writeFile);
-    await generateRoomodesFile(projectConfig, writeFile);
-
-    console.log("\nRooCode configuration generated successfully!");
-    console.log("You can now use RooCode with your custom workflow.");
+    if (mode === "roo") {
+      await generateRuleFiles(projectConfig, writeFile);
+      await generateSystemPrompts(projectConfig, writeFile);
+      await generateRoomodesFile(projectConfig, writeFile);
+      console.log("\nRooCode configuration generated successfully!");
+      console.log("You can now use RooCode with your custom workflow.");
+    } else if (mode === "vscode") {
+      // VS Code Copilot rules generator
+      const {
+        generateVscodeCopilotRules,
+      } = require("../generators/vscode-copilot-rules-generator");
+      await generateVscodeCopilotRules(projectConfig, writeFile);
+      console.log("\nVS Code Copilot configuration generated successfully!");
+      console.log("You can now use Copilot with your custom rules and memory bank.");
+    }
   } catch (error) {
     console.error("Error generating configuration:", error.message);
     process.exit(1);
@@ -80,6 +50,10 @@ async function main() {
   console.log("RooCode Workflow Generator");
   console.log("=========================");
   console.log("This script will help you set up a custom RooCode workflow for your project.\n");
+
+  // Add CLI flag for mode
+  const modeArg = process.argv.find((arg) => arg.startsWith("--mode="));
+  const mode = modeArg ? modeArg.split("=")[1] : "roo";
 
   const { projectMode } = await inquirer.prompt([
     {
@@ -95,65 +69,10 @@ async function main() {
   ]);
 
   const baseDir = process.cwd();
-  let projectConfig;
+  let projectConfig = { baseDir };
 
-  if (projectMode === "auto") {
-    try {
-      projectConfig = await analyzeProject(baseDir);
-
-      // Show analysis results and confirm
-      console.log("\nProject Analysis Results:");
-      console.log("========================");
-      Object.entries(projectConfig).forEach(([key, value]) => {
-        if (key !== "baseDir" && value) {
-          console.log(`${key}: ${value}`);
-        }
-      });
-
-      const { confirmed } = await inquirer.prompt([
-        {
-          type: "confirm",
-          name: "confirmed",
-          message: "Would you like to proceed with these settings?",
-          default: true,
-        },
-      ]);
-
-      if (!confirmed) {
-        // Fall back to manual configuration with minimal defaults
-        projectConfig = {
-          name: "",
-          description: "",
-          workflow: "trunk-based",
-          baseDir: baseDir,
-          folderStructure: "",
-        };
-      }
-    } catch (error) {
-      console.error("Error during project analysis:", error.message);
-      console.log("Falling back to manual configuration...\n");
-      projectConfig = {
-        name: "",
-        description: "",
-        workflow: "trunk-based",
-        baseDir: baseDir,
-        folderStructure: "",
-      };
-    }
-  } else if (projectMode === "existing") {
-    // Minimal config for existing projects
-    projectConfig = {
-      name: "",
-      description: "",
-      workflow: "trunk-based",
-      baseDir: baseDir,
-      folderStructure: "",
-    };
-  } else {
-    // New project flow with minimal defaults
-    console.log(
-      "\n[New Project Mode] This feature will help you scaffold a new project with RooCode best practices.\n"
-    );
+  // Only set workflow type for manual or new project modes
+  if (projectMode === "existing" || projectMode === "new") {
     projectConfig = {
       name: "",
       description: "",
@@ -163,7 +82,8 @@ async function main() {
     };
   }
 
-  await runConfigWorkflow(projectConfig, generateConfiguration);
+  // Delegate all analysis and prompting to runConfigWorkflow
+  await runConfigWorkflow(projectConfig, (cfg) => generateConfiguration(cfg, mode));
   // process.exit(0);
 }
 

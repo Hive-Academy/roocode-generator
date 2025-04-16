@@ -1,0 +1,78 @@
+{
+  "servers": {
+    "sequential-thinking": {
+      "command": "cmd.exe",
+      "args": [
+        "/c",
+        "C://Program Files/nodejs/npx.cmd",
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    },
+    "filesystem": {
+      "command": "cmd.exe",
+      "args": [
+        "/c",
+        "C://Program Files/nodejs/npx.cmd",
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "C://Users/abdal/OneDrive/Desktop",
+        "D://projects",
+        "D://bounded-ai",
+        "D://projects/roocode-generator"
+      ]
+    },
+    "github": {
+      "command": "cmd.exe",
+      "args": [
+        "/c",
+        "C://Program Files/nodejs/npx.cmd",
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "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"
+      }
+    },
+    "brave-search": {
+      "command": "cmd.exe",
+      "args": [
+        "/c",
+        "C://Program Files/nodejs/npx.cmd",
+        "-y",
+        "@modelcontextprotocol/server-brave-search"
+      ],
+      "env": {
+        "BRAVE_API_KEY": "BSAPagrRymLDM1oQKBuzq1KW2fAdPvE"
+      }
+    },
+    "mcp-server-firecrawl": {
+      "command": "cmd.exe",
+      "args": ["/c", "C://Program Files/nodejs/npx.cmd", "-y", "firecrawl-mcp"],
+      "env": {
+        "FIRECRAWL_API_KEY": "fc-576c668506724dceba1a24c1a4054dc7",
+
+        "FIRECRAWL_RETRY_MAX_ATTEMPTS": "5",
+        "FIRECRAWL_RETRY_INITIAL_DELAY": "2000",
+        "FIRECRAWL_RETRY_MAX_DELAY": "30000",
+        "FIRECRAWL_RETRY_BACKOFF_FACTOR": "3",
+
+        "FIRECRAWL_CREDIT_WARNING_THRESHOLD": "2000",
+        "FIRECRAWL_CREDIT_CRITICAL_THRESHOLD": "500"
+      }
+    },
+
+    "Framelink Figma MCP": {
+      "command": "cmd.exe",
+      "args": [
+        "/c",
+        "c://Program Files/nodejs/npx.cmd",
+        "figma-developer-mcp",
+        "--figma-api-key=figd_yGCLsX9A1rJgO29zpQGyqmJAHH68fY1e1mKupTC9",
+        "--stdio"
+      ],
+      "timeout": 900,
+      "alwaysAllow": []
+    }
+  }
+}
