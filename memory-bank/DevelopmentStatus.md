@@ -81,7 +81,7 @@ See [[DeveloperGuide#Quality-and-Testing]] for testing guidelines (once establis
 - Absence of automated tests increases the risk of regressions.
 - Error handling for edge cases or invalid user input may be incomplete.
 - Performance characteristics with large projects or complex LLM interactions are untested.
-- *(Refer to the project's official issue tracker, if available, for specific reported bugs.)*
+- _(Refer to the project's official issue tracker, if available, for specific reported bugs.)_
 
 ### Recent Changes
 
@@ -93,11 +93,11 @@ See [[DeveloperGuide#Quality-and-Testing]] for testing guidelines (once establis
 
 - **Target Date**: TBD (Aiming for an initial alpha/beta soon)
 - **Key Features**:
-    - Core CLI structure operational.
-    - Generation of basic RooCode workflow configurations via templates.
-    - Initial integration with at least one LLM provider (e.g., OpenAI) for suggestions.
-    - Foundational support for interactive prompts.
-- **Breaking Changes**: As the project is pre-1.0, APIs and CLI commands are subject to change between minor versions. No specific breaking changes are planned for the *immediate* next patch, but users should expect potential changes as development progresses towards a stable release.
+  - Core CLI structure operational.
+  - Generation of basic RooCode workflow configurations via templates.
+  - Initial integration with at least one LLM provider (e.g., OpenAI) for suggestions.
+  - Foundational support for interactive prompts.
+- **Breaking Changes**: As the project is pre-1.0, APIs and CLI commands are subject to change between minor versions. No specific breaking changes are planned for the _immediate_ next patch, but users should expect potential changes as development progresses towards a stable release.
 
 ### Future Roadmap
 
