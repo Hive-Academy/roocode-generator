@@ -1,42 +1,77 @@
+---
+title: Development Status
+version: 1.0.0
+lastUpdated: [lastUpdated]
+type: core-documentation
+category: status
+---
+
 # Development Status
 
-## Project Information
+## Current Status
 
-- **Project**: [projectName]
-- **Current Status**: [status]
-- **Last Updated**: [lastUpdated]
-- **Version**: [version]
+### Project State
 
-## Current Development Phase
+- **Phase**: [currentPhase]
+- **Status**: [status]
+- **Release**: [currentRelease]
 
-[currentPhase]
+### Key Metrics
 
-## Active Development Areas
+- **Code Coverage**: [testCoverage]
+- **Build Status**: [buildStatus]
+- **Quality Gate**: [qualityStatus]
+
+## Active Development
+
+### Focus Areas
 
 [activeAreas]
 
-## Recent Changes
+### In Progress
 
-[recentChanges]
+[inProgressWork]
 
-## Planned Updates
+### Blockers & Dependencies
 
-[plannedUpdates]
+[blockers]
 
-## Known Issues
+## Planning
+
+### Next Milestones
+
+[upcomingMilestones]
+
+### Planned Features
+
+[plannedFeatures]
+
+### Technical Debt
+
+[technicalDebt]
+
+## Quality Status
+
+### Testing Overview
+
+See [[DeveloperGuide#Quality-and-Testing]] for testing guidelines.
+
+### Known Issues
 
 [knownIssues]
 
-## Development Workflow
+### Recent Changes
 
-[workflow]
+[recentChanges]
 
-## Testing Status
+## Release Planning
 
-- **Test Coverage**: [testCoverage]
-- **Testing Framework**: [testing]
-- **CI Status**: [ciPipeline]
+### Next Release
 
-## Upcoming Milestones
+- **Target Date**: [nextReleaseDate]
+- **Key Features**: [nextReleaseFeatures]
+- **Breaking Changes**: [breakingChanges]
 
-[upcomingMilestones]
+### Future Roadmap
+
+[roadmap]

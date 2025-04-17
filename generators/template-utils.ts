@@ -1,13 +1,13 @@
-const fs = require("fs");
-const path = require("path");
+import * as fs from "fs";
+import * as path from "path";
 
 /**
  * Extract all placeholder bindings from a template string
  * @param {string} templateContent The template content to scan
  * @returns {Set<string>} Set of unique binding names found
  */
-function extractBindings(templateContent) {
-  const bindings = new Set();
+export function extractBindings(templateContent: string): Set<string> {
+  const bindings = new Set<string>();
 
   // Match both [Placeholder] and {{placeholder}} syntax
   const patterns = [
@@ -31,13 +31,13 @@ function extractBindings(templateContent) {
  * @param {string[]} extensions File extensions to include
  * @returns {Map<string, Set<string>>} Map of filepath to required bindings
  */
-function scanTemplateDirectory(dirPath, extensions = [".md"]) {
+export function scanTemplateDirectory(dirPath: string, extensions = [".md"]) {
   const templateBindings = new Map();
 
-  function scanDir(currentPath) {
+  function scanDir(currentPath: string) {
     const files = fs.readdirSync(currentPath);
 
-    files.forEach((file) => {
+    files.forEach((file: string) => {
       const fullPath = path.join(currentPath, file);
       const stat = fs.statSync(fullPath);
 
@@ -62,20 +62,20 @@ function scanTemplateDirectory(dirPath, extensions = [".md"]) {
  * @param {string} baseDir Base directory containing templates
  * @returns {Set<string>} Set of all required configuration fields
  */
-function getAllRequiredConfigFields(baseDir) {
+export function getAllRequiredConfigFields(baseDir: string): Set<string> {
   const templateDirs = [
     path.join(baseDir, "templates", "memory-bank"),
     path.join(baseDir, "templates", "rules"),
     path.join(baseDir, "templates", "system-prompts"),
   ];
 
-  const allBindings = new Set();
+  const allBindings = new Set<string>();
 
   templateDirs.forEach((dir) => {
     if (fs.existsSync(dir)) {
       const bindings = scanTemplateDirectory(dir);
       bindings.forEach((templateBindings) => {
-        templateBindings.forEach((binding) => allBindings.add(binding));
+        templateBindings.forEach((binding: string) => allBindings.add(binding));
       });
     }
   });
@@ -89,8 +89,11 @@ function getAllRequiredConfigFields(baseDir) {
  * @param {Set<string>} requiredFields Set of required field names
  * @returns {string[]} Array of missing field names
  */
-function validateConfigBindings(config, requiredFields) {
-  const missingFields = [];
+export function validateConfigBindings(
+  config: Record<any, any>,
+  requiredFields: Set<string>
+): string[] {
+  const missingFields: string[] = [];
   requiredFields.forEach((field) => {
     if (!config[field] || config[field].toString().trim() === "") {
       missingFields.push(field);
@@ -98,10 +101,3 @@ function validateConfigBindings(config, requiredFields) {
   });
   return missingFields;
 }
-
-module.exports = {
-  extractBindings,
-  scanTemplateDirectory,
-  getAllRequiredConfigFields,
-  validateConfigBindings,
-};
