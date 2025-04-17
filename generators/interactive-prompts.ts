@@ -1,16 +1,14 @@
-// generators/interactive-prompts.js
-const readline = require("readline");
-const questions = require("./config-questions");
-const fs = require("fs");
-const path = require("path");
+import * as fs from "fs";
+import * as readline from "readline";
+import { questions } from "./config-questions";
 
-function askQuestions(projectConfig, onComplete, index = 0) {
+export function askQuestions(projectConfig: any, onComplete: any, index = 0) {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
   });
 
-  function ask(index) {
+  function ask(index: any) {
     if (index >= questions.length) {
       rl.question(
         "Export configuration to roocode.config.json for future use? (Y/n): ",
@@ -51,5 +49,3 @@ function askQuestions(projectConfig, onComplete, index = 0) {
   }
   ask(index);
 }
-
-module.exports = { askQuestions };

@@ -1,60 +1,84 @@
+---
+title: Developer Guide
+version: 1.0.0
+lastUpdated: [lastUpdated]
+type: core-documentation
+category: development
+---
+
 # Developer Guide
 
-## Getting Started
+## Development Setup
 
 ### Prerequisites
 
 [prerequisites]
 
-### Setup Instructions
+### Environment Setup
 
 [setupInstructions]
 
-## Development Environment
+### Required Tools
 
-- **Tech Stack**: [techStack]
-- **Required Tools**: [requiredTools]
+[requiredTools]
 
 ## Project Structure
 
 [projectStructure]
 
+Refer to [[TechnicalArchitecture#Core-Components]] for detailed component information.
+
 ## Development Workflow
+
+### Process Overview
 
 [workflow]
 
-## Coding Standards
+### Task Management
+
+- Requirements: [[templates/task-description-template]]
+- Planning: [[templates/implementation-plan-template]]
+- Completion: [[templates/completion-report-template]]
+
+## Code Guidelines
+
+### Standards and Practices
 
 [codingStandards]
 
-### Testing Guidelines
+### Quality and Testing
 
-- **Framework**: [testing]
-- **Test Types**: [testTypes]
-- **Coverage Requirements**: [testCoverage]
+- **Testing Approach**: [testing]
+- **Coverage Goals**: [testCoverage]
+- **Validation**: [validation]
 
-## Common Development Tasks
+## Common Operations
+
+### Development Tasks
 
 [commonTasks]
 
-## Deployment Process
+### Build and Deploy
 
-- **CI/CD**: [ciPipeline]
-- **Environments**: [environments]
-- **Deployment Steps**: [deploymentSteps]
+- **Build Process**: [buildProcess]
+- **Deployment**: [deploymentSteps]
 
-## Troubleshooting Guide
+## Troubleshooting
+
+### Common Issues
 
 [troubleshootingGuide]
 
-## Best Practices
+### Support Resources
 
-[developmentPractices]
+[supportResources]
 
-## References
+## Environment Management
 
-- **Documentation**: [documentationLinks]
-- **Templates**:
-  - Implementation Plan: [implementationPlanTemplateReference]
-  - Completion Report: [completionReportTemplateReference]
-  - Mode Acknowledgment: [modeAcknowledgmentTemplateReference]
+### Infrastructure
+
+See [[TechnicalArchitecture#Infrastructure]] for detailed infrastructure setup.
+
+### Environments
+
+[environments]

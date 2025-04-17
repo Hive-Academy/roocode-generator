@@ -1,23 +1,21 @@
-// generators/config-workflow.js
-const fs = require("fs");
-const path = require("path");
-const inquirer = require("inquirer").default || require("inquirer");
-const { analyzeProjectWithLLM } = require("./llm-agent");
-const { askQuestions } = require("./interactive-prompts");
+import * as fs from "fs";
+import * as path from "path";
+import * as inquirer from "inquirer";
+import { askQuestions } from "./interactive-prompts";
 
 const CONFIG_FILENAME = "roocode.config.json";
 
-function saveConfigToFile(config) {
+export function saveConfigToFile(config: any) {
   const configPath = path.join(config.baseDir, CONFIG_FILENAME);
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
   console.log(`Configuration saved to ${configPath}`);
 }
 
-function loadConfigFromFile() {
+export function loadConfigFromFile() {
   const configPath = path.join(process.cwd(), CONFIG_FILENAME);
   if (fs.existsSync(configPath)) {
     try {
-      return JSON.parse(fs.readFileSync(configPath));
+      return JSON.parse(fs.readFileSync(configPath) as any);
     } catch (e) {
       console.error(`Error parsing ${CONFIG_FILENAME}:`, e);
     }
@@ -25,54 +23,7 @@ function loadConfigFromFile() {
   return null;
 }
 
-function validateConfigReferences(config) {
-  const missing = [];
-  // Validate memoryBankTemplates
-  if (config.memoryBankTemplates) {
-    for (const [key, relPath] of Object.entries(config.memoryBankTemplates)) {
-      if (!fs.existsSync(path.join(process.cwd(), relPath))) {
-        missing.push(`Missing memory bank template: ${relPath}`);
-      }
-    }
-  }
-  // Validate systemPrompts
-  if (config.systemPrompts) {
-    for (const [key, relPath] of Object.entries(config.systemPrompts)) {
-      // Accept both prompt text and file path; only check if it looks like a file path
-      if (
-        typeof relPath === "string" &&
-        relPath.endsWith(".md") &&
-        !fs.existsSync(path.join(process.cwd(), relPath))
-      ) {
-        missing.push(`Missing system prompt file: ${relPath}`);
-      }
-    }
-  }
-  // Validate rules (if present as file references)
-  if (config.suggestedRules && Array.isArray(config.suggestedRules)) {
-    config.suggestedRules.forEach((rule) => {
-      if (
-        typeof rule === "string" &&
-        rule.endsWith(".md") &&
-        !fs.existsSync(path.join(process.cwd(), rule))
-      ) {
-        missing.push(`Missing rule file: ${rule}`);
-      }
-    });
-  }
-  return missing;
-}
-
-function isNxWorkspace(projectRoot) {
-  // Check for nx.json or workspace.json in the root
-  return (
-    fs.existsSync(path.join(projectRoot, "nx.json")) ||
-    fs.existsSync(path.join(projectRoot, "workspace.json")) ||
-    fs.existsSync(path.join(projectRoot, "project.json"))
-  );
-}
-
-async function interactiveEditConfig(config) {
+export async function interactiveEditConfig(config: any) {
   // Edit main config fields
   const editableFields = [
     "name",
@@ -91,7 +42,7 @@ async function interactiveEditConfig(config) {
   ];
   for (const field of editableFields) {
     if (config[field] !== undefined) {
-      const { newValue } = await inquirer.prompt([
+      const { newValue } = await inquirer.default.prompt([
         {
           type: "input",
           name: "newValue",
@@ -110,7 +61,7 @@ async function interactiveEditConfig(config) {
     while (editing) {
       console.log("\nCurrent Suggested Rules:");
       rules.forEach((rule, i) => console.log(`  ${i + 1}. ${rule}`));
-      const { ruleAction } = await inquirer.prompt([
+      const { ruleAction } = await inquirer.default.prompt([
         {
           type: "list",
           name: "ruleAction",
@@ -124,15 +75,15 @@ async function interactiveEditConfig(config) {
         },
       ]);
       if (ruleAction === "edit") {
-        const { idx } = await inquirer.prompt([
+        const { idx } = await inquirer.default.prompt([
           {
             type: "input",
             name: "idx",
             message: "Enter rule number to edit:",
-            validate: (v) => v > 0 && v <= rules.length,
+            validate: (v) => Number(v) > 0 && Number(v) <= rules.length,
           },
         ]);
-        const { newRule } = await inquirer.prompt([
+        const { newRule } = await inquirer.default.prompt([
           {
             type: "input",
             name: "newRule",
@@ -142,17 +93,17 @@ async function interactiveEditConfig(config) {
         ]);
         rules[idx - 1] = newRule;
       } else if (ruleAction === "remove") {
-        const { idx } = await inquirer.prompt([
+        const { idx } = await inquirer.default.prompt([
           {
             type: "input",
             name: "idx",
             message: "Enter rule number to remove:",
-            validate: (v) => v > 0 && v <= rules.length,
+            validate: (v) => Number(v) > 0 && Number(v) <= rules.length,
           },
         ]);
         rules.splice(idx - 1, 1);
       } else if (ruleAction === "add") {
-        const { newRule } = await inquirer.prompt([
+        const { newRule } = await inquirer.default.prompt([
           {
             type: "input",
             name: "newRule",
@@ -174,7 +125,7 @@ async function interactiveEditConfig(config) {
     while (editing) {
       console.log("\nCurrent LLM Recommendations:");
       recs.forEach((rec, i) => console.log(`  ${i + 1}. ${rec}`));
-      const { recAction } = await inquirer.prompt([
+      const { recAction } = await inquirer.default.prompt([
         {
           type: "list",
           name: "recAction",
@@ -188,15 +139,15 @@ async function interactiveEditConfig(config) {
         },
       ]);
       if (recAction === "edit") {
-        const { idx } = await inquirer.prompt([
+        const { idx } = await inquirer.default.prompt([
           {
             type: "input",
             name: "idx",
             message: "Enter recommendation number to edit:",
-            validate: (v) => v > 0 && v <= recs.length,
+            validate: (v) => Number(v) > 0 && Number(v) <= recs.length,
           },
         ]);
-        const { newRec } = await inquirer.prompt([
+        const { newRec } = await inquirer.default.prompt([
           {
             type: "input",
             name: "newRec",
@@ -206,17 +157,17 @@ async function interactiveEditConfig(config) {
         ]);
         recs[idx - 1] = newRec;
       } else if (recAction === "remove") {
-        const { idx } = await inquirer.prompt([
+        const { idx } = await inquirer.default.prompt([
           {
             type: "input",
             name: "idx",
             message: "Enter recommendation number to remove:",
-            validate: (v) => v > 0 && v <= recs.length,
+            validate: (v) => Number(v) > 0 && Number(v) <= recs.length,
           },
         ]);
         recs.splice(idx - 1, 1);
       } else if (recAction === "add") {
-        const { newRec } = await inquirer.prompt([
+        const { newRec } = await inquirer.default.prompt([
           {
             type: "input",
             name: "newRec",
@@ -234,7 +185,7 @@ async function interactiveEditConfig(config) {
   // Confirm final config
   console.log("\nFinal configuration to be used:");
   console.log(JSON.stringify(config, null, 2));
-  const { confirm } = await inquirer.prompt([
+  const { confirm } = await inquirer.default.prompt([
     {
       type: "confirm",
       name: "confirm",
@@ -250,13 +201,13 @@ async function interactiveEditConfig(config) {
   }
 }
 
-async function runConfigWorkflow(projectConfig, generateConfiguration) {
+export async function runConfigWorkflow(projectConfig: any, generateConfiguration: any) {
   // Ensure baseDir is set to current directory if not provided
   projectConfig.baseDir = projectConfig.baseDir || process.cwd();
 
   let config = loadConfigFromFile();
   if (config) {
-    const { useExisting } = await inquirer.prompt([
+    const { useExisting } = await inquirer.default.prompt([
       {
         type: "confirm",
         name: "useExisting",
@@ -280,6 +231,7 @@ async function runConfigWorkflow(projectConfig, generateConfiguration) {
     analysis = await analyzeProjectWithLLM(projectConfig.baseDir);
     suggestedConfig = {
       ...analysis.suggestedConfig,
+      ...analysis.llmResponse,
       baseDir: projectConfig.baseDir,
     };
     console.log("\n========================");
@@ -296,8 +248,14 @@ async function runConfigWorkflow(projectConfig, generateConfiguration) {
       }
     });
     console.log("------------------------");
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error analyzing project:", error.message);
+    if (error && error.stack) {
+      console.error("Error stack:", error.stack);
+    }
+    if (typeof analysis === "object") {
+      console.error("Analysis object:", JSON.stringify(analysis, null, 2));
+    }
     suggestedConfig = {
       name: "",
       description: "",
@@ -308,7 +266,7 @@ async function runConfigWorkflow(projectConfig, generateConfiguration) {
   }
 
   // Prompt user for action on the scanned config
-  const { action } = await inquirer.prompt([
+  const { action } = await inquirer.default.prompt([
     {
       type: "list",
       name: "action",
@@ -333,9 +291,3 @@ async function runConfigWorkflow(projectConfig, generateConfiguration) {
   // Fallback to interactive setup if rejected
   await askQuestions(projectConfig, generateConfiguration);
 }
-
-module.exports = {
-  saveConfigToFile,
-  loadConfigFromFile,
-  runConfigWorkflow,
-};

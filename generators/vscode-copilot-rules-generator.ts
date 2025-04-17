@@ -1,18 +1,15 @@
-// vscode-copilot-rules-generator.js
-// Generator for VS Code Copilot custom rules and MCP server integration
-
-const fs = require("fs");
-const path = require("path");
+import * as fs from "fs";
+import * as path from "path";
 
 // Utility to ensure a directory exists
-function ensureDir(dir) {
+function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
 }
 
 // Utility to find mcp.json files in common locations
-function findMcpJsonFiles(baseDir) {
+function findMcpJsonFiles(baseDir: string) {
   const candidates = [
     path.join(baseDir, ".vscode", "mcp.json"),
     path.join(baseDir, ".roo", "mcp.json"),
@@ -22,33 +19,12 @@ function findMcpJsonFiles(baseDir) {
 }
 
 // Extract mcpServers from a given mcp.json file
-function extractMcpServers(filePath) {
+function extractMcpServers(filePath: string) {
   try {
     const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
     return data.mcpServers || {};
   } catch (e) {
     return {};
-  }
-}
-
-// Generate the MCP Servers markdown section
-function generateMcpServersSection(mcpServersMap) {
-  if (Object.keys(mcpServersMap).length === 0) return "No MCP servers found.";
-  let md = "## MCP Servers\n\n";
-  for (const [source, servers] of Object.entries(mcpServersMap)) {
-    md += `**From ${source}:**\n`;
-    for (const [name, config] of Object.entries(servers)) {
-      md += `- **${name}**: \`${JSON.stringify(config)}\`\n`;
-    }
-    md += "\n";
-  }
-  return md;
-}
-
-// Utility to copy a file if it doesn't exist or overwrite if requested
-function copyFileToVscode(src, dest, overwrite = true) {
-  if (!fs.existsSync(dest) || overwrite) {
-    fs.copyFileSync(src, dest);
   }
 }
 
@@ -62,30 +38,8 @@ function getModeArg() {
   return "vscode"; // default
 }
 
-// Utility to update settings/config for Copilot instructions (codeGeneration, reviewSelection)
-function updateCopilotSettings(targetDir, files, reviewFiles, mode) {
-  if (mode === "vscode") {
-    const settingsPath = path.join(targetDir, "settings.json");
-    let settings = {};
-    if (fs.existsSync(settingsPath)) {
-      try {
-        settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
-      } catch (e) {
-        /* empty */
-      }
-    }
-    settings["github.copilot.chat.codeGeneration.instructions"] = files.map((f) => ({ file: f }));
-    settings["github.copilot.chat.reviewSelection.instructions"] = reviewFiles.map((f) => ({
-      file: f,
-    }));
-    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), "utf8");
-    console.log(`Updated: ${settingsPath}`);
-  }
-  // For 'roo' mode, future: update .roo config as needed
-}
-
 // Copy MCP usage guide as a rule file and add strict advice
-function generateVscodeCopilotRules(projectConfig, writeFile) {
+function generateVscodeCopilotRules(projectConfig: Record<string, string>, writeFile: Function) {
   const baseDir = projectConfig.baseDir;
   const vscodeDir = path.join(baseDir, ".vscode");
   if (!fs.existsSync(vscodeDir)) fs.mkdirSync(vscodeDir, { recursive: true });
@@ -118,7 +72,7 @@ function generateVscodeCopilotRules(projectConfig, writeFile) {
 
   // Update .vscode/settings.json
   const settingsPath = path.join(vscodeDir, "settings.json");
-  let settings = {};
+  let settings: Record<string, any> = {};
   if (fs.existsSync(settingsPath)) {
     try {
       settings = JSON.parse(fs.readFileSync(settingsPath, "utf8"));
@@ -150,7 +104,7 @@ function main() {
 
   // Scan for mcp.json files
   const mcpFiles = findMcpJsonFiles(baseDir);
-  const mcpServersMap = {};
+  const mcpServersMap: Record<string, string> = {};
   for (const file of mcpFiles) {
     mcpServersMap[path.relative(baseDir, file)] = extractMcpServers(file);
   }

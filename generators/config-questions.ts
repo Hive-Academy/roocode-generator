@@ -1,6 +1,6 @@
-const path = require("path");
+import * as path from "path";
 
-const questions = [
+export const questions = [
   {
     property: "name",
     question: "Project name:",
@@ -164,5 +164,3 @@ const questions = [
     default: "51-55",
   },
 ];
-
-module.exports = questions;

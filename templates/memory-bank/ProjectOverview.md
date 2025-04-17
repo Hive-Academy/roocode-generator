@@ -1,30 +1,69 @@
-# Project Overview
+---
+title: Project Overview
+version: 1.0.0
+lastUpdated: [lastUpdated]
+type: core-documentation
+category: overview
+---
 
-[projectName] - [projectDescription]
+# [projectName]
 
-## Purpose
+## Overview
+
+[projectDescription]
+
+## Project Essentials
+
+- **Status**: [projectStatus]
+- **Version**: [version]
+- **Phase**: [currentPhase]
+- **Start Date**: [startDate]
+
+## Purpose and Goals
 
 [purpose]
 
-## Key Features
+## Core Features
 
 [keyFeatures]
 
-## Stakeholders
+## Project Structure
 
-[stakeholders]
+### Technology Overview
 
-## Timeline
+See [[TechnicalArchitecture#Stack]] for detailed technical specifications.
 
-- **Start Date**: [startDate]
-- **Current Status**: [projectStatus]
-- **Last Updated**: [lastUpdated]
-- **Version**: [version]
+- **Primary Stack**: [techStack]
+- **Development Flow**: [workflow]
 
-## Technical Stack
+### Team and Organization
 
-[techStack]
+- **Team Structure**: [teamStructure]
+- **Key Stakeholders**: [stakeholders]
 
-## Additional Notes
+## Project Status
 
-[additionalNotes]
+Current state and next steps. See [[DevelopmentStatus]] for detailed progress.
+
+### Active Development
+
+- **Current Focus**: [currentFocus]
+- **Next Milestone**: [nextMilestone]
+
+### Known Constraints
+
+[constraints]
+
+## Documentation Index
+
+### Core Documentation
+
+- Technical Details: [[TechnicalArchitecture]]
+- Developer Setup: [[DeveloperGuide]]
+- Development Status: [[DevelopmentStatus]]
+
+### Process Templates
+
+- Implementation Plans: [[templates/implementation-plan-template]]
+- Task Descriptions: [[templates/task-description-template]]
+- Completion Reports: [[templates/completion-report-template]]

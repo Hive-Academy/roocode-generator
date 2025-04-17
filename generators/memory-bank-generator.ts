@@ -1,7 +1,8 @@
-const fs = require("fs");
-const path = require("path");
-const { LLMProvider } = require("./llm-provider");
-const chalk = require("chalk").default;
+import chalk from "chalk";
+import { LLMProvider } from "./llm-provider";
+import { MessageContent } from "@langchain/core/messages";
+import * as fs from "fs";
+import * as path from "path";
 
 // Required memory bank files that must be present
 const REQUIRED_MEMORY_BANK_FILES = [
@@ -20,10 +21,10 @@ const REQUIRED_TEMPLATE_FILES = [
 ];
 
 // Validates that all required memory bank files and templates exist
-function validateMemoryBankFiles(baseDir) {
+export function validateMemoryBankFiles(baseDir: string) {
   const memoryBankDir = path.join(baseDir, "templates", "memory-bank");
   const templateDir = path.join(memoryBankDir, "templates");
-  const missing = [];
+  const missing: any[] = [];
   REQUIRED_MEMORY_BANK_FILES.forEach((file) => {
     const filePath = path.join(memoryBankDir, file);
     if (!fs.existsSync(filePath)) {
@@ -40,14 +41,18 @@ function validateMemoryBankFiles(baseDir) {
 }
 
 // Helper to strip code block wrappers from markdown
-function stripMarkdownCodeBlock(content) {
+function stripMarkdownCodeBlock(content: MessageContent) {
   // Remove triple backtick code block with optional 'markdown' language
   return content
+    .toString()
     .replace(/^```markdown\s*([\s\S]*?)\s*```$/im, "$1")
     .replace(/^```\s*([\s\S]*?)\s*```$/im, "$1");
 }
 
-async function generateMemoryBank(projectConfig, writeFile) {
+export async function generateMemoryBank(
+  projectConfig: Record<string, string>,
+  writeFile: Function
+) {
   const baseDir = path.join(__dirname, "..");
   const missingFiles = validateMemoryBankFiles(baseDir);
   if (missingFiles.length > 0) {
@@ -68,11 +73,18 @@ async function generateMemoryBank(projectConfig, writeFile) {
   const templateDir = path.join(baseDir, "templates", "memory-bank");
 
   // Helper to generate content using LLM
-  async function generateWithLLM(templateContent, fileName) {
+  async function generateWithLLM(templateContent: string, fileName: string) {
     const systemPrompt = `You are an expert technical writer. Given a project configuration and a template, generate a complete, high-quality Markdown file for ${fileName}.`;
     const userPrompt = `Project configuration (JSON):\n${JSON.stringify(projectConfig, null, 2)}\n\nTemplate:\n${templateContent}`;
     return await llm.getCompletion(systemPrompt, userPrompt);
   }
+
+  const coreMemoryFiles = {
+    ProjectOverview: "",
+    DeveloperGuide: "",
+    DevelopmentStatus: "",
+    TechnicalArchitecture: "",
+  };
 
   // Process core files
   for (const { name } of coreFiles) {
@@ -90,7 +102,9 @@ async function generateMemoryBank(projectConfig, writeFile) {
       generated = stripMarkdownCodeBlock(generated);
       writeFile(outPath, generated);
       console.log(chalk.green(`Generated memory bank file: ${name}`));
-    } catch (err) {
+
+      coreMemoryFiles[name.replace("", "") as keyof typeof coreMemoryFiles] = generated;
+    } catch (err: any) {
       console.error(chalk.red(`LLM generation failed for ${name}: ${err.message}`));
     }
   }
@@ -112,7 +126,7 @@ async function generateMemoryBank(projectConfig, writeFile) {
         generated = stripMarkdownCodeBlock(generated);
         writeFile(outPath, generated);
         console.log(chalk.green(`Generated memory bank file: ${name}`));
-      } catch (err) {
+      } catch (err: any) {
         console.error(chalk.red(`LLM generation failed for ${name}: ${err.message}`));
       }
     }
@@ -135,9 +149,6 @@ async function generateMemoryBank(projectConfig, writeFile) {
       }
     });
   }
-}
 
-module.exports = {
-  generateMemoryBank,
-  validateMemoryBankFiles,
-};
+  return coreMemoryFiles;
+}

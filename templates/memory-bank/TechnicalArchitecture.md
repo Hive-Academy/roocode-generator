@@ -1,52 +1,89 @@
+---
+title: Technical Architecture
+version: 1.0.0
+lastUpdated: [lastUpdated]
+type: core-documentation
+category: architecture
+---
+
 # Technical Architecture
 
 ## Overview
 
 [projectName] implements a [architecture] architecture. This document outlines the key technical components and design decisions.
 
-## System Diagram
+See [[ProjectOverview]] for high-level project information.
+
+## System Design
+
+### Architecture Diagram
 
 [systemDiagram]
 
-## Main Components
+### Core Components
 
 [mainComponents]
 
 ## Technology Stack
 
-### Frontend
+### Primary Stack {#Stack}
 
-[frontend]
-
-### Backend
-
-[backend]
-
-### Database
-
-[database]
+- **Frontend**: [frontend]
+- **Backend**: [backend]
+- **Database**: [database]
 
 ### Infrastructure
 
-- **CI/CD**: [ciPipeline]
-- **Testing Framework**: [testing]
+- **Cloud/Hosting**: [infrastructure]
+- **CI/CD Pipeline**: [ciPipeline]
+- **Monitoring**: [monitoring]
 
-## Integration Points
+### Development Tools
+
+- **Testing**: [testing]
+- **Code Quality**: [codeQuality]
+- **Build Tools**: [buildTools]
+
+## Integration and Data Flow
+
+### External Services
+
+[externalServices]
+
+### Integration Points
 
 [integrationPoints]
 
-## Architectural Decisions
+### Data Flow
+
+[dataFlow]
+
+## Key Technical Decisions
+
+### Architecture Choices
 
 [architecturalDecisions]
 
-## Special Considerations
-
-[specialConsiderations]
-
-## Common Patterns
+### Design Patterns
 
 [commonPatterns]
 
-## Development Practices
+### Security Considerations
+
+[securityConsiderations]
+
+## Development Guidelines
+
+Detailed setup and practices in [[DeveloperGuide]].
+
+### Standards
+
+[codingStandards]
+
+### Best Practices
 
 [developmentPractices]
+
+### Dependencies
+
+[dependencies]

@@ -1,17 +1,17 @@
-const fs = require("fs");
-const path = require("path");
-const { extractBindings, validateConfigBindings } = require("./template-utils");
+import { extractBindings, validateConfigBindings } from "./template-utils";
+import * as fs from "fs";
+import * as path from "path";
 
 // General-purpose template filler: replaces [Placeholder] or {{placeholder}} with values from data object
-function renderTemplate(template, data = {}) {
+export function renderTemplate(template: string, data: Record<string, string> = {}) {
   return template.replace(/\[(.+?)\]|{{(.+?)}}/g, (match, square, curly) => {
-    const key = (square || curly || "").trim();
+    const key: string = (square || curly || "").trim();
     return Object.prototype.hasOwnProperty.call(data, key) ? data[key] : match;
   });
 }
 
 // Helper to fill template with projectConfig values with default fallbacks
-function fillTemplate(template, projectConfig) {
+function fillTemplate(template: string, projectConfig: Record<string, string>) {
   // Extract required bindings from the template
   const requiredBindings = extractBindings(template);
 
@@ -51,7 +51,7 @@ function fillTemplate(template, projectConfig) {
 }
 
 // Loads a rule template, injects values, and returns the rendered content
-function loadRuleTemplate(templateName, data = {}) {
+export function loadRuleTemplate(templateName: string, data = {}) {
   const templatePath = path.join(__dirname, "..", "templates", "rules", templateName);
   if (!fs.existsSync(templatePath)) {
     throw new Error(`Rule template not found: ${templatePath}`);
@@ -61,7 +61,7 @@ function loadRuleTemplate(templateName, data = {}) {
 }
 
 // Main generator function
-function generateRuleFiles(projectConfig, writeFile) {
+export function generateRuleFiles(projectConfig: Record<string, string>, writeFile: Function) {
   const modes = [
     { slug: "boomerang", template: "boomerang-rules.md" },
     { slug: "architect", template: "architect-rules.md" },
@@ -76,7 +76,7 @@ function generateRuleFiles(projectConfig, writeFile) {
       const templatePath = path.join(__dirname, "..", "templates", "rules", template);
       const raw = fs.readFileSync(templatePath, "utf8");
       filled = fillTemplate(raw, projectConfig);
-    } catch (e) {
+    } catch (e: any) {
       console.warn(e.message);
       return;
     }
@@ -85,9 +85,3 @@ function generateRuleFiles(projectConfig, writeFile) {
     writeFile(outPath, filled);
   });
 }
-
-module.exports = {
-  generateRuleFiles,
-  renderTemplate,
-  loadRuleTemplate,
-};

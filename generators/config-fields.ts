@@ -1,11 +1,8 @@
-const fs = require("fs");
-const path = require("path");
-
 /**
  * Get the list of allowed config fields
  * @returns {string[]} Array of allowed config field names
  */
-function getAllowedConfigFields() {
+export function getAllowedConfigFields() {
   // Core required fields that every project needs
   const coreFields = ["name", "description", "workflow", "baseDir", "folderStructure"];
 
@@ -21,8 +18,8 @@ function getAllowedConfigFields() {
  * @param {string[]} allowedFields
  * @returns {object} Filtered config
  */
-function postProcessConfig(config, allowedFields) {
-  const filtered = {};
+export function postProcessConfig(config: any, allowedFields: any) {
+  const filtered: Record<string, string> = {};
 
   // Always include core fields
   for (const key of allowedFields) {
@@ -41,5 +38,3 @@ function postProcessConfig(config, allowedFields) {
 
   return filtered;
 }
-
-module.exports = { getAllowedConfigFields, postProcessConfig };
