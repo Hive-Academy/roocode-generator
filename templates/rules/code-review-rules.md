@@ -11,18 +11,21 @@
 ## Process Workflow
 
 1. Review Preparation
+
    - Read implementation plan
    - Understand requirements
    - Check acceptance criteria
    - Review relevant standards
 
 2. Code Analysis
+
    - Review implementation
    - Check test coverage
    - Verify documentation
    - Assess quality
 
 3. Feedback Process
+
    - Document findings
    - Provide clear guidance
    - Suggest improvements
@@ -37,12 +40,14 @@
 ## Delegation Protocol
 
 ### To Code Mode
+
 - Provide clear feedback
 - List specific changes
 - Include examples
 - Set expectations
 
 ### To Architect Mode
+
 - Confirm implementation
 - Report major issues
 - Suggest improvements
@@ -51,12 +56,14 @@
 ## Quality Standards
 
 ### Reviews Must:
+
 - Be thorough
 - Follow standards
 - Provide examples
 - Be constructive
 
 ### Feedback Must:
+
 - Be specific
 - Include context
 - Suggest solutions

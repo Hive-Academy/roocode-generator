@@ -11,18 +11,21 @@
 ## Process Workflow
 
 1. Requirements Analysis
+
    - Review business context
    - Map to technical components
    - Identify affected domains
    - Analyze constraints
 
 2. Design & Planning
+
    - Create technical design
    - Break down into subtasks
    - Set verification criteria
    - Document decisions
 
 3. Implementation Support
+
    - Guide Code Mode
    - Address technical questions
    - Review implementation progress
@@ -37,12 +40,14 @@
 ## Delegation Protocol
 
 ### To Code Mode
+
 - Complete implementation plan
 - Verify all references
 - Include clear success criteria
 - Specify key checkpoints
 
 ### From Boomerang Mode
+
 - Confirm business requirements
 - Verify scope understanding
 - Request clarification if needed
@@ -51,12 +56,14 @@
 ## Quality Standards
 
 ### Implementation Plans Must:
+
 - Have clear objectives
 - Include verification criteria
 - Specify affected components
 - Define measurable outcomes
 
 ### Technical Designs Must:
+
 - Follow established patterns
 - Consider existing architecture
 - Include test requirements

@@ -25,18 +25,18 @@ To simplify and automate the creation of RooCode workflow configuration files by
 
 ## Core Features
 
--   Command-Line Interface (CLI) for user interaction.
--   Generates RooCode workflow configuration files.
--   Integrates with LLMs (OpenAI, Google Genai, Anthropic) using LangChain.
--   Performs project analysis using LLMs.
--   Provides automated configuration suggestions.
--   Uses interactive prompts (via Inquirer) for configuration guidance.
--   Employs template-based file generation.
--   Supports the creation/configuration of:
-    -   Memory banks
-    -   Rules
-    -   System prompts
-    -   VS Code Copilot configurations
+- Command-Line Interface (CLI) for user interaction.
+- Generates RooCode workflow configuration files.
+- Integrates with LLMs (OpenAI, Google Genai, Anthropic) using LangChain.
+- Performs project analysis using LLMs.
+- Provides automated configuration suggestions.
+- Uses interactive prompts (via Inquirer) for configuration guidance.
+- Employs template-based file generation.
+- Supports the creation/configuration of:
+  - Memory banks
+  - Rules
+  - System prompts
+  - VS Code Copilot configurations
 
 ## Project Structure
 
@@ -44,13 +44,13 @@ To simplify and automate the creation of RooCode workflow configuration files by
 
 See [[TechnicalArchitecture#Stack]] for detailed technical specifications.
 
--   **Primary Stack**: Node.js, TypeScript, LangChain (integrating OpenAI, Google Genai, Anthropic), Inquirer, Chalk.
--   **Development Flow**: Trunk-based development (main branch releases) using conventional commits, with automated releases managed by Semantic Release.
+- **Primary Stack**: Node.js, TypeScript, LangChain (integrating OpenAI, Google Genai, Anthropic), Inquirer, Chalk.
+- **Development Flow**: Trunk-based development (main branch releases) using conventional commits, with automated releases managed by Semantic Release.
 
 ### Team and Organization
 
--   **Team Structure**: Not specified
--   **Key Stakeholders**: Not specified
+- **Team Structure**: Not specified
+- **Key Stakeholders**: Not specified
 
 ## Project Status
 
@@ -58,23 +58,23 @@ Current state and next steps. See [[DevelopmentStatus]] for detailed progress.
 
 ### Active Development
 
--   **Current Focus**: Implementation of core generation features and LLM integration for configuration suggestions.
--   **Next Milestone**: First stable release with core functionality for generating basic RooCode configurations.
+- **Current Focus**: Implementation of core generation features and LLM integration for configuration suggestions.
+- **Next Milestone**: First stable release with core functionality for generating basic RooCode configurations.
 
 ### Known Constraints
 
--   Currently lacks automated tests (placeholder test script exists). Development relies on manual testing.
+- Currently lacks automated tests (placeholder test script exists). Development relies on manual testing.
 
 ## Documentation Index
 
 ### Core Documentation
 
--   Technical Details: [[TechnicalArchitecture]]
--   Developer Setup: [[DeveloperGuide]]
--   Development Status: [[DevelopmentStatus]]
+- Technical Details: [[TechnicalArchitecture]]
+- Developer Setup: [[DeveloperGuide]]
+- Development Status: [[DevelopmentStatus]]
 
 ### Process Templates
 
--   Implementation Plans: [[templates/implementation-plan-template]]
--   Task Descriptions: [[templates/task-description-template]]
--   Completion Reports: [[templates/completion-report-template]]
+- Implementation Plans: [[templates/implementation-plan-template]]
+- Task Descriptions: [[templates/task-description-template]]
+- Completion Reports: [[templates/completion-report-template]]

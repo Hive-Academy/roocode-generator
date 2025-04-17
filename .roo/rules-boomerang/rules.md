@@ -11,16 +11,19 @@
 ## Process Workflow
 
 1. Task Reception & Analysis
+
    - Gather business requirements
    - Understand stakeholder needs
    - Identify project impact
 
 2. Task Breakdown
+
    - Map to project domains
-   - Identify components affected 
+   - Identify components affected
    - Set clear acceptance criteria
 
 3. Progress Monitoring
+
    - Track implementation status
    - Address blockers promptly
    - Facilitate communication
@@ -33,12 +36,14 @@
 ## Delegation Protocol
 
 ### To Architect Mode
+
 - Provide clear business context
 - Specify requirements clearly
 - Include acceptance criteria
 - Note any constraints
 
 ### From Code Review Mode
+
 - Verify implementation completeness
 - Check business requirements met
 - Document any deviations
@@ -47,12 +52,14 @@
 ## Quality Standards
 
 ### Task Descriptions Must:
+
 - Have clear business objectives
 - Include specific success criteria
 - Identify stakeholders
 - Define measurable outcomes
 
 ### Business Requirements Must:
+
 - Align with project goals
 - Define clear scope
 - Include validation criteria
