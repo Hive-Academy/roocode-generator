@@ -6,7 +6,21 @@ import { readFileSync } from "node:fs";
 import ora from "ora";
 import * as path from "path";
 import { getAllowedConfigFields, postProcessConfig } from "./config-fields";
-import { LLMProvider, loadLLMConfig } from "./llm-provider";
+import { LLMProvider, loadLLMConfig } from "./llm-provider"; // Assuming loadLLMConfig returns LLMConfig
+import type { LLMConfig, AnalysisResult, ProjectConfig } from "../types/shared"; // Import shared types
+
+// LLMConfig type moved to ../types/shared.ts
+// Define types for our configuration
+interface ParsedConfig extends Record<string, unknown> {
+  baseDir: string; // Added required baseDir
+  additionalAnalysis?: string;
+  name?: string;
+  description?: string;
+  dependencies?: {
+    runtime?: string[];
+    development?: string[];
+  };
+}
 
 // Exclude patterns for files/folders that should not be sent to the LLM
 const EXCLUDE_PATTERNS = [
@@ -33,17 +47,12 @@ const EXCLUDE_PATTERNS = [
   /^eslint\.config\.mjs$/i,
 ];
 
-function shouldExclude(relPath: string) {
+function shouldExclude(relPath: string): boolean {
   return EXCLUDE_PATTERNS.some((pat) => pat.test(relPath.replace(/\\/g, "/")));
 }
 
-/**
- * List all files and folders recursively in the project directory.
- * @param {string} dir - Directory to scan.
- * @returns {string[]} Array of file and folder paths (relative to dir).
- */
-function listFilesRecursive(dir: string, base = dir) {
-  let results: string[] = [];
+function listFilesRecursive(dir: string, base = dir): string[] {
+  const results: string[] = [];
   const list = fs.readdirSync(dir);
   list.forEach((file: string) => {
     const filePath = path.join(dir, file);
@@ -52,7 +61,7 @@ function listFilesRecursive(dir: string, base = dir) {
     if (shouldExclude(relPath)) return;
     if (stat && stat.isDirectory()) {
       results.push(relPath + "/");
-      results = results.concat(listFilesRecursive(filePath, base));
+      results.push(...listFilesRecursive(filePath, base));
     } else {
       results.push(relPath);
     }
@@ -60,17 +69,13 @@ function listFilesRecursive(dir: string, base = dir) {
   return results;
 }
 
-/**
- * Read the contents of all files in the project directory (with truncation for large files).
- * @param {string} projectDir - The root directory of the user's project.
- * @param {string[]} fileList - List of all files/folders (relative to projectDir).
- * @param {number} maxBytes - Maximum bytes to read from each file (default: 2000).
- * @returns {object} Object with file contents keyed by filename.
- */
-function readAllFilesTruncated(projectDir: string, fileList: string[], maxBytes = 2000) {
+function readAllFilesTruncated(
+  projectDir: string,
+  fileList: string[],
+  maxBytes = 2000
+): Record<string, string> {
   const fileContents: Record<string, string> = {};
   fileList.forEach((relPath) => {
-    // Skip directories
     if (relPath.endsWith("/")) return;
     const absPath = path.join(projectDir, relPath);
     try {
@@ -83,14 +88,11 @@ function readAllFilesTruncated(projectDir: string, fileList: string[], maxBytes 
   return fileContents;
 }
 
-/**
- * Prepare a prompt for the LLM with file list and key file contents.
- * @param {string[]} fileList
- * @param {object} fileContents
- * @param {object} context - Extra context (isNxWorkspace, fileTree, etc.)
- * @returns {string} LLM prompt
- */
-function buildLLMPrompt(fileList: string[], fileContents: Record<string, string>, context = {}) {
+function buildLLMPrompt(
+  fileList: string[],
+  fileContents: Record<string, string>,
+  _context: Record<string, unknown> = {}
+): string {
   const allowedFields = getAllowedConfigFields();
   let prompt = `You are analyzing a Node.js CLI tool for generating RooCode workflow files.\n`;
 
@@ -128,7 +130,6 @@ function buildLLMPrompt(fileList: string[], fileContents: Record<string, string>
   prompt += fileList.slice(0, 200).join("\n");
   prompt += `\n\nFile Contents (truncated to 2000 chars each):\n`;
 
-  // Add key file contents with clear section markers
   for (const [fname, content] of Object.entries(fileContents)) {
     prompt += `\n=== BEGIN ${fname} ===\n`;
     prompt += content;
@@ -139,14 +140,15 @@ function buildLLMPrompt(fileList: string[], fileContents: Record<string, string>
   return prompt;
 }
 
-/**
- * Dynamically select and instantiate the correct LangChain LLM based on config.
- * @param {string} provider
- * @param {string} apiKey
- * @param {string} model
- * @returns {object} LangChain LLM instance
- */
-function getLLMInstance(provider: string, apiKey: string, model: string) {
+interface LLMResponse {
+  content: string;
+}
+
+function getLLMInstance(
+  provider: string,
+  apiKey: string,
+  model: string
+): ChatAnthropic | ChatGoogleGenerativeAI | ChatOpenAI {
   if (provider === "openai") {
     return new ChatOpenAI({
       model: model || "gpt-3.5-turbo",
@@ -163,130 +165,118 @@ function getLLMInstance(provider: string, apiKey: string, model: string) {
       model: model || "claude-3-opus-20240229",
       apiKey,
     });
-  } else {
-    throw new Error(`Unsupported or missing LLM provider: ${provider}`);
   }
+  throw new Error(`Unsupported or missing LLM provider: ${provider}`);
 }
 
-/**
- * Call the LLM using LangChain with the given prompt.
- * @param {string} prompt
- * @returns {Promise<string>} LLM response
- */
-async function callLangChainLLM(prompt: string) {
-  const { provider, apiKey, model } = loadLLMConfig();
-  let llm;
+async function callLangChainLLM(prompt: string): Promise<string> {
+  // Use the defined type for the loaded config
+  // Add type assertion as loadLLMConfig likely returns any implicitly
+  const config = loadLLMConfig() as LLMConfig;
+  // No need for type assertions now
+  const provider = config.provider;
+  const apiKey = config.apiKey;
+  const model = config.model;
+
+  let llm: ChatAnthropic | ChatGoogleGenerativeAI | ChatOpenAI;
 
   try {
     llm = getLLMInstance(provider, apiKey, model);
-  } catch (e: any) {
-    throw new Error(`Failed to initialize LLM provider: ${e.message}`);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    throw new Error(`Failed to initialize LLM provider: ${message}`);
   }
 
   try {
     console.log(`[LLM] Sending prompt to ${provider} (${model})...`);
-    const response: any = await Promise.race([
+    const response = (await Promise.race([
       llm.invoke(prompt),
-      new Promise((_, reject) =>
+      new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error("LLM call timed out after 90s")), 90000)
       ),
-    ]);
+    ])) as LLMResponse;
 
-    if (response && response.content) {
+    if (response?.content) {
       return response.content;
     }
-    return response;
-  } catch (e: any) {
-    throw new Error(`LLM call failed: ${e.message || e}`);
+    return JSON.stringify(response);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    throw new Error(`LLM call failed: ${message}`);
   }
 }
 
-/**
- * Parse the LLM response to extract suggested projectConfig fields.
- * Expects the LLM to return a JSON block or clear key-value pairs for config.
- * @param {string} llmResponse
- * @returns {object} Parsed config or empty object
- */
-function parseLLMConfig(llmResponse: any) {
+function parseLLMConfig(llmResponse: string): ParsedConfig {
   // 1. Prefer extracting JSON from a ```json ... ``` code block
   const codeBlockMatch = llmResponse.match(/```json[\r\n]+([\s\S]*?)```/i);
-  if (codeBlockMatch) {
-    let parsedConfig = {};
+  if (codeBlockMatch?.[1]) {
     try {
-      parsedConfig = JSON.parse(codeBlockMatch[1]);
-    } catch {
-      parsedConfig = {};
+      const parsedConfig = JSON.parse(codeBlockMatch[1]) as ParsedConfig;
+      const afterBlock = codeBlockMatch[0] ? llmResponse.split(codeBlockMatch[0])[1]?.trim() : "";
+      return {
+        ...parsedConfig,
+        additionalAnalysis: afterBlock || "",
+      };
+    } catch (e) {
+      console.warn("Failed to parse JSON code block:", e);
     }
-    // Extract any additional analysis after the JSON code block
-    const afterBlock = llmResponse.split(codeBlockMatch[0])[1]?.trim();
-    return {
-      ...parsedConfig,
-      additionalAnalysis: afterBlock || "",
-    };
   }
 
   // 2. Robust fallback: try to find the first valid JSON object in the text
-  // Use a regex to find all possible JSON objects and try to parse each
-  const jsonObjects = [];
   const jsonRegex = /\{[\s\S]*?\}/g;
-  let match;
+  let match: RegExpExecArray | null;
   while ((match = jsonRegex.exec(llmResponse)) !== null) {
-    // Skip any candidate that is exactly 2000 characters (likely truncated)
-    if (match[0].length === 2000) continue;
-    jsonObjects.push(match[0]);
-  }
-  for (const obj of jsonObjects) {
+    const potentialJson = match[0];
+    if (potentialJson.length === 2000) continue;
     try {
-      const parsed = JSON.parse(obj);
-      // If it has a name or description, it's likely the config
-      if (parsed && (parsed.name || parsed.description)) {
-        const afterBlock = llmResponse.split(obj)[1]?.trim();
+      const parsed = JSON.parse(potentialJson) as ParsedConfig;
+      if (typeof parsed.name === "string" || typeof parsed.description === "string") {
+        const afterBlock = llmResponse.split(potentialJson)[1]?.trim();
         return {
           ...parsed,
           additionalAnalysis: afterBlock || "",
         };
       }
     } catch {
-      // skip invalid
+      // skip invalid JSON
     }
   }
 
   // 3. Fallback: look for key: value pairs
-  const config: Record<string, string> = {};
+  // Provide a default baseDir, although it might be inaccurate in this fallback case
+  const config: ParsedConfig = { baseDir: process.cwd() };
   const lines = llmResponse.split("\n");
   lines.forEach((line: string) => {
-    const match = line.match(/^([\w.]+):\s*(.+)$/);
-    if (match) {
-      config[match[1]] = match[2];
+    const keyValueMatch = line.match(/^([\w.-]+):\s*(.*)$/);
+    if (keyValueMatch?.[1] && keyValueMatch[2] !== undefined) {
+      config[keyValueMatch[1]] = keyValueMatch[2].trim();
     }
   });
   return config;
 }
 
-/**
- * Analyze the project directory and generate a summary using LangChain tools.
- * @param {string} projectDir - The root directory of the user's project.
- * @param {object} context - Extra context (isNxWorkspace, fileTree, etc.)
- * @returns {Promise<object>} Suggested projectConfig values and summary.
- */
-export async function analyzeProjectWithLLM(projectDir: string, context = {}) {
+// Update return type to use shared AnalysisResult
+export async function analyzeProjectWithLLM(
+  projectDir: string,
+  _context: Record<string, unknown> = {}
+): Promise<AnalysisResult> {
   const allFiles = listFilesRecursive(projectDir);
   const fileCount = allFiles.filter((f) => !f.endsWith("/")).length;
 
   console.log(`[LLM] Sending ${fileCount} files to the LLM (after exclusions).`);
   const fileContents = readAllFilesTruncated(projectDir, allFiles);
-
-  const llmPrompt = buildLLMPrompt(allFiles, fileContents, context);
+  const llmPrompt = buildLLMPrompt(allFiles, fileContents, _context);
 
   let llmResponse = "";
-  let suggestedConfig: Record<any, any> = {};
+  // Initialize with baseDir from projectDir argument
+  let suggestedConfig: ParsedConfig = { baseDir: projectDir };
 
   const spinner = ora("Analyzing project with LLM...").start();
   const allowedFields = getAllowedConfigFields();
 
   try {
     llmResponse = await callLangChainLLM(llmPrompt);
-    suggestedConfig = postProcessConfig(parseLLMConfig(llmResponse), allowedFields);
+    suggestedConfig = postProcessConfig(parseLLMConfig(llmResponse), allowedFields) as ParsedConfig;
 
     if (!llmResponse || llmResponse.length < 10) {
       spinner.warn(
@@ -295,39 +285,48 @@ export async function analyzeProjectWithLLM(projectDir: string, context = {}) {
     } else {
       spinner.succeed("LLM analysis complete.");
     }
-  } catch (e: any) {
-    spinner.fail("LLM analysis failed: " + e.message);
-    llmResponse = `LLM call failed: ${e.message}`;
-    console.error("[LLM Error]", e.message);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    spinner.fail("LLM analysis failed: " + message);
+    llmResponse = `LLM call failed: ${message}`;
+    console.error("[LLM Error]", message);
 
-    if (e.message && e.message.includes("timed out")) {
+    if (message.includes("timed out")) {
       console.error(
         "[LLM Error] The LLM call timed out. Try a smaller project or check your network/API limits."
       );
     }
   }
 
+  // Construct the return object matching the AnalysisResult interface
+  // The result of postProcessConfig should align with ProjectConfig fields
+  // Add type assertion for clarity during migration phase
+  const finalSuggestedConfig = suggestedConfig as ProjectConfig;
+
   return {
     summary: {
-      name: suggestedConfig["name"] || "",
-      description: suggestedConfig["description"] || "",
-      dependencies: suggestedConfig.dependencies?.runtime || "",
-      devDependencies: suggestedConfig.dependencies?.development || "",
+      name: String(finalSuggestedConfig.name || ""),
+      description: String(finalSuggestedConfig.description || ""),
+      // Ensure dependencies are arrays, even if undefined in ParsedConfig/ProjectConfig
+      dependencies: finalSuggestedConfig.dependencies?.runtime ?? [],
+      devDependencies: finalSuggestedConfig.dependencies?.development ?? [],
     },
     fileList: allFiles,
     llmPrompt,
     llmResponse,
-    suggestedConfig,
+    // Ensure the returned suggestedConfig matches the ProjectConfig type expected by AnalysisResult
+    suggestedConfig: finalSuggestedConfig,
   };
 }
 
 export class LLMAgent {
   llmProvider: LLMProvider;
+
   constructor(llmProvider: LLMProvider) {
     this.llmProvider = llmProvider;
   }
 
-  static buildSystemPrompt() {
+  static buildSystemPrompt(): string {
     return `You are a technical architect analyzing a software project. Focus on:
           1. Project architecture and design patterns
           2. Development workflow and tools
@@ -342,7 +341,7 @@ export class LLMAgent {
           Provide detailed analysis in JSON format with additional context as markdown.`;
   }
 
-  buildUserPrompt(projectFiles: Record<string, string>) {
+  buildUserPrompt(projectFiles: Record<string, string>): string {
     return `Analyze this project's structure and provide:
 1. A configuration summary in JSON format containing:
    - name: Project name

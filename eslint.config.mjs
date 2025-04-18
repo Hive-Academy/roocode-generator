@@ -1,39 +1,67 @@
-import { defineConfig } from "eslint/config";
 import globals from "globals";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import js from "@eslint/js";
-import { FlatCompat } from "@eslint/eslintrc";
 import tseslint from "typescript-eslint";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-  recommendedConfig: js.configs.recommended,
-  allConfig: js.configs.all,
-});
-
-export default defineConfig([
-  ...tseslint.configs.recommended,
+export default tseslint.config(
+  // Global ignores
   {
-    extends: compat.extends("eslint:recommended"),
+    ignores: ["dist/", "node_modules/", "coverage/", "bin/"], // Ignore build outputs, deps, coverage, and bin JS files
+  },
+  // Base JS config (applies to all non-ignored files initially)
+  js.configs.recommended,
+  // Base TS config (parser, plugin, basic rules - applies to TS files by default via tseslint.config)
+  ...tseslint.configs.recommended, // Use the non-type-checked base first
+  {
+    // Configuration specific to TypeScript files for TYPE-CHECKED rules
+    files: ["**/*.ts"],
+    extends: [
+      ...tseslint.configs.recommendedTypeChecked, // Extend with type-checked rules HERE
+      // Consider adding stylistic rules if desired: ...tseslint.configs.stylisticTypeChecked
+    ],
     languageOptions: {
-      globals: {
-        ...globals.node,
-      },
-      ecmaVersion: 12,
-      sourceType: "module",
-      parser: tseslint.parser,
       parserOptions: {
-        project: "./tsconfig.json",
+        project: true, // Automatically find tsconfig.json
+        tsconfigRootDir: import.meta.dirname,
       },
     },
     rules: {
-      "no-unused-vars": "warn",
-      "no-console": "off",
-      "@typescript-eslint/no-unused-vars": "error",
-      "@typescript-eslint/no-explicit-any": "warn",
+      // Customize TS rules here
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-explicit-any": "warn", // Keep as warn during upgrade
+      "@typescript-eslint/no-require-imports": "error",
+      "@typescript-eslint/no-unsafe-assignment": "warn",
+      "@typescript-eslint/no-unsafe-member-access": "warn",
+      "@typescript-eslint/no-unsafe-call": "warn",
+      "@typescript-eslint/no-unsafe-return": "warn",
+      // Add/adjust other strict rules as needed
     },
   },
-]);
+  {
+    // Configuration specific to JavaScript config files (like this one)
+    files: ["eslint.config.mjs", "**/*.js"], // Target JS/MJS files specifically
+    languageOptions: {
+      globals: { ...globals.node },
+      ecmaVersion: "latest",
+      sourceType: "module", // Default to module for .mjs
+    },
+    rules: {
+      // JS-specific rules or overrides
+      "no-unused-vars": "warn",
+      "no-console": "off",
+    },
+  },
+  {
+    // Specific override for commitlint.config.js (CommonJS)
+    files: ["commitlint.config.js"],
+    languageOptions: {
+      sourceType: "commonjs",
+      globals: {
+        ...globals.node,
+        module: "readonly",
+        require: "readonly",
+        process: "readonly",
+        __dirname: "readonly",
+      },
+    },
+  }
+);

@@ -6,10 +6,11 @@ import { generateSystemPrompts } from "../system-prompts-generator";
 import { generateRoomodesFile } from "../roomodes-generator";
 import inquirer from "inquirer";
 import { runConfigWorkflow } from "../config-workflow";
+import { ProjectConfig } from "../../types/shared"; // Added import
 
 // Main generation function
 async function generateConfiguration(
-  projectConfig: Record<string, string>,
+  projectConfig: ProjectConfig, // Updated type
   mode = "roo",
   selectedGenerators: Record<string, boolean>
 ) {
@@ -141,8 +142,8 @@ async function main() {
   }
 
   // Delegate all analysis and prompting to runConfigWorkflow
-  await runConfigWorkflow(projectConfig, (cfg: Record<string, string>) =>
-    generateConfiguration(cfg, mode, selectedGenerators)
+  await runConfigWorkflow(projectConfig, (config: ProjectConfig) =>
+    generateConfiguration(config, mode, selectedGenerators)
   );
   // process.exit(0);
 }
