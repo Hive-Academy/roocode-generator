@@ -57,7 +57,7 @@ export async function interactiveEditConfig(config: any) {
 
   // Edit suggestedRules (array)
   if (Array.isArray(config.suggestedRules)) {
-    let rules = [...config.suggestedRules];
+    const rules = [...config.suggestedRules];
     let editing = true;
     while (editing) {
       console.log("\nCurrent Suggested Rules:");
@@ -121,7 +121,7 @@ export async function interactiveEditConfig(config: any) {
 
   // Edit llmRecommendations (array)
   if (Array.isArray(config.llmRecommendations)) {
-    let recs = [...config.llmRecommendations];
+    const recs = [...config.llmRecommendations];
     let editing = true;
     while (editing) {
       console.log("\nCurrent LLM Recommendations:");
@@ -206,7 +206,7 @@ export async function runConfigWorkflow(projectConfig: any, generateConfiguratio
   // Ensure baseDir is set to current directory if not provided
   projectConfig.baseDir = projectConfig.baseDir || process.cwd();
 
-  let config = loadConfigFromFile();
+  const config = loadConfigFromFile();
   if (config) {
     const { useExisting } = await inquirer.default.prompt([
       {
