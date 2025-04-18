@@ -1,205 +1,262 @@
 ---
 title: Developer Guide
 version: 1.0.0
-lastUpdated: 2024-06-21
+lastUpdated: 2023-10-27T11:16:24.457Z
 type: core-documentation
 category: development
 ---
 
 # Developer Guide
 
-This guide provides information for developers contributing to the `roocode-generator` project. It covers setup, workflow, coding standards, and common operations.
+This guide provides instructions for setting up the development environment, understanding the project structure, and following the development workflow for the **roocode-generator** project.
 
 ## Development Setup
 
 ### Prerequisites
 
-- **Node.js**: LTS version recommended. Check project's `package.json` (`engines` field, if specified) for specific version requirements.
-- **npm** or **yarn**: Package manager for Node.js. Examples use npm, but yarn is also suitable.
-- **Git**: Version control system.
-- **LLM API Keys**: Access keys for the LLM providers you intend to use (OpenAI, Google Genai, Anthropic).
+Before starting development, ensure you have the following installed:
+
+- **Node.js**: (Specify recommended version, e.g., >= 18.x) - Download from [nodejs.org](https://nodejs.org/)
+- **npm** or **yarn**: Comes bundled with Node.js or install yarn via `npm install -g yarn`.
+- **Git**: For version control. Download from [git-scm.com](https://git-scm.com/)
+- **API Keys**: You will need API keys for the desired LLM providers (Anthropic, Google Gemini, OpenAI) you intend to use or test with.
 
 ### Environment Setup
 
-1.  **Clone the Repository**:
+1.  **Clone the repository:**
 
     ```bash
     git clone <repository-url>
     cd roocode-generator
-    *(Replace `<repository-url>` with the actual URL of the project repository)*
 
     ```
 
-2.  **Install Dependencies**:
+2.  **Install dependencies:**
+    Using npm:
 
     ```bash
     npm install
     ```
 
-    _(Or `yarn install` if using Yarn)_
+    Using yarn:
 
-3.  **Configure Environment Variables**:
-    Create a `.env` file in the project root directory. **Important:** Ensure `.env` is listed in your `.gitignore` file to prevent committing secrets.
-    Add the necessary API keys for the LLM providers:
-
-    ```dotenv
-    # .env file
-    OPENAI_API_KEY=your_openai_api_key
-    GOOGLE_API_KEY=your_google_api_key
-    ANTHROPIC_API_KEY=your_anthropic_api_key
-
-    # Add any other required environment variables here
+    ```bash
+    yarn install
     ```
 
-    The application uses these keys via LangChain to interact with the respective LLM services.
+3.  **Set up environment variables:**
+
+    - Create a `.env` file in the project root (`.`).
+    - Add the necessary API keys for the LLM services:
+      ```env
+      # Example .env file
+      ANTHROPIC_API_KEY=your_anthropic_api_key
+      GOOGLE_API_KEY=your_google_api_key
+      OPENAI_API_KEY=your_openai_api_key
+      ```
+    - **Note:** Never commit your `.env` file to version control. It's included in `.gitignore` by default.
+
+4.  **Prepare Git Hooks:**
+    Husky is used to manage Git hooks for linting and commit message validation. Ensure hooks are installed:
+    ```bash
+    npm run prepare
+    # or
+    yarn prepare
+    ```
 
 ### Required Tools
 
-The following tools are used in the development process. Most are installed as project dependencies:
-
-- **Git**: For version control.
-- **Node.js/npm (or yarn)**: Runtime and package management.
-- **TypeScript (`typescript`)**: Language for source code. Installed as a dev dependency.
-- **ESLint (`eslint`)**: For code linting and quality checks.
-- **Prettier (`prettier`)**: For code formatting.
-- **Husky (`husky`)**: For managing Git hooks (e.g., pre-commit checks).
-- **Commitlint (`@commitlint/cli`)**: For enforcing Conventional Commit message format.
-- **Semantic Release (`semantic-release` and plugins)**: For automated version management and package publishing.
-- **Code Editor**: VS Code is recommended, but any editor supporting TypeScript, ESLint, and Prettier integration will work.
+- **Code Editor**: Visual Studio Code (VS Code) is recommended, with extensions for ESLint, Prettier, and TypeScript.
+- **TypeScript**: `typescript` (Dev dependency) - For static typing.
+- **ESLint**: `eslint` (Dev dependency) - For identifying and fixing code style issues.
+- **Prettier**: `prettier` (Dev dependency) - For automatic code formatting.
+- **Husky**: `husky` (Dev dependency) - For managing Git hooks.
+- **Commitlint**: `@commitlint/cli` (Dev dependency) - For enforcing conventional commit message format.
+- **Semantic Release**: `semantic-release` (Dev dependency) - For automated version management and package publishing.
 
 ## Project Structure
 
-The project follows a function-based organization to keep concerns separated:
+The project follows a **Feature-based** folder structure to organize code logically:
 
-- `./bin`: Contains the executable entry point scripts for the CLI (e.g., the main `roocode-generator` command).
-- `./generators`: Houses the core TypeScript logic for different generation features (feature-based modules). This includes interaction with LangChain, LLM providers, inquirer prompts, and file generation logic.
-- `./templates`: Stores template files (e.g., Markdown, JSON, YAML) used by generators to create output configuration files.
-- `./docs`: Contains project documentation, including this guide and potentially architecture diagrams or usage examples.
-- `./dist` (or similar, e.g., `lib`): Output directory for compiled JavaScript code and copied assets (generated by the build process). This directory is typically not committed to Git.
-- **Configuration Files**: Root directory contains configuration for tools like TypeScript (`tsconfig.json`), ESLint (`.eslintrc.js` or similar), Prettier (`.prettierrc.js` or similar), Commitlint (`commitlint.config.js`), Git hooks (`.husky/`), Semantic Release (`.releaserc.json` or in `package.json`), and Git ignore (`.gitignore`).
+roocode-generator/
+├── src/ # Main source code directory
+│ ├── cli/ # Core CLI entry points and command handling
+│ ├── commands/ # Specific CLI command implementations (feature-based)
+│ ├── core/ # Core logic, abstractions (e.g., LLM interaction, templating)
+│ ├── generators/ # Logic specific to generating different types of files/configs
+│ ├── templates/ # Template files used for generation
+│ ├── types/ # Shared TypeScript type definitions
+│ ├── utils/ # Utility functions
+│ └── index.ts # Main application entry point
+├── config/ # Configuration files (e.g., default settings)
+├── tests/ # (Future) Test files (unit, integration)
+├── .env.example # Example environment variables file
+├── .eslintrc.js # ESLint configuration
+├── .gitignore # Git ignore rules
+├── .prettierrc.js # Prettier configuration
+├── commitlint.config.js # Commitlint configuration
+├── husky.config.js # Husky configuration (or in package.json)
+├── package.json # Project metadata and dependencies
+├── tsconfig.json # TypeScript compiler configuration
+└── README.md # Project overview
+└── DeveloperGuide.md # This file
+└── TechnicalArchitecture.md # Detailed architecture document
 
-Refer to [[TechnicalArchitecture#Core-Components]] for detailed component information.
+Refer to [[TechnicalArchitecture#Core-Components]] for detailed component information about the **Modular CLI with LLM Integration** architecture.
 
 ## Development Workflow
 
 ### Process Overview
 
-This project uses **Trunk-Based Development** with automated releases managed by **Semantic Release**.
+This project uses a **Trunk-based** development workflow.
 
-1.  **Branching**: All development happens directly on the `main` branch. Feature branches are generally avoided or are extremely short-lived.
-2.  **Commits**: All commits merged into `main` **must** follow the [Conventional Commits](https://www.conventionalcommits.org/) specification (e.g., `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, etc.). This format is crucial as it drives the automated release process. Commit message formatting is enforced using `commitlint` via a `husky` pre-commit hook.
-3.  **Code Quality**: Before committing, ensure code passes linting (`npm run lint`) and formatting (`npm run format`) checks. Husky hooks may automate this.
-4.  **Pushing**: Push commits directly to the `main` branch.
-5.  **Automated Releases**: When commits are pushed to `main`, a CI/CD pipeline (e.g., GitHub Actions) automatically triggers Semantic Release. It analyzes the new commit messages since the last release, determines the appropriate semantic version bump (patch, minor, major), generates a changelog, creates a Git tag, publishes the package to npm (if configured), and creates a release on the Git hosting platform (e.g., GitHub).
+1.  **Sync with Main:** Always ensure your local `main` branch is up-to-date before starting work:
+    ```bash
+    git checkout main
+    git pull origin main
+    ```
+2.  **Create a Feature Branch (Optional but Recommended for larger changes):** While Trunk-based often involves direct commits to `main` for small changes, larger features or complex bug fixes should be done on short-lived feature branches:
+    ```bash
+    git checkout -b feature/your-feature-name
+    # or
+    git checkout -b fix/your-bug-fix
+    ```
+3.  **Develop:** Implement the feature or fix the bug. Write code following the guidelines below.
+4.  **Commit Changes:** Make small, logical commits using the Conventional Commits format (enforced by Commitlint):
+    ```bash
+    git add .
+    git commit -m "feat: add support for YAML generation"
+    # or
+    git commit -m "fix: resolve issue with template parsing"
+    # etc.
+    ```
+    Commit messages will be linted automatically on `git commit` via Husky hooks.
+5.  **Push Changes:**
+    - For direct commits to `main`: `git push origin main`
+    - For feature branches: `git push origin feature/your-feature-name`
+6.  **Create Pull Request (if using feature branches):** Open a Pull Request (PR) from your feature branch to `main`. Ensure CI checks pass.
+7.  **Code Review (if applicable):** Have your code reviewed by team members. Address feedback.
+8.  **Merge:** Merge the PR into `main` (usually via squash merge). Delete the feature branch after merging.
+9.  **Release:** `semantic-release` automatically handles versioning and publishing based on commit messages on the `main` branch when run in the CI environment.
 
 ### Task Management
 
-- Requirements: [[templates/task-description-template]]
-- Planning: [[templates/implementation-plan-template]]
-- Completion: [[templates/completion-report-template]]
+- **Requirements:** Use the [[memory-bank/templates/task-description-template]] to define new tasks or features.
+- **Planning:** Outline implementation steps using the [[memory-bank/templates/implementation-plan-template]].
+- **Completion:** Document completed work with the [[memory-bank/templates/completion-report-template]].
 
 ## Code Guidelines
 
 ### Standards and Practices
 
-- **Language**: All core logic must be written in TypeScript. Use modern JavaScript features available within the target Node.js version.
-- **Style & Formatting**: Code formatting is enforced using Prettier. Run `npm run format` to ensure consistency. Configuration is in the Prettier config file (e.g., `.prettierrc.js`).
-- **Linting**: Code quality, potential errors, and adherence to best practices are checked using ESLint. Run `npm run lint` to check the code. Configuration is in the ESLint config file (e.g., `.eslintrc.js`). Address all linting errors and warnings before committing.
-- **Commit Messages**: Strictly adhere to the [Conventional Commits](https://www.conventionalcommits.org/) standard. This is critical for the release automation.
-- **Modularity**: Follow the established feature-based module structure within the `generators` directory. Keep modules focused and maintain separation of concerns (e.g., CLI interaction vs. core logic vs. LLM communication).
-- **Error Handling**: Implement robust error handling, especially for asynchronous operations, file system access, API calls (LLMs), and user input processing. Use `try...catch` blocks appropriately and provide informative error messages.
-- **Asynchronous Code**: Use `async/await` for handling promises and asynchronous operations.
+- **Language**: Use TypeScript for all new code.
+- **Style & Formatting**: Adhere to the rules defined in `.eslintrc.js` and `.prettierrc.js`. Run `npm run lint` and `npm run format` regularly. Formatting is automatically applied on pre-commit hooks.
+- **Naming Conventions**: Follow standard TypeScript/JavaScript naming conventions (e.g., `camelCase` for variables/functions, `PascalCase` for classes/types/interfaces).
+- **Modularity**: Design components to be modular and reusable. Leverage the **Generator Pattern**, **Configuration-Driven** design, and **LLM Abstraction** as outlined in the architecture.
+- **Error Handling**: Implement robust error handling. Use meaningful error messages.
+- **Logging**: Use a consistent logging strategy (consider `chalk` for styled console output).
+- **Commit Messages**: Follow the [Conventional Commits specification](https://www.conventionalcommits.org/). This is enforced by Commitlint.
 
 ### Quality and Testing
 
-- **Testing Approach**: Currently, there are **no automated tests** implemented for this project. A placeholder `test` script might exist in `package.json`, but it doesn't execute any meaningful tests.
-  **Future Work:** Implementing unit and integration tests (e.g., using Jest or Vitest) is highly recommended to ensure code quality and prevent regressions. Focus should be on testing the core generator logic, input validation, template rendering, and LLM interactions (potentially using mocks or test doubles).
-- **Coverage Goals**: Test coverage reporting is not applicable as no automated tests are currently implemented. Once tests are added, coverage should be tracked (e.g., using Istanbul/nyc integrated with the test runner). A reasonable initial goal would be >70% coverage for core logic modules.
-- **Validation**: Code validation is performed through multiple layers:
-  - **Type Checking**: TypeScript compilation (`npm run build` or implicitly by TypeScript-aware editors) catches type errors during development and build time.
-  - **Linting**: ESLint (`npm run lint`) identifies code quality issues, style violations, and potential bugs based on configured rules.
-  - **Formatting**: Prettier (`npm run format`) ensures consistent code style across the project.
-  - **Commit Message Linting**: `commitlint` (integrated via `husky` pre-commit hooks) enforces the Conventional Commits format before commits are finalized.
+- **Testing Approach**: Currently, the project has **None** specified for formal automated testing. Future plans include implementing unit and integration tests using a framework like Jest or Vitest. Manual testing of the CLI commands is required for now.
+- **Coverage Goals**: **N/A** - Test coverage goals will be defined once a testing strategy is implemented.
+- **Validation**:
+  - **Static Analysis**: Use `npm run lint` to check for code style and potential errors.
+  - **Type Checking**: Use `npm run typecheck` (or rely on `tsc` during the build) to ensure type safety.
 
 ## Common Operations
 
 ### Development Tasks
 
-Standard npm scripts are configured for common development tasks (check `package.json` for exact script names):
+Standard npm scripts are configured in `package.json`:
 
-- **Install Dependencies**: `npm install`
-- **Build Project**: `npm run build` (Compiles TypeScript in `generators/`, `bin/`, etc., to JavaScript in `dist/` and copies necessary assets like templates)
-- **Run CLI Locally (after build)**: `node dist/bin/roocode-generator.js [command] [options]` (Replace `roocode-generator.js` if the entry script name differs)
-- **Link for Development**:
-  1.  Run `npm link` in the project root.
-  2.  Now you can run the CLI using its command name (e.g., `roocode-generator`) globally on your system.
-  3.  When done, run `npm unlink` in the project root to remove the global link.
-- **Lint Code**: `npm run lint`
-- **Format Code**: `npm run format`
-- **Run Tests (Placeholder)**: `npm test` (Will likely do nothing until tests are added)
+- **Run in development mode (with hot-reloading if configured):**
+  ```bash
+  npm run dev
+  # or
+  yarn dev
+  ```
+- **Build the project:**
+  ```bash
+  npm run build
+  # or
+  yarn build
+  ```
+- **Lint code:**
+  ```bash
+  npm run lint
+  # or
+  yarn lint
+  ```
+- **Format code:**
+  ```bash
+  npm run format
+  # or
+  yarn format
+  ```
+- **Run type checking:**
+  ```bash
+  npm run typecheck
+  # or
+  yarn typecheck
+  ```
+- **(Future) Run tests:**
+  ```bash
+  npm test
+  # or
+  yarn test
+  ```
 
 ### Build and Deploy
 
-- **Build Process**: The build process is typically triggered by running `npm run build`. It involves:
-  1.  **Cleaning**: Removing the previous build output directory (`dist/`).
-  2.  **TypeScript Compilation**: `tsc` compiles `.ts` files to `.js` files according to `tsconfig.json`, placing them in the `dist/` directory.
-  3.  **Copying Assets**: Non-TypeScript files needed at runtime (e.g., files in `templates/`) are copied to the `dist/` directory using `copyfiles` or a similar tool, preserving their structure.
-- **Deployment**: Deployment to the npm registry is automated via **Semantic Release**, triggered by commits to the `main` branch within a CI/CD environment (e.g., GitHub Actions). Manual deployment is generally not required. The process includes:
-  1.  Analyzing commits since the last release.
-  2.  Determining the next semantic version.
-  3.  Generating/updating `CHANGELOG.md`.
-  4.  Publishing the package (including compiled code in `dist/` and necessary files like `package.json`, `README.md`) to npm.
-  5.  Creating a Git tag for the new version.
-  6.  Creating a corresponding release on the Git hosting platform (e.g., GitHub).
+- **Build Process**: The build process compiles TypeScript code from `src/` to JavaScript in the `dist/` directory using the TypeScript compiler (`tsc`). Configuration is in `tsconfig.json`. Copying non-TS assets (like templates) is handled by `copyfiles`. This is triggered by `npm run build`.
+- **Deployment**: Deployment and package publishing to npm are automated using `semantic-release`. This typically runs in a CI/CD pipeline (e.g., GitHub Actions) on pushes/merges to the `main` branch. It analyzes commit messages since the last release, determines the next version number, generates changelogs, tags the release, and publishes the package. Manual publishing is generally discouraged.
 
 ## Troubleshooting
 
 ### Common Issues
 
-- **Dependency Installation Failures**:
-  - Ensure you have a compatible Node.js and npm/yarn version.
-  - Try removing `node_modules` and `package-lock.json` (or `yarn.lock`) and running `npm install` again.
+- **Dependency Installation Errors:**
+  - Ensure you have the correct Node.js and npm/yarn versions.
+  - Try removing `node_modules` and `package-lock.json` (or `yarn.lock`) and reinstalling: `rm -rf node_modules && rm package-lock.json && npm install` (or `yarn install`).
   - Check for network connectivity issues.
-- **Build Errors (`tsc`)**:
-  - Examine the `tsc` output for specific TypeScript errors (e.g., type mismatches, syntax errors).
-  - Ensure `tsconfig.json` is correctly configured and valid JSON.
-  - Check that all necessary `@types/` packages are installed for JavaScript dependencies.
-- **Runtime Errors (Node.js)**:
-  - Use `console.log` strategically or a debugger (like VS Code's Node.js debugger) to trace execution flow and inspect variable values.
-  - Check for `null` or `undefined` errors.
-  - Ensure file paths are correct, especially after building (paths might need adjustment relative to the `dist/` directory).
-- **LLM Integration Errors**:
-  - **Authentication**: Double-check that the correct API keys are present in your `.env` file and that the file is being loaded correctly. Ensure the keys have the necessary permissions on the provider's platform.
-  - **Connectivity**: Verify network connection to the LLM provider's API endpoints.
-  - **Rate Limits**: Check if you are exceeding API rate limits imposed by the provider. Implement retry logic or backoff if necessary.
-  - **Input/Output Issues**: Verify the data being sent to the LLM matches the expected format. Check the provider's documentation for specific model requirements.
-  - **LangChain Issues**: Consult the [LangChain JS/TS Documentation](https://js.langchain.com/) for configuration and usage details of specific modules (`ChatOpenAI`, `ChatGoogleGenerativeAI`, `ChatAnthropic`, etc.).
-- **CLI Command Not Found (after `npm link`)**:
-  - Ensure `npm link` completed without errors.
-  - Verify that the Node.js `bin` directory is included in your system's `PATH` environment variable.
+- **Build Failures (`npm run build`):**
+  - Check the console output for specific TypeScript errors (`tsc`).
+  - Ensure all types are correctly defined and imported.
+- **Linting/Formatting Errors:**
+  - Run `npm run lint -- --fix` or `npm run format` to automatically fix issues where possible.
+  - Consult the ESLint/Prettier documentation or configuration files for specific rule violations.
+- **Git Hook Failures:**
+  - Ensure Husky is set up correctly (`npm run prepare`).
+  - Check the specific hook script that failed (e.g., pre-commit, commit-msg). Often related to linting or commit message format errors.
+- **LLM API Key Issues:**
+  - Verify that the `.env` file exists in the project root and contains the correct API keys.
+  - Ensure the environment variables are loaded correctly by the application (dotenv might be used).
+  - Check the specific LLM provider's documentation for API key validity and usage limits.
 
 ### Support Resources
 
-- **Project README**: [[README.md]] - For overview, installation, and basic usage.
-- **Issue Tracker**: [Link to project's GitHub/GitLab Issues page] - Check for existing issues or report new bugs/feature requests.
-- **LangChain JS/TS Docs**: [https://js.langchain.com/](https://js.langchain.com/) - Essential for understanding LLM integrations.
-- **Inquirer.js Docs**: [https://github.com/SBoudrias/Inquirer.js/](https://github.com/SBoudrias/Inquirer.js/) - For interactive prompt configuration.
-- **Chalk Docs**: [https://github.com/chalk/chalk](https://github.com/chalk/chalk) - For terminal string styling.
-- **LLM Provider Documentation**: (Links to specific OpenAI, Google AI Studio / Vertex AI, Anthropic developer documentation).
-- **Conventional Commits**: [https://www.conventionalcommits.org/](https://www.conventionalcommits.org/)
-- **Semantic Release**: [https://semantic-release.gitbook.io/semantic-release/](https://semantic-release.gitbook.io/semantic-release/)
+- **Check Logs**: Look for detailed error messages in the console output.
+- **Project Issues**: Search existing issues or open a new one in the project's issue tracker (e.g., GitHub Issues).
+- **Team Channel**: Contact the development team via the designated communication channel (e.g., Slack, Teams).
+- **Langchain Documentation**: Refer to the documentation for `@langchain/*` packages for issues related to LLM interactions.
 
 ## Environment Management
 
 ### Infrastructure
 
-See [[TechnicalArchitecture#Infrastructure]] for detailed infrastructure setup (if applicable, e.g., CI/CD specifics).
+The project primarily runs as a local CLI tool. Deployment infrastructure relates to the CI/CD pipeline (e.g., GitHub Actions) responsible for building, testing (future), and publishing the package to npm.
+
+See [[TechnicalArchitecture#Infrastructure]] for detailed infrastructure setup related to CI/CD and package distribution.
 
 ### Environments
 
-- **Local Development**: Runs on the developer's machine using local Node.js installation. Configuration (e.g., API keys) is typically managed via a `.env` file (not committed). Used for coding, debugging, and manual testing.
-- **CI/CD**: Automated environment (e.g., GitHub Actions, GitLab CI) triggered by Git events (pushes/merges to `main`). Responsible for running linters, formatters, builds, automated tests (when implemented), and the Semantic Release process. Secrets (API keys, npm token) are managed securely within the CI/CD platform's secrets management system.
-- **Production (npm Registry)**: The published package available to end-users via the npm registry (`npmjs.com`). Users install and run it using `npm install -g roocode-generator` or `npx roocode-generator`.
+- **Development (Local):** Your local machine where you write and test code. Uses `.env` file for API keys. May use development-specific configurations.
+- **CI (Continuous Integration):** Environment like GitHub Actions. Runs linters, builds, (future) tests. Uses secrets management for API keys during automated release process.
+- **Production (npm Registry):** The published package available via `npm install roocode-generator`. Users install and run it in their own environments.
+
+Environment-specific configurations (like API endpoints or specific feature flags) should be managed through environment variables or dedicated configuration files loaded based on the environment context (e.g., `NODE_ENV`).
 
 ```
 

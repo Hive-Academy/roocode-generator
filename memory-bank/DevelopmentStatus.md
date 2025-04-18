@@ -1,7 +1,7 @@
 ---
 title: Development Status
 version: 1.0.0
-lastUpdated: 2023-10-27 # Replace with actual date
+lastUpdated: 2023-10-27 # Automatically updated
 type: core-documentation
 category: status
 ---
@@ -13,94 +13,98 @@ category: status
 ### Project State
 
 - **Phase**: Active Development
-- **Status**: In Development (Pre-release)
-- **Release**: Managed by Semantic Release (See Git Tags/GitHub Releases)
+- **Status**: In Progress
+- **Release**: Pre-release / v0.x
 
 ### Key Metrics
 
-- **Code Coverage**: N/A (No automated tests implemented)
-- **Build Status**: Passing (Based on local development workflow and CI checks if configured)
-- **Quality Gate**: Not Assessed (Requires implementation of testing and quality gates)
+- **Code Coverage**: N/A (Testing framework not yet implemented)
+- **Build Status**: Passing [![Build Status](https://img.shields.io/github/actions/workflow/status/<YOUR_ORG>/roocode-generator/<YOUR_CI_WORKFLOW.yml>?branch=main)](https://github.com/<YOUR_ORG>/roocode-generator/actions) <!-- Placeholder: Update link -->
+- **Quality Gate**: Passing (Manual Review) <!-- Placeholder: Update once automated gates are in place -->
 
 ## Active Development
 
 ### Focus Areas
 
-- Refining LLM integrations via LangChain with providers like OpenAI, Google Genai, and Anthropic.
-- Enhancing the interactive CLI experience using Inquirer.
-- Expanding the capabilities of template-based file generation.
-- Adding robust support for generating various configuration types: memory banks, rules, system prompts, VS Code Copilot configurations.
-- Establishing core project structure and build processes (TypeScript compilation, dependency management).
+-   **Core Generator Logic:** Implementing the primary functionality to parse configurations and generate files based on templates.
+-   **CLI Interface:** Building user-friendly commands and options using `inquirer` and `chalk`.
+-   **LLM Integration:** Abstracting interactions with different LLM providers (OpenAI, Anthropic, Google GenAI) via LangChain.
+-   **Template Engine:** Developing the custom placeholder replacement mechanism.
+-   **Configuration Schema:** Defining the structure for input configuration files.
 
 ### In Progress
 
-- Developing core generation logic within feature modules (`generators` directory).
-- Integrating LangChain for project analysis and automated configuration suggestions.
-- Building and refining CLI command structure and user prompts.
-- Setting up automated release pipeline using Semantic Release and Conventional Commits.
-- Initial implementation of configuration file handling and template processing.
+-   Initial CLI command structure.
+-   LangChain setup for LLM abstraction.
+-   Basic file generation based on simple templates.
+-   Development environment setup (TypeScript, ESLint, Prettier, Husky).
 
 ### Blockers & Dependencies
 
-- None currently identified. Project relies heavily on external LLM APIs and LangChain features.
+-   None currently identified.
+-   Requires API keys for respective LLM providers during development and use.
 
 ## Planning
 
 ### Next Milestones
 
-- Initial functional alpha release (e.g., v0.1.0) demonstrating core generation capabilities.
-- Implementation of a basic unit testing framework and initial test cases.
-- Support for generating all initially described configuration file types.
-- Stabilizing the core CLI interface and commands.
+-   **v0.1.0 (Alpha):**
+    -   Basic configuration file generation for a sample tech stack.
+    -   Support for at least one LLM provider (e.g., OpenAI).
+    -   Functional template placeholder replacement.
+    -   Core CLI commands (`generate`, `init`).
+-   **v0.2.0:**
+    -   Support for multiple LLM providers (Anthropic, Google GenAI).
+    -   More complex template logic.
+    -   Initial unit tests for core components.
 
 ### Planned Features
 
-- Comprehensive automated test suite (unit, integration).
-- Enhanced LLM analysis capabilities (e.g., deeper code understanding).
-- Support for additional LLM providers or model customization.
-- Input validation and improved error handling.
-- More sophisticated template options.
-- Expanded user documentation and examples.
+-   Extensible plugin system for custom generation logic or templates.
+-   Support for a wider range of template placeholders and conditional logic.
+-   Interactive mode for configuration generation.
+-   Validation of input configuration files.
+-   Integration with RooCode schema definitions (if applicable).
 
 ### Technical Debt
 
-- **Primary:** Lack of an automated testing framework and test coverage. This needs to be addressed to ensure stability and enable confident refactoring.
-- Documentation requires continuous updates as features evolve.
-- Error handling is likely basic in early stages and will need refinement.
+-   **Lack of Automated Testing:** The project currently has `None` specified for testing. Implementing unit, integration, and potentially end-to-end tests is a high-priority item to ensure stability and facilitate refactoring. Tracked via [#issue-link-for-testing](https://github.com/<YOUR_ORG>/roocode-generator/issues/new). <!-- Placeholder: Update link -->
+-   **LLM Abstraction Refinement:** The initial LLM abstraction might need refactoring as more providers and features are added.
+-   Documentation coverage needs to be expanded alongside feature development.
 
 ## Quality Status
 
 ### Testing Overview
 
-Currently, **no automated tests are implemented**. Manual testing is performed during development. A placeholder test script exists in `package.json`, but a proper testing strategy (e.g., using Jest or Vitest) is planned.
-
-See [[DeveloperGuide#Quality-and-Testing]] for testing guidelines (once established).
+Currently, testing is manual. An automated testing strategy (likely using Jest or Vitest) is planned. See [[DeveloperGuide#Quality-and-Testing]] for eventual testing guidelines.
 
 ### Known Issues
 
-- Absence of automated tests increases the risk of regressions.
-- Error handling for edge cases or invalid user input may be incomplete.
-- Performance characteristics with large projects or complex LLM interactions are untested.
-- _(Refer to the project's official issue tracker, if available, for specific reported bugs.)_
+-   No automated tests are implemented.
+-   Error handling for LLM API failures needs robust implementation.
+-   Specific template edge cases may not be handled correctly yet.
+-   *See GitHub Issues for a full, up-to-date list:* [https://github.com/<YOUR_ORG>/roocode-generator/issues](https://github.com/<YOUR_ORG>/roocode-generator/issues) <!-- Placeholder: Update link -->
 
 ### Recent Changes
 
-- Refer to `CHANGELOG.md`. This file is automatically generated and maintained by Semantic Release based on Conventional Commits merged to the `main` branch.
+-   See `CHANGELOG.md` for a detailed history of changes per release.
+-   Recent commits focus on setting up the project structure, dependencies, basic CLI parsing, and initial LangChain integration.
 
 ## Release Planning
 
 ### Next Release
 
-- **Target Date**: TBD (Aiming for an initial alpha/beta soon)
+- **Target Date**: TBD (Aiming for Q4 2023 / Q1 2024 for v0.1.0 Alpha)
 - **Key Features**:
-  - Core CLI structure operational.
-  - Generation of basic RooCode workflow configurations via templates.
-  - Initial integration with at least one LLM provider (e.g., OpenAI) for suggestions.
-  - Foundational support for interactive prompts.
-- **Breaking Changes**: As the project is pre-1.0, APIs and CLI commands are subject to change between minor versions. No specific breaking changes are planned for the _immediate_ next patch, but users should expect potential changes as development progresses towards a stable release.
+    - Core generation command (`roocode-generator generate`).
+    - Basic template processing.
+    - Initial OpenAI integration.
+    - Project initialization command (`roocode-generator init`).
+- **Breaking Changes**: As this is pre-v1.0, expect potential breaking changes between minor versions (0.x -> 0.y). None specifically planned for v0.1.0 relative to the current `main` branch state, but the API is unstable.
 
 ### Future Roadmap
 
-- **Short-term (Next 1-3 months):** Achieve stable core functionality for described features, implement foundational automated testing, release initial alpha/beta versions, refine LLM prompting strategies.
-- **Mid-term (3-6 months):** Expand LLM integrations (more providers, advanced analysis), add more generator types/templates, significantly increase test coverage, improve robustness and error handling based on early feedback.
-- **Long-term (6+ months):** Explore advanced features (e.g., generating code snippets, deeper project introspection), potentially add configuration validation, consider alternative interfaces (e.g., VS Code extension), and continuously refine based on user feedback and community contributions.
+-   **Q4 2023 / Q1 2024**: v0.1.0 Alpha Release - Core functionality, basic templates, one LLM.
+-   **Q1/Q2 2024**: v0.2.0 / v0.3.0 Beta Releases - Multi-LLM support, improved templating, initial testing suite, gather user feedback.
+-   **Mid/Late 2024**: v1.0.0 Stable Release - Stable API, comprehensive testing, documentation, potential plugin system MVP.
+-   **Post-v1.0**: Expand template library, add more integrations, refine LLM interactions based on feedback.

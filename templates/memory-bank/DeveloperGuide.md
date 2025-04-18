@@ -36,9 +36,9 @@ Refer to [[TechnicalArchitecture#Core-Components]] for detailed component inform
 
 ### Task Management
 
-- Requirements: [[templates/task-description-template]]
-- Planning: [[templates/implementation-plan-template]]
-- Completion: [[templates/completion-report-template]]
+- Requirements: [[memory-bank/templates/task-description-template]]
+- Planning: [[memory-bank/templates/implementation-plan-template]]
+- Completion: [[memory-bank/templates/completion-report-template]]
 
 ## Code Guidelines
 

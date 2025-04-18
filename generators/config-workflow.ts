@@ -40,6 +40,7 @@ export async function interactiveEditConfig(config: any) {
     "tiers",
     "libraries",
   ];
+
   for (const field of editableFields) {
     if (config[field] !== undefined) {
       const { newValue } = await inquirer.default.prompt([

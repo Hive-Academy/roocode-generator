@@ -1,7 +1,7 @@
 ---
 title: Technical Architecture
 version: 1.0.0
-lastUpdated: 2024-08-01 # Adjust date as needed
+lastUpdated: 2023-10-27 # Replace with current date
 type: core-documentation
 category: architecture
 ---
@@ -10,98 +10,113 @@ category: architecture
 
 ## Overview
 
-`roocode-generator` implements a **Modular CLI application** architecture. This document outlines the key technical components and design decisions for this Node.js/TypeScript-based tool designed to generate RooCode workflow configuration files using Large Language Models (LLMs).
+`roocode-generator` implements a **Modular CLI with LLM Integration** architecture. This document outlines the key technical components and design decisions for this CLI tool, which generates RooCode workflow configuration files for various tech stacks.
 
 See [[ProjectOverview]] for high-level project information.
 
 ## System Design
 
+The system is designed as a command-line application that takes user input, potentially interacts with Large Language Models (LLMs) via Langchain, processes templates, and generates configuration files.
+
 ### Architecture Diagram
 
-_(To be added: A diagram illustrating the main components: CLI Interface, Generators, Templates, LangChain Integration, and External LLMs)_
+mermaid
+graph TD
+    A[User] -- Runs CLI command --> B(CLI Interface);
+    B -- Parses args/prompts --> C{Command Handler};
+    C -- Loads config/templates --> D[Filesystem];
+    C -- Needs AI generation --> E{LLM Interaction Module};
+    E -- Uses Langchain --> F[LLM APIs (OpenAI, Anthropic, Google)];
+    F -- Returns generated content --> E;
+    E -- Returns content to Handler --> C;
+    C -- Processes templates & data --> G{Template Engine};
+    G -- Generates file content --> H{File Generator};
+    H -- Writes files --> D;
+    C -- Displays output/status --> I[Terminal Output (chalk, ora)];
+    B -- Uses --> I;
+*Diagram illustrating the flow from user command to file generation, including optional LLM interaction.*
 
 ### Core Components
 
-The system is composed of the following core components:
-
-1.  **CLI Interface (`bin/` & `inquirer`):** The entry point for the application. Uses `inquirer` to present interactive prompts to the user, gathering necessary information for configuration generation.
-2.  **Generator Modules (`generators/`):** Contains the core logic for different generation tasks (e.g., creating memory banks, rules, system prompts). Each generator encapsulates a specific feature or configuration type.
-3.  **LangChain Integration (`@langchain/*`):** Acts as an abstraction layer to interact with various external LLM providers (OpenAI, Google GenAI, Anthropic). Handles prompt formatting, API calls, and response processing for project analysis and suggestions.
-4.  **Template Engine (`templates/`):** Uses template files (likely simple string interpolation or a dedicated library, though not explicitly specified) to structure the generated configuration files based on user input and LLM suggestions.
-5.  **Configuration Management:** Handles reading potential existing configurations and writing the newly generated files to the filesystem.
-6.  **Utility Modules (`chalk` etc.):** Supporting modules for tasks like colored console output.
+*   **CLI Interface (`inquirer`, command parsing logic):** Handles user input, command parsing, and orchestrates the overall workflow.
+*   **Command Handlers:** Specific logic for different generation commands (e.g., `generate`, `init`). Organised based on the Feature-based folder structure.
+*   **Configuration Loader:** Reads project-specific configuration or defaults.
+*   **Template Engine:** Processes template files, replacing custom placeholders with generated or configured values.
+*   **LLM Interaction Module (`langchain`, `@langchain/*` providers):** Abstract layer to interact with various LLM providers (OpenAI, Anthropic, Google GenAI) for intelligent content generation or suggestions.
+*   **File Generator:** Takes processed template content and writes it to the appropriate files in the target directory structure.
+*   **Utility Modules (`chalk`, `ora`):** Provide enhanced terminal output, including colored text and spinners for progress indication.
 
 ## Technology Stack
 
 ### Primary Stack {#Stack}
 
-- **Frontend**: Not Applicable (CLI Tool)
-- **Backend**: Node.js (Runtime), TypeScript (Language)
-- **Database**: Not Applicable / None
+-   **Frontend**: N/A (Command Line Interface)
+-   **Backend**: Node.js (Runtime Environment)
+-   **Database**: N/A (State managed through configuration files and user input)
 
 ### Infrastructure
 
-- **Cloud/Hosting**: NPM (for distribution), Local Execution
-- **CI/CD Pipeline**: GitHub Actions (inferred) utilizing Semantic Release for automated versioning and releases based on Conventional Commits.
-- **Monitoring**: Not Specified
+-   **Cloud/Hosting**: Runs on the User's Local Machine. Distributed via npm.
+-   **CI/CD Pipeline**: GitHub Actions (or similar) utilizing `semantic-release` for automated versioning and publishing, and `commitlint` for commit message standards.
+-   **Monitoring**: N/A
 
 ### Development Tools
 
-- **Testing**: No automated tests currently implemented (manual testing, `npm test` placeholder exists).
-- **Code Quality**: ESLint (Linting), Prettier (Code Formatting), `@commitlint/cli` (Commit Message Convention Enforcement).
-- **Build Tools**: TypeScript Compiler (`tsc`), `copyfiles` (for copying non-TS assets like templates during build).
+-   **Testing**: None (Currently specified as "None").
+-   **Code Quality**:
+    *   `eslint`: Linting JavaScript/TypeScript code.
+    *   `prettier`: Code formatting.
+    *   `typescript`: Static typing.
+    *   `@commitlint/cli`: Enforcing conventional commit messages.
+    *   `husky`: Git hooks management (e.g., for pre-commit checks).
+-   **Build Tools**:
+    *   `typescript` (tsc): Compiling TypeScript to JavaScript.
+    *   `copyfiles`: Utility for copying non-TS files during build.
 
 ## Integration and Data Flow
 
 ### External Services
 
-- **Large Language Models (LLMs):**
-  - OpenAI API
-  - Google GenAI API
-  - Anthropic API
-  - _(Accessed via LangChain)_
+*   **LLM APIs:** Interacts with external Large Language Model APIs (e.g., OpenAI, Anthropic, Google Gemini) via the Langchain library for specific generation tasks. Requires API keys.
 
 ### Integration Points
 
-- **User:** Command Line Interface (Standard Input/Output).
-- **LLMs:** Via LangChain library, using API Keys managed by the user environment.
-- **File System:** Reading templates, potentially reading existing project files for context, writing generated configuration files.
+*   **User Terminal:** Primary interface for input and output.
+*   **Local Filesystem:** Reads template files, configuration files, and writes generated output files.
+*   **LLM APIs:** Sends prompts and receives generated text data via HTTPS requests managed by Langchain.
 
 ### Data Flow
 
-A typical data flow sequence:
-
-1.  **User Execution:** The user runs the CLI command (e.g., `roocode-generator create-rule`).
-2.  **Prompting:** The CLI interface (`inquirer`) prompts the user for required parameters (e.g., rule name, description, target files).
-3.  **LLM Interaction (Optional):** Based on the command and user input, the relevant generator module may use LangChain to:
-    - Send project context (potentially analyzed from local files) and user requirements to an LLM.
-    - Receive analysis or configuration suggestions from the LLM.
-4.  **Processing:** The generator logic processes user input and any LLM responses.
-5.  **Template Population:** The processed data is used to populate a corresponding template file from the `templates/` directory.
-6.  **File Generation:** The populated template is written as a new configuration file to the user's specified location or the current directory.
-7.  **Feedback:** The CLI provides feedback to the user (e.g., success message with file path, error messages via `chalk`).
+1.  **User Input:** The user executes a command via the terminal (e.g., `roocode generate <stack>`).
+2.  **Parsing:** The CLI framework parses the command, arguments, and options. Interactive prompts (`inquirer`) may gather further details.
+3.  **Configuration Loading:** Relevant configuration files (project-specific or defaults) are loaded.
+4.  **LLM Interaction (Optional):** If the command requires AI assistance, the LLM Interaction Module constructs prompts using user input and configuration, sends them to the selected LLM via Langchain, and receives the response.
+5.  **Template Processing:** The Template Engine combines loaded configurations, user inputs, and potential LLM outputs with predefined template files.
+6.  **File Generation:** The File Generator module takes the processed content and writes it to the target files and directories based on the chosen stack and Feature-based structure.
+7.  **Feedback:** Status updates, progress indicators (`ora`), and results are displayed to the user in the terminal (`chalk`).
 
 ## Key Technical Decisions
 
 ### Architecture Choices
 
-- **Modular CLI:** Chosen for clear separation of concerns and extensibility. New generators or commands can be added relatively easily.
-- **TypeScript:** Provides static typing, improving code maintainability, refactoring capabilities, and reducing runtime errors compared to plain JavaScript.
-- **LangChain:** Selected as an abstraction layer to simplify integration with multiple LLM providers, making the tool flexible and future-proof regarding LLM choices.
-- **Feature-based Generators:** Logic is organized by the _feature_ or _type_ of configuration being generated (`generators/`), promoting code cohesion.
+*   **Modular CLI:** Designed for easy extension with new commands, tech stacks, or LLM providers.
+*   **LLM Abstraction (Langchain):** Using Langchain provides flexibility to switch between or support multiple LLM providers without major code changes.
+*   **Configuration-Driven:** Generation logic relies heavily on configuration files and templates, making it adaptable to different tech stacks.
+*   **TypeScript:** Chosen for improved code maintainability, type safety, and developer experience in a growing codebase.
 
 ### Design Patterns
 
-- **Command Pattern:** The CLI structure likely follows this pattern, where different commands trigger specific actions/generators.
-- **Template Method Pattern:** The generation process likely uses a template method where common steps (input, processing, template rendering, writing) are defined, with specific generators overriding certain steps.
-- **Separation of Concerns:** Explicitly mentioned; the tool separates CLI interaction, core logic, LLM communication, and templating.
-- **Facade Pattern:** LangChain acts as a facade, providing a simplified interface to the complexities of different LLM APIs.
+*   **Generator Pattern:** The core purpose of the tool is to generate code/configuration.
+*   **Configuration-Driven Development:** Behavior is significantly controlled by external configuration and templates.
+*   **Template Engine (Custom Placeholders):** Uses a system (likely custom string replacement or a minimal library) to inject dynamic data into static templates.
+*   **LLM Abstraction:** Isolates LLM interaction logic behind a consistent interface.
+*   **Command Pattern:** CLI commands map to specific handler functions/modules.
 
 ### Security Considerations
 
-- **API Key Management:** Users must securely manage their LLM API keys (e.g., via environment variables or secure configuration). The application itself should not store keys insecurely.
-- **Input Validation:** While primarily a developer tool using interactive prompts, basic validation on inputs can prevent errors during generation.
-- **Dependency Security:** Regularly audit dependencies (runtime and development) for known vulnerabilities.
+*   **API Key Management:** Sensitive LLM API keys must be handled securely. Users should be instructed to use environment variables or secure configuration methods, not hardcoding keys.
+*   **Dependency Security:** Regularly audit dependencies (`npm audit`) for known vulnerabilities.
+*   **Input Sanitization:** While primarily a developer tool, basic checks on input path manipulation could prevent accidental file overwrites outside the intended scope. (Low severity for typical use).
 
 ## Development Guidelines
 
@@ -109,42 +124,36 @@ Detailed setup and practices in [[DeveloperGuide]].
 
 ### Standards
 
-- **Coding Style:** Enforced by ESLint and Prettier. Configuration files for these tools define the specific rules.
-- **Commit Messages:** Conventional Commits standard, enforced by `@commitlint/cli` and Husky hooks. This enables automated changelog generation and version bumping.
+*   **Coding Style:** Enforced by ESLint and Prettier. Configuration files are included in the repository.
+*   **Commit Messages:** Conventional Commits enforced by `@commitlint/cli` via Husky hooks.
+*   **Typing:** Strict TypeScript usage is encouraged.
 
 ### Best Practices
 
-- **Trunk-Based Development:** All development targets the `main` branch, with releases automated from it.
-- **Automated Releases:** Semantic Release manages versioning, changelog generation, and NPM publishing based on commit messages.
-- **Clear Separation:** Maintain the separation between CLI interaction, generation logic, and external service communication.
+*   **Trunk-Based Development:** All development happens on the main branch with short-lived feature branches if necessary. Releases are tagged automatically.
+*   **Modularity:** Keep components focused and decoupled. New tech stacks or features should ideally be added as separate modules.
+*   **Error Handling:** Provide clear error messages to the user.
+*   **User Feedback:** Utilize `chalk` and `ora` appropriately to inform the user about the tool's progress and status.
 
 ### Dependencies
 
 #### Runtime Dependencies
 
-@langchain/anthropic
-@langchain/core
-@langchain/google-genai
-@langchain/openai
-chalk
-inquirer
+*   `@langchain/anthropic`: Langchain integration for Anthropic models.
+*   `@langchain/core`: Core Langchain abstractions and utilities.
+*   `@langchain/google-genai`: Langchain integration for Google GenAI models.
+*   `@langchain/openai`: Langchain integration for OpenAI models.
+*   `langchain`: Main Langchain library orchestrating LLM interactions.
+*   `chalk`: Terminal string styling.
+*   `inquirer`: Interactive command-line user interfaces.
+*   `ora`: Elegant terminal spinners.
 
 #### Development Dependencies
 
-@commitlint/cli
-@semantic-release/changelog
-@semantic-release/commit-analyzer
-@semantic-release/git
-@semantic-release/github
-@semantic-release/npm
-eslint
-husky
-prettier
-semantic-release
-typescript
-@types/node
-copyfiles
-
-```
-
-```
+*   `typescript`: Language compiler and type checker.
+*   `eslint`: Code linter.
+*   `prettier`: Code formatter.
+*   `semantic-release`: Automated version management and package publishing.
+*   `husky`: Git hooks manager.
+*   `@commitlint/cli`: Linter for commit messages.
+*   `copyfiles`: Utility to copy files during the build process.
