@@ -1,9 +1,10 @@
-import { extractBindings, validateConfigBindings } from "./template-utils";
 import * as fs from "fs";
 import * as path from "path";
+import type { ProjectConfig } from "../types/shared";
 
 // Main generator function
-export function generateRuleFiles(projectConfig: Record<string, string>) {
+export function generateRuleFiles(projectConfig: ProjectConfig): void {
+  // Updated signature
   const modes = [
     { slug: "boomerang", template: "boomerang-rules.md" },
     { slug: "architect", template: "architect-rules.md" },
