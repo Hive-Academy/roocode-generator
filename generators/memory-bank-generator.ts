@@ -49,10 +49,7 @@ function stripMarkdownCodeBlock(content: MessageContent) {
     .replace(/^```\s*([\s\S]*?)\s*```$/im, "$1");
 }
 
-export async function generateMemoryBank(
-  projectConfig: Record<string, string>,
-  writeFile: Function
-) {
+export async function generateMemoryBank(projectConfig: Record<string, string>) {
   const baseDir = path.join(__dirname, "..");
   const missingFiles = validateMemoryBankFiles(baseDir);
   if (missingFiles.length > 0) {
@@ -67,7 +64,6 @@ export async function generateMemoryBank(
     { name: "DevelopmentStatus.md" },
     { name: "TechnicalArchitecture.md" },
   ];
-  const optionalFiles = [{ name: "token-optimization-guide.md", condition: true }];
 
   const llm = new LLMProvider();
   const templateDir = path.join(baseDir, "templates", "memory-bank");
@@ -78,13 +74,6 @@ export async function generateMemoryBank(
     const userPrompt = `Project configuration (JSON):\n${JSON.stringify(projectConfig, null, 2)}\n\nTemplate:\n${templateContent}`;
     return await llm.getCompletion(systemPrompt, userPrompt);
   }
-
-  const coreMemoryFiles = {
-    ProjectOverview: "",
-    DeveloperGuide: "",
-    DevelopmentStatus: "",
-    TechnicalArchitecture: "",
-  };
 
   // Process core files
   for (const { name } of coreFiles) {
@@ -100,35 +89,11 @@ export async function generateMemoryBank(
     try {
       let generated = await generateWithLLM(raw, name);
       generated = stripMarkdownCodeBlock(generated);
-      writeFile(outPath, generated);
-      console.log(chalk.green(`Generated memory bank file: ${name}`));
 
-      coreMemoryFiles[name.replace("", "") as keyof typeof coreMemoryFiles] = generated;
+      fs.writeFileSync(outPath, generated, "utf8");
+      console.log(chalk.green(`Generated memory bank file: ${name}`));
     } catch (err: any) {
       console.error(chalk.red(`LLM generation failed for ${name}: ${err.message}`));
-    }
-  }
-
-  // Process optional files
-  for (const { name, condition } of optionalFiles) {
-    if (condition) {
-      const templatePath = path.join(templateDir, name);
-      if (!fs.existsSync(templatePath)) {
-        console.warn(chalk.yellow(`Template not found: ${templatePath}`));
-        continue;
-      }
-      const raw = fs.readFileSync(templatePath, "utf8");
-      const outDir = path.join(projectConfig.baseDir, "memory-bank");
-      const outPath = path.join(outDir, name);
-      fs.mkdirSync(outDir, { recursive: true });
-      try {
-        let generated = await generateWithLLM(raw, name);
-        generated = stripMarkdownCodeBlock(generated);
-        writeFile(outPath, generated);
-        console.log(chalk.green(`Generated memory bank file: ${name}`));
-      } catch (err: any) {
-        console.error(chalk.red(`LLM generation failed for ${name}: ${err.message}`));
-      }
     }
   }
 
@@ -149,6 +114,4 @@ export async function generateMemoryBank(
       }
     });
   }
-
-  return coreMemoryFiles;
 }

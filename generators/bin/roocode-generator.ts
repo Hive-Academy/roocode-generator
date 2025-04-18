@@ -11,39 +11,50 @@ import { runConfigWorkflow } from "../config-workflow";
 async function generateConfiguration(
   projectConfig: Record<string, string>,
   mode = "roo",
-  selectedGenerators: Record<string, boolean> | null = null
+  selectedGenerators: Record<string, boolean>
 ) {
   try {
     // Determine output directory based on mode
     const outDir = path.join(projectConfig.baseDir, mode === "vscode" ? ".vscode" : ".roo");
     fs.mkdirSync(outDir, { recursive: true });
 
-    // Helper function to write files
-    const writeFile = async (filePath: string, content: string) => {
-      const dir = path.dirname(filePath);
-      fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(filePath, content, "utf8");
-      console.log(`Generated: ${path.relative(projectConfig.baseDir, filePath)}`);
+    if (selectedGenerators.memoryBank) {
+      await generateMemoryBank(projectConfig);
+    } else {
+      console.log("Skipping memory bank generation.");
+    }
+
+    // lets read memory files rom memory bank folder nad pass these files with it's content to the llm
+    const memoryFiles = fs.readdirSync(path.join(projectConfig.baseDir, "memory-bank"));
+
+    const generatedMemoryFiles: {
+      ProjectOverview: string;
+      DeveloperGuide: string;
+      DevelopmentStatus: string;
+      TechnicalArchitecture: string;
+    } = {
+      ProjectOverview: "",
+      DeveloperGuide: "",
+      DevelopmentStatus: "",
+      TechnicalArchitecture: "",
     };
-
-    // Interactive selection: if not provided, default to all
-    const gens = selectedGenerators || {
-      memoryBank: true,
-      rules: true,
-      systemPrompts: true,
-      roomodes: true,
-    };
-
-    let generatedMemoryFiles = null;
-
-    if (gens.memoryBank) {
-      generatedMemoryFiles = await generateMemoryBank(projectConfig, writeFile);
+    for (const file of memoryFiles) {
+      const filePath = path.join(projectConfig.baseDir, "memory-bank", file);
+      if (fs.statSync(filePath).isFile()) {
+        const content = fs.readFileSync(filePath, "utf8");
+        const fileName = path.basename(
+          file,
+          path.extname(file)
+        ) as keyof typeof generatedMemoryFiles;
+        generatedMemoryFiles[fileName] = content;
+      }
     }
 
     if (mode === "roo") {
-      if (gens.rules) generateRuleFiles(projectConfig, writeFile);
-      if (gens.systemPrompts) generateSystemPrompts(projectConfig, generatedMemoryFiles, writeFile);
-      if (gens.roomodes) generateRoomodesFile(projectConfig, writeFile);
+      if (selectedGenerators.rules) generateRuleFiles(projectConfig);
+      if (selectedGenerators.systemPrompts) generateSystemPrompts(projectConfig);
+      if (selectedGenerators.roomodes) generateRoomodesFile(projectConfig);
+
       console.log("\nRooCode configuration generated successfully!");
       console.log("You can now use RooCode with your custom workflow.");
     } else if (mode === "vscode") {
@@ -51,7 +62,8 @@ async function generateConfiguration(
       const {
         generateVscodeCopilotRules,
       } = require("../generators/vscode-copilot-rules-generator");
-      await generateVscodeCopilotRules(projectConfig, writeFile);
+
+      await generateVscodeCopilotRules(projectConfig);
       console.log("\nVS Code Copilot configuration generated successfully!");
       console.log("You can now use Copilot with your custom rules and memory bank.");
     }
@@ -67,6 +79,12 @@ async function main() {
   console.log("This script will help you set up a custom RooCode workflow for your project.\n");
 
   // Add CLI flag for mode
+  // add a new args for a boolean value to generate memory bank or not and default to true if not specified
+  // add a new args for a boolean value to generate rules or not and default to true if not specified
+  const memoryBankArg = process.argv.find((arg) => arg.startsWith("--memory-bank="));
+  const generateMemoryBankFlag =
+    memoryBankArg && memoryBankArg.split("=")[1] === "false" ? false : true;
+
   const modeArg = process.argv.find((arg) => arg.startsWith("--mode="));
   const mode = modeArg ? modeArg.split("=")[1] : "roo";
 
@@ -87,21 +105,21 @@ async function main() {
   let selectedGenerators;
   if (mode === "roo") {
     selectedGenerators = {
-      memoryBank: true,
+      memoryBank: generateMemoryBankFlag,
       rules: true,
       systemPrompts: true,
       roomodes: true,
     };
   } else if (mode === "vscode") {
     selectedGenerators = {
-      memoryBank: true,
+      memoryBank: generateMemoryBankFlag,
       rules: true,
       systemPrompts: false,
       roomodes: false,
     };
   } else {
     selectedGenerators = {
-      memoryBank: true,
+      memoryBank: generateMemoryBankFlag,
       rules: true,
       systemPrompts: true,
       roomodes: true,
