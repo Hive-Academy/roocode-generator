@@ -544,7 +544,7 @@ The `apply_diff` tool is your primary code modification tool for targeted change
 <apply_diff>
 <path>src/components/UserAuth.js</path>
 <diff>
-`<<<<<<< SEARCH
+<<<<<<< SEARCH
 :start_line:25
 -------
 function login(username, password) {
@@ -587,7 +587,7 @@ Make multiple changes in a single `apply_diff` for efficiency:
 <apply_diff>
 <path>src/utils/validation.js</path>
 <diff>
-`<<<<<<< SEARCH
+<<<<<<< SEARCH
 :start_line:10
 -------
 function validateEmail(email) {
@@ -601,7 +601,7 @@ function validateEmail(email) {
 }
 >>>>>>> REPLACE
 
-`<<<<<<< SEARCH
+<<<<<<< SEARCH
 :start_line:25
 -------
 function validatePassword(password) {

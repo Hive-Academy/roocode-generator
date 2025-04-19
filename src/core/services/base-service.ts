@@ -2,8 +2,10 @@
  * Base service class providing common functionality for all services
  * Includes dependency injection and validation support
  */
-import { IServiceContainer } from "../di/container";
+import { IServiceContainer } from "../di/interfaces";
 import { Result } from "../types/result";
+import { isObject } from "../types/common";
+import { ServiceToken } from "../di/types";
 
 export abstract class BaseService {
   /**
@@ -32,16 +34,22 @@ export abstract class BaseService {
   }
 
   /**
-   * Safely resolves a dependency from the container
-   * @param token Symbol identifying the dependency
+   * Safely resolves a dependency from the container with type checking
+   * @param token Token identifying the dependency
    * @returns Result containing the resolved dependency or error
    */
-  protected resolveDependency<T>(token: symbol): Result<T> {
+  protected resolveDependency<T extends object>(token: ServiceToken): Result<T> {
     try {
       const service = this.container.resolve<T>(token);
-      return Result.success<T>(service);
+
+      // Validate resolved service matches expected type
+      if (!isObject(service)) {
+        return Result.failure<T>(`Invalid dependency type for token: ${String(token)}`);
+      }
+
+      return Result.success<T>(service as T);
     } catch (error) {
-      return Result.failure<T>(`Failed to resolve dependency: ${token.toString()}`, error);
+      return Result.failure<T>(`Failed to resolve dependency: ${String(token)}`, error);
     }
   }
 }
