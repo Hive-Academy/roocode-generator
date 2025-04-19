@@ -5,7 +5,13 @@ import tseslint from "typescript-eslint";
 export default tseslint.config(
   // Global ignores
   {
-    ignores: ["dist/", "node_modules/", "coverage/", "bin/"], // Ignore build outputs, deps, coverage, and bin JS files
+    ignores: [
+      "dist/",
+      "node_modules/",
+      "coverage/",
+      "bin/",
+      "generators/", // Temporarily ignore generators folder during refactoring
+    ],
   },
   // Base JS config (applies to all non-ignored files initially)
   js.configs.recommended,
