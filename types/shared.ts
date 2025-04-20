@@ -2,7 +2,7 @@
  * @fileoverview Core shared types for the RooCode Generator
  *
  * This file contains common interfaces and types used throughout the application.
- * When adding new types, follow the guidelines in docs/typescript-migration-phase1-progress.md
+ * When adding new types, follow the guidelines in progress-tracker/typescript-migration-phase1-progress.md
  */
 
 /**

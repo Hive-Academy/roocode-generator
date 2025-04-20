@@ -2,7 +2,7 @@
 
 ## References
 
-- Implementation Plan: [docs/implementation-plans/master-refactor-plan.md](docs/implementation-plans/master-refactor-plan.md) (Phase 4)
+- Implementation Plan: [progress-tracker/implementation-plans/master-refactor-plan.md](progress-tracker/implementation-plans/master-refactor-plan.md) (Phase 4)
 - Architecture Decision: N/A (DI setup refinement)
 - Technical Specification: N/A (DI setup refinement)
 - Rules: [.roo/rules-code/rules.md](.roo/rules-code/rules.md)

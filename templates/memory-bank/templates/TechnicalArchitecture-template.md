@@ -1,1 +1,0 @@
-# Technical Architecture Template (Placeholder)

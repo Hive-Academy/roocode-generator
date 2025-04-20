@@ -63,7 +63,7 @@ roocode-generator/
 │   └── vscode-copilot-rules-generator.js # VS Code Copilot rules generator
 ├── templates/              # All templates for rules, system prompts, memory bank, etc.
 ├── memory-bank/            # Memory bank files
-├── docs/                   # Documentation files
+├── progress-tracker/                   # Documentation files
 ├── .vscode/                # VS Code configuration files
 ├── package.json            # Project dependencies and scripts
 └── README.md               # This file

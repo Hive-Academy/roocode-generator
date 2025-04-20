@@ -1,6 +1,6 @@
 # WORKFLOW
 
-1. Begin with task acknowledgment using the template in `memory-bank/templates/mode-acknowledgment-templates.md`
+1. Begin with task acknowledgment using the template in `memory-bank/templates/mode-acknowledgment-template.md`
 
 2. ALWAYS start by checking these memory-bank files:
 
@@ -10,10 +10,10 @@
 
 3. Initialize task progress tracking:
 
-   - Create `task-progress.md` file in project root
-   - Reference the implementation plan from `docs/implementation-plans/[feature-name].md`
-   - Include links to architecture decisions in `docs/architecture/decisions/`
-   - Include links to technical specifications in `docs/specs/`
+   - Create `progress-tracker/[task-name]-progress.md` file in project root
+   - Reference the implementation plan from `progress-tracker/implementation-plans/[feature-name].md`
+   - Include links to architecture decisions in `progress-tracker/architecture/decisions/`
+   - Include links to technical specifications in `progress-tracker/specs/`
    - Convert implementation plan into checkable items
    - Add status metadata (start date, overall progress)
    - Set initial progress to 0%
@@ -27,7 +27,7 @@
      - Make small, frequent commits
      - Use feature flags for incomplete functionality
      - Maintain passing tests
-   - Update `task-progress.md` after completing each significant item
+   - Update `progress-tracker/[task-name]-progress.md` after completing each significant item
    - Add implementation notes for context
 
 5. Create comprehensive test suite:
@@ -44,7 +44,7 @@
    - Document public APIs and interfaces
    - Create usage examples where appropriate
    - Record deviations from implementation plan with memory bank references
-   - Update `task-progress.md` with key decisions
+   - Update `progress-tracker/[task-name]-progress.md` with key decisions
 
 7. Prepare for review with summary of changes:
 
@@ -52,7 +52,7 @@
    - Provide test coverage metrics
    - Explain implementation decisions and tradeoffs with memory bank references
    - Note any deviations from the plan with rationales
-   - Include link to `task-progress.md`
+   - Include link to `progress-tracker/[task-name]-progress.md`
 
 8. Complete the handoff verification checklist before delegating:
    - Verify all implementation items are completed
@@ -66,7 +66,7 @@
 
 ## Task Progress Documentation
 
-The `task-progress.md` file is critical for tracking implementation status and should:
+The `progress-tracker/[task-name]-progress.md` file is critical for tracking implementation status and should:
 
 1. **Reference Architecture Documents**: Include links to relevant files:
 
@@ -75,9 +75,9 @@ The `task-progress.md` file is critical for tracking implementation status and s
 
    ## References
 
-   - Implementation Plan: [docs/implementation-plans/feature-name.md](../docs/implementation-plans/feature-name.md)
-   - Architecture Decision: [docs/architecture/decisions/YYYY-MM-DD-decision-name.md](../docs/architecture/decisions/YYYY-MM-DD-decision-name.md)
-   - Technical Specification: [docs/specs/component-name.md](../docs/specs/component-name.md)
+   - Implementation Plan: [progress-tracker/implementation-plans/feature-name.md](../progress-tracker/implementation-plans/feature-name.md)
+   - Architecture Decision: [progress-tracker/architecture/decisions/YYYY-MM-DD-decision-name.md](../progress-tracker/architecture/decisions/YYYY-MM-DD-decision-name.md)
+   - Technical Specification: [progress-tracker/specs/component-name.md](../progress-tracker/specs/component-name.md)
    ```
 
 2. **Include Memory Bank Citations**: Explicitly reference memory bank requirements that implementation satisfies:
@@ -95,7 +95,7 @@ The `task-progress.md` file is critical for tracking implementation status and s
    ## Deviations from Plan
 
    The error handling approach was modified from the original specification in
-   docs/implementation-plans/feature-name.md:78-92 to better align with the patterns
+   progress-tracker/implementation-plans/feature-name.md:78-92 to better align with the patterns
    described in memory-bank/DeveloperGuide.md:210-225.
    ```
 
@@ -141,11 +141,11 @@ All delegations between modes must include explicit references to memory bank fi
 
 All handoffs must use consistent file paths:
 
-- Architecture documents: `docs/architecture/decisions/[date]-[topic].md`
-- Implementation plans: `docs/implementation-plans/[feature-name].md`
-- Technical specifications: `docs/specs/[component-name].md`
-- Task tracking: `task-progress.md`
-- Reviews: `reviews/[feature-name]-review.md`
+- Architecture documents: `progress-tracker/architecture/decisions/[date]-[topic].md`
+- Implementation plans: `progress-tracker/implementation-plans/[feature-name].md`
+- Technical specifications: `progress-tracker/specs/[component-name].md`
+- Task tracking: `progress-tracker/[task-name]-progress.md`
+- Reviews: `progress-tracker/reviews/[feature-name]-review.md`
 
 ## Verification Checklist
 
