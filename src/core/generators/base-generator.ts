@@ -2,23 +2,28 @@
  * Base interfaces and classes for code generation functionality
  */
 import { BaseService } from "../services/base-service";
-import { Result } from "../types/result";
+import { Result } from "../result/result"; // Corrected import path
 
 /**
  * Interface defining core generator functionality
  */
 export interface IGenerator {
   /**
-   * Generates code based on implementation-specific logic
-   * @returns Promise<Result<void>> indicating generation success or failure
+   * Unique name of the generator
    */
-  generate(): Promise<Result<void>>;
+  readonly name: string;
+
+  /**
+   * Generates code based on implementation-specific logic
+   * @returns Promise<Result<void, Error>> indicating generation success or failure
+   */
+  generate(): Promise<Result<void, Error>>;
 
   /**
    * Validates generator configuration and requirements
-   * @returns Promise<Result<void>> indicating validation success or failure
+   * @returns Promise<Result<void, Error>> indicating validation success or failure
    */
-  validate(): Promise<Result<void>>;
+  validate(): Promise<Result<void, Error>>;
 }
 
 /**
@@ -27,20 +32,39 @@ export interface IGenerator {
  */
 export abstract class BaseGenerator extends BaseService implements IGenerator {
   /**
+   * Unique name of the generator
+   */
+  abstract readonly name: string;
+
+  /**
    * Template method for code generation process
    * Ensures validation before generation
    */
-  async generate(): Promise<Result<void>> {
+  async generate(): Promise<Result<void, Error>> {
+    // Updated return type
     const initResult = this.initialize();
-    if (initResult.isFailure()) {
-      return Result.failure<void>("Generator initialization failed: " + initResult.error);
+    // Use isErr() to check for failure
+    if (initResult.isErr()) {
+      // Use Result.err with an Error object and access message
+      return Result.err(
+        new Error(
+          `Generator initialization failed: ${initResult.error?.message ?? "Unknown error"}`
+        )
+      );
     }
 
     const validationResult = await this.validate();
-    if (validationResult.isFailure()) {
-      return Result.failure<void>("Generator validation failed: " + validationResult.error);
+    // Use isErr() to check for failure
+    if (validationResult.isErr()) {
+      // Use Result.err with an Error object and access message
+      return Result.err(
+        new Error(
+          `Generator validation failed: ${validationResult.error?.message ?? "Unknown error"}`
+        )
+      );
     }
 
+    // Return the result from executeGeneration directly
     return this.executeGeneration();
   }
 
@@ -48,13 +72,13 @@ export abstract class BaseGenerator extends BaseService implements IGenerator {
    * Validates generator-specific requirements
    * Must be implemented by derived classes
    */
-  abstract validate(): Promise<Result<void>>;
+  abstract validate(): Promise<Result<void, Error>>; // Updated return type
 
   /**
    * Executes the actual code generation
    * Must be implemented by derived classes
    */
-  protected abstract executeGeneration(): Promise<Result<void>>;
+  protected abstract executeGeneration(): Promise<Result<void, Error>>; // Updated return type
 
   /**
    * Helper method to format error messages

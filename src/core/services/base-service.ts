@@ -3,8 +3,8 @@
  * Includes dependency injection and validation support
  */
 import { IServiceContainer } from "../di/interfaces";
-import { Result } from "../types/result";
-import { isObject } from "../types/common";
+import { Result } from "../result/result"; // Updated import path
+import { isObject, getErrorMessage } from "../types/common"; // Added getErrorMessage
 import { ServiceToken } from "../di/types";
 
 export abstract class BaseService {
@@ -19,18 +19,23 @@ export abstract class BaseService {
    * Must be implemented by derived classes to ensure proper initialization
    * @returns Result indicating validation success or failure
    */
-  protected abstract validateDependencies(): Result<void>;
+  // Updated return type to use the standardized Result with Error
+  protected abstract validateDependencies(): Result<void, Error>;
 
   /**
    * Ensures service is properly initialized with all dependencies
    * @returns Result indicating initialization success or failure
    */
-  protected initialize(): Result<void> {
+  // Updated return type and logic to use the standardized Result with Error
+  protected initialize(): Result<void, Error> {
     const validationResult = this.validateDependencies();
-    if (validationResult.isFailure()) {
-      return Result.failure<void>("Service initialization failed: " + validationResult.error);
+    // Use isErr() and Result.err()
+    if (validationResult.isErr()) {
+      const errorMsg = validationResult.error?.message ?? "Unknown validation error";
+      return Result.err(new Error(`Service initialization failed: ${errorMsg}`));
     }
-    return Result.success<void>(undefined);
+    // Use Result.ok()
+    return Result.ok(undefined);
   }
 
   /**
@@ -38,18 +43,35 @@ export abstract class BaseService {
    * @param token Token identifying the dependency
    * @returns Result containing the resolved dependency or error
    */
-  protected resolveDependency<T extends object>(token: ServiceToken): Result<T> {
+  // Updated return type and logic to use the standardized Result with Error
+  protected resolveDependency<T extends object>(token: ServiceToken): Result<T, Error> {
     try {
-      const service = this.container.resolve<T>(token);
+      // Assuming container.resolve now returns Result<T, DIError> or throws
+      const resolveResult = this.container.resolve<T>(token);
+
+      if (resolveResult.isErr()) {
+        // Propagate the error from the container, ensuring it's a valid Error
+        const errorToPass =
+          resolveResult.error instanceof Error
+            ? resolveResult.error
+            : new Error(`Unknown resolution error for token: ${String(token)}`);
+        return Result.err(errorToPass);
+      }
+
+      const service = resolveResult.value;
 
       // Validate resolved service matches expected type
       if (!isObject(service)) {
-        return Result.failure<T>(`Invalid dependency type for token: ${String(token)}`);
+        return Result.err(new Error(`Invalid dependency type for token: ${String(token)}`));
       }
 
-      return Result.success<T>(service as T);
+      // Use Result.ok()
+      return Result.ok(service as T);
     } catch (error) {
-      return Result.failure<T>(`Failed to resolve dependency: ${String(token)}`, error);
+      // Catch potential throws from container.resolve if it doesn't return Result
+      return Result.err(
+        new Error(`Failed to resolve dependency: ${String(token)}: ${getErrorMessage(error)}`)
+      );
     }
   }
 }

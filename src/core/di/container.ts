@@ -58,7 +58,7 @@ export class Container implements IServiceContainer {
     lifetime = ServiceLifetime.Transient
   ): Result<void, DIError> {
     try {
-      this.validateInitialization();
+      // Removed validateInitialization() check from register
       this.validateRegistration(token, implementation);
 
       if (!isInjectable(implementation)) {
@@ -108,7 +108,7 @@ export class Container implements IServiceContainer {
     lifetime = ServiceLifetime.Transient
   ): Result<void, DIError> {
     try {
-      this.validateInitialization();
+      // Removed validateInitialization() check from registerFactory
       this.validateToken(token);
 
       this.services.set(token, {

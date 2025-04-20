@@ -11,6 +11,7 @@ import {
   ServiceRegistrationError,
   ContainerNotInitializedError,
 } from "./errors";
+import { registerServices } from "./registrations";
 
 // Re-export all public types and functions
 export {
@@ -23,6 +24,7 @@ export {
   CircularDependencyError,
   ServiceRegistrationError,
   ContainerNotInitializedError,
+  registerServices,
 };
 
 export type { ServiceDescriptor, Constructor, Factory };
@@ -35,44 +37,49 @@ export function getContainer(): Container {
 }
 
 /**
- * Initializes the DI container
+ * Helper function to check for errors and throw them if present
+ * @param result The result object to check for errors
  */
-export function initializeContainer(): void {
-  const container = Container.getInstance();
-  container.initialize();
+function checkAndThrowError(result: { isErr(): boolean; error?: Error }): void {
+  if (result.isErr() && result.error !== undefined) {
+    throw result.error;
+  }
 }
 
 /**
  * Type-safe helper for registering a singleton service
- * @param token The service token
- * @param implementation The service implementation
+ * @param token The unique string identifier for the service to register.
+ *              This token is used to retrieve the service instance later.
+ * @param implementation The constructor function or class implementing the service.
+ *                      Must be a valid class or constructor function.
  */
 export function registerSingleton<T>(token: string, implementation: Constructor<T>): void {
   const container = Container.getInstance();
   const result = container.registerSingleton<T>(token, implementation);
-  if (result.isErr() && result.error !== undefined) {
-    throw result.error;
-  }
+  checkAndThrowError(result);
 }
 
 /**
  * Type-safe helper for registering a transient service
- * @param token The service token
- * @param implementation The service implementation
+ * @param token The unique string identifier for the service to register.
+ *              This token is used to retrieve the service instance later.
+ * @param implementation The constructor function or class implementing the service.
+ *                      Must be a valid class or constructor function.
  */
 export function registerTransient<T>(token: string, implementation: Constructor<T>): void {
   const container = Container.getInstance();
   const result = container.register<T>(token, implementation);
-  if (result.isErr() && result.error !== undefined) {
-    throw result.error;
-  }
+  checkAndThrowError(result);
 }
 
 /**
  * Type-safe helper for registering a factory function
- * @param token The service token
- * @param factory The factory function
- * @param lifetime Optional service lifetime (defaults to Transient)
+ * @param token The unique string identifier for the service to register.
+ *              This token is used to retrieve the service instance later.
+ * @param factory A factory function that returns an instance of the service.
+ *                This function is called each time the service is resolved.
+ * @param lifetime Optional service lifetime, defaults to Transient.
+ *                 Determines how long the service instance is retained.
  */
 export function registerFactory<T>(
   token: string,
@@ -81,20 +88,17 @@ export function registerFactory<T>(
 ): void {
   const container = Container.getInstance();
   const result = container.registerFactory<T>(token, factory, lifetime);
-  if (result.isErr() && result.error !== undefined) {
-    throw result.error;
-  }
+  checkAndThrowError(result);
 }
 
 /**
  * Type-safe helper for resolving a service
- * @param token The service token
+ * @param token The unique string identifier for the service to resolve.
+ *              Must correspond to a previously registered service token.
  */
 export function resolve<T>(token: string): T {
   const container = Container.getInstance();
   const result = container.resolve<T>(token);
-  if (result.isErr() && result.error !== undefined) {
-    throw result.error;
-  }
+  checkAndThrowError(result);
   return result.value as T;
 }

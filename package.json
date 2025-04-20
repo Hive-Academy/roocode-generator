@@ -69,8 +69,10 @@
     "@langchain/google-genai": "^0.2.3",
     "@langchain/openai": "^0.5.5",
     "chalk": "^5.4.1",
+    "commander": "^13.1.0",
     "inquirer": "^12.5.2",
     "langchain": "^0.3.21",
-    "ora": "^8.2.0"
+    "ora": "^8.2.0",
+    "reflect-metadata": "^0.2.2"
   }
 }
