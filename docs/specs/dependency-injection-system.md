@@ -314,3 +314,41 @@ const service = container.resolve<IExistingService>("IExistingService");
 - ADR-0001: TypeScript OOP Refactoring
 - TypeScript Decorators Documentation
 - Dependency Injection Design Pattern
+
+## Enabling TypeScript Decorator Support
+
+To use the DI system decorators, ensure the following compiler options are enabled in your `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
+}
+```
+
+## DI Usage Examples
+
+```typescript
+import { Injectable, Inject } from "../di/decorators";
+
+@Injectable()
+class MyService {
+  constructor(@Inject("ILogger") private logger: ILogger) {}
+
+  doWork() {
+    this.logger.info("Working...");
+  }
+}
+```
+
+## DI Adoption Checklist
+
+When creating new services or components, ensure:
+
+- The class is decorated with `@Injectable()`.
+- Constructor parameters to be injected are decorated with `@Inject()` and use appropriate tokens.
+- The service is registered in the DI container with a unique token.
+- The `tsconfig.json` has decorator support enabled.
+- Follow coding standards and DI best practices as documented.

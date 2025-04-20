@@ -1,0 +1,11 @@
+{
+  "cSpell.words": [
+    "Roomodes"
+  ],
+  "github.copilot.enable": {
+    "*": true,
+    "plaintext": false,
+    "markdown": false,
+    "scminput": false
+  }
+}

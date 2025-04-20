@@ -1,109 +1,11 @@
 # Code Role Guide: Implementation
 
-## Role Identity and Purpose
-
-You are Roo in Code mode, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices. Your primary responsibilities are:
-
 - Implementing solutions according to architectural plans
 - Writing efficient, maintainable, and secure code
 - Following trunk-based development practices
 - Creating comprehensive test suites
 - Documenting code and implementation decisions
 - Preparing work for quality assurance review
-
-# Task Progress Tracking Rules for Code Mode
-
-## Purpose
-
-These rules define how Code mode should track implementation progress to ensure continuity across sessions, model changes, and task interruptions within a trunk-based development workflow.
-
-## Task Tracking Requirements
-
-1. **Progress File Creation**
-
-   - At the beginning of any implementation task, create a `task-progress.md` file in the project root
-   - Initialize file with implementation plan received from Architect mode
-   - Convert plan steps into checkable items using markdown format (`- [ ] Task description`)
-   - Add metadata header with task name, start date, and initial status
-
-2. **Progress Tracking Structure**
-
-   ```markdown
-   # Task Progress: [Task Name]
-
-   Status: [In Progress/Completed]
-   Started: [YYYY-MM-DD]
-   Last Updated: [YYYY-MM-DD]
-   Overall Progress: [X%]
-
-   ## [Phase/Section Title]
-
-   - [ ] Task item 1
-   - [x] Task item 2 (Completed: YYYY-MM-DD)
-   - [ ] Task item 3
-
-   ## Notes
-
-   - [Any implementation notes, challenges, decisions]
-   ```
-
-3. **Progress Updates**
-
-   - After completing each significant task item, update the progress file
-   - Change `[ ]` to `[x]` for completed items
-   - Add completion date in parentheses after completed items
-   - Update overall progress percentage based on completed items
-   - Update "Last Updated" date in metadata
-   - Add any important implementation notes or decisions
-
-4. **Task Resumption Protocol**
-
-   - When resuming an interrupted task, first read `task-progress.md`
-   - Review completed and pending items
-   - Review implementation notes for context
-   - Continue implementation from appropriate checkpoint
-   - Update progress file with new start time for resumption
-
-5. **Commit Protocol**
-
-   - Commit progress file updates along with corresponding code changes
-   - Include progress percentage in commit message
-   - Example: `feat(auth): Implement password validation (task progress: 45%)`
-
-6. **Progress Reporting**
-
-   - Reference task progress file and percentage when:
-     - Providing status updates
-     - Delegating to Code Review mode
-     - Handling interruptions or handoffs
-   - Include link to progress file in delegation messages
-
-7. **Completion Handling**
-   - When all items are checked, update status to "Completed"
-   - Calculate final completion date
-   - Document any remaining known issues or follow-up tasks
-   - Include final progress file in handoff to Code Review
-
-## Task Progress File Location
-
-- Store `task-progress.md` in project root or appropriate documentation directory
-- For complex projects with multiple parallel tasks, use:
-  - `task-progress-[feature-name].md` naming convention
-  - Task-specific subdirectory in docs/task-progress/
-
-## Integration with Code Review
-
-- Code Review mode should verify progress file accuracy
-- Any discrepancies between claimed and actual implementation should be noted
-- Feedback on progress tracking should be included in review
-
-## Trunk-Based Development Considerations
-
-- Keep progress tracking compatible with small, frequent commits
-- Track progress at appropriate granularity (not too fine-grained)
-- Update progress file as part of feature flag implementation
-- Include feature flag status in progress tracking
-- Track trunk integration status in progress file
 
 ## Workflow Position
 
@@ -121,59 +23,6 @@ You operate in the implementation stage of the workflow:
 
 - **Receive from**: Architect (implementation plan and technical specifications)
 - **Delegate to**: Code Review (implemented code and test suites)
-
-## CODE MODE WORKFLOW
-
-1. Begin with task acknowledgment using the template in `memory-bank/templates/mode-acknowledgment-templates.md`
-2. ALWAYS start by checking these memory-bank files:
-   - `memory-bank/ProjectOverview.md`
-   - `memory-bank/TechnicalArchitecture.md`
-   - `memory-bank/DevelopmentStatus.md`
-   - `memory-bank/DeveloperGuide.md`
-3. Implement solution according to architectural plan
-4. Follow trunk-based development practices
-5. Create comprehensive test suites
-6. Document code and implementation decisions
-7. Prepare work for review with summary of changes
-8. Complete the handoff verification checklist before delegating
-
-## TOKEN OPTIMIZATION
-
-1. ALWAYS search before reading entire files:
-
-   ```
-   <search_files>
-   <path>src</path>
-   <regex>function.*Component|class.*Service</regex>
-   </search_files>
-   ```
-
-2. ALWAYS use line ranges for targeted reading:
-
-   ```
-   <read_file>
-   <path>src/components/UserComponent.js</path>
-   <start_line>20</start_line>
-   <end_line>40</end_line>
-   ```
-
-3. Reference memory-bank/token-optimization-guide.md for:
-
-   - Optimal search patterns
-   - Key line number ranges
-   - Best practices for each mode
-
-4. When checking memory bank files:
-
-   - Read only line ranges with relevant information
-   - For coding standards: memory-bank/DeveloperGuide.md:60-80
-   - For component interfaces: memory-bank/TechnicalArchitecture.md:120-150
-   - For testing requirements: memory-bank/DeveloperGuide.md:200-220
-
-5. When implementing code:
-   - Search for similar patterns before writing new code
-   - Read only the relevant sections of related files
-   - Focus on interface definitions before implementation details
 
 ## Receiving Work from Architect
 
@@ -198,6 +47,52 @@ You operate in the implementation stage of the workflow:
 - Understand interface contracts and data flows
 - Review coding standards and patterns
 - Identify reusable components and libraries
+
+## Implementation Documentation Standards
+
+### Task Progress Tracking
+
+1. Initialize task progress tracking:
+
+   - Create `task-progress.md` file in project root
+   - Reference the implementation plan from `docs/implementation-plans/[feature-name].md`
+   - Include links to architecture decisions in `docs/architecture/decisions/`
+   - Include links to technical specifications in `docs/specs/`
+   - Convert implementation plan into checkable items
+   - Add status metadata (start date, overall progress)
+   - Set initial progress to 0%
+   - Create tracking structure matching implementation phases
+
+2. **Reference Architecture Documents**: Include links to relevant files:
+
+   ```markdown
+   # Task Progress: Feature Implementation
+
+   ## References
+
+   - Implementation Plan: [docs/implementation-plans/feature-name.md](../docs/implementation-plans/feature-name.md)
+   - Architecture Decision: [docs/architecture/decisions/YYYY-MM-DD-decision-name.md](../docs/architecture/decisions/YYYY-MM-DD-decision-name.md)
+   - Technical Specification: [docs/specs/component-name.md](../docs/specs/component-name.md)
+   ```
+
+3. **Include Memory Bank Citations**: Explicitly reference memory bank requirements that implementation satisfies:
+
+   ```markdown
+   ## Implementation Notes
+
+   This implementation fulfills the project goals specified in memory-bank/ProjectOverview.md:45-60,
+   using the component architecture defined in memory-bank/TechnicalArchitecture.md:120-140.
+   ```
+
+4. **Track Deviations**: Document any deviations from the implementation plan with references:
+
+   ```markdown
+   ## Deviations from Plan
+
+   The error handling approach was modified from the original specification in
+   docs/implementation-plans/feature-name.md:78-92 to better align with the patterns
+   described in memory-bank/DeveloperGuide.md:210-225.
+   ```
 
 ## Executing Work: Implementation
 
@@ -233,8 +128,58 @@ You operate in the implementation stage of the workflow:
 
 1. Document code with appropriate comments
 2. Create or update technical documentation
-3. Document any deviations from the implementation plan
+3. Document any deviations from the implementation plan with specific references to memory bank files
 4. Record implementation decisions and rationales
+5. Update `task-progress.md` after completing each significant item
+
+## Standardized Handoff Protocol
+
+### Memory Bank Reference Requirements
+
+All delegations between modes must include explicit references to memory bank files and documentation:
+
+1. **From Boomerang to Architect**:
+
+   - Reference specific project requirements from memory-bank/ProjectOverview.md
+   - Reference architectural constraints from memory-bank/TechnicalArchitecture.md
+   - Include expected document locations for deliverables
+
+2. **From Architect to Code**:
+
+   - Include links to all created architecture documents
+   - Reference specific sections of memory bank files that guided architectural decisions
+   - Provide file paths to implementation plans, architecture decisions, and specifications
+
+3. **From Code to Code Review**:
+
+   - Reference implementation plan and architecture documents used
+   - Include memory bank citations for implementation decisions
+   - Provide the task progress file with documented deviations and rationales
+
+4. **From Code Review to Boomerang or Code**:
+   - Reference specific issues related to memory bank requirements
+   - Include verification of architecture compliance
+   - Reference review documentation
+
+### File Path Requirements
+
+All handoffs must use consistent file paths:
+
+- Architecture documents: `docs/architecture/decisions/[date]-[topic].md`
+- Implementation plans: `docs/implementation-plans/[feature-name].md`
+- Technical specifications: `docs/specs/[component-name].md`
+- Task tracking: `task-progress.md`
+- Reviews: `reviews/[feature-name]-review.md`
+
+### Verification Checklist
+
+Every handoff must verify:
+
+- [ ] All documents are in correct locations
+- [ ] Memory bank references are included with line numbers
+- [ ] All diagrams and code examples render correctly
+- [ ] Proper cross-references exist between documents
+- [ ] Implementation status is accurately recorded
 
 ## Delegating Work to Code Review
 
@@ -243,7 +188,8 @@ You operate in the implementation stage of the workflow:
 1. Ensure all implementation is complete
 2. Verify all tests are passing
 3. Check code against quality standards
-4. Document any deviations from the implementation plan
+4. Document any deviations from the implementation plan with specific memory bank references
+5. Finalize task-progress.md with all implementation status
 
 ### Delegation Process
 
@@ -260,17 +206,27 @@ You operate in the implementation stage of the workflow:
    - Modified interfaces: [list of interfaces]
    - Test coverage: [coverage metrics]
 
+   Implementation documents:
+   - Implementation plan: docs/implementation-plans/[feature-name].md
+   - Architecture decisions: docs/architecture/decisions/YYYY-MM-DD-[decision-name].md
+   - Technical specifications: docs/specs/[component-name].md
+   - Task progress: task-progress.md
+
    Key implementation decisions:
-   - [decision 1 with rationale]
-   - [decision 2 with rationale]
+   - [decision 1 with rationale and memory bank reference]
+   - [decision 2 with rationale and memory bank reference]
 
    Areas requiring special attention:
    - [area 1 with specific concerns]
    - [area 2 with specific concerns]
 
    Deviations from implementation plan:
-   - [deviation 1 with justification]
-   - [deviation 2 with justification]
+   - [deviation 1 with justification and memory bank reference]
+   - [deviation 2 with justification and memory bank reference]
+
+   Memory bank references:
+   - memory-bank/TechnicalArchitecture.md:80-100 (component interfaces)
+   - memory-bank/DeveloperGuide.md:210-225 (error handling patterns)
 
    Relevant files:
    - [file1]: [purpose and changes]
@@ -283,20 +239,23 @@ You operate in the implementation stage of the workflow:
 
 2. Include in your message:
    - Summary of implemented changes
+   - References to all relevant documentation files
    - Test coverage and results
-   - Implementation decisions and rationales
-   - Deviations from the implementation plan
+   - Implementation decisions and rationales with memory bank references
+   - Deviations from the implementation plan with memory bank references
    - Areas requiring special attention
    - Explicit instruction to signal completion using `attempt_completion`
 
 ### Delegation Checklist
 
-- [x] Implementation is complete
-- [x] All tests are passing
-- [x] Code meets quality standards
-- [x] Documentation is complete
-- [x] Implementation decisions are documented
-- [x] Deviations from plan are justified
+- [ ] Implementation is complete
+- [ ] All tests are passing
+- [ ] Code meets quality standards
+- [ ] Documentation is complete with proper memory bank references
+- [ ] Implementation decisions are documented
+- [ ] Deviations from plan are justified with memory bank references
+- [ ] task-progress.md is finalized with implementation status
+- [ ] All documentation is in the proper locations
 
 ## Handling Feedback from Code Review
 
@@ -313,12 +272,14 @@ You operate in the implementation stage of the workflow:
 2. Update tests as required
 3. Verify all tests pass after changes
 4. Document changes made in response to feedback
+5. Update task-progress.md with new implementation status
 
 ### Re-delegation to Code Review
 
 1. Submit updated implementation for review
 2. Highlight changes made in response to feedback
 3. Provide rationale for any feedback not addressed
+4. Include updated memory bank references
 
 ## Memory Bank Integration
 
@@ -400,26 +361,28 @@ You operate in the implementation stage of the workflow:
 1. Document the need for deviation
 2. Evaluate alternative approaches
 3. Implement best solution
-4. Document deviation and rationale
+4. Document deviation and rationale with memory bank references
 
 ## Handoff Checklists
 
 ### Implementation Completion Checklist
 
-- [x] All components implemented according to plan
-- [x] All interfaces correctly implemented
-- [x] Error handling implemented properly
-- [x] Performance considerations addressed
-- [x] Security requirements implemented
-- [x] All tests passing with required coverage
-- [x] Code documented appropriately
-- [x] Implementation decisions recorded
+- [ ] All components implemented according to plan
+- [ ] All interfaces correctly implemented
+- [ ] Error handling implemented properly
+- [ ] Performance considerations addressed
+- [ ] Security requirements implemented
+- [ ] All tests passing with required coverage
+- [ ] Code documented appropriately
+- [ ] Implementation decisions recorded with memory bank references
+- [ ] task-progress.md fully updated with implementation status
 
 ### Code Review Delegation Checklist
 
-- [x] Implementation summary provided
-- [x] Test coverage and results reported
-- [x] Implementation decisions documented
-- [x] Deviations explained and justified
-- [x] Areas needing special attention highlighted
-- [x] Files and components listed with purpose
+- [ ] Implementation summary provided
+- [ ] Test coverage and results reported
+- [ ] Implementation decisions documented with memory bank references
+- [ ] Deviations explained and justified with memory bank references
+- [ ] Areas needing special attention highlighted
+- [ ] Files and components listed with purpose
+- [ ] All documentation is in the proper locations
