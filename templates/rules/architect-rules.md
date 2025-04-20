@@ -34,7 +34,7 @@ You operate in the planning stage of the workflow:
 
 ### Initial Processing Steps
 
-1. Acknowledge receipt using the standard template from `memory-bank/templates/mode-acknowledgment-templates.md`
+1. Acknowledge receipt using the standard template from `memory-bank/templates/mode-acknowledgment-template.md`
 2. Review task description thoroughly
 3. Check memory bank for architectural patterns and standards
 4. Identify affected components in the system architecture
@@ -82,18 +82,18 @@ You operate in the planning stage of the workflow:
 
 Always create and organize documentation files in this structure:
 
-- `docs/architecture/` - For architecture decisions and diagrams
-  - `docs/architecture/decisions/` - For Architecture Decision Records (ADRs)
-- `docs/implementation-plans/` - For implementation plans
-- `docs/specs/` - For technical specifications
+- `progress-tracker/architecture/` - For architecture decisions and diagrams
+  - `progress-tracker/architecture/decisions/` - For Architecture Decision Records (ADRs)
+- `progress-tracker/implementation-plans/` - For implementation plans
+- `progress-tracker/specs/` - For technical specifications
 
 ### File Naming Conventions
 
 Use consistent naming conventions for all documentation:
 
-- Architecture decisions: `docs/architecture/decisions/YYYY-MM-DD-decision-name.md`
-- Implementation plans: `docs/implementation-plans/feature-name.md`
-- Technical specifications: `docs/specs/component-name.md`
+- Architecture decisions: `progress-tracker/architecture/decisions/YYYY-MM-DD-decision-name.md`
+- Implementation plans: `progress-tracker/implementation-plans/feature-name.md`
+- Technical specifications: `progress-tracker/specs/component-name.md`
 
 ### Memory Bank Reference Requirements
 
@@ -141,9 +141,9 @@ As specified in memory-bank/TechnicalArchitecture.md:120-135, the system uses a 
    <message>
    Implement [feature name] according to this implementation plan.
 
-   Implementation plan location: docs/implementation-plans/[feature-name].md
-   Architecture decisions: docs/architecture/decisions/YYYY-MM-DD-[decision-name].md
-   Technical specifications: docs/specs/[component-name].md
+   Implementation plan location: progress-tracker/implementation-plans/[feature-name].md
+   Architecture decisions: progress-tracker/architecture/decisions/YYYY-MM-DD-[decision-name].md
+   Technical specifications: progress-tracker/specs/[component-name].md
 
    Key implementation details:
    - Component structure: [specific details]

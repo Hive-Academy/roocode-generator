@@ -72,16 +72,16 @@ Maintain consistent project organization by following these standards:
 
 ### Documentation Locations
 
-- Architecture decisions and diagrams: `docs/architecture/`
-- Implementation plans: `docs/implementation-plans/`
-- Technical specifications: `docs/specs/`
-- Task tracking: `task-progress.md` (project root)
+- Architecture decisions and diagrams: `progress-tracker/architecture/`
+- Implementation plans: `progress-tracker/implementation-plans/`
+- Technical specifications: `progress-tracker/specs/`
+- Task tracking: `progress-tracker/[task-name]-progress.md` (project root)
 
 ### Standard File Naming
 
-- Architecture decisions: `docs/architecture/decisions/[date]-[topic].md`
-- Implementation plans: `docs/implementation-plans/[feature-name].md`
-- Technical specifications: `docs/specs/[component-name].md`
+- Architecture decisions: `progress-tracker/architecture/decisions/[date]-[topic].md`
+- Implementation plans: `progress-tracker/implementation-plans/[feature-name].md`
+- Technical specifications: `progress-tracker/specs/[component-name].md`
 
 ### Memory Bank References
 
@@ -119,9 +119,9 @@ As described in memory-bank/TechnicalArchitecture.md:50-70, the component struct
    Please create a detailed implementation plan following our architectural standards.
 
    Expected deliverables:
-   - Implementation plan in docs/implementation-plans/[feature-name].md
-   - Architecture decisions in docs/architecture/decisions/YYYY-MM-DD-[decision-name].md
-   - Technical specifications in docs/specs/[component-name].md
+   - Implementation plan in progress-tracker/implementation-plans/[feature-name].md
+   - Architecture decisions in progress-tracker/architecture/decisions/YYYY-MM-DD-[decision-name].md
+   - Technical specifications in progress-tracker/specs/[component-name].md
 
    Relevant memory bank references:
    - memory-bank/TechnicalArchitecture.md:50-70 (component structure)
@@ -163,10 +163,10 @@ As described in memory-bank/TechnicalArchitecture.md:50-70, the component struct
 1. Review code review report for any outstanding issues
 2. Verify all quality gates have been passed
 3. Verify all documentation is in the correct locations:
-   - Architecture documents in docs/architecture/
-   - Implementation plans in docs/implementation-plans/
-   - Technical specifications in docs/specs/
-   - Review reports in reviews/
+   - Architecture documents in progress-tracker/architecture/
+   - Implementation plans in progress-tracker/implementation-plans/
+   - Technical specifications in progress-tracker/specs/
+   - Review reports in progress-tracker/reviews/
 4. Complete the `completion-report-template.md`
 5. Ensure all documentation is finalized
 
@@ -210,11 +210,11 @@ All delegations between modes must include explicit references to memory bank fi
 
 All handoffs must use consistent file paths:
 
-- Architecture documents: `docs/architecture/decisions/[date]-[topic].md`
-- Implementation plans: `docs/implementation-plans/[feature-name].md`
-- Technical specifications: `docs/specs/[component-name].md`
-- Task tracking: `task-progress.md`
-- Reviews: `reviews/[feature-name]-review.md`
+- Architecture documents: `progress-tracker/architecture/decisions/[date]-[topic].md`
+- Implementation plans: `progress-tracker/implementation-plans/[feature-name].md`
+- Technical specifications: `progress-tracker/specs/[component-name].md`
+- Task tracking: `progress-tracker/[task-name]-progress.md`
+- Reviews: `progress-tracker/reviews/[feature-name]-review.md`
 
 ### Verification Checklist
 

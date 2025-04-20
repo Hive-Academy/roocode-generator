@@ -1,7 +1,5 @@
 {
-  "cSpell.words": [
-    "Roomodes"
-  ],
+  "cSpell.words": ["Roomodes"],
   "github.copilot.enable": {
     "*": true,
     "plaintext": false,

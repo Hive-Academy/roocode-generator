@@ -54,10 +54,10 @@ You operate in the implementation stage of the workflow:
 
 1. Initialize task progress tracking:
 
-   - Create `task-progress.md` file in project root
-   - Reference the implementation plan from `docs/implementation-plans/[feature-name].md`
-   - Include links to architecture decisions in `docs/architecture/decisions/`
-   - Include links to technical specifications in `docs/specs/`
+   - Create `progress-tracker/[task-name]-progress.md` file in project root
+   - Reference the implementation plan from `progress-tracker/implementation-plans/[feature-name].md`
+   - Include links to architecture decisions in `progress-tracker/architecture/decisions/`
+   - Include links to technical specifications in `progress-tracker/specs/`
    - Convert implementation plan into checkable items
    - Add status metadata (start date, overall progress)
    - Set initial progress to 0%
@@ -70,9 +70,9 @@ You operate in the implementation stage of the workflow:
 
    ## References
 
-   - Implementation Plan: [docs/implementation-plans/feature-name.md](../docs/implementation-plans/feature-name.md)
-   - Architecture Decision: [docs/architecture/decisions/YYYY-MM-DD-decision-name.md](../docs/architecture/decisions/YYYY-MM-DD-decision-name.md)
-   - Technical Specification: [docs/specs/component-name.md](../docs/specs/component-name.md)
+   - Implementation Plan: [progress-tracker/implementation-plans/feature-name.md](../progress-tracker/implementation-plans/feature-name.md)
+   - Architecture Decision: [progress-tracker/architecture/decisions/YYYY-MM-DD-decision-name.md](../progress-tracker/architecture/decisions/YYYY-MM-DD-decision-name.md)
+   - Technical Specification: [progress-tracker/specs/component-name.md](../progress-tracker/specs/component-name.md)
    ```
 
 3. **Include Memory Bank Citations**: Explicitly reference memory bank requirements that implementation satisfies:
@@ -90,7 +90,7 @@ You operate in the implementation stage of the workflow:
    ## Deviations from Plan
 
    The error handling approach was modified from the original specification in
-   docs/implementation-plans/feature-name.md:78-92 to better align with the patterns
+   progress-tracker/implementation-plans/feature-name.md:78-92 to better align with the patterns
    described in memory-bank/DeveloperGuide.md:210-225.
    ```
 
@@ -130,7 +130,7 @@ You operate in the implementation stage of the workflow:
 2. Create or update technical documentation
 3. Document any deviations from the implementation plan with specific references to memory bank files
 4. Record implementation decisions and rationales
-5. Update `task-progress.md` after completing each significant item
+5. Update `progress-tracker/[task-name]-progress.md` after completing each significant item
 
 ## Standardized Handoff Protocol
 
@@ -165,11 +165,11 @@ All delegations between modes must include explicit references to memory bank fi
 
 All handoffs must use consistent file paths:
 
-- Architecture documents: `docs/architecture/decisions/[date]-[topic].md`
-- Implementation plans: `docs/implementation-plans/[feature-name].md`
-- Technical specifications: `docs/specs/[component-name].md`
-- Task tracking: `task-progress.md`
-- Reviews: `reviews/[feature-name]-review.md`
+- Architecture documents: `progress-tracker/architecture/decisions/[date]-[topic].md`
+- Implementation plans: `progress-tracker/implementation-plans/[feature-name].md`
+- Technical specifications: `progress-tracker/specs/[component-name].md`
+- Task tracking: `progress-tracker/[task-name]-progress.md`
+- Reviews: `progress-tracker/reviews/[feature-name]-review.md`
 
 ### Verification Checklist
 
@@ -189,7 +189,7 @@ Every handoff must verify:
 2. Verify all tests are passing
 3. Check code against quality standards
 4. Document any deviations from the implementation plan with specific memory bank references
-5. Finalize task-progress.md with all implementation status
+5. Finalize progress-tracker/[task-name]-progress.md with all implementation status
 
 ### Delegation Process
 
@@ -207,10 +207,10 @@ Every handoff must verify:
    - Test coverage: [coverage metrics]
 
    Implementation documents:
-   - Implementation plan: docs/implementation-plans/[feature-name].md
-   - Architecture decisions: docs/architecture/decisions/YYYY-MM-DD-[decision-name].md
-   - Technical specifications: docs/specs/[component-name].md
-   - Task progress: task-progress.md
+   - Implementation plan: progress-tracker/implementation-plans/[feature-name].md
+   - Architecture decisions: progress-tracker/architecture/decisions/YYYY-MM-DD-[decision-name].md
+   - Technical specifications: progress-tracker/specs/[component-name].md
+   - Task progress: progress-tracker/[task-name]-progress.md
 
    Key implementation decisions:
    - [decision 1 with rationale and memory bank reference]
@@ -254,7 +254,7 @@ Every handoff must verify:
 - [ ] Documentation is complete with proper memory bank references
 - [ ] Implementation decisions are documented
 - [ ] Deviations from plan are justified with memory bank references
-- [ ] task-progress.md is finalized with implementation status
+- [ ] progress-tracker/[task-name]-progress.md is finalized with implementation status
 - [ ] All documentation is in the proper locations
 
 ## Handling Feedback from Code Review
@@ -272,7 +272,7 @@ Every handoff must verify:
 2. Update tests as required
 3. Verify all tests pass after changes
 4. Document changes made in response to feedback
-5. Update task-progress.md with new implementation status
+5. Update progress-tracker/[task-name]-progress.md with new implementation status
 
 ### Re-delegation to Code Review
 
@@ -375,7 +375,7 @@ Every handoff must verify:
 - [ ] All tests passing with required coverage
 - [ ] Code documented appropriately
 - [ ] Implementation decisions recorded with memory bank references
-- [ ] task-progress.md fully updated with implementation status
+- [ ] progress-tracker/[task-name]-progress.md fully updated with implementation status
 
 ### Code Review Delegation Checklist
 

@@ -1,6 +1,6 @@
 # MODE WORKFLOW
 
-1. Begin with task acknowledgment using the template in `memory-bank/templates/mode-acknowledgment-templates.md`
+1. Begin with task acknowledgment using the template in `memory-bank/templates/mode-acknowledgment-template.md`
 
 2. ALWAYS start by checking these memory-bank files:
 
@@ -33,9 +33,9 @@
    - Place diagrams immediately after relevant sections
    - **Include explicit references to memory-bank documents with line numbers**
    - Add inline code examples for critical components
-   - Save to `docs/implementation-plans/[feature-name].md`
-   - **Save architecture decisions to `docs/architecture/decisions/[date]-[topic].md`**
-   - **Save technical specifications to `docs/specs/[component-name].md`**
+   - Save to `progress-tracker/implementation-plans/[feature-name].md`
+   - **Save architecture decisions to `progress-tracker/architecture/decisions/[date]-[topic].md`**
+   - **Save technical specifications to `progress-tracker/specs/[component-name].md`**
 
 6. Complete the handoff verification checklist before delegating:
    - Verify all architectural components are documented
@@ -51,10 +51,10 @@
 
 When planning, always create and organize files in this structure:
 
-- `docs/architecture/` - For architecture decisions and diagrams
-  - `docs/architecture/decisions/` - For Architecture Decision Records (ADRs)
-- `docs/implementation-plans/` - For implementation plans
-- `docs/specs/` - For technical specifications
+- `progress-tracker/architecture/` - For architecture decisions and diagrams
+  - `progress-tracker/architecture/decisions/` - For Architecture Decision Records (ADRs)
+- `progress-tracker/implementation-plans/` - For implementation plans
+- `progress-tracker/specs/` - For technical specifications
 
 ## Implementation Plan Requirements
 
@@ -75,17 +75,17 @@ Each implementation plan must include:
    ```
 
 3. **Architecture Decision Records**: Save significant architectural decisions as separate files in
-   `docs/architecture/decisions/YYYY-MM-DD-decision-name.md`
+   `progress-tracker/architecture/decisions/YYYY-MM-DD-decision-name.md`
 
 4. **Technical Specifications**: Create detailed specifications for complex components in
-   `docs/specs/[component-name].md`
+   `progress-tracker/specs/[component-name].md`
 
 ## Plan Verification Checklist
 
 Before delegating to Code mode, verify that:
 
 - [ ] Implementation plan includes explicit memory bank references
-- [ ] Plan is saved in the correct location (`docs/implementation-plans/`)
+- [ ] Plan is saved in the correct location (`progress-tracker/implementation-plans/`)
 - [ ] Architecture decisions are documented in separate ADR files
 - [ ] Technical specifications are provided for complex components
 - [ ] All diagrams and code examples render correctly
@@ -123,11 +123,11 @@ All delegations between modes must include explicit references to memory bank fi
 
 All handoffs must use consistent file paths:
 
-- Architecture documents: `docs/architecture/decisions/[date]-[topic].md`
-- Implementation plans: `docs/implementation-plans/[feature-name].md`
-- Technical specifications: `docs/specs/[component-name].md`
-- Task tracking: `task-progress.md`
-- Reviews: `reviews/[feature-name]-review.md`
+- Architecture documents: `progress-tracker/architecture/decisions/[date]-[topic].md`
+- Implementation plans: `progress-tracker/implementation-plans/[feature-name].md`
+- Technical specifications: `progress-tracker/specs/[component-name].md`
+- Task tracking: `progress-tracker/task-progress.md`
+- Reviews: `progress-tracker/progress-tracker/reviews/[feature-name]-review.md`
 
 ## Verification Checklist
 
@@ -370,9 +370,9 @@ When creating architectural documentation:
    - Testing strategy
 
 4. Always save documentation to appropriate paths:
-   - Implementation plans: `docs/implementation-plans/`
-   - Architecture decisions: `docs/architecture/decisions/`
-   - Technical specifications: `docs/specs/`
+   - Implementation plans: `progress-tracker/implementation-plans/`
+   - Architecture decisions: `progress-tracker/architecture/decisions/`
+   - Technical specifications: `progress-tracker/specs/`
 
 By following these guidelines, you'll avoid common tool errors and ensure successful execution of architectural tasks.
 
@@ -535,7 +535,7 @@ When analyzing projects:
 2. Include explicit "Verification Criteria" section for each major component
 3. Add version tracking to implementation plans
 4. Define "Plan Modification Protocol" section for handling necessary deviations
-5. Structure plans to facilitate direct mapping to task-progress.md
+5. Structure plans to facilitate direct mapping to progress-tracker/[task-name]-progress.md
 
 TOOL USE
 

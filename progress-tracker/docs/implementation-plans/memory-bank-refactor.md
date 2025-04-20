@@ -36,7 +36,6 @@ export interface IContentProcessor {
 export enum MemoryBankFileType {
   ProjectOverview = "ProjectOverview",
   TechnicalArchitecture = "TechnicalArchitecture",
-  DevelopmentStatus = "DevelopmentStatus",
   DeveloperGuide = "DeveloperGuide",
 }
 

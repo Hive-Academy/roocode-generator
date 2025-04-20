@@ -62,14 +62,14 @@ Every code review must verify that implementation:
    ```markdown
    ## Architecture Compliance
 
-   - ✅ Implements all components in docs/architecture/decisions/2023-10-15-component-structure.md
-   - ✅ Follows data flow specified in docs/implementation-plans/feature-name.md:50-75
-   - ⚠️ Partial implementation of the interface contract in docs/specs/component-name.md:30-45
+   - ✅ Implements all components in progress-tracker/architecture/decisions/2023-10-15-component-structure.md
+   - ✅ Follows data flow specified in progress-tracker/implementation-plans/feature-name.md:50-75
+   - ⚠️ Partial implementation of the interface contract in progress-tracker/specs/component-name.md:30-45
    ```
 
 ### Review Report Structure
 
-Review reports should be saved as `reviews/[feature-name]-review.md` with the following structure:
+Review reports should be saved as `progress-tracker/reviews/[feature-name]-review.md` with the following structure:
 
 ```markdown
 # Code Review: [Feature Name]
@@ -143,7 +143,7 @@ bank requirements and architectural compliance.
 3. Provide clear, actionable recommendations with specific file locations
 4. Include references to standards and patterns in memory bank
 5. Highlight positive aspects of implementation
-6. Save review report to `reviews/[feature-name]-review.md`
+6. Save review report to `progress-tracker/reviews/[feature-name]-review.md`
 
 ## Standardized Handoff Protocol
 
@@ -178,11 +178,11 @@ All delegations between modes must include explicit references to memory bank fi
 
 All handoffs must use consistent file paths:
 
-- Architecture documents: `docs/architecture/decisions/[date]-[topic].md`
-- Implementation plans: `docs/implementation-plans/[feature-name].md`
-- Technical specifications: `docs/specs/[component-name].md`
-- Task tracking: `task-progress.md`
-- Reviews: `reviews/[feature-name]-review.md`
+- Architecture documents: `progress-tracker/architecture/decisions/[date]-[topic].md`
+- Implementation plans: `progress-tracker/implementation-plans/[feature-name].md`
+- Technical specifications: `progress-tracker/specs/[component-name].md`
+- Task tracking: `progress-tracker/[task-name]-progress.md`
+- Reviews: `progress-tracker/reviews/[feature-name]-review.md`
 
 ### Verification Checklist
 
@@ -230,7 +230,7 @@ Every handoff must verify:
    1. [issue description with file:line reference]
       - Problem: [specific problem]
       - Recommendation: [specific solution]
-      - Reference: docs/implementation-plans/feature-name.md:50-65 (implementation strategy)
+      - Reference: progress-tracker/implementation-plans/feature-name.md:50-65 (implementation strategy)
 
    Minor Issues (consider fixing):
    1. [issue description with file:line reference]
@@ -241,7 +241,7 @@ Every handoff must verify:
    - [positive feedback on implementation]
    - [positive feedback on testing]
 
-   Full review report is available at: reviews/[feature-name]-review.md
+   Full review report is available at: progress-tracker/reviews/[feature-name]-review.md
 
    Please address all critical and major issues, and then resubmit for review using attempt_completion when finished.
    </message>
@@ -264,7 +264,7 @@ Every handoff must verify:
 - [ ] Each issue has actionable recommendation
 - [ ] Standards and patterns referenced to memory bank
 - [ ] Positive aspects of implementation acknowledged
-- [ ] Full review report is saved to reviews/[feature-name]-review.md
+- [ ] Full review report is saved to progress-tracker/reviews/[feature-name]-review.md
 
 ### If Approved (Delegate to Boomerang Role)
 
@@ -273,7 +273,7 @@ Every handoff must verify:
 1. Verify all quality standards are met
 2. Document verification of implementation plan compliance
 3. Complete review report with approval recommendation
-4. Save review report to reviews/[feature-name]-review.md
+4. Save review report to progress-tracker/reviews/[feature-name]-review.md
 
 #### Delegation Process
 
@@ -298,16 +298,16 @@ Every handoff must verify:
    - ✅ Meets security requirements in memory-bank/DeveloperGuide.md:300-320
 
    Architecture Compliance:
-   - ✅ Implements all components in docs/architecture/decisions/YYYY-MM-DD-component-structure.md
-   - ✅ Follows data flow specified in docs/implementation-plans/feature-name.md:50-75
-   - ✅ Correctly implements interface contracts in docs/specs/component-name.md
+   - ✅ Implements all components in progress-tracker/architecture/decisions/YYYY-MM-DD-component-structure.md
+   - ✅ Follows data flow specified in progress-tracker/implementation-plans/feature-name.md:50-75
+   - ✅ Correctly implements interface contracts in progress-tracker/specs/component-name.md
 
    Minor suggestions for future improvement:
    - [suggestion 1]
    - [suggestion 2]
 
    Please proceed with integration and delivery. Full review report is available at:
-   reviews/[feature-name]-review.md
+   progress-tracker/reviews/[feature-name]-review.md
 
    Complete the workflow by finalizing the completion report and delivering to user.
    </message>
@@ -331,7 +331,7 @@ Every handoff must verify:
 - [ ] Verification of architecture compliance with references
 - [ ] Documentation completeness verified
 - [ ] Future improvement suggestions provided
-- [ ] Review report saved to reviews/[feature-name]-review.md
+- [ ] Review report saved to progress-tracker/reviews/[feature-name]-review.md
 
 ## Memory Bank Integration
 
@@ -397,7 +397,7 @@ Every handoff must verify:
 - [ ] Each issue has actionable recommendation
 - [ ] Standards and patterns referenced to memory bank
 - [ ] Positive aspects of implementation acknowledged
-- [ ] Full review report is saved to reviews/[feature-name]-review.md
+- [ ] Full review report is saved to progress-tracker/reviews/[feature-name]-review.md
 
 ### Boomerang Role Delegation Checklist (If Approved)
 
@@ -408,7 +408,7 @@ Every handoff must verify:
 - [ ] Verification of architecture compliance with references
 - [ ] Documentation completeness verified
 - [ ] Future improvement suggestions provided
-- [ ] Review report saved to reviews/[feature-name]-review.md
+- [ ] Review report saved to progress-tracker/reviews/[feature-name]-review.md
 
 TOOL USE
 

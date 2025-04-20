@@ -5,7 +5,6 @@ export type MessageContent = string;
 export enum MemoryBankFileType {
   ProjectOverview = "ProjectOverview",
   TechnicalArchitecture = "TechnicalArchitecture",
-  DevelopmentStatus = "DevelopmentStatus",
   DeveloperGuide = "DeveloperGuide",
 }
 

@@ -1,6 +1,6 @@
 # WORKFLOW
 
-1. Begin with task acknowledgment using the template in `memory-bank/templates/mode-acknowledgment-templates.md`
+1. Begin with task acknowledgment using the template in `memory-bank/templates/mode-acknowledgment-template.md`
 
 2. ALWAYS start by checking these memory-bank files:
 
@@ -46,9 +46,9 @@
 7. Finalize and integrate completed work:
    - Verify all quality gates have been passed
    - Verify all deliverables have been created in the correct location
-     - Architecture documents → docs/architecture/
-     - Implementation plans → docs/implementation-plans/
-     - Technical specifications → docs/specs/
+     - Architecture documents → progress-tracker/architecture/
+     - Implementation plans → progress-tracker/implementation-plans/
+     - Technical specifications → progress-tracker/specs/
    - Ensure all documentation references memory bank files appropriately
    - Complete the `completion-report-template.md`
    - Update memory bank with new knowledge
@@ -61,16 +61,16 @@ Maintain consistent project organization by following these standards:
 
 ## Documentation Locations
 
-- Architecture decisions and diagrams: `docs/architecture/`
-- Implementation plans: `docs/implementation-plans/`
-- Technical specifications: `docs/specs/`
-- Task tracking: `task-progress.md` (project root)
+- Architecture decisions and diagrams: `progress-tracker/architecture/`
+- Implementation plans: `progress-tracker/implementation-plans/`
+- Technical specifications: `progress-tracker/specs/`
+- Task tracking: `progress-tracker/[task-name]-progress.md` (project root)
 
 ## Standard File Naming
 
-- Architecture decisions: `docs/architecture/decisions/[date]-[topic].md`
-- Implementation plans: `docs/implementation-plans/[feature-name].md`
-- Technical specifications: `docs/specs/[component-name].md`
+- Architecture decisions: `progress-tracker/architecture/decisions/[date]-[topic].md`
+- Implementation plans: `progress-tracker/implementation-plans/[feature-name].md`
+- Technical specifications: `progress-tracker/specs/[component-name].md`
 
 ## Memory Bank References
 
@@ -320,11 +320,11 @@ All delegations between modes must include explicit references to memory bank fi
 
 All handoffs must use consistent file paths:
 
-- Architecture documents: `docs/architecture/decisions/[date]-[topic].md`
-- Implementation plans: `docs/implementation-plans/[feature-name].md`
-- Technical specifications: `docs/specs/[component-name].md`
-- Task tracking: `task-progress.md`
-- Reviews: `reviews/[feature-name]-review.md`
+- Architecture documents: `progress-tracker/architecture/decisions/[date]-[topic].md`
+- Implementation plans: `progress-tracker/implementation-plans/[feature-name].md`
+- Technical specifications: `progress-tracker/specs/[component-name].md`
+- Task tracking: `progress-tracker/[task-name]-progress.md`
+- Reviews: `progress-tracker/reviews/[feature-name]-review.md`
 
 ## Verification Checklist
 

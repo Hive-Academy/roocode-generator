@@ -43,7 +43,7 @@ See [[TechnicalArchitecture#Stack]] for detailed technical specifications.
 
 ## Project Status
 
-Current state and next steps. See [[DevelopmentStatus]] for detailed progress.
+Current state and next steps. See [[progress-tracker/task-progress.md]] for detailed progress.
 
 ### Active Development
 
@@ -60,7 +60,6 @@ Current state and next steps. See [[DevelopmentStatus]] for detailed progress.
 
 - Technical Details: [[TechnicalArchitecture]]
 - Developer Setup: [[DeveloperGuide]]
-- Development Status: [[DevelopmentStatus]]
 
 ### Process Templates
 

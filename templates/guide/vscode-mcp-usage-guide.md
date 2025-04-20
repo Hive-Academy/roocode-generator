@@ -208,6 +208,6 @@ MCP servers are a key part of extending Copilot's agent mode. The protocol intro
 
 ## References
 
-- [VS Code Docs: MCP Servers](https://code.visualstudio.com/docs/copilot/chat/mcp-servers)
+- [VS Code Docs: MCP Servers](https://code.visualstudio.com/progress-tracker/copilot/chat/mcp-servers)
 - [Model Context Protocol Spec](https://github.com/modelcontextprotocol/spec)
 - [Official MCP Server Repository](https://github.com/modelcontextprotocol/servers)
