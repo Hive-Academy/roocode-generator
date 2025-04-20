@@ -10,7 +10,7 @@ export default tseslint.config(
       "node_modules/",
       "coverage/",
       "bin/",
-      "generators/", // Temporarily ignore generators folder during refactoring
+      "old-code/", // Temporarily ignore generators folder during refactoring
     ],
   },
   // Base JS config (applies to all non-ignored files initially)
