@@ -13,7 +13,7 @@ import { ILogger } from "../core/services/logger-service";
  * This file defines the custom modes available for the RooCode workflow.
  */
 @Injectable()
-export class RoomodesGenerator extends BaseGenerator implements IGenerator {
+export class RoomodesGenerator extends BaseGenerator<string> implements IGenerator<string> {
   /**
    * Unique name of the generator.
    */
@@ -75,7 +75,7 @@ export class RoomodesGenerator extends BaseGenerator implements IGenerator {
    * Writes a static JSON configuration defining the standard RooCode modes.
    * @returns A promise resolving to a Result indicating success or failure.
    */
-  protected async executeGeneration(): Promise<Result<void, Error>> {
+  protected async executeGeneration(): Promise<Result<string, Error>> {
     this.logger.info("Generating .roomodes file...");
 
     // .roomodes file should always be in the project root (workspace directory)
@@ -98,7 +98,7 @@ export class RoomodesGenerator extends BaseGenerator implements IGenerator {
         return Result.err(new Error(`Failed to write .roomodes file: ${errorMsg}`));
       }
       this.logger.info(`.roomodes file successfully generated at ${outputPath}`);
-      return Result.ok(undefined);
+      return Result.ok(".roomodes file generated successfully.");
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       this.logger.error("An unexpected error occurred during .roomodes generation", err);

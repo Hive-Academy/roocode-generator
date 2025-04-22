@@ -17,7 +17,6 @@
 ### Phase 1: DI Registration Finalization (57%)
 
 - [x] Register `IMemoryBankValidator` -> `MemoryBankValidator`
-- [x] Register `IMemoryBankFileManager` -> `MemoryBankFileManager`
 - [x] Register `IMemoryBankTemplateManager` -> `MemoryBankTemplateManager`
 - [x] Register `IContentProcessor` -> `ContentProcessor`
 - [x] Verify registration of `IProjectManager` (Using Stub for now)

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import "dotenv/config";
 import "reflect-metadata"; // Must be the first import for decorators
 /**
  * @fileoverview Main CLI entry point for the roocode-generator application.

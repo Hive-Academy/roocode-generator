@@ -11,7 +11,7 @@ import { ProjectConfig } from "../../../types/shared";
  */
 @Injectable() // Add Injectable decorator
 export class GeneratorOrchestrator implements IGeneratorOrchestrator {
-  private generatorsMap: Map<string, IGenerator>;
+  private generatorsMap: Map<string, IGenerator<unknown>>;
 
   /**
    * Constructs a GeneratorOrchestrator.
@@ -21,19 +21,39 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
    */
   constructor(
     // Note: 'generators' is provided by the factory in registrations.ts, not via @Inject
-    private readonly generators: IGenerator[],
+    generators: Array<IGenerator<unknown>>,
     @Inject("IProjectConfigService") private readonly projectConfigService: IProjectConfigService,
     @Inject("ILogger") private readonly logger: ILogger
   ) {
     // Map generators by their unique name or identifier for quick lookup
-    this.generatorsMap = new Map<string, IGenerator>();
+    this.generatorsMap = new Map<string, IGenerator<unknown>>();
+
+    // Standard generator identifiers
+    const generatorIdentifiers = {
+      "memory-bank": "MemoryBank",
+      rules: "rules",
+      "system-prompts": "system-prompts",
+      roomodes: "roomodes",
+      "vscode-copilot-rules": "vscode-copilot-rules",
+    };
+
     for (const generator of generators) {
-      // Use the typed 'name' property from IGenerator interface
       const name = generator.name;
       if (typeof name === "string") {
-        this.generatorsMap.set(name, generator);
+        const cliId = Object.entries(generatorIdentifiers).find(
+          ([_, className]) => className === name
+        )?.[0];
+
+        if (cliId) {
+          this.generatorsMap.set(cliId, generator);
+          this.generatorsMap.set(name, generator);
+          this.logger.debug(`Registered generator ${name} with CLI identifier ${cliId}`);
+        } else {
+          this.generatorsMap.set(name, generator);
+          this.logger.warn(`Generator ${name} has no CLI identifier mapping`);
+        }
       } else {
-        this.logger.warn("Warning: Generator missing 'name' property, skipping registration.");
+        this.logger.warn(`Warning: Generator missing 'name' property, skipping registration`);
       }
     }
   }
@@ -61,7 +81,10 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     for (const genName of selectedGenerators) {
       const generator = this.generatorsMap.get(genName);
       if (!generator) {
-        const errorMsg = `Generator not found: ${genName}`;
+        const availableGenerators = Array.from(this.generatorsMap.keys())
+          .filter((g) => !g.includes("Generator"))
+          .join(", ");
+        const errorMsg = `Generator not found: ${genName}. Available generators: ${availableGenerators}`;
         this.logger.error(errorMsg);
         return Result.err(new Error(errorMsg));
       }
@@ -69,14 +92,11 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       this.logger.info(`Executing generator: ${genName}`);
 
       try {
-        const result = await generator.generate();
-        // Use isErr() to check for failure
+        const result = await generator.generate(config, []);
         if (result.isErr()) {
-          // Access the error message safely using the 'error' getter
           const errorMsg = result.error?.message ?? `Unknown error in generator ${genName}`;
           this.logger.error(`Generator ${genName} failed: ${errorMsg}`);
-          // Return the original error Result
-          return result;
+          return Result.err(new Error(errorMsg));
         }
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);
@@ -95,14 +115,39 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
    * Otherwise, all registered generators are run.
    * @param selectedGenerators Optional array of generator names to execute.
    */
+  /**
+   * Validates and filters the list of selected generators.
+   * @param selectedGenerators Array of generator names to validate.
+   * @returns Array of valid generator names.
+   */
+  private validateGenerators(selectedGenerators: string[]): string[] {
+    const validGenerators = selectedGenerators.filter((name) => {
+      const isValid = this.generatorsMap.has(name);
+      if (!isValid) {
+        this.logger.warn(`Invalid generator name: ${name}`);
+      }
+      return isValid;
+    });
+    return validGenerators;
+  }
+
   async execute(selectedGenerators?: string[]): Promise<void> {
+    // Get available generator identifiers
+    const availableGenerators = Array.from(this.generatorsMap.keys()).filter(
+      (name) => !name.includes("Generator")
+    ); // Filter out class names
+
+    // If no generators specified, run all unique generators
     const generatorsToRun =
       selectedGenerators && selectedGenerators.length > 0
-        ? selectedGenerators
-        : this.generators.map((g) => g.name);
+        ? this.validateGenerators(selectedGenerators)
+        : availableGenerators;
 
     if (generatorsToRun.length === 0) {
-      this.logger.warn("No generators selected or registered to execute.");
+      this.logger.warn(
+        "No valid generators selected. Available generators: " +
+          availableGenerators.filter((g) => !g.includes("Generator")).join(", ")
+      );
       return;
     }
 
@@ -123,7 +168,9 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       throw err;
     }
 
-    const result = await this.executeGenerators(config, generatorsToRun); // Use generatorsToRun here
+    // Ensure generatorsToRun contains only valid generator names
+    const validGenerators = this.validateGenerators(generatorsToRun);
+    const result = await this.executeGenerators(config, validGenerators);
     if (result.isErr()) {
       this.logger.error(`Execution failed: ${result.error?.message}`, result.error);
       throw result.error ?? new Error("Execution failed");

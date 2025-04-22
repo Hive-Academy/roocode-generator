@@ -16,7 +16,7 @@ import { ProjectConfig } from "../../types/shared";
  * @implements {IGenerator}
  */
 @Injectable()
-export class SystemPromptsGenerator extends BaseGenerator implements IGenerator {
+export class SystemPromptsGenerator extends BaseGenerator<string> implements IGenerator<string> {
   /**
    * @description The unique name identifier for this generator.
    */
@@ -75,7 +75,7 @@ export class SystemPromptsGenerator extends BaseGenerator implements IGenerator 
    * @description Executes the generation process for system prompt files.
    * @returns {Promise<Result<void, Error>>} A result indicating success or failure.
    */
-  protected async executeGeneration(): Promise<Result<void, Error>> {
+  protected async executeGeneration(): Promise<Result<string, Error>> {
     const configResult = await this.projectConfigService.loadConfig();
     if (configResult.isErr()) {
       const error = new GeneratorError(
@@ -99,18 +99,6 @@ export class SystemPromptsGenerator extends BaseGenerator implements IGenerator 
     ];
 
     const outputBaseDir = path.resolve(config.rootDir);
-
-    // const ensureDirResult = await this.fileOperations.createDirectory(outputBaseDir);
-    // if (ensureDirResult.isErr()) {
-    //   const error = new GeneratorError(
-    //     `Failed to create output directory: ${outputBaseDir}`,
-    //     this.name,
-    //     { directory: outputBaseDir },
-    //     ensureDirResult.error
-    //   );
-    //   this.logger.error(error.message, error);
-    //   return Result.err(error);
-    // }
 
     for (const mode of modes) {
       this.logger.debug(`Generating system prompt for mode: ${mode.slug}`);
@@ -160,7 +148,7 @@ export class SystemPromptsGenerator extends BaseGenerator implements IGenerator 
     }
 
     this.logger.info(`System prompts generation completed successfully.`);
-    return Result.ok(undefined);
+    return Result.ok("System prompts generated successfully.");
   }
 
   /**

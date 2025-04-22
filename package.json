@@ -17,7 +17,7 @@
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "prepare": "husky install",
-    "dev": "npm run build && node bin/roocode-generator.js  --mode=roo"
+    "dev": "npm run build && node dist/bin/roocode-generator.js generate --generators vscode-copilot-rules memory-bank "
   },
   "keywords": [
     "roocode",
@@ -70,6 +70,7 @@
     "@langchain/openai": "^0.5.5",
     "chalk": "^5.4.1",
     "commander": "^13.1.0",
+    "dotenv": "^16.5.0",
     "inquirer": "^12.5.2",
     "langchain": "^0.3.21",
     "ora": "^8.2.0",
