@@ -1,15 +1,10 @@
-import { Injectable, Inject } from "../di/decorators";
+import { Injectable } from "../di/decorators";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatOpenAI } from "@langchain/openai";
 import { ILLMProvider } from "./interfaces";
 import { Result } from "../result/result";
-
-export interface LLMProviderConfig {
-  modelName: string;
-  temperature: number;
-  apiKey: string;
-}
+import { LLMConfig } from "../../../types/shared";
 
 /**
  * Base class for LLM providers.
@@ -32,11 +27,14 @@ export class OpenAILLMProvider extends BaseLLMProvider {
   private model: ChatOpenAI;
 
   constructor(
-    @Inject("OpenAIConfig") private readonly config: LLMProviderConfig,
-    @Inject("OpenAIClientFactory") private readonly clientFactory: () => ChatOpenAI
+    private readonly config: LLMConfig,
+    private readonly clientFactory: () => ChatOpenAI
   ) {
     super();
-    this.model = this.clientFactory();
+    const model = this.clientFactory();
+    model.temperature = this.config.temperature;
+    model.modelName = this.config.model;
+    this.model = model;
   }
 
   async getCompletion(systemPrompt: string, userPrompt: string): Promise<Result<string, Error>> {
@@ -59,11 +57,14 @@ export class GoogleGenAILLMProvider extends BaseLLMProvider {
   private model: ChatGoogleGenerativeAI;
 
   constructor(
-    @Inject("GoogleGenAIConfig") private readonly config: LLMProviderConfig,
-    @Inject("GoogleGenAIClientFactory") private readonly clientFactory: () => ChatGoogleGenerativeAI
+    private readonly config: LLMConfig,
+    private readonly clientFactory: () => ChatGoogleGenerativeAI
   ) {
     super();
-    this.model = this.clientFactory();
+    const model = this.clientFactory();
+    model.temperature = this.config.temperature;
+    model.model = this.config.model;
+    this.model = model;
   }
 
   async getCompletion(systemPrompt: string, userPrompt: string): Promise<Result<string, Error>> {
@@ -88,11 +89,14 @@ export class AnthropicLLMProvider extends BaseLLMProvider {
   private model: ChatAnthropic;
 
   constructor(
-    @Inject("AnthropicConfig") private readonly config: LLMProviderConfig,
-    @Inject("AnthropicClientFactory") private readonly clientFactory: () => ChatAnthropic
+    private readonly config: LLMConfig,
+    private readonly clientFactory: () => ChatAnthropic
   ) {
     super();
-    this.model = this.clientFactory();
+    const model = this.clientFactory();
+    model.temperature = this.config.temperature;
+    model.modelName = this.config.model;
+    this.model = model;
   }
 
   async getCompletion(systemPrompt: string, userPrompt: string): Promise<Result<string, Error>> {

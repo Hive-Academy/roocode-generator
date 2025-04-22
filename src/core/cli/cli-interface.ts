@@ -2,7 +2,8 @@ import { ICliInterface } from "../application/interfaces";
 import { Command } from "commander";
 import * as fs from "fs";
 import * as path from "path";
-import { Injectable } from "../di/decorators"; // Import Injectable
+import { Injectable, Inject } from "../di/decorators";
+import { createPromptModule, Question } from "inquirer";
 
 export interface ParsedArgs {
   command: string | null;
@@ -14,7 +15,9 @@ export class CliInterface implements ICliInterface {
   private program: Command;
   private parsedArgs: ParsedArgs = { command: null, options: {} };
 
-  constructor() {
+  constructor(
+    @Inject("Inquirer") private readonly inquirer: ReturnType<typeof createPromptModule>
+  ) {
     this.program = new Command();
     this.setupCommands();
   }
@@ -27,29 +30,43 @@ export class CliInterface implements ICliInterface {
       .helpOption("-h, --help", "Display help for command");
 
     // Example command: generate
-    this.program
-      .command("generate")
-      .description("Run code generators")
+    const generateCommand = this.program.command("generate").description("Run code generators");
+
+    // Add existing options for generate command
+    generateCommand
       .option(
         "-g, --generators <names...>",
         "Specify which generators to run (e.g., MemoryBank Rules)"
       )
       .option("-t, --template <template>", "Specify the template to use (if applicable)")
-      .option("-o, --output <output>", "Specify the output directory (if applicable)")
+      .option("-o, --output <output>", "Specify the output directory (if applicable)");
+
+    // Add new subcommand: generate memory-bank <fileType>
+    generateCommand
+      .command("memory-bank")
+      .description(
+        "Generate all memory bank files (ProjectOverview, TechnicalArchitecture, DeveloperGuide)"
+      )
+      .option("-c, --context <paths...>", "Specify context paths")
+      .option("-o, --output <path>", "Specify output directory")
       .action((options: Record<string, any>) => {
-        // Add explicit type for options
-        this.parsedArgs.command = "generate";
-        // Ensure generators is always an array of strings
-        let generators: string[] = [];
-        if (options.generators) {
-          if (Array.isArray(options.generators)) {
-            generators = options.generators.map(String); // Ensure elements are strings
-          } else {
-            generators = [String(options.generators)]; // Handle single value case
-          }
-        }
-        this.parsedArgs.options = { ...options, generators }; // Assign the typed array
+        this.parsedArgs.command = "memory-bank-suite";
+        this.parsedArgs.options = options;
       });
+
+    // Existing generate command action handler for other generators
+    generateCommand.action((options: Record<string, any>) => {
+      this.parsedArgs.command = "generate";
+      let generators: string[] = [];
+      if (options.generators) {
+        if (Array.isArray(options.generators)) {
+          generators = options.generators.map(String);
+        } else {
+          generators = [String(options.generators)];
+        }
+      }
+      this.parsedArgs.options = { ...options, generators };
+    });
 
     // Example command: config
     this.program
@@ -93,5 +110,10 @@ export class CliInterface implements ICliInterface {
 
   public output(message: string): void {
     console.log(message);
+  }
+
+  public async prompt<T extends Record<string, any>>(options: Question): Promise<T> {
+    const result = await this.inquirer([options]);
+    return result as T;
   }
 }

@@ -1,9 +1,30 @@
 {
-  "cSpell.words": ["Roomodes"],
+  "cSpell.words": [
+    "Roomodes"
+  ],
   "github.copilot.enable": {
     "*": true,
     "plaintext": false,
     "markdown": false,
     "scminput": false
-  }
+  },
+  "github.copilot.chat.codeGeneration.instructions": [
+    {
+      "file": "architect-rules.md"
+    },
+    {
+      "file": "code-rules.md"
+    },
+    {
+      "file": "mcp-usage-rule.md"
+    }
+  ],
+  "github.copilot.chat.reviewSelection.instructions": [
+    {
+      "file": "code-review-rules.md"
+    },
+    {
+      "file": "mcp-usage-rule.md"
+    }
+  ]
 }

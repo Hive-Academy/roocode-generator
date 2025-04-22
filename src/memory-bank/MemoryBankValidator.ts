@@ -20,11 +20,11 @@ export class MemoryBankValidator implements IMemoryBankValidator {
       const missingFiles: string[] = [];
 
       // Check memory bank files
-      for (const fileType of Object.values(MemoryBankFileType)) {
-        const filePath = path.join(memoryBankDir, `${fileType}.md`);
+      for (const typeToGenerate of Object.values(MemoryBankFileType)) {
+        const filePath = path.join(memoryBankDir, `${String(typeToGenerate)}.md`);
         const readResult = await this.fileOps.readFile(filePath);
         if (readResult.isErr()) {
-          missingFiles.push(`Missing required memory bank file: ${fileType}.md`);
+          missingFiles.push(`Missing required memory bank file: ${String(typeToGenerate)}.md`);
         }
       }
 
@@ -58,7 +58,7 @@ export class MemoryBankValidator implements IMemoryBankValidator {
   validateFileContent(content: string, type: MemoryBankFileType): Result<void> {
     // Basic validation example: check if content is non-empty
     if (!content || content.trim().length === 0) {
-      return Result.err(new Error(`Content for ${type} is empty`));
+      return Result.err(new Error(`Content for ${String(type)} is empty`));
     }
     return Result.ok(undefined);
   }

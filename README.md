@@ -1,200 +1,189 @@
-# RooCode Generator
+# roocode-generator
 
-## Overview
+A CLI tool to generate RooCode workflow configuration files for any tech stack. This tool aims to streamline the setup process for projects adopting the RooCode methodology by providing an interactive command-line experience, potentially enhanced with Large Language Model (LLM) capabilities for intelligent configuration suggestions.
 
-RooCode Generator is a CLI tool designed to streamline the setup and integration of RooCode workflows into your projects. It provides a set of generators for various tasks, including configuration, memory bank creation, and VS Code Copilot rules generation.
+## Project Overview
 
-## Features
+The primary purpose of the `roocode-generator` is to simplify and standardize the creation of RooCode workflow configuration files. Key goals include accelerating setup, ensuring consistency, improving developer experience, supporting flexibility across tech stacks, and leveraging LLMs for innovation.
 
-- **Interactive CLI:** Simplifies the setup process with an interactive command-line interface.
-- **Configuration Workflow:** Guides you through setting up a custom RooCode workflow tailored to your project's specific needs.
-- **Memory Bank Generation:** Creates a memory bank to store and manage project-related information, enhancing code understanding and generation.
-- **VS Code Copilot Rules Generation:** Generates custom rules for VS Code Copilot, enabling intelligent code suggestions and automated code reviews.
-- **LLM-Powered Auto-Detection:** Analyzes your project using a Large Language Model (LLM) to automatically detect project settings and suggest a configuration.
-- **Flexible Configuration:** Supports manual configuration for existing projects or new projects with RooCode best practices.
-- **Trunk-Based Development:** Encourages trunk-based development practices for efficient collaboration and release management.
+Core features include interactive CLI prompts, generation of standardized configuration files, a modular architecture, LLM integration points via Langchain, and a template engine.
 
-## Installation
+For more detailed information, refer to the [Project Overview](memory-bank/ProjectOverview.md).
 
-To install RooCode Generator globally, run:
+## Building the Project
 
-```bash
-npm install -g roocode-generator
-```
+To build and run the `roocode-generator` project locally, follow these steps:
 
-Alternatively, you can use it with `npx` without installation:
+### Prerequisites
 
-```bash
-npx roocode-generator
-```
+- **Node.js**: Ensure you have a compatible version installed (refer to `memory-bank/DeveloperGuide.md` for recommended version).
+- **npm** or **yarn**: A package manager.
+- **Git**: For cloning the repository.
+- **API Keys**: You may need API keys for LLM providers (Anthropic, Google Gemini, OpenAI) if you plan to use or test features requiring LLM interaction.
 
-## Usage
+### Setup
 
-To start the RooCode Generator, run:
-
-```bash
-roocode-generator
-```
-
-The CLI will guide you through the following steps:
-
-1.  **Project Mode Selection:** Choose between auto-detect mode (LLM-powered), integrating RooCode into an existing project, or starting a new project with RooCode best practices.
-2.  **Configuration:**
-    - If you select auto-detect mode, the CLI will analyze your project and suggest a configuration. You can then accept, edit, or reject the configuration.
-    - If you select manual configuration, the CLI will prompt you for the necessary information.
-3.  **File Generation:** The CLI will generate all configuration files, including memory bank files, rule files, and system prompts.
-
-## Project Structure
-
-The project structure is as follows:
-
-```
-roocode-generator/
-├── bin/
-│   ├── roocode-generator.js  # CLI entry point
-│   └── roocode-llm-config.js # LLM configuration utility
-├── generators/             # File generation logic
-│   ├── config-workflow.js  # Configuration workflow logic
-│   ├── memory-bank-generator.js # Memory bank generation logic
-│   ├── rules-generator.js  # Rule file generation logic
-│   ├── system-prompts-generator.js # System prompt generation logic
-│   ├── roomodes-generator.js # Roomodes file generation logic
-│   ├── llm-agent.js        # LLM agent for project analysis
-│   └── vscode-copilot-rules-generator.js # VS Code Copilot rules generator
-├── templates/              # All templates for rules, system prompts, memory bank, etc.
-├── memory-bank/            # Memory bank files
-├── progress-tracker/                   # Documentation files
-├── .vscode/                # VS Code configuration files
-├── package.json            # Project dependencies and scripts
-└── README.md               # This file
-```
-
-## Configuration Files
-
-The RooCode Generator creates the following configuration files:
-
-- `.roo/` (or `.vscode/`): Contains the generated configuration files, including rule files and system prompts.
-- `memory-bank/`: Contains the generated memory bank files.
-- `roocode.config.json`: Contains the project configuration.
-
-## Trunk-Based Development & Release Automation
-
-This project follows **trunk-based development**:
-
-- All changes are merged to the `main` branch.
-- Feature branches are short-lived and merged via PRs.
-- Releases are created by tagging the main branch (e.g., `v1.0.0`).
-- CI enforces lint, format, and commit message rules before merging.
-- Automated publishing to npm and GitHub Releases on new version tags.
-
-### Enforced Rules
-
-- **Linting & Formatting:** All code must pass ESLint and Prettier checks (enforced locally via Husky and in CI).
-- **Conventional Commits:** All commit messages must follow [Conventional Commits](https://www.conventionalcommits.org/) (enforced via commitlint).
-- **CI Checks:** PRs and pushes to main run full CI (lint, format, test).
-- **No direct pushes to main:** Use PRs for all changes.
-
-### Semantic Versioning
-
-This project uses [Semantic Versioning](https://semver.org/):
-
-- Use `npm version patch|minor|major` to bump the version.
-- Tagging with `v*` triggers automated npm publish and GitHub Release.
-- (Optional) You can install [semantic-release](https://github.com/semantic-release/semantic-release) for fully automated versioning and changelogs.
-
-#### To install semantic-release:
-
-```bash
-npm install --save-dev semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/npm @semantic-release/github
-```
-
-Add a `.releaserc.json` or update your workflow for semantic-release (see their docs).
-
-### Release Process
-
-1.  Make sure your branch is up to date with `main`.
-2.  Run all tests and lint checks locally.
-3.  Merge your feature branch to `main` via PR.
-4.  Bump the version and tag:
+1.  **Clone the repository:**
 
     ```bash
-    npm version patch   # or minor/major
-    git push --follow-tags
+    git clone <repository-url> # Replace <repository-url> with the actual URL
+    cd roocode-generator
     ```
 
-5.  CI will:
+2.  **Install dependencies:**
+    Using npm:
 
-    - Run lint, format, and tests
-    - Publish to npm (if NPM_TOKEN is set)
-    - Create a GitHub Release with notes
+    ```bash
+    npm install
+    ```
 
----
+    Using yarn:
 
-## Comprehensive Test Case: LLM-Powered Auto-Detect Workflow
+    ```bash
+    yarn install
+    ```
 
-Follow these steps to test the full LLM-powered project analysis and configuration workflow:
+3.  **Set up environment variables (for LLM access):**
+    Create a `.env` file in the project root and add your API keys:
 
-### 1. Set Up LLM Provider and API Key
+    ```env
+    # Example .env file
+    ANTHROPIC_API_KEY=your_anthropic_api_key
+    GOOGLE_API_KEY=your_google_api_key
+    OPENAI_API_KEY=your_openai_api_key
+    ```
+
+    **Note:** Do not commit your `.env` file.
+
+4.  **Prepare Git Hooks:**
+    ```bash
+    npm run prepare
+    # or
+    yarn prepare
+    ```
+
+### Building
+
+Compile the TypeScript code:
 
 ```bash
-npx roocode-llm-config
+npm run build
+# or
+yarn build
 ```
 
-- Select your preferred LLM provider (OpenAI, Google Gemini, or Anthropic).
-- Enter your API key when prompted.
+This will compile the source files from `src/` into the `dist/` directory.
 
-### 2. Run the RooCode Generator CLI
+For more detailed developer setup and workflow information, see the [Developer Guide](memory-bank/DeveloperGuide.md).
+
+## Commands
+
+The `roocode-generator` provides several commands to manage configuration and execute generators.
+
+### `roocode config`
+
+This command allows you to configure the LLM provider settings for the generator. If no options are provided, it will launch an interactive configuration process.
+
+**Usage:**
 
 ```bash
-npx roocode-generator
+roocode config [options]
 ```
 
-- When prompted, choose **auto-detect mode** (press Enter for default).
-- The CLI will analyze your project using the selected LLM. This may take a moment.
+**Options:**
 
-### 3. Review LLM-Generated Project Config
+- `--provider <name>`: Set the LLM provider (e.g., `openai`, `google-genai`, `anthropic`).
+- `--apiKey <key>`: Set the API key for the selected provider.
+- `--model <name>`: Set the specific model name to use.
 
-- The CLI will display a summary and the auto-detected configuration.
-- Review the suggested config values (domains, tiers, tech stack, etc.).
-- If you want to edit any values, type `n` when prompted and proceed with the interactive setup.
-- Otherwise, confirm to proceed with the auto-detected config.
+**Interactive Mode:**
 
-### 4. Generate RooCode Workflow Files
+If you run `roocode config` without any options, it will guide you through selecting a provider, entering your API key, and specifying a model name, similar to the functionality previously found in `old-code/bin/roocode-llm-config.ts`.
 
-- The CLI will generate all configuration, rules, system prompts, and memory bank files based on the selected config.
-- Check the `.roo/` and `memory-bank/` folders for the generated files.
+**Examples:**
 
-### 5. (Optional) Export/Import Config
+Start the interactive configuration:
 
-- After setup, you can export your config for future use.
-- To reuse a config, place `roocode.config.json` in your project root and follow the prompts.
+```bash
+roocode config
+```
 
-### 6. Troubleshooting
+Set configuration using command-line options:
 
-- If the LLM fails or does not return a valid config, the CLI will fall back to interactive mode.
-- Ensure your API key is valid and you have network access.
-- For large projects, the LLM may truncate file contents—review the prompt and adjust as needed.
+```bash
+roocode config --provider openai --apiKey sk-YOUR_KEY --model gpt-4o
+```
 
----
+### `roocode generate [generator-name...]`
 
-**Tip:** You can repeat this process with different LLM providers or project structures to compare results and tune your workflow.
+This command executes one or more code and configuration generators. You can specify which generators to run by providing their names as arguments. If no generator names are provided, the command will attempt to run all registered generators (excluding those with specific subcommands like `generate memory-bank`).
 
----
+**Usage:**
 
-## Local Development
+```bash
+roocode generate [generator-name...]
+```
 
-- Run `npm run lint` and `npm run format` before committing.
-- Use `npm run format:write` to auto-format your code.
-- Commit messages must follow Conventional Commits (enforced by Husky/commitlint).
+**Available Generator Identifiers:**
 
-## Contributing
+- `rules`: (Details in other documentation)
+- `system-prompts`: (Details in other documentation)
+- `roomodes`: (Details in other documentation)
+- `vscode-copilot-rules`: Generates VS Code Copilot rules and related configuration.
 
-- Fork the repo and create a feature branch.
-- Follow trunk-based development and commit message rules.
-- Open a PR to `main`.
+**Examples:**
 
----
+Run all available generators:
 
-## License
+```bash
+roocode generate
+```
 
-MIT
+Run only the `vscode-copilot-rules` generator:
+
+```bash
+roocode generate vscode-copilot-rules
+```
+
+Run the `rules` and `system-prompts` generators:
+
+```bash
+roocode generate rules system-prompts
+```
+
+### `roocode generate memory-bank`
+
+This command is the primary tool for generating the core memory bank documentation for your project. When executed, it automatically gathers context from your project's current files and child folders. This context is then passed to an LLM, which uses it to generate and populate the three standard memory bank documentation files: `ProjectOverview.md`, `TechnicalArchitecture.md`, and `DeveloperGuide.md`. The command also ensures that the standard memory bank template files are copied to the output directory, providing a complete set of documentation and templates for your project's memory bank.
+
+**Usage:**
+
+```bash
+roocode generate memory-bank [options]
+```
+
+**Options:**
+
+- `--context <paths>`: Comma-separated paths to files or directories to include as _additional_ context for the LLM. By default, the generator automatically includes context from the project's source files and folders. If not provided, the CLI will prompt to optionally add more context paths. (Referenced from `src/commands/generate-memory-bank.command.ts`)
+- `--output <path>`: The output path for the generated files and the copied templates folder. If not provided, the files will be saved in the current working directory or a `memory-bank` subdirectory within it. (Referenced from `src/commands/generate-memory-bank.command.ts`)
+
+**Examples:**
+
+Generate all memory bank files using default project context:
+
+```bash
+roocode generate memory-bank
+```
+
+Generate all memory bank files, providing specific additional context files:
+
+```bash
+roocode generate memory-bank --context ./src/core,./src/commands
+```
+
+Generate all memory bank files and save them to a specific directory:
+
+```bash
+roocode generate memory-bank --output ./docs/memory-bank
+```
+
+For more technical details on the generator components, refer to the [Technical Architecture](memory-bank/TechnicalArchitecture.md).

@@ -13,7 +13,7 @@ import path from "path";
  * @description Generates the standard Roo mode rule files.
  */
 @Injectable()
-export class RulesGenerator extends BaseGenerator {
+export class RulesGenerator extends BaseGenerator<string> {
   /**
    * @description The unique name identifier for this generator.
    */
@@ -70,7 +70,7 @@ export class RulesGenerator extends BaseGenerator {
    * @description Executes the actual rule file generation.
    * @returns {Promise<Result<void, Error>>} A promise resolving to the result of the generation process.
    */
-  protected async executeGeneration(): Promise<Result<void, Error>> {
+  protected async executeGeneration(): Promise<Result<string, Error>> {
     this.logger.info(`Executing ${this.name} generation...`);
 
     const configResult = await this.projectConfigService.loadConfig();
@@ -162,6 +162,6 @@ export class RulesGenerator extends BaseGenerator {
     }
 
     this.logger.info("Rules generation completed successfully for all modes.");
-    return Result.ok(undefined);
+    return Result.ok("");
   }
 }

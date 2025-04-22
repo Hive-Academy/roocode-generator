@@ -1,32 +1,31 @@
-import { Container } from "./container";
-import { ILogger, LoggerService } from "../services/logger-service";
-import { IFileOperations } from "../file-operations/interfaces";
 import { FileOperations } from "../file-operations/file-operations";
-import { TemplateManager } from "../template-manager/template-manager";
+import { IFileOperations } from "../file-operations/interfaces";
+import { ILogger, LoggerService } from "../services/logger-service";
 import { ITemplateManager } from "../template-manager/interfaces";
+import { TemplateManager } from "../template-manager/template-manager";
+import { Container } from "./container";
 
-import { ILLMProvider } from "../llm/interfaces";
+import { ProjectConfigService } from "../config/project-config.service";
+import { ILLMProvider, LLMProviderFactory } from "../llm/interfaces";
+import { LLMAgent } from "../llm/llm-agent";
 import {
-  OpenAILLMProvider,
-  GoogleGenAILLMProvider,
   AnthropicLLMProvider,
+  GoogleGenAILLMProvider,
+  OpenAILLMProvider,
 } from "../llm/llm-provider";
 import { LLMProviderRegistry } from "../llm/provider-registry";
-import { LLMAgent } from "../llm/llm-agent";
-import { ProjectConfigService } from "../config/project-config.service";
 
-import { ChatOpenAI } from "@langchain/openai";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatAnthropic } from "@langchain/anthropic";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { ChatOpenAI } from "@langchain/openai";
 
-import { OpenAIConfig, GoogleGenAIConfig, AnthropicConfig } from "../llm/llm-provider-configs";
+import inquirer, { createPromptModule } from "inquirer";
 import { ILLMConfigService, IProjectConfigService } from "../config/interfaces";
 import { LLMConfigService } from "../config/llm-config.service";
-import inquirer from "inquirer";
 
 // Register ApplicationContainer and its dependencies (placeholders for now)
 import { ApplicationContainer } from "../application/application-container";
-import { IGeneratorOrchestrator, IProjectManager, ICliInterface } from "../application/interfaces";
+import { ICliInterface, IGeneratorOrchestrator, IProjectManager } from "../application/interfaces";
 import { Injectable } from "./decorators"; // Import Injectable
 
 @Injectable() // Add Injectable decorator
@@ -35,25 +34,33 @@ class ProjectManagerStub implements IProjectManager {
   async saveProjectConfig(): Promise<void> {}
 }
 
-import { CliInterface } from "../cli/cli-interface";
 import { GeneratorOrchestrator } from "../application/generator-orchestrator";
+import { CliInterface } from "../cli/cli-interface";
 import { IGenerator } from "../generators/base-generator";
-import { MemoryBankGenerator } from "../../memory-bank/MemoryBankGenerator";
-import { RulesGenerator } from "../../generators/rules-generator"; // Correct path relative to src/core/di
-import { SystemPromptsGenerator } from "../../generators/system-prompts-generator"; // Correct path relative to src/core/di
 
-import { RoomodesGenerator } from "../../generators/roomodes-generator"; // Correct path relative to src/core/di
-import { VSCodeCopilotRulesGenerator } from "../../generators/vscode-copilot-rules-generator"; // Correct path relative to src/core/di
+import { RoomodesGenerator } from "../../generators/roomodes-generator";
+import { RulesGenerator } from "../../generators/rules-generator";
+import { SystemPromptsGenerator } from "../../generators/system-prompts-generator";
+import { VSCodeCopilotRulesGenerator } from "../../generators/vscode-copilot-rules-generator";
+import { ContentProcessor } from "../../memory-bank/ContentProcessor";
 import {
-  IMemoryBankValidator,
+  IContentProcessor,
   IMemoryBankFileManager,
   IMemoryBankTemplateManager,
-  IContentProcessor,
+  IMemoryBankValidator,
+  IProjectContextService,
+  IPromptBuilder,
 } from "../../memory-bank/interfaces"; // Import MemoryBank dependencies
-import { MemoryBankTemplateManager } from "../../memory-bank/MemoryBankTemplateManager";
 import { MemoryBankFileManager } from "../../memory-bank/MemoryBankFileManager";
+import { MemoryBankGenerator } from "../../memory-bank/MemoryBankGenerator";
+import { MemoryBankTemplateManager } from "../../memory-bank/MemoryBankTemplateManager";
 import { MemoryBankValidator } from "../../memory-bank/MemoryBankValidator";
-import { ContentProcessor } from "../../memory-bank/ContentProcessor";
+import { ProjectContextService } from "../../memory-bank/ProjectContextService";
+import { PromptBuilder } from "../../memory-bank/PromptBuilder";
+import { Result } from "../result/result";
+import { MemoryBankCommandHandler } from "../../commands/memory-bank-command-handler";
+import { Factory } from "./types";
+import { LLMConfig } from "../../../types/shared";
 
 /**
  *  @description Registers services with the DI container.
@@ -64,7 +71,7 @@ export function registerServices(): void {
   const container = Container.getInstance();
 
   container.registerSingleton<ILogger>("ILogger", LoggerService);
-  container.registerFactory("Inquirer", () => inquirer);
+  container.registerFactory("Inquirer", () => createPromptModule());
 
   // Register IFileOperations using factory to avoid 'as any' cast and improve typing
   container.registerFactory<IFileOperations>("IFileOperations", () => {
@@ -79,11 +86,6 @@ export function registerServices(): void {
     // Pass config to constructor to override default .tpl extension
     return new TemplateManager(fileOps, logger, { templateExt: "" });
   });
-
-  // Register config classes as singletons
-  container.registerSingleton<OpenAIConfig>("OpenAIConfig", OpenAIConfig);
-  container.registerSingleton<GoogleGenAIConfig>("GoogleGenAIConfig", GoogleGenAIConfig);
-  container.registerSingleton<AnthropicConfig>("AnthropicConfig", AnthropicConfig);
 
   // Register client factory functions for each provider
   container.registerFactory<() => ChatOpenAI>("OpenAIClientFactory", () => {
@@ -100,6 +102,7 @@ export function registerServices(): void {
       new ChatGoogleGenerativeAI({
         model: process.env.LLM_MODEL || "models/chat-bison-001",
         temperature: 0.2,
+        apiKey: process.env.GOOGLE_API_KEY || "",
       });
   });
 
@@ -107,64 +110,114 @@ export function registerServices(): void {
     return () =>
       new ChatAnthropic({
         modelName: process.env.LLM_MODEL || "claude-v1",
+        anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
       });
   });
 
   // Register factories for LLM providers that instantiate with config and client factory
-  container.registerFactory<ILLMProvider>("ILLMProvider.OpenAI", () => {
-    const config = resolveDependency<OpenAIConfig>(container, "OpenAIConfig");
-    const clientFactory = resolveDependency<() => ChatOpenAI>(container, "OpenAIClientFactory");
-    return new OpenAILLMProvider(config, clientFactory);
+  // Register provider factories that return Results
+  container.registerFactory<LLMProviderFactory>("ILLMProvider.OpenAI.Factory", () => {
+    try {
+      const clientFactory = resolveDependency<() => ChatOpenAI>(container, "OpenAIClientFactory");
+      const logger = resolveDependency<ILogger>(container, "ILogger");
+
+      return function factory(config: LLMConfig): Result<ILLMProvider, Error> {
+        try {
+          return Result.ok(new OpenAILLMProvider(config, clientFactory));
+        } catch (error) {
+          logger.error(
+            `Error creating OpenAI provider: ${error instanceof Error ? error.message : String(error)}`,
+            error as Error
+          );
+          return Result.err(error instanceof Error ? error : new Error(String(error)));
+        }
+      };
+    } catch (error) {
+      const logger = resolveDependency<ILogger>(container, "ILogger");
+      logger.error(
+        `Failed to resolve dependencies for OpenAI provider factory: ${error instanceof Error ? error.message : String(error)}`,
+        error as Error
+      );
+      return () => Result.err(error instanceof Error ? error : new Error(String(error)));
+    }
   });
 
-  container.registerFactory<ILLMProvider>("ILLMProvider.GoogleGenAI", () => {
-    const config = resolveDependency<GoogleGenAIConfig>(container, "GoogleGenAIConfig");
-    const clientFactory = resolveDependency<() => ChatGoogleGenerativeAI>(
-      container,
-      "GoogleGenAIClientFactory"
-    );
-    return new GoogleGenAILLMProvider(config, clientFactory);
+  container.registerFactory<LLMProviderFactory>("ILLMProvider.GoogleGenAI.Factory", () => {
+    try {
+      const clientFactory = resolveDependency<() => ChatGoogleGenerativeAI>(
+        container,
+        "GoogleGenAIClientFactory"
+      );
+      const logger = resolveDependency<ILogger>(container, "ILogger");
+
+      return function factory(config: LLMConfig): Result<ILLMProvider, Error> {
+        try {
+          return Result.ok(new GoogleGenAILLMProvider(config, clientFactory));
+        } catch (error) {
+          logger.error(
+            `Error creating Google GenAI provider: ${error instanceof Error ? error.message : String(error)}`,
+            error as Error
+          );
+          return Result.err(error instanceof Error ? error : new Error(String(error)));
+        }
+      };
+    } catch (error) {
+      const logger = resolveDependency<ILogger>(container, "ILogger");
+      logger.error(
+        `Failed to resolve dependencies for GoogleGenAI provider factory: ${error instanceof Error ? error.message : String(error)}`,
+        error as Error
+      );
+      return () => Result.err(error instanceof Error ? error : new Error(String(error)));
+    }
   });
 
-  container.registerFactory<ILLMProvider>("ILLMProvider.Anthropic", () => {
-    const config = resolveDependency<AnthropicConfig>(container, "AnthropicConfig");
-    const clientFactory = resolveDependency<() => ChatAnthropic>(
-      container,
-      "AnthropicClientFactory"
-    );
-    return new AnthropicLLMProvider(config, clientFactory);
+  container.registerFactory<LLMProviderFactory>("ILLMProvider.Anthropic.Factory", () => {
+    try {
+      const clientFactory = resolveDependency<() => ChatAnthropic>(
+        container,
+        "AnthropicClientFactory"
+      );
+      const logger = resolveDependency<ILogger>(container, "ILogger");
+
+      return function factory(config: LLMConfig): Result<ILLMProvider, Error> {
+        try {
+          return Result.ok(new AnthropicLLMProvider(config, clientFactory));
+        } catch (error) {
+          logger.error(
+            `Error creating Anthropic provider: ${error instanceof Error ? error.message : String(error)}`,
+            error as Error
+          );
+          return Result.err(error instanceof Error ? error : new Error(String(error)));
+        }
+      };
+    } catch (error) {
+      const logger = resolveDependency<ILogger>(container, "ILogger");
+      logger.error(
+        `Failed to resolve dependencies for Anthropic provider factory: ${error instanceof Error ? error.message : String(error)}`,
+        error as Error
+      );
+      return () => Result.err(error instanceof Error ? error : new Error(String(error)));
+    }
   });
 
-  // Register the LLMProviderRegistry using a factory that resolves providers internally
   container.registerFactory<LLMProviderRegistry>("LLMProviderRegistry", () => {
-    // Resolve providers *inside* the factory, only when the registry is needed
-    const openAIProvider = resolveDependency<ILLMProvider>(container, "ILLMProvider.OpenAI");
-    const googleGenAIProvider = resolveDependency<ILLMProvider>(
-      container,
-      "ILLMProvider.GoogleGenAI"
-    );
-    const anthropicProvider = resolveDependency<ILLMProvider>(container, "ILLMProvider.Anthropic");
+    const configService = resolveDependency<ILLMConfigService>(container, "ILLMConfigService");
+    const providerFactories = {
+      openai: resolveDependency<LLMProviderFactory>(container, "ILLMProvider.OpenAI.Factory"),
+      "google-genai": resolveDependency<LLMProviderFactory>(
+        container,
+        "ILLMProvider.GoogleGenAI.Factory"
+      ),
+      anthropic: resolveDependency<LLMProviderFactory>(container, "ILLMProvider.Anthropic.Factory"),
+    };
 
-    // Instantiate and return the registry
-    return new LLMProviderRegistry([openAIProvider, googleGenAIProvider, anthropicProvider]);
+    return new LLMProviderRegistry(configService, providerFactories);
   });
-  // Note: We assume LLMProviderRegistry should be transient unless explicitly needed as singleton.
-  // If singleton is needed, manage the instance within the factory or use registerSingleton with a factory.
 
-  // Register LLMAgent with factory resolving dependencies manually
   container.registerFactory<LLMAgent>("LLMAgent", () => {
     const registry = resolveDependency<LLMProviderRegistry>(container, "LLMProviderRegistry");
     const fileOps = resolveDependency<IFileOperations>(container, "IFileOperations");
     const logger = resolveDependency<ILogger>(container, "ILogger");
-    // Use configuration-driven provider name
-    const providerName = process.env.DEFAULT_LLM_PROVIDER || "openai";
-    const defaultProviderResult = registry.getProvider(providerName);
-
-    if (defaultProviderResult.isErr()) {
-      throw (
-        defaultProviderResult.error ?? new Error("Unknown error resolving default LLM provider")
-      );
-    }
     return new LLMAgent(registry, fileOps, logger);
   });
 
@@ -187,6 +240,23 @@ export function registerServices(): void {
     return new MemoryBankValidator(fileOps, logger);
   });
 
+  // Register ProjectContextService
+  container.registerFactory<IProjectContextService>("IProjectContextService", () => {
+    const fileOps = resolveDependency<IFileOperations>(container, "IFileOperations");
+    const projectConfigService = resolveDependency<IProjectConfigService>(
+      container,
+      "IProjectConfigService"
+    );
+    const logger = resolveDependency<ILogger>(container, "ILogger");
+    return new ProjectContextService(fileOps, projectConfigService, logger);
+  });
+
+  // Register PromptBuilder
+  container.registerFactory<IPromptBuilder>("IPromptBuilder", () => {
+    const logger = resolveDependency<ILogger>(container, "ILogger");
+    return new PromptBuilder(logger);
+  });
+
   container.registerFactory<IMemoryBankFileManager>("IMemoryBankFileManager", () => {
     const fileOps = resolveDependency<IFileOperations>(container, "IFileOperations");
     const logger = resolveDependency<ILogger>(container, "ILogger");
@@ -204,7 +274,8 @@ export function registerServices(): void {
   });
 
   // Register MemoryBankGenerator as an IGenerator implementation
-  container.registerFactory<IGenerator>("IGenerator.MemoryBank", () => {
+
+  container.registerFactory<MemoryBankGenerator>("MemoryBankGenerator", () => {
     const validator = resolveDependency<IMemoryBankValidator>(container, "IMemoryBankValidator");
     const fileManager = resolveDependency<IMemoryBankFileManager>(
       container,
@@ -220,18 +291,30 @@ export function registerServices(): void {
       container,
       "IProjectConfigService"
     );
+    const projectContextService = resolveDependency<IProjectContextService>(
+      container,
+      "IProjectContextService"
+    );
+    const promptBuilder = resolveDependency<IPromptBuilder>(container, "IPromptBuilder");
+    const llmAgent = resolveDependency<LLMAgent>(container, "LLMAgent");
+
     return new MemoryBankGenerator(
+      container,
       validator,
       fileManager,
       templateManager,
       contentProcessor,
       logger,
-      projectConfigService
+      projectConfigService,
+      projectContextService,
+      promptBuilder,
+      llmAgent
     );
   });
 
   // Register RulesGenerator as an IGenerator implementation
-  container.registerFactory<IGenerator>("IGenerator.Rules", () => {
+
+  container.registerFactory<IGenerator<string>>("IGenerator.Rules", () => {
     const templateManager = resolveDependency<ITemplateManager>(container, "ITemplateManager");
     const fileOperations = resolveDependency<IFileOperations>(container, "IFileOperations");
     const logger = resolveDependency<ILogger>(container, "ILogger");
@@ -251,7 +334,7 @@ export function registerServices(): void {
   });
 
   // Register SystemPromptsGenerator as an IGenerator implementation
-  container.registerFactory<IGenerator>("IGenerator.SystemPrompts", () => {
+  container.registerFactory<IGenerator<string>>("IGenerator.SystemPrompts", () => {
     const templateManager = resolveDependency<ITemplateManager>(container, "ITemplateManager");
     const fileOperations = resolveDependency<IFileOperations>(container, "IFileOperations");
     const logger = resolveDependency<ILogger>(container, "ILogger");
@@ -270,7 +353,7 @@ export function registerServices(): void {
   });
 
   // Register RoomodesGenerator as an IGenerator implementation
-  container.registerFactory<IGenerator>("IGenerator.Roomodes", () => {
+  container.registerFactory<IGenerator<string>>("IGenerator.Roomodes", () => {
     const serviceContainer = container; // The container instance is already available
     const fileOperations = resolveDependency<IFileOperations>(container, "IFileOperations");
     const logger = resolveDependency<ILogger>(container, "ILogger");
@@ -283,7 +366,7 @@ export function registerServices(): void {
   });
 
   // Register VSCodeCopilotRulesGenerator as an IGenerator implementation
-  container.registerFactory<IGenerator>("IGenerator.VSCodeCopilotRules", () => {
+  container.registerFactory<IGenerator<string>>("IGenerator.VSCodeCopilotRules", () => {
     const serviceContainer = container; // The container instance is already available
     const fileOperations = resolveDependency<IFileOperations>(container, "IFileOperations");
     const logger = resolveDependency<ILogger>(container, "ILogger");
@@ -301,28 +384,29 @@ export function registerServices(): void {
 
   container.registerFactory<IGeneratorOrchestrator>("IGeneratorOrchestrator", () => {
     const container = Container.getInstance();
-    // Resolve all registered generators.
-    // TODO: Implement a mechanism to resolve all instances tagged as 'IGenerator'
-    // For now, manually resolve the known generator(s).
-    const memoryBankGenerator = resolveDependency<IGenerator>(container, "IGenerator.MemoryBank");
-    const rulesGenerator = resolveDependency<IGenerator>(container, "IGenerator.Rules");
-    const systemPromptsGenerator = resolveDependency<IGenerator>(
-      container,
-      "IGenerator.SystemPrompts"
-    );
 
-    const roomodesGenerator = resolveDependency<IGenerator>(container, "IGenerator.Roomodes"); // Resolve RoomodesGenerator
-    const vscodeCopilotRulesGenerator = resolveDependency<IGenerator>(
-      container,
-      "IGenerator.VSCodeCopilotRules"
-    ); // Resolve VSCodeCopilotRulesGenerator
-    const generators: IGenerator[] = [
-      memoryBankGenerator,
-      rulesGenerator,
-      systemPromptsGenerator,
-      roomodesGenerator,
-      vscodeCopilotRulesGenerator, // Add VSCodeCopilotRulesGenerator to the array
+    // Define generator registration tokens
+    const generatorTokens = [
+      "IGenerator.Rules",
+      "IGenerator.SystemPrompts",
+      "IGenerator.Roomodes",
+      "IGenerator.VSCodeCopilotRules",
     ];
+
+    // Resolve all registered generators with error handling
+    const generators: IGenerator<string>[] = [];
+    for (const token of generatorTokens) {
+      try {
+        const generator = resolveDependency<IGenerator<string>>(container, token);
+        generators.push(generator);
+      } catch (error) {
+        // Log warning but continue - allows partial generator availability
+        const logger = resolveDependency<ILogger>(container, "ILogger");
+        logger.warn(
+          `Failed to resolve generator ${token}: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    }
 
     const projectConfigService = resolveDependency<IProjectConfigService>(
       container,
@@ -332,7 +416,14 @@ export function registerServices(): void {
     return new GeneratorOrchestrator(generators, projectConfigService, logger);
   });
   container.registerSingleton<IProjectManager>("IProjectManager", ProjectManagerStub);
-  container.registerSingleton<ICliInterface>("ICliInterface", CliInterface);
+
+  container.registerFactory<ICliInterface>("ICliInterface", () => {
+    const inquirerInstance = resolveDependency<ReturnType<typeof createPromptModule>>(
+      container,
+      "Inquirer"
+    );
+    return new CliInterface(inquirerInstance);
+  });
   container.registerFactory<ApplicationContainer>("ApplicationContainer", () => {
     const container = Container.getInstance();
     const generatorOrchestrator = resolveDependency<IGeneratorOrchestrator>(
@@ -344,6 +435,44 @@ export function registerServices(): void {
     const logger = resolveDependency<ILogger>(container, "ILogger");
     return new ApplicationContainer(generatorOrchestrator, projectManager, cliInterface, logger);
   });
+
+  // Register MemoryBankCommandHandler factory
+  const memoryBankHandlerFactory: Factory<MemoryBankCommandHandler> = () => {
+    try {
+      const generator = resolveDependency<MemoryBankGenerator>(container, "MemoryBankGenerator");
+      const fileOps = resolveDependency<IFileOperations>(container, "IFileOperations");
+      const logger = resolveDependency<ILogger>(container, "ILogger");
+      const projectContextService = resolveDependency<IProjectContextService>(
+        container,
+        "IProjectContextService"
+      );
+
+      return new MemoryBankCommandHandler(generator, fileOps, logger, projectContextService);
+    } catch (error) {
+      // Log the error during factory execution
+      const logger = resolveDependency<ILogger>(container, "ILogger");
+      logger.error("Error creating MemoryBankCommandHandler instance", error as Error);
+      throw error; // Re-throw to indicate factory failure
+    }
+  };
+
+  // Register the factory with the container
+  const registrationResult = container.registerFactory(
+    "MemoryBankCommandHandler",
+    memoryBankHandlerFactory
+  );
+
+  if (registrationResult.isErr()) {
+    // Log the registration error
+    const logger = resolveDependency<ILogger>(container, "ILogger");
+    logger.error(
+      `Failed to register MemoryBankCommandHandler: ${registrationResult.error?.message}`,
+      registrationResult.error
+    );
+    throw new Error(
+      `Failed to register MemoryBankCommandHandler: ${registrationResult.error?.message}`
+    );
+  }
 }
 
 /**

@@ -2,12 +2,13 @@
  * Base interfaces and classes for code generation functionality
  */
 import { BaseService } from "../services/base-service";
-import { Result } from "../result/result"; // Corrected import path
+import { Result } from "../result/result";
 
 /**
  * Interface defining core generator functionality
+ * @template T The type that defines what kind of file/content this generator produces
  */
-export interface IGenerator {
+export interface IGenerator<T> {
   /**
    * Unique name of the generator
    */
@@ -15,9 +16,11 @@ export interface IGenerator {
 
   /**
    * Generates code based on implementation-specific logic
-   * @returns Promise<Result<void, Error>> indicating generation success or failure
+   * @param fileType The type of file/content to generate, specific to each generator
+   * @param contextPaths Array of paths to gather context from
+   * @returns Promise<Result<string, Error>> indicating generation success with content or failure
    */
-  generate(): Promise<Result<void, Error>>;
+  generate(fileType: T, contextPaths: string[]): Promise<Result<string, Error>>;
 
   /**
    * Validates generator configuration and requirements
@@ -30,7 +33,12 @@ export interface IGenerator {
  * Base class for all code generators
  * Provides common functionality and enforces consistent interface
  */
-export abstract class BaseGenerator extends BaseService implements IGenerator {
+
+/**
+ * Base class for all code generators
+ * @template T The type that defines what kind of file/content this generator produces
+ */
+export abstract class BaseGenerator<T> extends BaseService implements IGenerator<T> {
   /**
    * Unique name of the generator
    */
@@ -39,13 +47,12 @@ export abstract class BaseGenerator extends BaseService implements IGenerator {
   /**
    * Template method for code generation process
    * Ensures validation before generation
+   * @param fileType The type of file/content to generate, specific to each generator
+   * @param contextPaths Array of paths to gather context from
    */
-  async generate(): Promise<Result<void, Error>> {
-    // Updated return type
+  async generate(fileType: T, contextPaths: string[]): Promise<Result<string, Error>> {
     const initResult = this.initialize();
-    // Use isErr() to check for failure
     if (initResult.isErr()) {
-      // Use Result.err with an Error object and access message
       return Result.err(
         new Error(
           `Generator initialization failed: ${initResult.error?.message ?? "Unknown error"}`
@@ -54,9 +61,7 @@ export abstract class BaseGenerator extends BaseService implements IGenerator {
     }
 
     const validationResult = await this.validate();
-    // Use isErr() to check for failure
     if (validationResult.isErr()) {
-      // Use Result.err with an Error object and access message
       return Result.err(
         new Error(
           `Generator validation failed: ${validationResult.error?.message ?? "Unknown error"}`
@@ -64,21 +69,26 @@ export abstract class BaseGenerator extends BaseService implements IGenerator {
       );
     }
 
-    // Return the result from executeGeneration directly
-    return this.executeGeneration();
+    // Pass parameters to executeGeneration
+    return this.executeGeneration(fileType, contextPaths);
   }
 
   /**
    * Validates generator-specific requirements
    * Must be implemented by derived classes
    */
-  abstract validate(): Promise<Result<void, Error>>; // Updated return type
+  abstract validate(): Promise<Result<void, Error>>;
 
   /**
    * Executes the actual code generation
    * Must be implemented by derived classes
+   * @param fileType The type of file/content to generate
+   * @param contextPaths Array of paths to gather context from
    */
-  protected abstract executeGeneration(): Promise<Result<void, Error>>; // Updated return type
+  protected abstract executeGeneration(
+    fileType: T,
+    contextPaths: string[]
+  ): Promise<Result<string, Error>>;
 
   /**
    * Helper method to format error messages

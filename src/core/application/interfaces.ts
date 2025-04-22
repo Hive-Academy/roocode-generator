@@ -62,8 +62,14 @@ export interface ICliInterface {
   output(message: string): void;
 
   /**
-   * Prompt the user with questions.
-   * @param questions The questions to prompt.
+   * Prompt the user for input.
+   * @param options The prompt options.
+   * @returns Promise resolving to the user's response.
    */
-  prompt(questions: any): Promise<any>;
+  prompt<T extends Record<string, any>>(options: {
+    type: string;
+    name: string;
+    message: string;
+    default?: any;
+  }): Promise<T>;
 }

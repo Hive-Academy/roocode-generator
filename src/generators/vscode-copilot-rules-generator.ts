@@ -16,7 +16,10 @@ import { Inject, Injectable } from "../core/di";
  * Generates VSCode settings to configure Copilot behavior (e.g., enabling/disabling for specific languages).
  */
 @Injectable()
-export class VSCodeCopilotRulesGenerator extends BaseGenerator implements IGenerator {
+export class VSCodeCopilotRulesGenerator
+  extends BaseGenerator<string>
+  implements IGenerator<string>
+{
   /**
    * Unique name of the generator.
    */
@@ -87,115 +90,192 @@ export class VSCodeCopilotRulesGenerator extends BaseGenerator implements IGener
    * Creates or updates `.vscode/settings.json` with Copilot rules.
    * @returns Promise<Result<void, Error>> indicating generation success or failure.
    */
-  protected async executeGeneration(): Promise<Result<void, Error>> {
+  protected async executeGeneration(): Promise<Result<string, Error>> {
     this.logger.info("Executing VSCode Copilot Rules generation...");
 
     const configResult = await this.projectConfigService.loadConfig();
-    // Validation ensures config loads, but double-check for safety
     if (configResult.isErr()) {
-      // Added check for error existence before accessing message
       const errorMessage = configResult.error?.message ?? "Unknown error";
       return Result.err(
         new Error(`Failed to load project config during execution: ${errorMessage}`)
       );
     }
-    // Access value safely after isErr check
+
     const projectConfig = configResult.value;
+    if (!projectConfig?.baseDir) {
+      return Result.err(new Error("Project base directory is not defined in the configuration."));
+    }
 
-    // Define the Copilot rules structure (simple example)
-    const copilotRules = {
-      "github.copilot.enable": {
-        "*": true, // Enable globally by default
-        plaintext: false,
-        markdown: false,
-        scminput: false,
-        // Add more language-specific overrides as needed based on project type or config
-      },
-    };
+    // 1. Ensure .vscode directory exists
+    const vscodeDir = path.join(projectConfig.baseDir, ".vscode");
+    const createDirResult = await this.fileOperations.createDirectory(vscodeDir);
+    if (createDirResult.isErr()) {
+      const errorMessage = createDirResult.error?.message ?? "Unknown error";
+      return Result.err(new Error(`Failed to create .vscode directory: ${errorMessage}`));
+    }
 
-    // Ensure projectConfig and rootDir are defined before using path.join
-    if (!projectConfig?.rootDir) {
+    // 2. Copy rule files
+    const ruleFilesCopyResult = await this.copyRuleFiles(projectConfig.baseDir, vscodeDir);
+    if (ruleFilesCopyResult.isErr()) {
       return Result.err(
-        new Error("Project root directory (rootDir) is not defined in the configuration.")
+        new Error(ruleFilesCopyResult.error?.message ?? "Failed to copy rule files")
       );
     }
-    // Use baseDir (project root) instead of rootDir (.roo output) for .vscode folder
-    const settingsDir = path.join(projectConfig.baseDir ?? ".", ".vscode");
-    const settingsPath = path.join(settingsDir, "settings.json");
-    this.logger.debug(`Target settings file path: ${settingsPath}`);
 
+    // 3. Copy and modify MCP usage guide
+    const mcpGuideResult = await this.copyAndModifyMcpGuide(projectConfig.baseDir, vscodeDir);
+    if (mcpGuideResult.isErr()) {
+      return Result.err(
+        new Error(mcpGuideResult.error?.message ?? "Failed to copy and modify MCP guide")
+      );
+    }
+
+    // 4. Update settings.json
+    const settingsUpdateResult = await this.updateSettingsJson(vscodeDir);
+    if (settingsUpdateResult.isErr()) {
+      return Result.err(
+        new Error(settingsUpdateResult.error?.message ?? "Failed to update settings.json")
+      );
+    }
+
+    this.logger.info(`Successfully generated/updated VSCode Copilot rules in ${vscodeDir}`);
+    return Result.ok("VSCode Copilot rules generated successfully.");
+  }
+
+  /**
+   * Copies rule files from templates/rules to .vscode directory
+   */
+  private async copyRuleFiles(baseDir: string, vscodeDir: string): Promise<Result<void, Error>> {
+    this.logger.debug("Copying rule files to .vscode directory...");
+
+    const ruleFiles = ["architect-rules.md", "code-rules.md", "code-review-rules.md"];
+
+    for (const ruleFile of ruleFiles) {
+      const sourcePath = path.join(baseDir, "templates", "rules", ruleFile);
+      const destPath = path.join(vscodeDir, ruleFile);
+
+      // Read source file
+      const readResult = await this.fileOperations.readFile(sourcePath);
+      if (readResult.isErr()) {
+        return Result.err(
+          new Error(
+            `Failed to read rule file ${ruleFile}: ${readResult.error?.message ?? "Unknown error"}`
+          )
+        );
+      }
+
+      // Write to destination
+      const writeResult = await this.fileOperations.writeFile(destPath, readResult.value ?? "");
+      if (writeResult.isErr()) {
+        return Result.err(
+          new Error(`Failed to write rule file ${ruleFile}: ${writeResult.error?.message}`)
+        );
+      }
+    }
+
+    return Result.ok(undefined);
+  }
+
+  /**
+   * Copies and modifies the MCP usage guide to create mcp-usage-rule.md
+   */
+  private async copyAndModifyMcpGuide(
+    baseDir: string,
+    vscodeDir: string
+  ): Promise<Result<void, Error>> {
+    this.logger.debug("Copying and modifying MCP usage guide...");
+
+    const sourcePath = path.join(baseDir, "templates", "guide", "vscode-mcp-usage-guide.md");
+    const destPath = path.join(vscodeDir, "mcp-usage-rule.md");
+
+    // Read source file
+    const readResult = await this.fileOperations.readFile(sourcePath);
+    if (readResult.isErr()) {
+      return Result.err(new Error(`Failed to read MCP usage guide: ${readResult.error?.message}`));
+    }
+
+    // Modify content
+    const modifiedContent =
+      readResult.value +
+      "\n\n**Rule:** Always use tools from the defined MCP servers whenever possible.**";
+
+    // Write to destination
+    const writeResult = await this.fileOperations.writeFile(destPath, modifiedContent);
+    if (writeResult.isErr()) {
+      return Result.err(new Error(`Failed to write MCP usage rule: ${writeResult.error?.message}`));
+    }
+
+    return Result.ok(undefined);
+  }
+
+  /**
+   * Updates settings.json with rule file references
+   */
+  private async updateSettingsJson(vscodeDir: string): Promise<Result<void, Error>> {
+    this.logger.debug("Updating settings.json with rule file references...");
+
+    const settingsPath = path.join(vscodeDir, "settings.json");
     let currentSettings: Record<string, unknown> = {};
 
     // Check if settings file exists
     const readFileResult = await this.fileOperations.readFile(settingsPath);
 
-    if (readFileResult.isOk()) {
-      this.logger.debug("Existing settings.json found. Merging rules.");
+    if (readFileResult.isOk() && readFileResult.value !== undefined) {
       try {
-        // Ensure value exists before parsing
-        if (readFileResult.value !== undefined) {
-          currentSettings = JSON.parse(readFileResult.value);
-          if (typeof currentSettings !== "object" || currentSettings === null) {
-            this.logger.warn("Existing settings.json is not a valid JSON object. Overwriting.");
-            currentSettings = {};
-          }
-        } else {
-          this.logger.warn("readFile returned Ok but value is undefined. Overwriting settings.");
+        currentSettings = JSON.parse(readFileResult.value);
+        if (typeof currentSettings !== "object" || currentSettings === null) {
+          this.logger.warn("Existing settings.json is not a valid JSON object. Overwriting.");
           currentSettings = {};
         }
       } catch (error) {
-        this.logger.warn(
-          `Failed to parse existing settings.json: ${error instanceof Error ? error.message : String(error)}. Overwriting.`
-        );
-        currentSettings = {}; // Reset if parsing fails
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`Failed to parse existing settings.json: ${errorMessage}. Overwriting.`);
+        currentSettings = {};
       }
-    } else {
-      // Check if the error is specifically 'file not found'
-      // ENOENT is common across platforms for file not found
-      if (readFileResult.error?.message.includes("ENOENT")) {
-        this.logger.debug("settings.json not found. Creating new file.");
-        // Ensure .vscode directory exists
-        const createDirResult = await this.fileOperations.createDirectory(settingsDir);
-        if (createDirResult.isErr()) {
-          // Added check for error existence before accessing message
-          const errorMessage = createDirResult.error?.message ?? "Unknown error";
-          return Result.err(new Error(`Failed to create .vscode directory: ${errorMessage}`));
-        }
-      } else {
-        // Different error reading the file, return it
-        // Added check for error existence before accessing message
-        const errorMessage = readFileResult.error?.message ?? "Unknown error";
-        return Result.err(new Error(`Failed to read settings.json: ${errorMessage}`));
-      }
-    }
-
-    // Merge Copilot rules into existing settings
-    // Simple merge: Overwrites existing 'github.copilot.enable' key
-    const newSettings = {
-      ...currentSettings,
-      ...copilotRules, // Add or overwrite Copilot rules
-    };
-
-    // Write the updated settings back to the file
-    try {
-      const settingsContent = JSON.stringify(newSettings, null, 2); // Pretty print JSON
-      const writeFileResult = await this.fileOperations.writeFile(settingsPath, settingsContent);
-
-      if (writeFileResult.isErr()) {
-        // Added check for error existence before accessing message
-        const errorMessage = writeFileResult.error?.message ?? "Unknown error";
-        return Result.err(new Error(`Failed to write settings.json: ${errorMessage}`));
-      }
-
-      this.logger.info(`Successfully generated/updated VSCode Copilot rules in ${settingsPath}`);
-      return Result.ok(undefined);
-    } catch (error) {
-      // Catch potential JSON.stringify errors (unlikely with this structure)
+    } else if (readFileResult.isOk()) {
+      this.logger.warn("settings.json content is undefined. Creating new file.");
+    } else if (!readFileResult.error?.message.includes("ENOENT")) {
+      // Different error reading the file, return it
       return Result.err(
-        new Error(
-          `Failed to stringify settings JSON: ${error instanceof Error ? error.message : String(error)}`
-        )
+        new Error(`Failed to read settings.json: ${readFileResult.error?.message}`)
       );
     }
+
+    // Define the Copilot rules structure
+    const copilotRules = {
+      "github.copilot.enable": {
+        "*": true,
+        plaintext: false,
+        markdown: false,
+        scminput: false,
+      },
+    };
+
+    // Update settings with rule file references and existing Copilot rules
+    currentSettings = {
+      ...currentSettings,
+      ...copilotRules,
+      "github.copilot.chat.codeGeneration.instructions": [
+        { file: "architect-rules.md" },
+        { file: "code-rules.md" },
+        { file: "mcp-usage-rule.md" },
+      ],
+      "github.copilot.chat.reviewSelection.instructions": [
+        { file: "code-review-rules.md" },
+        { file: "mcp-usage-rule.md" },
+      ],
+    };
+
+    // Write updated settings back to file
+    const settingsContent = JSON.stringify(currentSettings, null, 2);
+    const writeFileResult = await this.fileOperations.writeFile(settingsPath, settingsContent);
+
+    if (writeFileResult.isErr()) {
+      return Result.err(
+        new Error(`Failed to write settings.json: ${writeFileResult.error?.message}`)
+      );
+    }
+
+    return Result.ok(undefined);
   }
 }
