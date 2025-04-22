@@ -39,7 +39,6 @@ export class VSCodeCopilotRulesGenerator
   constructor(
     @Inject("Container") serviceContainer: Container, // Inject Container
     @Inject("IFileOperations") fileOperations: IFileOperations,
-
     @Inject("ILogger") logger: ILogger,
     @Inject("IProjectConfigService") projectConfigService: IProjectConfigService
   ) {
@@ -148,7 +147,7 @@ export class VSCodeCopilotRulesGenerator
   private async copyRuleFiles(baseDir: string, vscodeDir: string): Promise<Result<void, Error>> {
     this.logger.debug("Copying rule files to .vscode directory...");
 
-    const ruleFiles = ["architect-rules.md", "code-rules.md", "code-review-rules.md"];
+    const ruleFiles = ["architect-rule.md", "code-rule.md", "code-review-rule.md"];
 
     for (const ruleFile of ruleFiles) {
       const sourcePath = path.join(baseDir, "templates", "rules", ruleFile);
@@ -220,7 +219,16 @@ export class VSCodeCopilotRulesGenerator
     // Check if settings file exists
     const readFileResult = await this.fileOperations.readFile(settingsPath);
 
-    if (readFileResult.isOk() && readFileResult.value !== undefined) {
+    if (readFileResult.isErr() && readFileResult.error?.message.includes("ENOENT")) {
+      // File doesn't exist, create it with empty object
+      this.logger.debug("settings.json does not exist. Creating with empty object.");
+      const createResult = await this.fileOperations.writeFile(settingsPath, "{}");
+      if (createResult.isErr()) {
+        return Result.err(
+          new Error(`Failed to create settings.json: ${createResult.error?.message}`)
+        );
+      }
+    } else if (readFileResult.isOk() && readFileResult.value !== undefined) {
       try {
         currentSettings = JSON.parse(readFileResult.value);
         if (typeof currentSettings !== "object" || currentSettings === null) {
@@ -256,13 +264,14 @@ export class VSCodeCopilotRulesGenerator
       ...currentSettings,
       ...copilotRules,
       "github.copilot.chat.codeGeneration.instructions": [
-        { file: "architect-rules.md" },
-        { file: "code-rules.md" },
         { file: "mcp-usage-rule.md" },
+        { file: "boomerang-rule.md" },
+        { file: "architect-rule.md" },
+        { file: "code-rule.md" },
       ],
       "github.copilot.chat.reviewSelection.instructions": [
-        { file: "code-review-rules.md" },
         { file: "mcp-usage-rule.md" },
+        { file: "code-review-rule.md" },
       ],
     };
 
