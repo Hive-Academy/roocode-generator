@@ -57,6 +57,7 @@ Every code review must verify that implementation:
    ```
 
 2. **Validates Architectural Compliance**:
+
    ```markdown
    ## Architecture Compliance
 

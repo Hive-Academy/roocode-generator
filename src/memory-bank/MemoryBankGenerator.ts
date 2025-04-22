@@ -231,20 +231,30 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
         return Result.err(new Error("LLM response is undefined"));
       }
 
+      // Strip markdown code blocks from LLM response
+      const strippedContentResult = this.contentProcessor.stripMarkdownCodeBlock(llmResponse.value);
+      if (strippedContentResult.isErr()) {
+        return Result.err(
+          strippedContentResult.error ?? new Error("Failed to strip markdown code blocks")
+        );
+      }
+
+      const strippedContent = strippedContentResult.value;
+      if (!strippedContent) {
+        return Result.err(new Error("Stripped content is undefined"));
+      }
+
       // Process the template with enhanced metadata
-      const processedContentResult = await this.contentProcessor.processTemplate(
-        llmResponse.value,
-        {
-          fileType: String(fileTypeToGenerate),
-          baseDir: process.cwd(),
-          projectName: "memory-bank",
-          projectContext: projectContext,
-          taskId: this.generateTaskId(),
-          taskName: `Generate ${String(fileTypeToGenerate)}`,
-          implementationSummary: `Generated ${String(fileTypeToGenerate)} based on project context`,
-          currentDate: new Date().toISOString().split("T")[0],
-        }
-      );
+      const processedContentResult = await this.contentProcessor.processTemplate(strippedContent, {
+        fileType: String(fileTypeToGenerate),
+        baseDir: process.cwd(),
+        projectName: "memory-bank",
+        projectContext: projectContext,
+        taskId: this.generateTaskId(),
+        taskName: `Generate ${String(fileTypeToGenerate)}`,
+        implementationSummary: `Generated ${String(fileTypeToGenerate)} based on project context`,
+        currentDate: new Date().toISOString().split("T")[0],
+      });
       if (processedContentResult.isErr()) {
         return Result.err(processedContentResult.error ?? new Error("Failed to process content"));
       }
@@ -338,44 +348,24 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
         this.logger.info(`Generated ${String(fileType)} at ${outputFilePath}`);
       }
 
-      // Copy template files
+      // Copy templates directory
       this.logger.info("Copying template files...");
-      const templateFiles = [
-        "completion-report-template.md",
-        "implementation-plan-template.md",
-        "mode-acknowledgment-template.md",
-        "task-description-template.md",
-      ];
+      const sourceTemplatesDir = path.join("templates", "memory-bank", "templates");
+      const destTemplatesDir = path.join(memoryBankDir, "templates");
 
-      for (const templateFile of templateFiles) {
-        const sourceTemplate = path.join("templates", "memory-bank", "templates", templateFile);
-        const destTemplate = path.join(templatesDir, templateFile);
-
-        this.logger.debug(`Reading template: ${sourceTemplate}`);
-        const readResult = await fileOps.readFile(sourceTemplate);
-        if (readResult.isErr()) {
-          this.logger.error(
-            `Failed to read template ${templateFile}: ${readResult.error?.message ?? "Unknown error"}`
-          );
-          continue;
-        }
-
-        const templateContent = readResult.value;
-        if (!templateContent) {
-          this.logger.error(`Empty template content for ${templateFile}`);
-          continue;
-        }
-
-        this.logger.debug(`Writing template to: ${destTemplate}`);
-        const writeResult = await fileOps.writeFile(destTemplate, templateContent);
-        if (writeResult.isErr()) {
-          this.logger.error(
-            `Failed to write template ${templateFile}: ${writeResult.error?.message ?? "Unknown error"}`
-          );
-          continue;
-        }
-
-        this.logger.info(`Copied template: ${templateFile}`);
+      this.logger.debug(`Copying templates from ${sourceTemplatesDir} to ${destTemplatesDir}`);
+      const copyResult = await this.copyDirectoryRecursive(
+        fileOps,
+        sourceTemplatesDir,
+        destTemplatesDir
+      );
+      if (copyResult.isErr()) {
+        this.logger.error(
+          `Failed to copy templates: ${copyResult.error?.message ?? "Unknown error"}`
+        );
+        // Continue execution even if template copying fails
+      } else {
+        this.logger.info("Templates copied successfully");
       }
 
       this.logger.info("Memory bank generation completed");
@@ -436,6 +426,98 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
 
   private generateTaskId(): string {
     return `task-${Date.now().toString(36)}`;
+  }
+
+  /**
+   * Recursively copies a directory from source to destination.
+   * @param fileOps - File operations service
+   * @param sourceDir - Source directory path
+   * @param destDir - Destination directory path
+   * @returns A Result indicating success or failure
+   */
+  private async copyDirectoryRecursive(
+    fileOps: IFileOperations,
+    sourceDir: string,
+    destDir: string
+  ): Promise<Result<void, Error>> {
+    try {
+      // Create destination directory if it doesn't exist
+      const createDirResult = await fileOps.createDirectory(destDir);
+      if (createDirResult.isErr()) {
+        return Result.err(
+          new Error(
+            `Failed to create directory ${destDir}: ${createDirResult.error?.message ?? "Unknown error"}`
+          )
+        );
+      }
+
+      // Read source directory contents
+      const readDirResult = await fileOps.readDir(sourceDir);
+      if (readDirResult.isErr()) {
+        return Result.err(
+          new Error(
+            `Failed to read directory ${sourceDir}: ${readDirResult.error?.message ?? "Unknown error"}`
+          )
+        );
+      }
+
+      const entries = readDirResult.value;
+      if (!entries) {
+        return Result.err(new Error(`No entries found in directory ${sourceDir}`));
+      }
+
+      // Process each entry
+      for (const entry of entries) {
+        const sourcePath = path.join(sourceDir, entry.name);
+        const destPath = path.join(destDir, entry.name);
+
+        // Validate paths before operations
+        if (!fileOps.validatePath(sourcePath)) {
+          return Result.err(new Error(`Invalid source path: ${sourcePath}`));
+        }
+
+        if (!fileOps.validatePath(destPath)) {
+          return Result.err(new Error(`Invalid destination path: ${destPath}`));
+        }
+
+        if (entry.isDirectory()) {
+          // Recursively copy subdirectory
+          const copyResult = await this.copyDirectoryRecursive(fileOps, sourcePath, destPath);
+          if (copyResult.isErr()) {
+            return copyResult;
+          }
+        } else {
+          // Copy file
+          const readResult = await fileOps.readFile(sourcePath);
+          if (readResult.isErr()) {
+            return Result.err(
+              new Error(
+                `Failed to read file ${sourcePath}: ${readResult.error?.message ?? "Unknown error"}`
+              )
+            );
+          }
+
+          const content = readResult.value;
+          if (!content) {
+            return Result.err(new Error(`Empty content for file ${sourcePath}`));
+          }
+
+          const writeResult = await fileOps.writeFile(destPath, content);
+          if (writeResult.isErr()) {
+            return Result.err(
+              new Error(
+                `Failed to write file ${destPath}: ${writeResult.error?.message ?? "Unknown error"}`
+              )
+            );
+          }
+        }
+      }
+
+      return Result.ok(undefined);
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      return Result.err(err);
+    }
   }
 
   public async validate(): Promise<Result<void, Error>> {

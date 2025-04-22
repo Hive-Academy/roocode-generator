@@ -88,29 +88,32 @@ export function registerServices(): void {
   });
 
   // Register client factory functions for each provider
-  container.registerFactory<() => ChatOpenAI>("OpenAIClientFactory", () => {
-    return () =>
+  container.registerFactory<(config: LLMConfig) => ChatOpenAI>("OpenAIClientFactory", () => {
+    return (config: LLMConfig) =>
       new ChatOpenAI({
-        modelName: process.env.LLM_MODEL || "gpt-4",
-        temperature: 0.2,
-        openAIApiKey: process.env.OPENAI_API_KEY || "",
+        modelName: config.model,
+        temperature: config.temperature,
+        openAIApiKey: config.apiKey,
       });
   });
 
-  container.registerFactory<() => ChatGoogleGenerativeAI>("GoogleGenAIClientFactory", () => {
-    return () =>
-      new ChatGoogleGenerativeAI({
-        model: process.env.LLM_MODEL || "models/chat-bison-001",
-        temperature: 0.2,
-        apiKey: process.env.GOOGLE_API_KEY || "",
-      });
-  });
+  container.registerFactory<(config: LLMConfig) => ChatGoogleGenerativeAI>(
+    "GoogleGenAIClientFactory",
+    () => {
+      return (config: LLMConfig) =>
+        new ChatGoogleGenerativeAI({
+          model: config.model,
+          temperature: config.temperature,
+          apiKey: config.apiKey,
+        });
+    }
+  );
 
-  container.registerFactory<() => ChatAnthropic>("AnthropicClientFactory", () => {
-    return () =>
+  container.registerFactory<(config: LLMConfig) => ChatAnthropic>("AnthropicClientFactory", () => {
+    return (config: LLMConfig) =>
       new ChatAnthropic({
-        modelName: process.env.LLM_MODEL || "claude-v1",
-        anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
+        modelName: config.model,
+        anthropicApiKey: config.apiKey,
       });
   });
 
@@ -118,12 +121,16 @@ export function registerServices(): void {
   // Register provider factories that return Results
   container.registerFactory<LLMProviderFactory>("ILLMProvider.OpenAI.Factory", () => {
     try {
-      const clientFactory = resolveDependency<() => ChatOpenAI>(container, "OpenAIClientFactory");
+      const clientFactory = resolveDependency<(config: LLMConfig) => ChatOpenAI>(
+        container,
+        "OpenAIClientFactory"
+      );
       const logger = resolveDependency<ILogger>(container, "ILogger");
 
       return function factory(config: LLMConfig): Result<ILLMProvider, Error> {
         try {
-          return Result.ok(new OpenAILLMProvider(config, clientFactory));
+          const client = clientFactory(config);
+          return Result.ok(new OpenAILLMProvider(config, () => client));
         } catch (error) {
           logger.error(
             `Error creating OpenAI provider: ${error instanceof Error ? error.message : String(error)}`,
@@ -144,7 +151,7 @@ export function registerServices(): void {
 
   container.registerFactory<LLMProviderFactory>("ILLMProvider.GoogleGenAI.Factory", () => {
     try {
-      const clientFactory = resolveDependency<() => ChatGoogleGenerativeAI>(
+      const clientFactory = resolveDependency<(config: LLMConfig) => ChatGoogleGenerativeAI>(
         container,
         "GoogleGenAIClientFactory"
       );
@@ -152,7 +159,8 @@ export function registerServices(): void {
 
       return function factory(config: LLMConfig): Result<ILLMProvider, Error> {
         try {
-          return Result.ok(new GoogleGenAILLMProvider(config, clientFactory));
+          const client = clientFactory(config);
+          return Result.ok(new GoogleGenAILLMProvider(config, () => client));
         } catch (error) {
           logger.error(
             `Error creating Google GenAI provider: ${error instanceof Error ? error.message : String(error)}`,
@@ -173,7 +181,7 @@ export function registerServices(): void {
 
   container.registerFactory<LLMProviderFactory>("ILLMProvider.Anthropic.Factory", () => {
     try {
-      const clientFactory = resolveDependency<() => ChatAnthropic>(
+      const clientFactory = resolveDependency<(config: LLMConfig) => ChatAnthropic>(
         container,
         "AnthropicClientFactory"
       );
@@ -181,7 +189,8 @@ export function registerServices(): void {
 
       return function factory(config: LLMConfig): Result<ILLMProvider, Error> {
         try {
-          return Result.ok(new AnthropicLLMProvider(config, clientFactory));
+          const client = clientFactory(config);
+          return Result.ok(new AnthropicLLMProvider(config, () => client));
         } catch (error) {
           logger.error(
             `Error creating Anthropic provider: ${error instanceof Error ? error.message : String(error)}`,
