@@ -1,7 +1,7 @@
 import { Injectable, Inject } from "../core/di/decorators";
 import ora from "ora";
 import chalk from "chalk";
-import { MemoryBankGenerator } from "../memory-bank/MemoryBankGenerator";
+import { MemoryBankGenerator } from "../memory-bank/memory-bank-generator";
 import { IFileOperations } from "../core/file-operations/interfaces";
 import { ILogger } from "../core/services/logger-service";
 import { IProjectContextService } from "../memory-bank/interfaces";

@@ -12,3 +12,4 @@ dist/
 *.tmp
 coverage/
 /llm.config.json
+/RooCode-Common-Code-Practices.md

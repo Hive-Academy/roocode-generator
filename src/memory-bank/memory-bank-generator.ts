@@ -289,24 +289,12 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
         return Result.err(new Error("IFileOperations is undefined after resolution"));
       }
 
-      // Create the memory-bank directory
-      const memoryBankDir = path.join(outputDir, "memory-bank");
+      // Create the memory-bank directory and templates subdirectory
       const dirResult = await this.fileManager.createMemoryBankDirectory(outputDir);
       if (dirResult.isErr()) {
         return Result.err(
           new Error(
-            `Failed to create memory-bank directory: ${dirResult.error?.message ?? "Unknown error"}`
-          )
-        );
-      }
-
-      // Create templates directory
-      const templatesDir = path.join(memoryBankDir, "templates");
-      const templatesDirResult = await fileOps.createDirectory(templatesDir);
-      if (templatesDirResult.isErr()) {
-        return Result.err(
-          new Error(
-            `Failed to create templates directory: ${templatesDirResult.error?.message ?? "Unknown error"}`
+            `Failed to create memory-bank directory structure: ${dirResult.error?.message ?? "Unknown error"}`
           )
         );
       }
@@ -314,6 +302,7 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
       // Generate each memory bank file type
       this.logger.info("Generating memory bank files...");
       const fileTypesToGenerate = Object.values(MemoryBankFileType);
+      const memoryBankDir = path.join(outputDir, "memory-bank");
 
       for (const fileType of fileTypesToGenerate) {
         // Generate content

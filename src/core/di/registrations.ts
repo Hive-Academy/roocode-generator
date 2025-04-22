@@ -42,7 +42,7 @@ import { RoomodesGenerator } from "../../generators/roomodes-generator";
 import { RulesGenerator } from "../../generators/rules-generator";
 import { SystemPromptsGenerator } from "../../generators/system-prompts-generator";
 import { VSCodeCopilotRulesGenerator } from "../../generators/vscode-copilot-rules-generator";
-import { ContentProcessor } from "../../memory-bank/ContentProcessor";
+import { ContentProcessor } from "../../memory-bank/content-processor";
 import {
   IContentProcessor,
   IMemoryBankFileManager,
@@ -51,12 +51,12 @@ import {
   IProjectContextService,
   IPromptBuilder,
 } from "../../memory-bank/interfaces"; // Import MemoryBank dependencies
-import { MemoryBankFileManager } from "../../memory-bank/MemoryBankFileManager";
-import { MemoryBankGenerator } from "../../memory-bank/MemoryBankGenerator";
-import { MemoryBankTemplateManager } from "../../memory-bank/MemoryBankTemplateManager";
-import { MemoryBankValidator } from "../../memory-bank/MemoryBankValidator";
-import { ProjectContextService } from "../../memory-bank/ProjectContextService";
-import { PromptBuilder } from "../../memory-bank/PromptBuilder";
+import { MemoryBankFileManager } from "../../memory-bank/memory-bank-file-manager";
+import { MemoryBankGenerator } from "../../memory-bank/memory-bank-generator";
+import { MemoryBankTemplateManager } from "../../memory-bank/memory-bank-template-manager";
+import { MemoryBankValidator } from "../../memory-bank/memory-bank-validator";
+import { ProjectContextService } from "../../memory-bank/project-context-service";
+import { PromptBuilder } from "../../memory-bank/prompt-builder";
 import { Result } from "../result/result";
 import { MemoryBankCommandHandler } from "../../commands/memory-bank-command-handler";
 import { Factory } from "./types";
