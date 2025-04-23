@@ -16,3 +16,4 @@ coverage/
 *.tmp
 README.md
 LICENSE
+/llm.config.json
