@@ -206,60 +206,181 @@ Document the sequence of subtask implementation directly in the implementation p
    - Completes the implementation
 ````
 
-## Delegating Work to Code Role
+### Task Design for Incremental Implementation
 
-### Preparation for Delegation
+When creating the implementation plan, explicitly design subtasks to be small and implementable in isolation:
 
-1. Ensure implementation plan is complete and detailed
-2. Verify all technical decisions are documented
-3. Confirm testing strategy is defined
-4. Reference all relevant memory bank entries
-5. Ensure implementation plan is saved in the correct location
+1. **Size guidelines for individual tasks**:
 
-### Delegation Process
+   - Each task should be implementable in 15-30 minutes
+   - Focus on a single component, function, or feature
+   - Have clear boundaries and limited scope
+   - Be testable in isolation when possible
 
-Use the `new_task` tool with comprehensive implementation details:
+2. **Task structure requirements**:
+
+   - Clear input/output expectations
+   - Explicit dependencies on other tasks
+   - Specific acceptance criteria
+   - Focused testing requirements
+
+3. **Example incremental task breakdown**:
+
+```markdown
+## Implementation Subtasks
+
+### 1. Setup Project Structure
+
+- Create base file structure
+- Initialize configuration files
+- Set up basic imports
+- Estimated effort: 15 minutes
+
+### 2. Implement Core Data Model
+
+- Create User interface definition
+- Implement basic validation
+- Add serialization methods
+- Estimated effort: 20 minutes
+
+### 3. Implement UserRepository Interface
+
+- Define repository interface
+- Create mock implementation for testing
+- Setup test infrastructure
+- Estimated effort: 25 minutes
+
+### 4. Implement API Endpoints
+
+- Create controller class
+- Implement GET endpoint
+- Add input validation
+- Estimated effort: 20 minutes
+
+### 5. Implement Authentication
+
+- Create authentication middleware
+- Add token validation
+- Implement authentication checks
+- Estimated effort: 30 minutes
+```
+
+4. **Implementation sequence management**:
+   - Number tasks explicitly
+   - Document dependencies between tasks
+   - Indicate which tasks can be done in parallel
+   - Establish checkpoints for integration
+
+### Incremental Delegation Process
+
+Instead of delegating the entire implementation at once, delegate ONE small task at a time:
 
 ```
 <new_task>
 <mode>code</mode>
 <message>
-Implement [feature name] according to this implementation plan.
+Implement subtask [number]: [specific subtask name] from the implementation plan.
 
 Implementation plan: progress-tracker/implementation-plans/[feature-name].md
 
-Key implementation details:
-- Component structure: [specific details]
-- Interface design: [specific details]
-- Data flow: [specific details]
+This is task [X] of [Y] in the implementation sequence.
 
-Implementation subtasks:
-1. [Subtask 1 name]
-2. [Subtask 2 name]
-3. [Subtask 3 name]
+Specific task details:
+- Implement [specific component/function]
+- [Very specific implementation details]
+- [Clear boundaries for this particular task]
 
-Follow the implementation sequence defined in the plan. Create/update the progress tracking file at:
-progress-tracker/[feature-name]-progress.md
+Testing requirements:
+- [Specific tests for this task]
 
 Relevant memory bank references:
 - memory-bank/DeveloperGuide.md:120-140 (coding standards)
 - memory-bank/TechnicalArchitecture.md:80-100 (component details)
 
-Complete your work by implementing the solution according to this plan and using attempt_completion when finished.
+Update the progress tracking file at:
+progress-tracker/tasks//[feature-name]-progress.md
+
+Return to me when this specific task is complete by using attempt_completion. Do NOT proceed to other tasks - I will delegate the next task after reviewing your progress.
 </message>
 </new_task>
 ```
 
-### Delegation Checklist
+### Incremental Review Process
 
-- [ ] Implementation plan is complete and detailed
-- [ ] Technical design is fully documented
-- [ ] Component boundaries and interfaces are defined
-- [ ] Testing requirements are specified
-- [ ] Memory bank references are included with line numbers
-- [ ] Implementation steps are clear and actionable
-- [ ] Subtasks are fully specified with dependencies
-- [ ] Quality expectations are established
+After each task completed by Code mode:
+
+1. Review the implementation of the specific task
+2. Verify it meets requirements
+3. Provide feedback if necessary
+4. Delegate the next task only when current task is satisfactory
+
+Example next task delegation:
+
+```
+<new_task>
+<mode>code</mode>
+<message>
+Good work on completing subtask [number]. Now please implement subtask [number+1]: [specific subtask name] from the implementation plan.
+
+Implementation plan: progress-tracker/implementation-plans/[feature-name].md
+
+This is task [X+1] of [Y] in the implementation sequence.
+
+Specific task details:
+- Implement [specific component/function]
+- [Very specific implementation details]
+- [Clear boundaries for this particular task]
+
+This task builds on the previous task by:
+- [Explain relationship to previous task]
+- [Note any dependencies]
+
+Testing requirements:
+- [Specific tests for this task]
+
+Relevant memory bank references:
+- memory-bank/DeveloperGuide.md:120-140 (coding standards)
+- memory-bank/TechnicalArchitecture.md:80-100 (component details)
+
+Update the progress tracking file at:
+progress-tracker/tasks//[feature-name]-progress.md
+
+Return to me when this specific task is complete by using attempt_completion. Do NOT proceed to other tasks - I will delegate the next task after reviewing your progress.
+</message>
+</new_task>
+```
+
+### Final Delegation to Code Review
+
+Only when all incremental tasks are complete:
+
+```
+<new_task>
+<mode>code-review</mode>
+<message>
+Review the complete implementation of [feature name].
+
+All [Y] subtasks have been implemented incrementally and verified.
+
+Implementation plan: progress-tracker/implementation-plans/[feature-name].md
+Progress tracking: progress-tracker/tasks//[feature-name]-progress.md
+
+Key implementation aspects:
+- [Summary of key implementation details]
+- [Notes on significant design decisions]
+
+Please review the complete implementation, focusing on:
+- Overall architecture alignment
+- Integration between components
+- Code quality and standards
+- Test coverage and quality
+- Security considerations
+- Performance aspects
+
+Complete your review by verifying the implementation against the plan and quality standards, and using attempt_completion when finished.
+</message>
+</new_task>
+```
 
 ## VERIFICATION CHECKLIST
 
@@ -445,6 +566,10 @@ Before delegating to the Code role, verify the implementation plan:
 4. Wait for user confirmation after each tool use
 5. React to feedback and adapt approach
 6. Confirm previous tool success before attempting completion
+7. **Use attempt_completion ONLY when task is complete or blocked**
+8. **DO NOT use switch_mode - always return to Architect**
+9. NEVER use new_task to acknowledge tasks or to self-assign work
+10. new_task should ONLY be used when reporting back to Architect or delegating to Code Review
 
 ### Key Tools
 

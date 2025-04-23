@@ -10,7 +10,7 @@ export interface ParsedArgs {
   options: Record<string, any>;
 }
 
-@Injectable() // Add Injectable decorator
+@Injectable()
 export class CliInterface implements ICliInterface {
   private program: Command;
   private parsedArgs: ParsedArgs = { command: null, options: {} };
@@ -39,11 +39,7 @@ export class CliInterface implements ICliInterface {
         "Specify which generators to run (e.g., MemoryBank Rules)"
       )
       .option("-t, --template <template>", "Specify the template to use (if applicable)")
-      .option("-o, --output <output>", "Specify the output directory (if applicable)")
-      .option(
-        "-m, --modes <modes...>",
-        "Specify which modes to generate (e.g., architect boomerang code code-review)"
-      );
+      .option("-o, --output <output>", "Specify the output directory (if applicable)");
 
     // Add new subcommand: generate memory-bank <fileType>
     generateCommand
@@ -70,17 +66,7 @@ export class CliInterface implements ICliInterface {
         }
       }
 
-      // Handle modes option
-      let modes: string[] = [];
-      if (options.modes) {
-        if (Array.isArray(options.modes)) {
-          modes = options.modes.map(String);
-        } else {
-          modes = [String(options.modes)];
-        }
-      }
-
-      this.parsedArgs.options = { ...options, generators, modes };
+      this.parsedArgs.options = { ...options, generators };
     });
 
     // Example command: config

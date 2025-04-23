@@ -50,13 +50,18 @@ export interface IFileOperations {
    * @returns A Result containing an array of Dirent objects on success, or an error on failure.
    */
   readDir(path: string): Promise<Result<Dirent[], Error>>;
+
   /**
    * Checks if a file or directory exists at the given path.
    * @param path - The file or directory path to check.
    * @returns A Result containing a boolean indicating existence on success, or an error on failure.
    */
   exists(path: string): Promise<Result<boolean, Error>>;
-}
 
-// Assuming Dirent type is available globally or imported elsewhere if needed
-// import { Dirent } from 'fs'; // Example import if Dirent is not global
+  /**
+   * Checks if the given path is a directory.
+   * @param path - The path to check.
+   * @returns A Result containing a boolean indicating if the path is a directory, or an error on failure.
+   */
+  isDirectory(path: string): Promise<Result<boolean, Error>>;
+}

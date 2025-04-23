@@ -14,10 +14,6 @@ import { Result } from "../result/result";
 import { ILogger } from "../services/logger-service";
 
 /**
- * Minimal Logger interface for DI to avoid missing import errors.
- */
-
-/**
  * FileOperations service implementation.
  * Provides type-safe, error-handled file system operations.
  */
@@ -146,6 +142,7 @@ export class FileOperations implements IFileOperations {
       return Result.err(new FileOperationError(path, errObj));
     }
   }
+
   /**
    * Checks if a file or directory exists at the given path.
    * @param path - The file or directory path to check.
@@ -168,6 +165,30 @@ export class FileOperations implements IFileOperations {
       // Other errors (e.g., permissions) should be reported
       const errObj = error instanceof Error ? error : new Error(String(error));
       this.logger.error(`Error checking existence of path: ${path}`, errObj);
+      return Result.err(new FileOperationError(path, errObj));
+    }
+  }
+
+  /**
+   * Checks if the given path is a directory.
+   * @param path - The path to check.
+   * @returns A Result containing a boolean indicating if the path is a directory, or an error on failure.
+   */
+  async isDirectory(path: string): Promise<Result<boolean, FileOperationError>> {
+    try {
+      const normalizedPath = this.normalizePath(path);
+      if (!this.validatePath(normalizedPath)) {
+        this.logger.error(`Invalid path provided to isDirectory: ${path}`);
+        return Result.err(new InvalidPathError(path));
+      }
+      const stats = await fsPromises.stat(normalizedPath);
+      return Result.ok(stats.isDirectory());
+    } catch (error: unknown) {
+      const errObj = error instanceof Error ? error : new Error(String(error));
+      this.logger.error(`Error checking if path is directory: ${path}`, errObj);
+      if ((errObj as any).code === "ENOENT") {
+        return Result.err(new FileNotFoundError(path, errObj));
+      }
       return Result.err(new FileOperationError(path, errObj));
     }
   }

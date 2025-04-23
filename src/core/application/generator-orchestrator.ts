@@ -5,8 +5,6 @@ import { IGenerator } from "../generators/base-generator";
 import { IProjectConfigService } from "../config/interfaces";
 import { ILogger } from "../services/logger-service";
 import { ProjectConfig } from "../../../types/shared";
-import { RulesGenerator } from "../../generators/rules-generator";
-import { MultiModeRulesConfig } from "../../generators/rules/interfaces";
 
 @Injectable()
 export class GeneratorOrchestrator implements IGeneratorOrchestrator {
@@ -65,8 +63,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
 
   async executeGenerators(
     config: ProjectConfig,
-    selectedGenerators: string[],
-    options?: { modes?: string[] }
+    selectedGenerators: string[]
   ): Promise<Result<void, Error>> {
     this.logger.info(`Starting generator orchestration for: ${selectedGenerators.join(", ")}`);
 
@@ -84,33 +81,11 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       this.logger.info(`Executing generator: ${genName}`);
 
       try {
-        // Special handling for rules generator with multiple modes
-        if (genName === "rules" && options?.modes && generator instanceof RulesGenerator) {
-          const multiModeConfig: MultiModeRulesConfig = {
-            ...config,
-            modes: options.modes,
-            contextPaths: [process.cwd()],
-            options: {
-              analysisDepth: "detailed",
-              format: "markdown",
-              includeExamples: true,
-            },
-          };
-
-          const result = await generator.generateRulesForModes(multiModeConfig);
-          if (result.isErr()) {
-            const errorMsg = result.error?.message ?? `Unknown error in generator ${genName}`;
-            this.logger.error(`Generator ${genName} failed: ${errorMsg}`);
-            return Result.err(new Error(errorMsg));
-          }
-        } else {
-          // Regular single-mode generation
-          const result = await generator.generate(config, []);
-          if (result.isErr()) {
-            const errorMsg = result.error?.message ?? `Unknown error in generator ${genName}`;
-            this.logger.error(`Generator ${genName} failed: ${errorMsg}`);
-            return Result.err(new Error(errorMsg));
-          }
+        const result = await generator.generate(config, [process.cwd()]);
+        if (result.isErr()) {
+          const errorMsg = result.error?.message ?? `Unknown error in generator ${genName}`;
+          this.logger.error(`Generator ${genName} failed: ${errorMsg}`);
+          return Result.err(new Error(errorMsg));
         }
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);
@@ -123,7 +98,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     return Result.ok(undefined);
   }
 
-  async execute(selectedGenerators?: string[], options?: { modes?: string[] }): Promise<void> {
+  async execute(selectedGenerators?: string[]): Promise<void> {
     const availableGenerators = Array.from(this.generatorsMap.keys()).filter(
       (name) => !name.includes("Generator")
     );
@@ -158,7 +133,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     }
 
     const validGenerators = this.validateGenerators(generatorsToRun);
-    const result = await this.executeGenerators(config, validGenerators, options);
+    const result = await this.executeGenerators(config, validGenerators);
     if (result.isErr()) {
       this.logger.error(`Execution failed: ${result.error?.message}`, result.error);
       throw result.error ?? new Error("Execution failed");
