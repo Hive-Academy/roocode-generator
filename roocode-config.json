@@ -1,0 +1,7 @@
+{
+  "name": "roocode-generator",
+  "baseDir": ".",
+  "rootDir": ".roo",
+  "generators": ["MemoryBank"],
+  "description": "Default configuration for roocode-generator project."
+}

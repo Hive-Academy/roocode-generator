@@ -6,10 +6,12 @@ dist/
 .roocode-cache/
 .DS_Store
 .idea/
-.vscode/
 *.swp
 *.swo
 *.bak
 *.tmp
 coverage/
 /llm.config.json
+/RooCode-Common-Code-Practices.md
+/progress-tracker
+/.vscode/mcp.json
