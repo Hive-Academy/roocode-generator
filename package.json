@@ -1,6 +1,6 @@
 {
   "name": "roocode-generator",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A CLI tool to generate RooCode workflow configuration files for any tech stack.",
   "main": "generate.js",
   "bin": {
