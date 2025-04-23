@@ -40,8 +40,20 @@ import { IGenerator } from "../generators/base-generator";
 
 import { RoomodesGenerator } from "../../generators/roomodes-generator";
 import { RulesGenerator } from "../../generators/rules-generator";
+import { RulesContentProcessor } from "../../generators/rules/rules-content-processor";
+import { RulesPromptBuilder } from "../../generators/rules/rules-prompt-builder";
+import { RulesFileManager } from "../../generators/rules/rules-file-manager"; // Import RulesFileManager implementation
 import { SystemPromptsGenerator } from "../../generators/system-prompts-generator";
 import { VSCodeCopilotRulesGenerator } from "../../generators/vscode-copilot-rules-generator";
+// Corrected import path for interfaces moved from rules-generator.ts
+import { LLMConfig } from "../../../types/shared";
+import { MemoryBankCommandHandler } from "../../commands/memory-bank-command-handler";
+import {
+  IRulesContentProcessor,
+  IRulesFileManager,
+  IRulesPromptBuilder, // Import IRulesFileManager interface
+  RulesConfig,
+} from "../../generators/rules/interfaces"; // Corrected import path
 import { ContentProcessor } from "../../memory-bank/content-processor";
 import {
   IContentProcessor,
@@ -57,10 +69,13 @@ import { MemoryBankTemplateManager } from "../../memory-bank/memory-bank-templat
 import { MemoryBankValidator } from "../../memory-bank/memory-bank-validator";
 import { ProjectContextService } from "../../memory-bank/project-context-service";
 import { PromptBuilder } from "../../memory-bank/prompt-builder";
+import { IRulesTemplateManager } from "../../types/rules-template-types";
+import { ProjectAnalyzer } from "../analysis/project-analyzer"; // Import ProjectAnalyzer implementation
+import { IProjectAnalyzer } from "../analysis/types";
 import { Result } from "../result/result";
-import { MemoryBankCommandHandler } from "../../commands/memory-bank-command-handler";
+import { RulesTemplateManager } from "../templating/rules-template-manager";
+import { TemplateProcessor } from "../templating/template-processor";
 import { Factory } from "./types";
-import { LLMConfig } from "../../../types/shared";
 
 /**
  *  @description Registers services with the DI container.
@@ -77,6 +92,15 @@ export function registerServices(): void {
   container.registerFactory<IFileOperations>("IFileOperations", () => {
     const logger = resolveDependency<ILogger>(container, "ILogger");
     return new FileOperations(logger);
+  });
+
+  // Register ProjectAnalyzer using a factory
+  container.registerFactory<IProjectAnalyzer>("IProjectAnalyzer", () => {
+    const fileOps = resolveDependency<IFileOperations>(container, "IFileOperations");
+    const logger = resolveDependency<ILogger>(container, "ILogger");
+    const llmAgent = resolveDependency<LLMAgent>(container, "LLMAgent");
+
+    return new ProjectAnalyzer(fileOps, logger, llmAgent);
   });
 
   // Register ITemplateManager using factory, configuring it to not use a default extension
@@ -230,6 +254,25 @@ export function registerServices(): void {
     return new LLMAgent(registry, fileOps, logger);
   });
 
+  // Register Rules Template System services
+  container.registerFactory<IRulesTemplateManager>("IRulesTemplateManager", () => {
+    const fileOps = resolveDependency<IFileOperations>(container, "IFileOperations");
+    const logger = resolveDependency<ILogger>(container, "ILogger");
+    const llmAgent = resolveDependency<LLMAgent>(container, "LLMAgent");
+    return new RulesTemplateManager(fileOps, logger, llmAgent);
+  });
+
+  container.registerFactory<TemplateProcessor>("TemplateProcessor", () => {
+    const templateManager = resolveDependency<IRulesTemplateManager>(
+      container,
+      "IRulesTemplateManager"
+    );
+    const projectAnalyzer = resolveDependency<IProjectAnalyzer>(container, "IProjectAnalyzer");
+    const llmAgent = resolveDependency<LLMAgent>(container, "LLMAgent");
+    const logger = resolveDependency<ILogger>(container, "ILogger");
+    return new TemplateProcessor(templateManager, projectAnalyzer, llmAgent, logger);
+  });
+
   container.registerFactory<ILLMConfigService>("ILLMConfigService", () => {
     const fileOps = resolveDependency<IFileOperations>(container, "IFileOperations");
     const logger = resolveDependency<ILogger>(container, "ILogger");
@@ -321,25 +364,55 @@ export function registerServices(): void {
     );
   });
 
-  // Register RulesGenerator as an IGenerator implementation
+  // Register RulesFileManager (NEW)
+  container.registerFactory<IRulesFileManager>("IRulesFileManager", () => {
+    const fileOps = resolveDependency<IFileOperations>(container, "IFileOperations");
+    const logger = resolveDependency<ILogger>(container, "ILogger");
+    return new RulesFileManager(fileOps, logger);
+  });
 
-  container.registerFactory<IGenerator<string>>("IGenerator.Rules", () => {
-    const templateManager = resolveDependency<ITemplateManager>(container, "ITemplateManager");
-    const fileOperations = resolveDependency<IFileOperations>(container, "IFileOperations");
+  // Register the refactored RulesGenerator (from src/generators/rules-generator.ts)
+
+  // Ensure the generic type matches BaseGenerator<RulesConfig>
+  container.registerFactory<IGenerator<RulesConfig>>("IGenerator.Rules", () => {
+    // Resolve dependencies for the actual RulesGenerator constructor
+    const serviceContainer = container; // The container instance itself
     const logger = resolveDependency<ILogger>(container, "ILogger");
     const projectConfigService = resolveDependency<IProjectConfigService>(
       container,
       "IProjectConfigService"
     );
-    // Resolve the container itself to pass to BaseService constructor
-    const serviceContainer = container; // The container instance is already available
+    // Resolve dependencies for the *simplified* RulesGenerator constructor:
+    const fileOps = resolveDependency<IFileOperations>(container, "IFileOperations");
+    const projectAnalyzer = resolveDependency<IProjectAnalyzer>(container, "IProjectAnalyzer");
+    const fileManager = resolveDependency<IRulesFileManager>(container, "IRulesFileManager"); // Resolve file manager
+    const llmAgent = resolveDependency<LLMAgent>(container, "LLMAgent");
+
+    // Instantiate using the correct constructor signature (7 arguments) from src/generators/rules-generator.ts
     return new RulesGenerator(
-      templateManager,
-      fileOperations,
+      serviceContainer,
       logger,
       projectConfigService,
-      serviceContainer
+      fileOps,
+      projectAnalyzer,
+      fileManager,
+      llmAgent
     );
+  });
+
+  // Register Rules specific services (NEW)
+  // These might be unused now if TemplateProcessor handles their logic.
+  // Review if IRulesPromptBuilder and IRulesContentProcessor are still needed.
+  container.registerFactory<IRulesPromptBuilder>("IRulesPromptBuilder", () => {
+    // Resolve dependencies if RulesPromptBuilder needs any (currently none in stub)
+    // const logger = resolveDependency<ILogger>(container, "ILogger");
+    return new RulesPromptBuilder();
+  });
+
+  container.registerFactory<IRulesContentProcessor>("IRulesContentProcessor", () => {
+    // Resolve dependencies if RulesContentProcessor needs any (currently none in stub)
+    // const logger = resolveDependency<ILogger>(container, "ILogger");
+    return new RulesContentProcessor();
   });
 
   // Register SystemPromptsGenerator as an IGenerator implementation
@@ -403,10 +476,11 @@ export function registerServices(): void {
     ];
 
     // Resolve all registered generators with error handling
-    const generators: IGenerator<string>[] = [];
+    const generators: IGenerator<any>[] = []; // Use 'any' or a common base type/interface if possible
     for (const token of generatorTokens) {
       try {
-        const generator = resolveDependency<IGenerator<string>>(container, token);
+        // Resolve with 'any' temporarily if generic types differ significantly
+        const generator = resolveDependency<IGenerator<any>>(container, token);
         generators.push(generator);
       } catch (error) {
         // Log warning but continue - allows partial generator availability

@@ -146,4 +146,29 @@ export class FileOperations implements IFileOperations {
       return Result.err(new FileOperationError(path, errObj));
     }
   }
+  /**
+   * Checks if a file or directory exists at the given path.
+   * @param path - The file or directory path to check.
+   * @returns A Result containing a boolean indicating existence on success, or an error on failure.
+   */
+  async exists(path: string): Promise<Result<boolean, FileOperationError>> {
+    try {
+      const normalizedPath = this.normalizePath(path);
+      if (!this.validatePath(normalizedPath)) {
+        this.logger.error(`Invalid path provided to exists: ${path}`);
+        return Result.err(new InvalidPathError(path));
+      }
+      await fsPromises.access(normalizedPath);
+      return Result.ok(true);
+    } catch (error: any) {
+      if (error.code === "ENOENT") {
+        // File or directory does not exist
+        return Result.ok(false);
+      }
+      // Other errors (e.g., permissions) should be reported
+      const errObj = error instanceof Error ? error : new Error(String(error));
+      this.logger.error(`Error checking existence of path: ${path}`, errObj);
+      return Result.err(new FileOperationError(path, errObj));
+    }
+  }
 }

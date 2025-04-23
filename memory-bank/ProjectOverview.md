@@ -36,6 +36,7 @@ The primary purpose of the `roocode-generator` is to simplify and standardize th
 - Modular architecture allowing easy extension for different tech stacks or features.
 - Integration points for various LLMs (Anthropic, Google GenAI, OpenAI via Langchain) to assist generation.
 - Basic template engine for file structure generation based on configuration.
+- **Rules Template System:** Manages the loading, processing, and customization of rule templates for different modes, enabling easier extension and adaptation of the generator's output.
 
 ## Project Structure
 

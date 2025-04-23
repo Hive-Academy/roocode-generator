@@ -39,7 +39,11 @@ export class CliInterface implements ICliInterface {
         "Specify which generators to run (e.g., MemoryBank Rules)"
       )
       .option("-t, --template <template>", "Specify the template to use (if applicable)")
-      .option("-o, --output <output>", "Specify the output directory (if applicable)");
+      .option("-o, --output <output>", "Specify the output directory (if applicable)")
+      .option(
+        "-m, --modes <modes...>",
+        "Specify which modes to generate (e.g., architect boomerang code code-review)"
+      );
 
     // Add new subcommand: generate memory-bank <fileType>
     generateCommand
@@ -65,7 +69,18 @@ export class CliInterface implements ICliInterface {
           generators = [String(options.generators)];
         }
       }
-      this.parsedArgs.options = { ...options, generators };
+
+      // Handle modes option
+      let modes: string[] = [];
+      if (options.modes) {
+        if (Array.isArray(options.modes)) {
+          modes = options.modes.map(String);
+        } else {
+          modes = [String(options.modes)];
+        }
+      }
+
+      this.parsedArgs.options = { ...options, generators, modes };
     });
 
     // Example command: config

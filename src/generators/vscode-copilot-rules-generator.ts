@@ -217,9 +217,9 @@ export class VSCodeCopilotRulesGenerator
     let currentSettings: Record<string, unknown> = {};
 
     // Check if settings file exists
-    const readFileResult = await this.fileOperations.readFile(settingsPath);
+    const readFileResult = await this.fileOperations.exists(settingsPath);
 
-    if (readFileResult.isErr() && readFileResult.error?.message.includes("ENOENT")) {
+    if (readFileResult.value !== true) {
       // File doesn't exist, create it with empty object
       this.logger.debug("settings.json does not exist. Creating with empty object.");
       const createResult = await this.fileOperations.writeFile(settingsPath, "{}");
@@ -230,7 +230,8 @@ export class VSCodeCopilotRulesGenerator
       }
     } else if (readFileResult.isOk() && readFileResult.value !== undefined) {
       try {
-        currentSettings = JSON.parse(readFileResult.value);
+        const settingsContent = await this.fileOperations.readFile(settingsPath);
+        currentSettings = JSON.parse(settingsContent.value as string);
         if (typeof currentSettings !== "object" || currentSettings === null) {
           this.logger.warn("Existing settings.json is not a valid JSON object. Overwriting.");
           currentSettings = {};

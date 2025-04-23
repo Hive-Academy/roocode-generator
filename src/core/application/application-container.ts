@@ -32,10 +32,16 @@ export class ApplicationContainer {
           )
         );
       }
+      const modes = (options.modes as string[]) || [
+        "architect",
+        "boomerang",
+        "code",
+        "code-review",
+      ];
       this.logger.info(
         `Executing 'generate' command with generators: ${selectedGenerators?.join(", ") || "All (default)"}`
       );
-      await this.generatorOrchestrator.execute(selectedGenerators);
+      await this.generatorOrchestrator.execute(selectedGenerators, { modes });
       this.logger.debug("Generator orchestrator execution completed for 'generate' command.");
       return Result.ok(undefined);
     } catch (error) {

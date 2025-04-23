@@ -13,3 +13,4 @@ dist/
 coverage/
 /llm.config.json
 /RooCode-Common-Code-Practices.md
+/progress-tracker
