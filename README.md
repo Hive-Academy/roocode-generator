@@ -86,6 +86,57 @@ Add a `.releaserc.json` or update your workflow for semantic-release (see their 
 
 ---
 
+## Comprehensive Test Case: LLM-Powered Auto-Detect Workflow
+
+Follow these steps to test the full LLM-powered project analysis and configuration workflow:
+
+### 1. Set Up LLM Provider and API Key
+
+```bash
+npx roocode-llm-config
+```
+
+- Select your preferred LLM provider (OpenAI, Google Gemini, or Anthropic).
+- Enter your API key when prompted.
+
+### 2. Run the RooCode Generator CLI
+
+```bash
+npx roocode-generator
+```
+
+- When prompted, choose **auto-detect mode** (press Enter for default).
+- The CLI will analyze your project using the selected LLM. This may take a moment.
+
+### 3. Review LLM-Generated Project Config
+
+- The CLI will display a summary and the auto-detected configuration.
+- Review the suggested config values (domains, tiers, tech stack, etc.).
+- If you want to edit any values, type `n` when prompted and proceed with the interactive setup.
+- Otherwise, confirm to proceed with the auto-detected config.
+
+### 4. Generate RooCode Workflow Files
+
+- The CLI will generate all configuration, rules, system prompts, and memory bank files based on the selected config.
+- Check the `.roo/` and `memory-bank/` folders for the generated files.
+
+### 5. (Optional) Export/Import Config
+
+- After setup, you can export your config for future use.
+- To reuse a config, place `roocode.config.json` in your project root and follow the prompts.
+
+### 6. Troubleshooting
+
+- If the LLM fails or does not return a valid config, the CLI will fall back to interactive mode.
+- Ensure your API key is valid and you have network access.
+- For large projects, the LLM may truncate file contents—review the prompt and adjust as needed.
+
+---
+
+**Tip:** You can repeat this process with different LLM providers or project structures to compare results and tune your workflow.
+
+---
+
 ## Local Development
 
 - Run `npm run lint` and `npm run format` before committing.

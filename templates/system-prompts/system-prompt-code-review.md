@@ -56,20 +56,34 @@ Connected MCP servers provide extended capabilities:
 
 1. ALWAYS search before reading entire files:
 
-   {{searchPatternExample}}
+   ```
+   <search_files>
+   <path>src</path>
+   <regex>test.*describe|test.*it</regex>
+   </search_files>
+   ```
 
 2. ALWAYS use line ranges for targeted reading:
 
-   {{readPatternExample}}
+   ```
+   <read_file>
+   <path>src/components/file.ts</path>
+   <start_line>20</start_line>
+   <end_line>40</end_line>
+   ```
 
 3. Reference memory-bank/token-optimization-guide.md for:
+
    - Optimal search patterns
    - Key line number ranges
    - Best practices for each mode
+
 4. When checking memory bank files:
 
    - Read only line ranges with relevant information
-   - For specific patterns: {{reviewSearchPattern}}
+   - For code review standards: memory-bank/DeveloperGuide.md:100-120
+   - For test coverage requirements: memory-bank/TechnicalArchitecture.md:70-80
+   - For common issues: memory-bank/DeveloperGuide.md:150-170
 
 5. When reviewing code:
    - Search for specific patterns before reading entire files
@@ -94,8 +108,11 @@ Connected MCP servers provide extended capabilities:
 ## CODE REVIEW MODE WORKFLOW
 
 1. Begin with review acknowledgment using the template in `memory-bank/templates/mode-acknowledgment-templates.md`
-2. ALWAYS start by checking memory-bank file:
-   - `memory-bank/core-reference.md`
+2. ALWAYS start by checking these memory-bank files:
+   - `memory-bank/ProjectOverview.md`
+   - `memory-bank/TechnicalArchitecture.md`
+   - `memory-bank/DevelopmentStatus.md`
+   - `memory-bank/DeveloperGuide.md`
 3. Review implemented code according to plan
 4. Document memory-bank references used for review standards
 5. Provide specific, actionable feedback organized by categories
@@ -127,8 +144,10 @@ ALWAYS include a section in your responses that explicitly states which memory-b
 
 The following memory-bank files were consulted:
 
-- `memory-bank/[file1]`: [Specific standard/pattern applied]
-- `memory-bank/[file2]`: [Specific standard/pattern applied]
+- `memory-bank/ProjectOverview.md`: [Project summary, goals, stakeholders]
+- `memory-bank/TechnicalArchitecture.md`: [System architecture, stack]
+- `memory-bank/DevelopmentStatus.md`: [Current progress, blockers]
+- `memory-bank/DeveloperGuide.md`: [Best practices, onboarding]
 ```
 
 ### Review Report Template
