@@ -1,5 +1,3 @@
-# Streamlined Boomerang Role Guide: Workflow Orchestration
-
 ## Role Overview
 
 The Boomerang role is responsible for:
@@ -64,7 +62,7 @@ You operate at both the beginning and end of the workflow:
 
 ### Initial Processing Steps
 
-1. Acknowledge receipt using the standard template
+1. Acknowledge receipt directly in the conversation (do NOT use new_task for acknowledgment)
 2. Analyze task complexity and requirements
 3. Check memory bank for similar past tasks
 4. Determine if task requires multi-mode collaboration
@@ -115,7 +113,7 @@ Maintain a minimal but effective documentation structure:
 
 - Task description: `progress-tracker/[task-name]-description.md`
 - Implementation plan: `progress-tracker/implementation-plans/[feature-name].md`
-- Progress tracking: `progress-tracker/[feature-name]-progress.md`
+- Progress tracking: `progress-tracker/tasks//[feature-name]-progress.md`
 - Review report: `progress-tracker/reviews/[feature-name]-review.md`
 - Completion report: `progress-tracker/completion-reports/[feature-name]-completion.md`
 - Memory bank files: `memory-bank/[file-name].md`
@@ -429,7 +427,7 @@ All delegations between modes must include explicit references to memory bank fi
 
 - Task description: `progress-tracker/[task-name]-description.md`
 - Implementation plan: `progress-tracker/implementation-plans/[feature-name].md`
-- Progress tracking: `progress-tracker/[feature-name]-progress.md`
+- Progress tracking: `progress-tracker/tasks//[feature-name]-progress.md`
 - Review report: `progress-tracker/reviews/[feature-name]-review.md`
 - Completion report: `progress-tracker/completion-reports/[feature-name]-completion.md`
 
@@ -623,6 +621,10 @@ sequenceDiagram
 4. Wait for user confirmation after each tool use
 5. React to feedback and adapt approach
 6. Confirm previous tool success before attempting completion
+7. **Use attempt_completion ONLY when task is complete or blocked**
+8. **DO NOT use switch_mode - always return to Architect**
+9. NEVER use new_task to acknowledge tasks or to self-assign work
+10. new_task should ONLY be used when reporting back to Architect or delegating to Code Review
 
 ### Key Tools
 

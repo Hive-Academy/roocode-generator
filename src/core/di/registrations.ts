@@ -70,12 +70,14 @@ import { MemoryBankValidator } from "../../memory-bank/memory-bank-validator";
 import { ProjectContextService } from "../../memory-bank/project-context-service";
 import { PromptBuilder } from "../../memory-bank/prompt-builder";
 import { IRulesTemplateManager } from "../../types/rules-template-types";
-import { ProjectAnalyzer } from "../analysis/project-analyzer"; // Import ProjectAnalyzer implementation
+import { ProjectAnalyzer } from "../analysis/project-analyzer";
 import { IProjectAnalyzer } from "../analysis/types";
+import { ResponseParser } from "../analysis/response-parser";
 import { Result } from "../result/result";
 import { RulesTemplateManager } from "../templating/rules-template-manager";
 import { TemplateProcessor } from "../templating/template-processor";
 import { Factory } from "./types";
+import { ProgressIndicator } from "../ui/progress-indicator";
 
 /**
  *  @description Registers services with the DI container.
@@ -94,13 +96,26 @@ export function registerServices(): void {
     return new FileOperations(logger);
   });
 
+  // Register UI components
+  container.registerFactory<ProgressIndicator>("ProgressIndicator", () => {
+    return new ProgressIndicator();
+  });
+
+  // Register ResponseParser
+  container.registerFactory<ResponseParser>("ResponseParser", () => {
+    const logger = resolveDependency<ILogger>(container, "ILogger");
+    return new ResponseParser(logger);
+  });
+
   // Register ProjectAnalyzer using a factory
   container.registerFactory<IProjectAnalyzer>("IProjectAnalyzer", () => {
     const fileOps = resolveDependency<IFileOperations>(container, "IFileOperations");
     const logger = resolveDependency<ILogger>(container, "ILogger");
     const llmAgent = resolveDependency<LLMAgent>(container, "LLMAgent");
+    const responseParser = resolveDependency<ResponseParser>(container, "ResponseParser");
 
-    return new ProjectAnalyzer(fileOps, logger, llmAgent);
+    const progressIndicator = resolveDependency<ProgressIndicator>(container, "ProgressIndicator");
+    return new ProjectAnalyzer(fileOps, logger, llmAgent, responseParser, progressIndicator);
   });
 
   // Register ITemplateManager using factory, configuring it to not use a default extension
@@ -378,26 +393,13 @@ export function registerServices(): void {
     // Resolve dependencies for the actual RulesGenerator constructor
     const serviceContainer = container; // The container instance itself
     const logger = resolveDependency<ILogger>(container, "ILogger");
-    const projectConfigService = resolveDependency<IProjectConfigService>(
-      container,
-      "IProjectConfigService"
-    );
     // Resolve dependencies for the *simplified* RulesGenerator constructor:
     const fileOps = resolveDependency<IFileOperations>(container, "IFileOperations");
     const projectAnalyzer = resolveDependency<IProjectAnalyzer>(container, "IProjectAnalyzer");
-    const fileManager = resolveDependency<IRulesFileManager>(container, "IRulesFileManager"); // Resolve file manager
     const llmAgent = resolveDependency<LLMAgent>(container, "LLMAgent");
 
     // Instantiate using the correct constructor signature (7 arguments) from src/generators/rules-generator.ts
-    return new RulesGenerator(
-      serviceContainer,
-      logger,
-      projectConfigService,
-      fileOps,
-      projectAnalyzer,
-      fileManager,
-      llmAgent
-    );
+    return new RulesGenerator(serviceContainer, logger, fileOps, projectAnalyzer, llmAgent);
   });
 
   // Register Rules specific services (NEW)

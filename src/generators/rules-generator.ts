@@ -1,4 +1,3 @@
-import { IProjectConfigService } from "../core/config/interfaces";
 import { Inject, Injectable } from "../core/di";
 import { IServiceContainer } from "../core/di/interfaces";
 import { BaseGenerator } from "../core/generators/base-generator";
@@ -12,98 +11,42 @@ import {
   TechStackAnalysis,
 } from "../core/analysis/types";
 import { IFileOperations } from "../core/file-operations/interfaces";
-import {
-  GeneratedRules,
-  IRulesFileManager,
-  MultiModeRulesConfig,
-  RulesConfig,
-  RulesMetadata,
-} from "./rules/interfaces";
 import { LLMAgent } from "../core/llm/llm-agent";
+import path from "path";
+import { ProjectConfig } from "../../types/shared";
 
-type ModeConfig = Omit<MultiModeRulesConfig, "modes"> & { mode: string };
+interface RuleMetadata {
+  title: string;
+  version: string;
+  lastUpdated: string;
+  sectionId: string;
+  applicableLanguages: string[];
+  relatedSections: string[];
+}
+
+interface RuleFile {
+  filename: string;
+  content: string;
+  metadata: RuleMetadata;
+}
 
 /**
- * @description Generates mode-specific rules based on project analysis and configuration
+ * @description Generates project-specific coding standards based on tech stack analysis
  */
 @Injectable()
-export class RulesGenerator extends BaseGenerator<RulesConfig> {
+export class RulesGenerator extends BaseGenerator<ProjectConfig> {
   readonly name = "rules";
+  private readonly rulesDir = ".roo/rules";
 
   constructor(
     @Inject("IServiceContainer") protected container: IServiceContainer,
     @Inject("ILogger") private readonly logger: ILogger,
-    @Inject("IProjectConfigService") private readonly projectConfigService: IProjectConfigService,
-    @Inject("IFileOperations") private readonly fileOperations: IFileOperations,
+    @Inject("IFileOperations") private readonly fileOps: IFileOperations,
     @Inject("IProjectAnalyzer") private readonly projectAnalyzer: IProjectAnalyzer,
-    @Inject("IRulesFileManager") private readonly fileManager: IRulesFileManager,
     @Inject("LLMAgent") private readonly llmAgent: LLMAgent
   ) {
     super(container);
     this.logger.debug(`${this.name} initialized`);
-  }
-
-  public async generateRulesForModes(
-    config: MultiModeRulesConfig
-  ): Promise<Result<Map<string, GeneratedRules>, Error>> {
-    this.logger.info("Starting multi-mode rules generation");
-
-    try {
-      const results = new Map<string, GeneratedRules>();
-      const modes = config.modes || ["architect", "boomerang", "code", "code_review"];
-
-      for (const mode of modes) {
-        this.logger.debug(`Processing mode: ${mode}`);
-
-        const modeConfig: ModeConfig = {
-          ...config,
-          mode,
-        };
-
-        const generationResult = await this.executeGeneration(modeConfig);
-        if (generationResult.isErr()) {
-          return Result.err(
-            new Error(
-              `Failed to generate rules for mode ${mode}: ${generationResult.error?.message}`
-            )
-          );
-        }
-
-        const generatedContent = generationResult.value as string;
-        const projectAnalysis = await this.analyzeProject(config.contextPaths);
-        if (projectAnalysis.isErr()) {
-          return Result.err(
-            new Error(
-              `Failed to analyze project for mode ${mode}: ${projectAnalysis.error?.message}`
-            )
-          );
-        }
-
-        const generatedRules = this.createGeneratedRules(
-          mode,
-          generatedContent,
-          modeConfig,
-          projectAnalysis.value as ProjectContext
-        );
-
-        const saveResult = await this.fileManager.saveRules(generatedRules);
-        if (saveResult.isErr()) {
-          return Result.err(
-            new Error(`Failed to save rules for mode ${mode}: ${saveResult.error?.message}`)
-          );
-        }
-
-        results.set(mode, generatedRules);
-        this.logger.debug(`Successfully generated and saved rules for mode: ${mode}`);
-      }
-
-      this.logger.info(`Successfully generated rules for all ${modes.length} modes`);
-      return Result.ok(results);
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error("Unexpected error during multi-mode generation:", err);
-      return Result.err(new Error(`Multi-mode generation failed: ${err.message}`));
-    }
   }
 
   async validate(): Promise<Result<void, Error>> {
@@ -116,21 +59,58 @@ export class RulesGenerator extends BaseGenerator<RulesConfig> {
   }
 
   protected validateDependencies(): Result<void, Error> {
-    if (
-      !this.fileOperations ||
-      !this.logger ||
-      !this.projectAnalyzer ||
-      !this.fileManager ||
-      !this.projectConfigService ||
-      !this.llmAgent
-    ) {
+    if (!this.fileOps || !this.logger || !this.projectAnalyzer || !this.llmAgent) {
       return Result.err(new Error(`${this.name} generator is missing required dependencies.`));
     }
     return Result.ok(undefined);
   }
 
+  protected async executeGeneration(
+    _config: ProjectConfig,
+    contextPaths: string[]
+  ): Promise<Result<string, Error>> {
+    try {
+      this.logger.info("Generating project coding standards...");
+
+      if (!contextPaths?.length) {
+        return Result.err(new Error("No context path provided"));
+      }
+
+      const contextPath = contextPaths[0];
+      const projectContext = await this.analyzeProject([contextPath]);
+      if (projectContext.isErr()) {
+        return Result.err(projectContext.error as Error);
+      }
+
+      // Generate rules content for each section
+      const rulesContent = await this.generateRulesContent(projectContext.value as ProjectContext);
+
+      // Create rules directory
+      const rulesDir = path.join(contextPath, this.rulesDir);
+      await this.fileOps.createDirectory(rulesDir);
+
+      // Write each rule file
+      for (const ruleFile of rulesContent) {
+        const filePath = path.join(rulesDir, ruleFile.filename);
+        const fileContent = this.formatRuleContent(ruleFile.metadata, ruleFile.content);
+
+        const saveResult = await this.fileOps.writeFile(filePath, fileContent);
+        if (saveResult.isErr()) {
+          return Result.err(
+            new Error(`Failed to save rule file ${ruleFile.filename}: ${saveResult.error?.message}`)
+          );
+        }
+      }
+
+      // Return summary of generated files
+      const summary = this.generateSummary(rulesContent);
+      return Result.ok(summary);
+    } catch (error: any) {
+      return Result.err(new Error(`Rules generation failed: ${error.message}`));
+    }
+  }
+
   protected async analyzeProject(paths: string[]): Promise<Result<ProjectContext, Error>> {
-    this.logger.info(`Analyzing project context for paths: ${paths.join(", ")}`);
     try {
       const [techStackResult, structureResult, dependenciesResult] = await Promise.all([
         this.projectAnalyzer.analyzeTechStack(paths),
@@ -139,298 +119,222 @@ export class RulesGenerator extends BaseGenerator<RulesConfig> {
       ]);
 
       if (techStackResult.isErr()) {
-        return Result.err(
-          new Error(`Tech stack analysis failed: ${techStackResult.error?.message}`)
-        );
+        return Result.err(techStackResult.error as Error);
       }
       if (structureResult.isErr()) {
-        return Result.err(
-          new Error(`Project structure analysis failed: ${structureResult.error?.message}`)
-        );
+        return Result.err(structureResult.error as Error);
       }
       if (dependenciesResult.isErr()) {
-        return Result.err(
-          new Error(`Dependency analysis failed: ${dependenciesResult.error?.message}`)
-        );
+        return Result.err(dependenciesResult.error as Error);
       }
 
-      const projectContext: ProjectContext = {
+      return Result.ok({
         techStack: techStackResult.value as TechStackAnalysis,
         structure: structureResult.value as ProjectStructure,
         dependencies: dependenciesResult.value as DependencyGraph,
-      };
-
-      return Result.ok(projectContext);
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      return Result.err(new Error(`Project analysis failed: ${err.message}`));
+      });
+    } catch (error: any) {
+      return Result.err(new Error(`Project analysis failed: ${error.message}`));
     }
   }
 
-  protected async executeGeneration(
-    config: ModeConfig,
-    _contextPaths?: string[]
-  ): Promise<Result<string, Error>> {
-    this.logger.info(`Generating rules for mode: ${config.mode}`);
+  private formatRuleContent(metadata: RuleMetadata, content: string): string {
+    const yamlFrontMatter = [
+      "---",
+      `title: ${metadata.title}`,
+      `version: ${metadata.version}`,
+      `lastUpdated: ${metadata.lastUpdated}`,
+      `sectionId: ${metadata.sectionId}`,
+      `applicableLanguages: [${metadata.applicableLanguages.join(", ")}]`,
+      `relatedSections: [${metadata.relatedSections.join(", ")}]`,
+      "---",
+      "",
+      content,
+    ].join("\n");
 
-    const configValidation = this.validateConfig(config);
-    if (configValidation.isErr()) {
-      return Result.err(new Error(configValidation.error?.message || "Invalid configuration"));
-    }
+    return yamlFrontMatter;
+  }
 
-    const projectContextResult = await this.analyzeProject(config.contextPaths);
-    if (projectContextResult.isErr()) {
-      return Result.err(
-        new Error(projectContextResult.error?.message || "Project analysis failed")
-      );
-    }
+  private generateSummary(ruleFiles: RuleFile[]): string {
+    return [
+      "# Generated Rules Summary",
+      "",
+      "The following rule files have been generated:",
+      "",
+      ...ruleFiles.map((rule) => `- ${rule.filename}: ${rule.metadata.title}`),
+      "",
+      `Total files generated: ${ruleFiles.length}`,
+    ].join("\n");
+  }
 
-    const projectContext = projectContextResult.value as ProjectContext;
+  private async generateRulesContent(context: ProjectContext): Promise<RuleFile[]> {
+    const ruleFiles: RuleFile[] = [];
+    const languages = context.techStack.languages;
 
-    // Generate rules using LLM
-    const systemPrompt = `You are a software development workflow expert. Generate comprehensive rules for the ${config.mode} mode.
-    Consider the following project context:
-    - Tech Stack: ${projectContext.techStack.languages.join(", ")}
-    - Frameworks: ${projectContext.techStack.frameworks.join(", ")}
-    - Project Structure: ${JSON.stringify(projectContext.structure, null, 2)}
-    - Dependencies: ${JSON.stringify(projectContext.dependencies, null, 2)}
+    // Define rule sections
+    const sections = [
+      { id: "1", name: "code-style-and-formatting" },
+      { id: "2", name: "project-structure" },
+      { id: "3", name: "naming-conventions" },
+      { id: "4", name: "documentation" },
+      { id: "5", name: "testing" },
+      { id: "6", name: "error-handling" },
+      { id: "7", name: "performance" },
+      { id: "8", name: "security" },
+      { id: "9", name: "dependency-management" },
+      { id: "10", name: "code-review" },
+      { id: "11", name: "programming-language-best-practices" },
+    ];
 
-    Generate detailed rules that cover:
-    1. Role responsibilities and expectations
-    2. Technical requirements and standards
-    3. Workflow position and interactions with other modes
-    4. Integration guidelines and handoff procedures
-    5. Error handling and troubleshooting procedures
-    6. Best practices specific to the tech stack
-    7. Code quality standards and review criteria
-    8. Documentation requirements
-    9. Testing requirements and coverage expectations
-    10. Security considerations and practices
+    // Generate content for each section using LLM
+    for (const section of sections) {
+      const filename = `${section.id}-${section.name}.md`;
+      const sectionPrompt = this.generateSectionPrompt(section.name, context);
 
-    Format the output in markdown with clear sections and examples.
-    Include specific guidelines based on the project's tech stack and architecture.`;
+      try {
+        const llmResult = await this.llmAgent.getCompletion(sectionPrompt, JSON.stringify(context));
 
-    const userPrompt = JSON.stringify(
-      {
-        mode: config.mode,
-        analysisDepth: config.options?.analysisDepth || "detailed",
-        includeExamples: config.options?.includeExamples || true,
-        context: {
-          techStack: projectContext.techStack,
-          structure: projectContext.structure,
-          dependencies: projectContext.dependencies,
-        },
-      },
-      null,
-      2
-    );
+        if (llmResult.isErr() || !llmResult.value?.trim()) {
+          this.logger.warn(`LLM generation failed for ${filename}, using template`);
+          const content = this.generateTemplateForSection(section.name, context);
+          ruleFiles.push(this.createRuleFile(filename, content, section, languages));
+          continue;
+        }
 
-    try {
-      const llmResult = await this.llmAgent.getCompletion(systemPrompt, userPrompt);
-      if (llmResult.isErr()) {
-        this.logger.warn(
-          `LLM generation failed: ${llmResult.error?.message}, falling back to template-based generation`
-        );
-        return Result.ok(this.generateRulesContent(config.mode, projectContext));
+        ruleFiles.push(this.createRuleFile(filename, llmResult.value, section, languages));
+      } catch (error: unknown) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        this.logger.error(`Error generating content for ${filename}`, err);
+        const content = this.generateTemplateForSection(section.name, context);
+        ruleFiles.push(this.createRuleFile(filename, content, section, languages));
       }
-
-      if (!llmResult.value?.trim()) {
-        this.logger.warn("LLM returned empty response, falling back to template-based generation");
-        return Result.ok(this.generateRulesContent(config.mode, projectContext));
-      }
-
-      // Add header and metadata
-      const header = this.generateModeHeader(config.mode);
-      const content = `${header}\n\n${llmResult.value}`;
-
-      return Result.ok(content);
-    } catch (error) {
-      this.logger.error(
-        `Error during LLM generation: ${error instanceof Error ? error.message : String(error)}`
-      );
-      return Result.ok(this.generateRulesContent(config.mode, projectContext));
     }
+
+    return ruleFiles;
   }
 
-  private generateRulesContent(mode: string, context: ProjectContext): string {
-    const sections = [];
-
-    sections.push(this.generateModeHeader(mode));
-    sections.push(this.generateRoleOverview(mode));
-    sections.push(this.generateWorkflowPosition(mode));
-    sections.push(this.generateTechnicalRequirements(context));
-    sections.push(this.generateResponsibilities(mode));
-    sections.push(this.generateIntegrationGuidelines(mode, context));
-    sections.push(this.generateErrorHandling());
-
-    return sections.join("\n\n");
-  }
-
-  private generateModeHeader(mode: string): string {
-    return `# ${this.getModeTitle(mode)} Guide\n\nVersion: 1.0.0\nLast Updated: ${new Date().toISOString()}`;
-  }
-
-  private generateRoleOverview(mode: string): string {
-    const overviews: Record<string, string> = {
-      architect: "Responsible for system design, technical planning, and architectural decisions",
-      boomerang: "Orchestrates task workflow, delegates subtasks, and ensures integration",
-      code: "Implements solutions, writes tests, and maintains code quality",
-      code_review: "Reviews code, ensures standards compliance, and validates implementations",
-    };
-
-    return `## Role Overview\n\n${overviews[mode] || "Role overview not specified"}`;
-  }
-
-  private generateWorkflowPosition(mode: string): string {
-    return `## Workflow Position\n\n\`\`\`mermaid
-graph TD
-    A[Boomerang: Task Intake] --> B[Architect: Planning]
-    B --> C[Code: Implementation]
-    C --> D[Code Review: Quality Assurance]
-    D --> E[Boomerang: Integration]
-
-    style ${this.getWorkflowHighlight(mode)} fill:#92d050,stroke:#333,stroke-width:2px
-\`\`\``;
-  }
-
-  private generateTechnicalRequirements(context: ProjectContext): string {
-    const { techStack, structure } = context;
-
-    return `## Technical Requirements
-
-### Languages
-${techStack.languages.map((lang) => `- ${lang}`).join("\n")}
-
-### Frameworks
-${techStack.frameworks.map((framework) => `- ${framework}`).join("\n")}
-
-### Project Structure
-- Source Directory: ${structure.sourceDir}
-- Test Directory: ${structure.testDir}
-- Configuration Files: ${structure.configFiles.join(", ")}`;
-  }
-
-  private generateResponsibilities(mode: string): string {
-    const responsibilities: Record<string, string[]> = {
-      architect: [
-        "Design system architecture",
-        "Make technical decisions",
-        "Plan implementation approach",
-        "Define interfaces and contracts",
-      ],
-      boomerang: ["Break down tasks", "Delegate subtasks", "Track progress", "Ensure integration"],
-      code: ["Implement solutions", "Write tests", "Document code", "Follow best practices"],
-      code_review: [
-        "Review code quality",
-        "Verify test coverage",
-        "Validate implementations",
-        "Ensure standards compliance",
-      ],
-    };
-
-    return `## Responsibilities\n\n${responsibilities[mode]?.map((r) => `- ${r}`).join("\n") || ""}`;
-  }
-
-  private generateIntegrationGuidelines(mode: string, context: ProjectContext): string {
-    return `## Integration Guidelines
-
-### Project Context
-- Technology Stack: ${context.techStack.languages.join(", ")}
-- Package Manager: ${context.techStack.packageManager}
-- Testing Framework: ${context.techStack.testingFrameworks.join(", ")}
-
-### Integration Points
-- Input: Files and requirements from previous mode
-- Output: Deliverables for next mode
-- Documentation: Required for all changes
-- Testing: Required for all implementations`;
-  }
-
-  private generateErrorHandling(): string {
-    return `## Error Handling
-
-### Common Issues
-- Missing dependencies
-- Invalid configurations
-- Integration conflicts
-- Test failures
-
-### Resolution Steps
-1. Identify root cause
-2. Document the issue
-3. Implement fix
-4. Verify solution
-5. Update documentation`;
-  }
-
-  private getModeTitle(mode: string): string {
-    const titles: Record<string, string> = {
-      architect: "System Architect",
-      boomerang: "Task Orchestrator",
-      code: "Senior Developer",
-      code_review: "Quality Assurance",
-    };
-    return titles[mode] || mode;
-  }
-
-  private getWorkflowHighlight(mode: string): string {
-    const highlights: Record<string, string> = {
-      architect: "B",
-      boomerang: "A",
-      code: "C",
-      code_review: "D",
-    };
-    return highlights[mode] || "";
-  }
-
-  private createGeneratedRules(
-    mode: string,
+  private createRuleFile(
+    filename: string,
     content: string,
-    config: ModeConfig,
-    context: ProjectContext
-  ): GeneratedRules {
-    const metadata: RulesMetadata = {
-      mode,
-      format: config.options?.format ?? "markdown",
-      options: config.options
-        ? {
-            analysisDepth: config.options.analysisDepth,
-            includeExamples: config.options.includeExamples,
-          }
-        : undefined,
-    };
+    section: { id: string; name: string },
+    languages: string[]
+  ): RuleFile {
+    const title = section.name
+      .split("-")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
 
     return {
-      mode,
+      filename,
       content,
-      metadata,
-      contextualInfo: {
-        techStack: context.techStack,
-        projectStructure: context.structure,
-        generationDate: new Date().toISOString(),
+      metadata: {
+        title,
+        version: "1.0.0",
+        lastUpdated: new Date().toISOString(),
+        sectionId: section.id,
+        applicableLanguages: languages,
+        relatedSections: [], // To be populated based on relationships
       },
     };
   }
 
-  private validateConfig(config: ModeConfig): Result<void, Error> {
-    if (!config) {
-      return Result.err(new Error("Config object is missing"));
-    }
-    if (!config.mode) {
-      return Result.err(new Error("Mode is required"));
-    }
-    if (!config.contextPaths?.length) {
-      return Result.err(new Error("Context paths are required"));
-    }
-    if (config.options?.format && !["markdown", "json"].includes(config.options.format)) {
-      return Result.err(new Error("Invalid format option"));
-    }
-    if (
-      config.options?.analysisDepth &&
-      !["basic", "detailed"].includes(config.options.analysisDepth)
-    ) {
-      return Result.err(new Error("Invalid analysis depth option"));
-    }
-    return Result.ok(undefined);
+  private generateSectionPrompt(sectionName: string, context: ProjectContext): string {
+    return `You are a software development expert. Generate comprehensive coding rules and standards for the "${sectionName}" section.
+    
+Consider the following project context:
+- Tech Stack: ${context.techStack.languages.join(", ")}
+- Frameworks: ${context.techStack.frameworks.join(", ")}
+- Project Structure: ${JSON.stringify(context.structure, null, 2)}
+
+Generate detailed rules specific to ${sectionName.replace(/-/g, " ")}.
+Format the output in markdown with clear subsections, examples, and specific guidelines based on the project's tech stack.
+Include concrete examples relevant to the project's technologies.`;
+  }
+
+  private generateTemplateForSection(sectionName: string, context: ProjectContext): string {
+    // Fallback templates for each section using arrow functions to preserve 'this' context
+    const templates: { [key: string]: (context: ProjectContext) => string } = {
+      "code-style-and-formatting": () => this.generateCodingStandards(),
+      testing: () => this.generateTestingStandards(),
+      documentation: () => this.generateDocumentationStandards(),
+      security: () => this.generateSecurityGuidelines(),
+      // Add other section templates as needed...
+    };
+
+    const templateFn =
+      templates[sectionName] ||
+      (() => `# ${sectionName}\n\nStandard template content for ${sectionName}`);
+
+    return templateFn(context);
+  }
+
+  private generateCodingStandards(): string {
+    return `## Coding Standards
+
+### Code Style
+- Use consistent indentation
+- Follow language-specific naming conventions
+- Keep functions small and focused
+- Use meaningful variable and function names
+- Add comments for complex logic
+
+### Code Organization
+- Group related functionality
+- Use appropriate design patterns
+- Keep modules loosely coupled
+- Follow SOLID principles
+- Maintain clear separation of concerns`;
+  }
+
+  private generateTestingStandards(): string {
+    return `## Testing Standards
+
+### Test Requirements
+- Write unit tests for all new code
+- Maintain high test coverage
+- Include integration tests
+- Test edge cases and error conditions
+- Use meaningful test descriptions
+
+### Test Organization
+- Mirror source code structure
+- Group related tests
+- Use appropriate test fixtures
+- Mock external dependencies
+- Follow arrange-act-assert pattern`;
+  }
+
+  private generateDocumentationStandards(): string {
+    return `## Documentation Standards
+
+### Code Documentation
+- Document public APIs
+- Include usage examples
+- Explain complex algorithms
+- Document configuration options
+- Keep documentation up-to-date
+
+### Project Documentation
+- Maintain README files
+- Document setup process
+- Include troubleshooting guides
+- Document architecture decisions
+- Keep deployment guides current`;
+  }
+
+  private generateSecurityGuidelines(): string {
+    return `## Security Guidelines
+
+### Best Practices
+- Validate all inputs
+- Sanitize data outputs
+- Use secure dependencies
+- Follow security protocols
+- Implement proper authentication
+- Use secure communication
+- Handle sensitive data appropriately
+- Regular security updates
+- Audit logging
+- Error handling without information leakage`;
   }
 }
