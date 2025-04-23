@@ -116,7 +116,7 @@ export class RoomodesGenerator extends BaseGenerator<string> implements IGenerat
         {
           slug: "boomerang",
           name: "Boomerang (Technical Lead)",
-          groups: ["read", "edit", "browser", "command", "mcp"],
+          groups: ["read", "browser", "command", "mcp"],
           roleDefinition:
             "You are Roo Technical Lead, a strategic workflow orchestrator with advanced expertise in systems thinking, project management, and cross-functional coordination",
           customInstructions:
@@ -125,7 +125,19 @@ export class RoomodesGenerator extends BaseGenerator<string> implements IGenerat
         {
           slug: "architect",
           name: "Software Architect",
-          groups: ["read", "edit", "browser", "command", "mcp"],
+          groups: [
+            "read",
+            [
+              "edit",
+              {
+                fileRegex: ".(md|txt|json|ya?ml)$",
+                description: "Documentation and config files",
+              },
+            ],
+            "browser",
+            "command",
+            "mcp",
+          ],
           roleDefinition:
             "You are Roo Architect , an experienced technical leader who is inquisitive and an excellent planner with deep expertise in software architecture, systems design, and technology strategy.",
           customInstructions:
@@ -143,7 +155,19 @@ export class RoomodesGenerator extends BaseGenerator<string> implements IGenerat
         {
           slug: "code-review",
           name: "Code Reviewer",
-          groups: ["read", "edit", "browser", "command", "mcp"],
+          groups: [
+            "read",
+            [
+              "edit",
+              {
+                fileRegex: ".(md|txt|json|ya?ml)$",
+                description: "Documentation and config files",
+              },
+            ],
+            "browser",
+            "command",
+            "mcp",
+          ],
           roleDefinition:
             "You are Roo Code Reviewer, an expert code reviewer with extensive experience evaluating software across diverse languages, frameworks, and paradigms.",
           customInstructions:

@@ -5,8 +5,6 @@
       "name": "Boomerang (Technical Lead)",
       "groups": [
         "read",
-        "edit",
-        "browser",
         "command",
         "mcp"
       ],
@@ -18,7 +16,13 @@
       "name": "Software Architect",
       "groups": [
         "read",
-        "edit",
+        [
+          "edit",
+          {
+            "fileRegex": ".(md|txt|json|ya?ml)$",
+            "description": "Documentation and config files"
+          }
+        ],
         "browser",
         "command",
         "mcp"
@@ -44,7 +48,13 @@
       "name": "Code Reviewer",
       "groups": [
         "read",
-        "edit",
+        [
+          "edit",
+          {
+            "fileRegex": ".(md|txt|json|ya?ml)$",
+            "description": "Documentation and config files"
+          }
+        ],
         "browser",
         "command",
         "mcp"
