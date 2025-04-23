@@ -14,3 +14,4 @@ coverage/
 /llm.config.json
 /RooCode-Common-Code-Practices.md
 /progress-tracker
+/.vscode/mcp.json
