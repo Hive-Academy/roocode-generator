@@ -16,18 +16,21 @@ export interface IGeneratorOrchestrator {
    * Executes generators. If selectedGenerators is provided, only those are run.
    * Otherwise, all registered generators are run.
    * @param selectedGenerators Optional array of generator names to execute.
+   * @param options Additional options for generation (e.g., modes)
    */
-  execute(selectedGenerators?: string[]): Promise<void>;
+  execute(selectedGenerators?: string[], options?: { modes?: string[] }): Promise<void>;
 
   /**
    * Execute the selected generators in sequence.
    * @param config The project configuration.
    * @param selectedGenerators Array of generator names to execute.
+   * @param options Additional options for generation (e.g., modes)
    * @returns Result<void, Error> indicating success or failure.
    */
   executeGenerators(
     config: ProjectConfig,
-    selectedGenerators: string[]
+    selectedGenerators: string[],
+    options?: { modes?: string[] }
   ): Promise<Result<void, Error>>;
 }
 

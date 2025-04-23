@@ -1,34 +1,24 @@
-import { Injectable, Inject } from "../di/decorators"; // Use custom DI decorators
+import { Injectable, Inject } from "../di/decorators";
 import { IGeneratorOrchestrator } from "./interfaces";
 import { Result } from "../result/result";
 import { IGenerator } from "../generators/base-generator";
 import { IProjectConfigService } from "../config/interfaces";
 import { ILogger } from "../services/logger-service";
 import { ProjectConfig } from "../../../types/shared";
+import { RulesGenerator } from "../../generators/rules-generator";
+import { MultiModeRulesConfig } from "../../generators/rules/interfaces";
 
-/**
- * GeneratorOrchestrator coordinates execution of registered generators based on project configuration and user selection.
- */
-@Injectable() // Add Injectable decorator
+@Injectable()
 export class GeneratorOrchestrator implements IGeneratorOrchestrator {
   private generatorsMap: Map<string, IGenerator<unknown>>;
 
-  /**
-   * Constructs a GeneratorOrchestrator.
-   * @param generators Array of registered generators (provided by factory, not injected directly here).
-   * @param projectConfigService Service to access project configuration.
-   * @param logger Logger service for logging.
-   */
   constructor(
-    // Note: 'generators' is provided by the factory in registrations.ts, not via @Inject
     generators: Array<IGenerator<unknown>>,
     @Inject("IProjectConfigService") private readonly projectConfigService: IProjectConfigService,
     @Inject("ILogger") private readonly logger: ILogger
   ) {
-    // Map generators by their unique name or identifier for quick lookup
     this.generatorsMap = new Map<string, IGenerator<unknown>>();
 
-    // Standard generator identifiers
     const generatorIdentifiers = {
       "memory-bank": "MemoryBank",
       rules: "rules",
@@ -58,23 +48,25 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     }
   }
 
-  /**
-   * Initialize the orchestrator if needed.
-   */
   async initialize(): Promise<void> {
-    // No initialization logic currently
     return Promise.resolve();
   }
 
-  /**
-   * Execute the selected generators in sequence.
-   * @param config The project configuration.
-   * @param selectedGenerators Array of generator names to execute.
-   * @returns Result<void, Error> indicating success or failure.
-   */
+  private validateGenerators(selectedGenerators: string[]): string[] {
+    const validGenerators = selectedGenerators.filter((name) => {
+      const isValid = this.generatorsMap.has(name);
+      if (!isValid) {
+        this.logger.warn(`Invalid generator name: ${name}`);
+      }
+      return isValid;
+    });
+    return validGenerators;
+  }
+
   async executeGenerators(
     config: ProjectConfig,
-    selectedGenerators: string[]
+    selectedGenerators: string[],
+    options?: { modes?: string[] }
   ): Promise<Result<void, Error>> {
     this.logger.info(`Starting generator orchestration for: ${selectedGenerators.join(", ")}`);
 
@@ -92,11 +84,33 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       this.logger.info(`Executing generator: ${genName}`);
 
       try {
-        const result = await generator.generate(config, []);
-        if (result.isErr()) {
-          const errorMsg = result.error?.message ?? `Unknown error in generator ${genName}`;
-          this.logger.error(`Generator ${genName} failed: ${errorMsg}`);
-          return Result.err(new Error(errorMsg));
+        // Special handling for rules generator with multiple modes
+        if (genName === "rules" && options?.modes && generator instanceof RulesGenerator) {
+          const multiModeConfig: MultiModeRulesConfig = {
+            ...config,
+            modes: options.modes,
+            contextPaths: [process.cwd()],
+            options: {
+              analysisDepth: "detailed",
+              format: "markdown",
+              includeExamples: true,
+            },
+          };
+
+          const result = await generator.generateRulesForModes(multiModeConfig);
+          if (result.isErr()) {
+            const errorMsg = result.error?.message ?? `Unknown error in generator ${genName}`;
+            this.logger.error(`Generator ${genName} failed: ${errorMsg}`);
+            return Result.err(new Error(errorMsg));
+          }
+        } else {
+          // Regular single-mode generation
+          const result = await generator.generate(config, []);
+          if (result.isErr()) {
+            const errorMsg = result.error?.message ?? `Unknown error in generator ${genName}`;
+            this.logger.error(`Generator ${genName} failed: ${errorMsg}`);
+            return Result.err(new Error(errorMsg));
+          }
         }
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);
@@ -109,35 +123,11 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     return Result.ok(undefined);
   }
 
-  /**
-   * Execute method from IGeneratorOrchestrator interface.
-   * Executes generators. If selectedGenerators is provided, only those are run.
-   * Otherwise, all registered generators are run.
-   * @param selectedGenerators Optional array of generator names to execute.
-   */
-  /**
-   * Validates and filters the list of selected generators.
-   * @param selectedGenerators Array of generator names to validate.
-   * @returns Array of valid generator names.
-   */
-  private validateGenerators(selectedGenerators: string[]): string[] {
-    const validGenerators = selectedGenerators.filter((name) => {
-      const isValid = this.generatorsMap.has(name);
-      if (!isValid) {
-        this.logger.warn(`Invalid generator name: ${name}`);
-      }
-      return isValid;
-    });
-    return validGenerators;
-  }
-
-  async execute(selectedGenerators?: string[]): Promise<void> {
-    // Get available generator identifiers
+  async execute(selectedGenerators?: string[], options?: { modes?: string[] }): Promise<void> {
     const availableGenerators = Array.from(this.generatorsMap.keys()).filter(
       (name) => !name.includes("Generator")
-    ); // Filter out class names
+    );
 
-    // If no generators specified, run all unique generators
     const generatorsToRun =
       selectedGenerators && selectedGenerators.length > 0
         ? this.validateGenerators(selectedGenerators)
@@ -145,8 +135,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
 
     if (generatorsToRun.length === 0) {
       this.logger.warn(
-        "No valid generators selected. Available generators: " +
-          availableGenerators.filter((g) => !g.includes("Generator")).join(", ")
+        `No valid generators selected. Available generators: ${availableGenerators.filter((g) => !g.includes("Generator")).join(", ")}`
       );
       return;
     }
@@ -168,9 +157,8 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       throw err;
     }
 
-    // Ensure generatorsToRun contains only valid generator names
     const validGenerators = this.validateGenerators(generatorsToRun);
-    const result = await this.executeGenerators(config, validGenerators);
+    const result = await this.executeGenerators(config, validGenerators, options);
     if (result.isErr()) {
       this.logger.error(`Execution failed: ${result.error?.message}`, result.error);
       throw result.error ?? new Error("Execution failed");
