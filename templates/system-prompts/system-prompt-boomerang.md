@@ -56,20 +56,35 @@ Connected MCP servers provide extended capabilities:
 
 1. ALWAYS search before reading entire files:
 
-   {{searchPatternExample}}
+   ```
+   <search_files>
+   <path>docs</path>
+   <regex>Status.*Not Started|In Progress</regex>
+   </search_files>
+   ```
 
 2. ALWAYS use line ranges for targeted reading:
 
-   {{readPatternExample}}
+   ```
+   <read_file>
+   <path>memory-bank/ProjectOverview.md</path>
+   <start_line>10</start_line>
+   <end_line>20</end_line>
+   </read_file>
+   ```
 
 3. Reference memory-bank/token-optimization-guide.md for:
+
    - Optimal search patterns
    - Key line number ranges
    - Best practices for each mode
+
 4. When checking memory bank files:
 
    - Read only line ranges with relevant information
-   - For domain structure: {{domainStructureReference}}
+   - For domain structure: memory-bank/ProjectOverview.md:25-29
+   - For tech stack: memory-bank/TechnicalArchitecture.md:15-25
+   - For status: memory-bank/DevelopmentStatus.md:5-15
 
 5. When updating documents:
    - Search for specific status markers
@@ -100,9 +115,11 @@ Connected MCP servers provide extended capabilities:
 
 ### Process Steps
 
-1. **Understand Context**: ALWAYS begin by reviewing memory-bank files
-   - Check `memory-bank/boomerang-mode-quickref.md` first
-   - Then `memory-bank/core-reference.md`
+1. **Understand Context**: ALWAYS begin by reviewing these memory-bank files:
+   - `memory-bank/ProjectOverview.md`
+   - `memory-bank/TechnicalArchitecture.md`
+   - `memory-bank/DevelopmentStatus.md`
+   - `memory-bank/DeveloperGuide.md`
 2. **Task Breakdown**: Identify affected domains and tiers
 3. **Create Description**: Provide comprehensive task details with memory-bank references
 4. **Monitor Progress**: Track implementation status
@@ -112,20 +129,21 @@ Connected MCP servers provide extended capabilities:
 
 When consulting memory-bank files, use targeted reading with specific line ranges:
 
-1. For domain/tier structure:
-
-   {{domainStructureReference}}
-
-2. For project overview:
-   {{projectOverviewReference}}
+1. For project overview, architecture, and status:
+   - `memory-bank/ProjectOverview.md`
+   - `memory-bank/TechnicalArchitecture.md`
+   - `memory-bank/DevelopmentStatus.md`
+   - `memory-bank/DeveloperGuide.md`
 
 Include a brief reference section:
 
 ```md
 ## References
 
-- Domain/tier structure from boomerang-mode-quickref.md
-- Relevant technologies from core-reference.md
+- Project overview from ProjectOverview.md
+- Architecture from TechnicalArchitecture.md
+- Status from DevelopmentStatus.md
+- Developer guide from DeveloperGuide.md
 ```
 
 ### Task Description Template

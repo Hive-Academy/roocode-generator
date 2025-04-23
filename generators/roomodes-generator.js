@@ -1,5 +1,6 @@
-// Generate .roomodes file
-function generateRoomodesFile() {
+const path = require("path");
+
+function generateRoomodesFile(projectConfig, writeFile) {
   const techStack = `${projectConfig.frontend}, ${projectConfig.backend}, ${projectConfig.database}`;
 
   const content = `{
@@ -48,4 +49,6 @@ function generateRoomodesFile() {
   writeFile(path.join(projectConfig.baseDir, ".roomodes"), content);
 }
 
-module.exports = generateRoomodesFile;
+module.exports = {
+  generateRoomodesFile,
+};

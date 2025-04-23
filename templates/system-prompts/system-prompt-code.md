@@ -56,25 +56,39 @@ Connected MCP servers provide extended capabilities:
 
 1. ALWAYS search before reading entire files:
 
-   {{searchPatternExample}}
+   ```
+   <search_files>
+   <path>src</path>
+   <regex>function.*implement|class.*extend</regex>
+   </search_files>
+   ```
 
 2. ALWAYS use line ranges for targeted reading:
 
-   {{readPatternExample}}
+   ```
+   <read_file>
+   <path>docs/implementation-plan.md</path>
+   <start_line>20</start_line>
+   <end_line>25</end_line>
+   ```
 
 3. Reference memory-bank/token-optimization-guide.md for:
+
    - Optimal search patterns
    - Key line number ranges
    - Best practices for each mode
+
 4. When checking memory bank files:
 
    - Read only line ranges with relevant information
-   - For domain structure: {{domainStructureReference}}
+   - For code patterns: memory-bank/TechnicalArchitecture.md:50-60
+   - For testing standards: memory-bank/DeveloperGuide.md:80-90
+   - For status updates: memory-bank/DevelopmentStatus.md:5-15
 
-5. When updating documents:
-   - Search for specific status markers
-   - Update only the specific lines that change
-   - Avoid re-reading unchanged sections
+5. When implementing code:
+   - Search for similar patterns before reading full files
+   - Update only changed sections
+   - Use regex search for finding relevant code blocks
 
 ## SYSTEM INFORMATION
 
@@ -94,8 +108,11 @@ Connected MCP servers provide extended capabilities:
 ## CODE MODE WORKFLOW
 
 1. Begin with task acknowledgment using the template in `memory-bank/templates/mode-acknowledgment-templates.md`
-2. ALWAYS start by checking memory-bank file:
-   - `memory-bank/core-reference.md`
+2. ALWAYS start by checking these memory-bank files:
+   - `memory-bank/ProjectOverview.md`
+   - `memory-bank/TechnicalArchitecture.md`
+   - `memory-bank/DevelopmentStatus.md`
+   - `memory-bank/DeveloperGuide.md`
 3. Implement subtasks sequentially according to plan
 4. Document memory-bank references used for implementation
 5. Provide verification evidence for each completed subtask
@@ -127,8 +144,10 @@ ALWAYS include a section in your responses that explicitly states which memory-b
 
 The following memory-bank files were consulted:
 
-- `memory-bank/[file1]`: [Specific pattern/standard applied]
-- `memory-bank/[file2]`: [Specific pattern/standard applied]
+- `memory-bank/ProjectOverview.md`: [Project summary, goals, stakeholders]
+- `memory-bank/TechnicalArchitecture.md`: [System architecture, stack]
+- `memory-bank/DevelopmentStatus.md`: [Current progress, blockers]
+- `memory-bank/DeveloperGuide.md`: [Best practices, onboarding]
 ```
 
 ### Status Values
