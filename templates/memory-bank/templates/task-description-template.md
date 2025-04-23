@@ -1,16 +1,32 @@
-# Task: [Task Name]
+# Task Description: [Task Name]
 
-## Business Context
-[Brief description of business need]
+## Overview
 
-## Technical Scope
-- **Domains**: [Affected domains]
-- **Tiers**: [Affected tiers]
-- **Libraries**: [Affected libraries]
+[Brief task description]
 
-## Acceptance Criteria
-- [Criterion 1]
-- [Criterion 2]
+## Requirements
 
-## Dependencies
-- [Any dependencies or prerequisites]
+- [Requirement 1]
+- [Requirement 2]
+
+## Implementation Details
+
+### Scope
+
+- [Define task boundaries]
+- [List affected components]
+- [Specify deliverables]
+
+### Dependencies
+
+- [List dependencies]
+
+### Success Criteria
+
+- [List success criteria]
+
+## Notes
+
+- [Additional context]
+- [Special considerations]
+- [Known limitations]

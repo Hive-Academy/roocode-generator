@@ -1,11 +1,11 @@
 # Completion Report: [Task Name]
 
-## Summary
-[1-2 sentence overview]
+**Date:** [Date]  
+**Author:** [Name]
 
-## Memory Bank References Used
-- `memory-bank/[file1]`: [How it was applied]
-- `memory-bank/[file2]`: [How it was applied]
+## Task Overview
+
+[Brief description of completed task]
 
 ## Status
 
@@ -14,10 +14,25 @@
 | 1   | [Name]  | Status | Notes |
 
 ## Implementation Details
-- **Challenges**: [Brief list]
-- **Deviations**: [Any plan changes]
-- **Verification Evidence**: [Test results, screenshots, etc.]
+
+- [Key implementation decisions]
+- [Changes made]
+- [Components affected]
+
+## Verification Results
+
+- [ ] All requirements met
+- [ ] Tests completed
+- [ ] Documentation updated
+
+## Lessons Learned
+
+- [Key insights]
+- [What worked well]
+- [What could be improved]
 
 ## Next Steps
-- [Recommendation for review focus areas]
-- [Any follow-up tasks identified]
+
+- [Follow-up tasks]
+- [Areas needing attention]
+- [Recommendations]

@@ -12,3 +12,4 @@ dist/
 *.bak
 *.tmp
 coverage/
+/llm.config.json

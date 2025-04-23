@@ -10,21 +10,28 @@
 
 1. **Plan Creation Efficiency:**
 
-   - Use template references instead of copying full templates
-   - Write concise subtask descriptions (1-2 sentences)
-   - List only files directly affected by changes
+   ```
+   Template: memory-bank/templates/implementation-plan-template.md
+   ```
 
 2. **Targeted Document Reading:**
 
    ```
-   <search_files><path>memory-bank</path><regex>Component.*shared|Technical Standards</regex></search_files>
+   <search_files>
+   <path>memory-bank</path>
+   <regex>Architecture.*Pattern|Component.*Design</regex>
+   </search_files>
    ```
 
 3. **Targeted Plan Updates:**
 
-   - Search for specific status fields before reading entire plans
-   - Update only changed sections, not entire documents
-   - Use line numbers in file operations
+   ```
+   <read_file>
+   <path>docs/implementation-plan.md</path>
+   <start_line>20</start_line>
+   <end_line>25</end_line>
+   </read_file>
+   ```
 
 4. **Mode Transition Efficiency:**
    - Include only essential context when switching to Code Mode
@@ -36,8 +43,11 @@
    - Acknowledge receipt with a clear task summary
    - State which memory-bank files you will review
    - Confirm understanding of business context
-2. ALWAYS check this file before planning:
-   - `memory-bank/core-reference.md`
+2. ALWAYS check these files before planning:
+   - `memory-bank/ProjectOverview.md`
+   - `memory-bank/TechnicalArchitecture.md`
+   - `memory-bank/DevelopmentStatus.md`
+   - `memory-bank/DeveloperGuide.md`
 3. Quote relevant architectural patterns when creating implementation plans
 
 ## Process Steps
@@ -55,32 +65,43 @@
 
 ## Overview
 
-[Brief summary - max 3 sentences]
+[Brief summary incorporating technical context from memory-bank/TechnicalArchitecture.md]
+
+## Memory Bank References
+
+[List specific sections and line numbers consulted]
+
+- TechnicalArchitecture.md: [Referenced sections]
+- DeveloperGuide.md: [Referenced standards]
+- DevelopmentStatus.md: [Current related work]
 
 ## Task Status
 
-| #   | Subtask | Status | Updated |
+[Use status tracking format from DevelopmentStatus.md]
+| # | Subtask | Status | Updated |
 | --- | ------- | ------ | ------- |
-| 1   | [Name]  | Status | Date    |
+| 1 | [Name] | Status | Date |
 
 ## Subtasks
 
+[Break down based on architecture in TechnicalArchitecture.md]
+
 ### 1. [Name]
 
-- **Status**: [Not Started|In Progress|Completed|Blocked]
-- **Objective**: [1 sentence]
-- **Files**: `path/to/file` - [change description]
-- **Steps**: 1) [Step one] 2) [Step two]
-- **Criteria**: [Verification steps]
-- **Notes**: [Empty initially]
+- **Status**: [Match status format in DevelopmentStatus.md]
+- **Objective**: [Align with architecture from TechnicalArchitecture.md]
+- **Files**: [Reference paths based on project structure]
+- **Steps**: [Follow patterns from DeveloperGuide.md]
+- **Criteria**: [Based on standards in DeveloperGuide.md]
+- **Notes**: [Reference any blockers from DevelopmentStatus.md]
 
-[Repeat for each subtask]
+## Technical Standards Alignment
 
-## Workflow
+[List relevant standards from DeveloperGuide.md that apply]
 
-1. Code Mode implements subtasks sequentially
-2. Updates status after each subtask
-3. Provides completion report when finished
+- Architecture patterns used: [From TechnicalArchitecture.md]
+- Coding standards: [From DeveloperGuide.md]
+- Test requirements: [From DeveloperGuide.md]
 ```
 
 ## Plan Updates
@@ -94,13 +115,13 @@
 ## IMPORTANT: ALWAYS check these references before creating implementation plans
 
 - **For Implementation Plans**: Use template from `memory-bank/templates/implementation-plan-template.md`
-- **For Architecture Patterns**: Reference `memory-bank/architect-mode-quickref.md`
-- **For Technical Standards**: Follow `memory-bank/core-reference.md`
+- **For Architecture Patterns**: Reference `memory-bank/TechnicalArchitecture.md`
+- **For Technical Standards**: Follow `memory-bank/DeveloperGuide.md`
 
 ## First Steps for New Tasks
 
 1. Read the task description thoroughly
-2. Check `memory-bank/architect-mode-quickref.md` for critical references
+2. Check `memory-bank/TechnicalArchitecture.md` for critical references
 3. Create implementation plan following the established template
 
 ## Common Practices
@@ -108,9 +129,17 @@
 - Break down tasks into verifiable subtasks
 - Include file paths that will be modified
 - Set clear acceptance criteria
-- Use project-specific patterns: {{projectPatterns}}
-- Follow architecture conventions: {{architecture}}
-- Reference tech stack: {{techStack}}
+- Reference specific sections of memory bank files:
+  - Architectural Patterns: TechnicalArchitecture.md System Diagram
+  - Development Standards: DeveloperGuide.md Coding Standards
+  - Current Status: DevelopmentStatus.md Current Milestone
+  - Project Context: ProjectOverview.md Purpose
+- Use project-specific patterns and conventions:
+  [Reference from TechnicalArchitecture.md Main Components]
+- Follow architecture conventions:
+  [Reference from TechnicalArchitecture.md System Diagram]
+- Reference tech stack:
+  [Reference from TechnicalArchitecture.md Technology Stack]
 
 # Task Delegation Process
 
