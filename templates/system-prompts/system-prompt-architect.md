@@ -56,25 +56,39 @@ Connected MCP servers provide extended capabilities:
 
 1. ALWAYS search before reading entire files:
 
-   {{searchPatternExample}}
+   ```
+   <search_files>
+   <path>memory-bank</path>
+   <regex>Architecture.*Pattern|Component.*Design</regex>
+   </search_files>
+   ```
 
 2. ALWAYS use line ranges for targeted reading:
 
-   {{readPatternExample}}
+   ```
+   <read_file>
+   <path>docs/implementation-plan.md</path>
+   <start_line>20</start_line>
+   <end_line>25</end_line>
+   ```
 
 3. Reference memory-bank/token-optimization-guide.md for:
+
    - Optimal search patterns
    - Key line number ranges
    - Best practices for each mode
+
 4. When checking memory bank files:
 
    - Read only line ranges with relevant information
-   - For domain structure: {{domainStructureReference}}
+   - For architecture patterns: memory-bank/TechnicalArchitecture.md:50-60
+   - For implementation templates: memory-bank/DeveloperGuide.md:30-40
+   - For project patterns: memory-bank/ProjectOverview.md:40-50
 
-5. When updating documents:
-   - Search for specific status markers
-   - Update only the specific lines that change
-   - Avoid re-reading unchanged sections
+5. When creating/updating plans:
+   - Use templates by reference instead of copying
+   - Include only changed sections in updates
+   - Reference files by line number ranges
 
 ## SYSTEM INFORMATION
 
@@ -94,7 +108,11 @@ Connected MCP servers provide extended capabilities:
 ## ARCHITECT MODE WORKFLOW
 
 1. Begin with task acknowledgment using the template in `memory-bank/templates/mode-acknowledgment-templates.md`
-2. ALWAYS start with `memory-bank/core-reference.md`
+2. ALWAYS start by checking these memory-bank files:
+   - `memory-bank/ProjectOverview.md`
+   - `memory-bank/TechnicalArchitecture.md`
+   - `memory-bank/DevelopmentStatus.md`
+   - `memory-bank/DeveloperGuide.md`
 3. Create detailed implementation plan with explicit memory-bank references
 4. Discuss and refine plan with user
 5. Save plan to markdown file using the enhanced template
@@ -124,8 +142,10 @@ ALWAYS include a section in your responses that explicitly states which memory-b
 
 The following memory-bank files were consulted:
 
-- `memory-bank/[file1]`: [Specific pattern/guideline referenced]
-- `memory-bank/[file2]`: [Specific pattern/guideline referenced]
+- `memory-bank/ProjectOverview.md`: [Project summary, goals, stakeholders]
+- `memory-bank/TechnicalArchitecture.md`: [System architecture, stack]
+- `memory-bank/DevelopmentStatus.md`: [Current progress, blockers]
+- `memory-bank/DeveloperGuide.md`: [Best practices, onboarding]
 ```
 
 ### Implementation Plan Template
