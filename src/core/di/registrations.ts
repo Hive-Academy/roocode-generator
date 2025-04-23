@@ -39,7 +39,6 @@ import { CliInterface } from "../cli/cli-interface";
 import { IGenerator } from "../generators/base-generator";
 
 import { RoomodesGenerator } from "../../generators/roomodes-generator";
-import { RulesGenerator } from "../../generators/rules-generator";
 import { RulesContentProcessor } from "../../generators/rules/rules-content-processor";
 import { RulesPromptBuilder } from "../../generators/rules/rules-prompt-builder";
 import { RulesFileManager } from "../../generators/rules/rules-file-manager"; // Import RulesFileManager implementation
@@ -78,6 +77,7 @@ import { RulesTemplateManager } from "../templating/rules-template-manager";
 import { TemplateProcessor } from "../templating/template-processor";
 import { Factory } from "./types";
 import { ProgressIndicator } from "../ui/progress-indicator";
+import { RulesGenerator } from "../../generators/rules/rules-generator";
 
 /**
  *  @description Registers services with the DI container.
@@ -393,13 +393,25 @@ export function registerServices(): void {
     // Resolve dependencies for the actual RulesGenerator constructor
     const serviceContainer = container; // The container instance itself
     const logger = resolveDependency<ILogger>(container, "ILogger");
-    // Resolve dependencies for the *simplified* RulesGenerator constructor:
+    // Resolve dependencies for the *updated* RulesGenerator constructor:
     const fileOps = resolveDependency<IFileOperations>(container, "IFileOperations");
     const projectAnalyzer = resolveDependency<IProjectAnalyzer>(container, "IProjectAnalyzer");
     const llmAgent = resolveDependency<LLMAgent>(container, "LLMAgent");
+    // Resolve the new dependency
+    const contentProcessor = resolveDependency<IRulesContentProcessor>(
+      container,
+      "IRulesContentProcessor"
+    );
 
-    // Instantiate using the correct constructor signature (7 arguments) from src/generators/rules-generator.ts
-    return new RulesGenerator(serviceContainer, logger, fileOps, projectAnalyzer, llmAgent);
+    // Instantiate using the correct constructor signature (now 6 arguments)
+    return new RulesGenerator(
+      serviceContainer,
+      logger,
+      fileOps,
+      projectAnalyzer,
+      llmAgent,
+      contentProcessor
+    );
   });
 
   // Register Rules specific services (NEW)

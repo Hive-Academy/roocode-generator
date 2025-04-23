@@ -1,19 +1,20 @@
-import { Inject, Injectable } from "../core/di";
-import { IServiceContainer } from "../core/di/interfaces";
-import { BaseGenerator } from "../core/generators/base-generator";
-import { Result } from "../core/result/result";
-import { ILogger } from "../core/services/logger-service";
+import { Inject, Injectable } from "../../core/di";
+import { IServiceContainer } from "../../core/di/interfaces";
+import { BaseGenerator } from "../../core/generators/base-generator";
+import { Result } from "../../core/result/result";
+import { ILogger } from "../../core/services/logger-service";
 import {
   DependencyGraph,
   IProjectAnalyzer,
   ProjectContext,
   ProjectStructure,
   TechStackAnalysis,
-} from "../core/analysis/types";
-import { IFileOperations } from "../core/file-operations/interfaces";
-import { LLMAgent } from "../core/llm/llm-agent";
+} from "../../core/analysis/types";
+import { IFileOperations } from "../../core/file-operations/interfaces";
+import { LLMAgent } from "../../core/llm/llm-agent";
 import path from "path";
-import { ProjectConfig } from "../../types/shared";
+import { ProjectConfig } from "../../../types/shared";
+import { IRulesContentProcessor } from "./interfaces"; // Import the interface
 
 interface RuleMetadata {
   title: string;
@@ -43,7 +44,9 @@ export class RulesGenerator extends BaseGenerator<ProjectConfig> {
     @Inject("ILogger") private readonly logger: ILogger,
     @Inject("IFileOperations") private readonly fileOps: IFileOperations,
     @Inject("IProjectAnalyzer") private readonly projectAnalyzer: IProjectAnalyzer,
-    @Inject("LLMAgent") private readonly llmAgent: LLMAgent
+    @Inject("LLMAgent") private readonly llmAgent: LLMAgent,
+    // Add the new dependency
+    @Inject("IRulesContentProcessor") private readonly contentProcessor: IRulesContentProcessor
   ) {
     super(container);
     this.logger.debug(`${this.name} initialized`);
@@ -59,7 +62,14 @@ export class RulesGenerator extends BaseGenerator<ProjectConfig> {
   }
 
   protected validateDependencies(): Result<void, Error> {
-    if (!this.fileOps || !this.logger || !this.projectAnalyzer || !this.llmAgent) {
+    // Update validation to include the new dependency
+    if (
+      !this.fileOps ||
+      !this.logger ||
+      !this.projectAnalyzer ||
+      !this.llmAgent ||
+      !this.contentProcessor
+    ) {
       return Result.err(new Error(`${this.name} generator is missing required dependencies.`));
     }
     return Result.ok(undefined);
@@ -92,6 +102,7 @@ export class RulesGenerator extends BaseGenerator<ProjectConfig> {
       // Write each rule file
       for (const ruleFile of rulesContent) {
         const filePath = path.join(rulesDir, ruleFile.filename);
+        // Format content *before* saving (includes frontmatter)
         const fileContent = this.formatRuleContent(ruleFile.metadata, ruleFile.content);
 
         const saveResult = await this.fileOps.writeFile(filePath, fileContent);
@@ -149,7 +160,7 @@ export class RulesGenerator extends BaseGenerator<ProjectConfig> {
       `relatedSections: [${metadata.relatedSections.join(", ")}]`,
       "---",
       "",
-      content,
+      content, // Content is already processed before this step
     ].join("\n");
 
     return yamlFrontMatter;
@@ -201,7 +212,27 @@ export class RulesGenerator extends BaseGenerator<ProjectConfig> {
           continue;
         }
 
-        ruleFiles.push(this.createRuleFile(filename, llmResult.value, section, languages));
+        // Process the content to strip markdown formatting and optimize for token usage
+        let processedContent = llmResult.value;
+
+        // Remove any introduction prefixes like "Okay, here are comprehensive coding rules..."
+        processedContent = this.trimIntroduction(processedContent);
+
+        // Use the content processor to strip markdown code block formatting
+        const strippedResult = this.contentProcessor.stripMarkdownCodeBlock(processedContent);
+        if (strippedResult.isErr()) {
+          this.logger.warn(
+            `Failed to strip markdown from ${filename}: ${strippedResult.error?.message}`
+          );
+          // Continue with the content as is if stripping fails
+        } else {
+          processedContent = strippedResult.value as string;
+        }
+
+        // Limit content size to approximately 250 lines
+        processedContent = this.limitContentSize(processedContent);
+
+        ruleFiles.push(this.createRuleFile(filename, processedContent, section, languages));
       } catch (error: unknown) {
         const err = error instanceof Error ? error : new Error(String(error));
         this.logger.error(`Error generating content for ${filename}`, err);
@@ -239,16 +270,115 @@ export class RulesGenerator extends BaseGenerator<ProjectConfig> {
   }
 
   private generateSectionPrompt(sectionName: string, context: ProjectContext): string {
-    return `You are a software development expert. Generate comprehensive coding rules and standards for the "${sectionName}" section.
+    // Updated prompt for conciseness
+    return `You are a software development expert. Generate concise, focused coding rules and standards for the "${sectionName}" section.
     
 Consider the following project context:
 - Tech Stack: ${context.techStack.languages.join(", ")}
 - Frameworks: ${context.techStack.frameworks.join(", ")}
 - Project Structure: ${JSON.stringify(context.structure, null, 2)}
 
-Generate detailed rules specific to ${sectionName.replace(/-/g, " ")}.
-Format the output in markdown with clear subsections, examples, and specific guidelines based on the project's tech stack.
-Include concrete examples relevant to the project's technologies.`;
+Generate detailed but concise rules specific to ${sectionName.replace(/-/g, " ")}.
+Format the output in markdown with clear subsections.
+Focus on must-have rules only, avoiding verbose explanations.
+Use bullet points for clarity and brevity.
+Include only essential, shorter code examples where needed.
+Keep the total output under 250 lines, focusing on quality over quantity.
+DO NOT include introductory text like "Here are comprehensive coding rules...".
+DO NOT include trailing markdown closing backticks.`;
+  }
+
+  /**
+   * Trims common introductory text from LLM responses
+   */
+  private trimIntroduction(content: string): string {
+    // Remove common intro patterns from LLM responses
+    return content
+      .replace(
+        /^Okay,\s+(here|I'll)\s+(are|provide|present|create|generate)\s+comprehensive\s+coding\s+rules\s+and\s+standards.+?(?=#{1,3}\s+)/is,
+        ""
+      )
+      .replace(
+        /^Here\s+are\s+comprehensive\s+coding\s+rules\s+and\s+standards.+?(?=#{1,3}\s+)/is,
+        ""
+      )
+      .replace(
+        /^I'll\s+provide\s+comprehensive\s+coding\s+rules\s+and\s+standards.+?(?=#{1,3}\s+)/is,
+        ""
+      )
+      .trim();
+  }
+
+  /**
+   * Limits content to approximately 250 lines while preserving the most important parts
+   */
+  private limitContentSize(content: string): string {
+    const lines = content.split("\n");
+    if (lines.length <= 350) {
+      return content;
+    }
+
+    this.logger.info(`Trimming content from ${lines.length} lines to ~350 lines`);
+
+    // Strategy: Keep important sections but reduce examples and verbose explanations
+    const result: string[] = [];
+    let inCodeBlock = false;
+    let codeBlockLines = 0;
+    const MAX_CODE_BLOCK_LINES = 20; // Limit lines in code blocks
+
+    for (let i = 0; i < Math.min(lines.length, 500); i++) {
+      // Process at most 500 lines to avoid excessive processing
+      const line = lines[i];
+
+      // Always include headers (they're important)
+      if (line.match(/^#{1,3}\s+/)) {
+        result.push(line);
+        continue;
+      }
+
+      // Handle code blocks
+      if (line.trim().startsWith("```")) {
+        inCodeBlock = !inCodeBlock;
+
+        if (inCodeBlock) {
+          // Starting a code block
+          result.push(line);
+          codeBlockLines = 0;
+        } else {
+          // Ending a code block
+          result.push(line);
+        }
+        continue;
+      }
+
+      // Inside code blocks
+      if (inCodeBlock) {
+        if (codeBlockLines < MAX_CODE_BLOCK_LINES) {
+          result.push(line);
+          codeBlockLines++;
+        } else if (codeBlockLines === MAX_CODE_BLOCK_LINES) {
+          // Add a truncation notice
+          result.push("// ... additional code omitted for brevity ...");
+          codeBlockLines++; // Increment so we don't add this message again
+        }
+        continue;
+      }
+
+      // For non-code content, prioritize short lines and bullets
+      if (line.trim().startsWith("-") || line.trim().startsWith("*") || line.trim().length < 80) {
+        result.push(line);
+      } else if (result.length < 240) {
+        // Include some longer lines if we're well under the limit
+        result.push(line);
+      }
+
+      // Stop if we've reached our target
+      if (result.length >= 350) {
+        break;
+      }
+    }
+
+    return result.join("\n");
   }
 
   private generateTemplateForSection(sectionName: string, context: ProjectContext): string {
