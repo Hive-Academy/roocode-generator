@@ -43,19 +43,7 @@ To build and run the `roocode-generator` project locally, follow these steps:
     yarn install
     ```
 
-3.  **Set up environment variables (for LLM access):**
-    Create a `.env` file in the project root and add your API keys:
-
-    ```env
-    # Example .env file
-    ANTHROPIC_API_KEY=your_anthropic_api_key
-    GOOGLE_API_KEY=your_google_api_key
-    OPENAI_API_KEY=your_openai_api_key
-    ```
-
-    **Note:** Do not commit your `.env` file.
-
-4.  **Prepare Git Hooks:**
+3.  **Prepare Git Hooks:**
     ```bash
     npm run prepare
     # or
@@ -187,3 +175,18 @@ roocode generate memory-bank --output ./docs/memory-bank
 ```
 
 For more technical details on the generator components, refer to the [Technical Architecture](memory-bank/TechnicalArchitecture.md).
+
+### Release Process
+
+1. Make sure your branch is up to date with `main`.
+2. Run all tests and lint checks locally.
+3. Merge your feature branch to `main` via PR.
+4. Bump the version and tag:
+   ```bash
+   npm version patch   # or minor/major
+   git push --follow-tags
+   ```
+5. CI will:
+   - Run lint, format, and tests
+   - Publish to npm (if NPM_TOKEN is set)
+   - Create a GitHub Release with notes
