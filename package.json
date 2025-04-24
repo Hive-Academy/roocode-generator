@@ -13,11 +13,17 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "lint": "eslint . --ext .js",
-    "format": "prettier --check .",
-    "format:write": "prettier --write .",
+    "lint": "eslint . --ext .ts,.js,.mjs --cache",
+    "lint:fix": "eslint . --ext .ts,.js,.mjs --cache --fix",
+    "format": "prettier --check \"src/**/*.{ts,js,mjs,json,md}\"",
+    "format:write": "prettier --write \"src/**/*.{ts,js,mjs,json,md}\"",
+    "style": "npm run format:write && npm run lint:fix",
     "prepare": "husky install",
-    "dev": "npm run build && node dist/bin/roocode-generator.js generate --generators vscode-copilot-rules memory-bank "
+    "dev": "npm run build && node dist/bin/roocode-generator.js generate --generators vscode-copilot-rules memory-bank",
+    "cleanup:format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "cleanup:lint": "eslint --fix \"src/**/*.{ts,tsx}\"",
+    "cleanup:types": "tsc --noEmit",
+    "cleanup:all": "npm run cleanup:format && npm run cleanup:lint && npm run cleanup:types"
   },
   "keywords": [
     "roocode",

@@ -1,4 +1,4 @@
-import { Injectable } from "../di/decorators";
+import { Injectable } from '../di/decorators';
 
 export interface ILogger {
   debug(msg: string): void;

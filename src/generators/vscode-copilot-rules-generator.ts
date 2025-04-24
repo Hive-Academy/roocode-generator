@@ -2,15 +2,15 @@
  * @fileoverview Generator for VSCode Copilot rules configuration.
  */
 
-import path from "path";
+import path from 'path';
 
-import { BaseGenerator, IGenerator } from "../core/generators/base-generator";
-import { IFileOperations } from "../core/file-operations/interfaces";
-import { ILogger } from "../core/services/logger-service";
-import { IProjectConfigService } from "../core/config/interfaces";
-import { Result } from "../core/result/result";
-import { Container } from "../core/di/container"; // Import Container
-import { Inject, Injectable } from "../core/di";
+import { BaseGenerator, IGenerator } from '../core/generators/base-generator';
+import { IFileOperations } from '../core/file-operations/interfaces';
+import { ILogger } from '../core/services/logger-service';
+import { IProjectConfigService } from '../core/config/interfaces';
+import { Result } from '../core/result/result';
+import { Container } from '../core/di/container'; // Import Container
+import { Inject, Injectable } from '../core/di';
 
 /**
  * Generates VSCode settings to configure Copilot behavior (e.g., enabling/disabling for specific languages).
@@ -23,7 +23,7 @@ export class VSCodeCopilotRulesGenerator
   /**
    * Unique name of the generator.
    */
-  readonly name = "vscode-copilot-rules";
+  readonly name = 'vscode-copilot-rules';
 
   private readonly projectConfigService: IProjectConfigService;
   private readonly fileOperations: IFileOperations;
@@ -37,10 +37,10 @@ export class VSCodeCopilotRulesGenerator
    * @param projectConfigService - Service for accessing project configuration.
    */
   constructor(
-    @Inject("Container") serviceContainer: Container, // Inject Container
-    @Inject("IFileOperations") fileOperations: IFileOperations,
-    @Inject("ILogger") logger: ILogger,
-    @Inject("IProjectConfigService") projectConfigService: IProjectConfigService
+    @Inject('Container') serviceContainer: Container, // Inject Container
+    @Inject('IFileOperations') fileOperations: IFileOperations,
+    @Inject('ILogger') logger: ILogger,
+    @Inject('IProjectConfigService') projectConfigService: IProjectConfigService
   ) {
     // Pass container to BaseService constructor.
     super(serviceContainer); // Corrected super call
@@ -57,13 +57,13 @@ export class VSCodeCopilotRulesGenerator
   protected validateDependencies(): Result<void, Error> {
     // Validate logger dependency
     if (!this.logger) {
-      return Result.err(new Error("Logger dependency not resolved."));
+      return Result.err(new Error('Logger dependency not resolved.'));
     }
     if (!this.fileOperations) {
-      return Result.err(new Error("FileOperations dependency not resolved."));
+      return Result.err(new Error('FileOperations dependency not resolved.'));
     }
     if (!this.projectConfigService) {
-      return Result.err(new Error("ProjectConfigService dependency not resolved."));
+      return Result.err(new Error('ProjectConfigService dependency not resolved.'));
     }
     return Result.ok(undefined);
   }
@@ -73,14 +73,14 @@ export class VSCodeCopilotRulesGenerator
    * @returns Promise<Result<void, Error>> indicating validation success or failure.
    */
   async validate(): Promise<Result<void, Error>> {
-    this.logger.debug("Validating VSCodeCopilotRulesGenerator...");
+    this.logger.debug('Validating VSCodeCopilotRulesGenerator...');
     const configResult = await this.projectConfigService.loadConfig();
     if (configResult.isErr()) {
       // Added check for error existence before accessing message
-      const errorMessage = configResult.error?.message ?? "Unknown error";
+      const errorMessage = configResult.error?.message ?? 'Unknown error';
       return Result.err(new Error(`Failed to load project config: ${errorMessage}`));
     }
-    this.logger.debug("VSCodeCopilotRulesGenerator validation successful.");
+    this.logger.debug('VSCodeCopilotRulesGenerator validation successful.');
     return Result.ok(undefined);
   }
 
@@ -90,11 +90,11 @@ export class VSCodeCopilotRulesGenerator
    * @returns Promise<Result<void, Error>> indicating generation success or failure.
    */
   protected async executeGeneration(): Promise<Result<string, Error>> {
-    this.logger.info("Executing VSCode Copilot Rules generation...");
+    this.logger.info('Executing VSCode Copilot Rules generation...');
 
     const configResult = await this.projectConfigService.loadConfig();
     if (configResult.isErr()) {
-      const errorMessage = configResult.error?.message ?? "Unknown error";
+      const errorMessage = configResult.error?.message ?? 'Unknown error';
       return Result.err(
         new Error(`Failed to load project config during execution: ${errorMessage}`)
       );
@@ -102,14 +102,14 @@ export class VSCodeCopilotRulesGenerator
 
     const projectConfig = configResult.value;
     if (!projectConfig?.baseDir) {
-      return Result.err(new Error("Project base directory is not defined in the configuration."));
+      return Result.err(new Error('Project base directory is not defined in the configuration.'));
     }
 
     // 1. Ensure .vscode directory exists
-    const vscodeDir = path.join(projectConfig.baseDir, ".vscode");
+    const vscodeDir = path.join(projectConfig.baseDir, '.vscode');
     const createDirResult = await this.fileOperations.createDirectory(vscodeDir);
     if (createDirResult.isErr()) {
-      const errorMessage = createDirResult.error?.message ?? "Unknown error";
+      const errorMessage = createDirResult.error?.message ?? 'Unknown error';
       return Result.err(new Error(`Failed to create .vscode directory: ${errorMessage}`));
     }
 
@@ -117,7 +117,7 @@ export class VSCodeCopilotRulesGenerator
     const ruleFilesCopyResult = await this.copyRuleFiles(projectConfig.baseDir, vscodeDir);
     if (ruleFilesCopyResult.isErr()) {
       return Result.err(
-        new Error(ruleFilesCopyResult.error?.message ?? "Failed to copy rule files")
+        new Error(ruleFilesCopyResult.error?.message ?? 'Failed to copy rule files')
       );
     }
 
@@ -125,7 +125,7 @@ export class VSCodeCopilotRulesGenerator
     const mcpGuideResult = await this.copyAndModifyMcpGuide(projectConfig.baseDir, vscodeDir);
     if (mcpGuideResult.isErr()) {
       return Result.err(
-        new Error(mcpGuideResult.error?.message ?? "Failed to copy and modify MCP guide")
+        new Error(mcpGuideResult.error?.message ?? 'Failed to copy and modify MCP guide')
       );
     }
 
@@ -133,24 +133,24 @@ export class VSCodeCopilotRulesGenerator
     const settingsUpdateResult = await this.updateSettingsJson(vscodeDir);
     if (settingsUpdateResult.isErr()) {
       return Result.err(
-        new Error(settingsUpdateResult.error?.message ?? "Failed to update settings.json")
+        new Error(settingsUpdateResult.error?.message ?? 'Failed to update settings.json')
       );
     }
 
     this.logger.info(`Successfully generated/updated VSCode Copilot rules in ${vscodeDir}`);
-    return Result.ok("VSCode Copilot rules generated successfully.");
+    return Result.ok('VSCode Copilot rules generated successfully.');
   }
 
   /**
    * Copies rule files from templates/rules to .vscode directory
    */
   private async copyRuleFiles(baseDir: string, vscodeDir: string): Promise<Result<void, Error>> {
-    this.logger.debug("Copying rule files to .vscode directory...");
+    this.logger.debug('Copying rule files to .vscode directory...');
 
-    const ruleFiles = ["architect-rule.md", "code-rule.md", "code-review-rule.md"];
+    const ruleFiles = ['architect-rule.md', 'code-rule.md', 'code-review-rule.md'];
 
     for (const ruleFile of ruleFiles) {
-      const sourcePath = path.join(baseDir, "templates", "rules", ruleFile);
+      const sourcePath = path.join(baseDir, 'templates', 'rules', ruleFile);
       const destPath = path.join(vscodeDir, ruleFile);
 
       // Read source file
@@ -158,13 +158,13 @@ export class VSCodeCopilotRulesGenerator
       if (readResult.isErr()) {
         return Result.err(
           new Error(
-            `Failed to read rule file ${ruleFile}: ${readResult.error?.message ?? "Unknown error"}`
+            `Failed to read rule file ${ruleFile}: ${readResult.error?.message ?? 'Unknown error'}`
           )
         );
       }
 
       // Write to destination
-      const writeResult = await this.fileOperations.writeFile(destPath, readResult.value ?? "");
+      const writeResult = await this.fileOperations.writeFile(destPath, readResult.value ?? '');
       if (writeResult.isErr()) {
         return Result.err(
           new Error(`Failed to write rule file ${ruleFile}: ${writeResult.error?.message}`)
@@ -182,10 +182,10 @@ export class VSCodeCopilotRulesGenerator
     baseDir: string,
     vscodeDir: string
   ): Promise<Result<void, Error>> {
-    this.logger.debug("Copying and modifying MCP usage guide...");
+    this.logger.debug('Copying and modifying MCP usage guide...');
 
-    const sourcePath = path.join(baseDir, "templates", "guide", "vscode-mcp-usage-guide.md");
-    const destPath = path.join(vscodeDir, "mcp-usage-rule.md");
+    const sourcePath = path.join(baseDir, 'templates', 'guide', 'vscode-mcp-usage-guide.md');
+    const destPath = path.join(vscodeDir, 'mcp-usage-rule.md');
 
     // Read source file
     const readResult = await this.fileOperations.readFile(sourcePath);
@@ -196,7 +196,7 @@ export class VSCodeCopilotRulesGenerator
     // Modify content
     const modifiedContent =
       readResult.value +
-      "\n\n**Rule:** Always use tools from the defined MCP servers whenever possible.**";
+      '\n\n**Rule:** Always use tools from the defined MCP servers whenever possible.**';
 
     // Write to destination
     const writeResult = await this.fileOperations.writeFile(destPath, modifiedContent);
@@ -211,9 +211,9 @@ export class VSCodeCopilotRulesGenerator
    * Updates settings.json with rule file references
    */
   private async updateSettingsJson(vscodeDir: string): Promise<Result<void, Error>> {
-    this.logger.debug("Updating settings.json with rule file references...");
+    this.logger.debug('Updating settings.json with rule file references...');
 
-    const settingsPath = path.join(vscodeDir, "settings.json");
+    const settingsPath = path.join(vscodeDir, 'settings.json');
     let currentSettings: Record<string, unknown> = {};
 
     // Check if settings file exists
@@ -221,8 +221,8 @@ export class VSCodeCopilotRulesGenerator
 
     if (readFileResult.value !== true) {
       // File doesn't exist, create it with empty object
-      this.logger.debug("settings.json does not exist. Creating with empty object.");
-      const createResult = await this.fileOperations.writeFile(settingsPath, "{}");
+      this.logger.debug('settings.json does not exist. Creating with empty object.');
+      const createResult = await this.fileOperations.writeFile(settingsPath, '{}');
       if (createResult.isErr()) {
         return Result.err(
           new Error(`Failed to create settings.json: ${createResult.error?.message}`)
@@ -232,8 +232,8 @@ export class VSCodeCopilotRulesGenerator
       try {
         const settingsContent = await this.fileOperations.readFile(settingsPath);
         currentSettings = JSON.parse(settingsContent.value as string);
-        if (typeof currentSettings !== "object" || currentSettings === null) {
-          this.logger.warn("Existing settings.json is not a valid JSON object. Overwriting.");
+        if (typeof currentSettings !== 'object' || currentSettings === null) {
+          this.logger.warn('Existing settings.json is not a valid JSON object. Overwriting.');
           currentSettings = {};
         }
       } catch (error) {
@@ -242,8 +242,8 @@ export class VSCodeCopilotRulesGenerator
         currentSettings = {};
       }
     } else if (readFileResult.isOk()) {
-      this.logger.warn("settings.json content is undefined. Creating new file.");
-    } else if (!readFileResult.error?.message.includes("ENOENT")) {
+      this.logger.warn('settings.json content is undefined. Creating new file.');
+    } else if (!readFileResult.error?.message.includes('ENOENT')) {
       // Different error reading the file, return it
       return Result.err(
         new Error(`Failed to read settings.json: ${readFileResult.error?.message}`)
@@ -252,8 +252,8 @@ export class VSCodeCopilotRulesGenerator
 
     // Define the Copilot rules structure
     const copilotRules = {
-      "github.copilot.enable": {
-        "*": true,
+      'github.copilot.enable': {
+        '*': true,
         plaintext: false,
         markdown: false,
         scminput: false,
@@ -264,15 +264,15 @@ export class VSCodeCopilotRulesGenerator
     currentSettings = {
       ...currentSettings,
       ...copilotRules,
-      "github.copilot.chat.codeGeneration.instructions": [
-        { file: "mcp-usage-rule.md" },
-        { file: "boomerang-rule.md" },
-        { file: "architect-rule.md" },
-        { file: "code-rule.md" },
+      'github.copilot.chat.codeGeneration.instructions': [
+        { file: 'mcp-usage-rule.md' },
+        { file: 'boomerang-rule.md' },
+        { file: 'architect-rule.md' },
+        { file: 'code-rule.md' },
       ],
-      "github.copilot.chat.reviewSelection.instructions": [
-        { file: "mcp-usage-rule.md" },
-        { file: "code-review-rule.md" },
+      'github.copilot.chat.reviewSelection.instructions': [
+        { file: 'mcp-usage-rule.md' },
+        { file: 'code-review-rule.md' },
       ],
     };
 

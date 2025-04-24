@@ -67,7 +67,7 @@ export class Result<T, E extends Error = Error> {
         throw this._error;
       }
       // This should never happen due to type constraint E extends Error
-      throw new Error("Unknown error");
+      throw new Error('Unknown error');
     }
     return this._value!;
   }

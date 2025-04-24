@@ -1,9 +1,9 @@
-import { Result } from "../result/result"; // Import Result from core module
-import { IRulesTemplateManager, TemplateCustomization } from "../../types/rules-template-types"; // Import interfaces
-import { LLMAgent } from "../llm/llm-agent"; // Assuming LLMAgent location
-import { Inject, Injectable } from "../di";
-import { IFileOperations } from "../file-operations/interfaces";
-import { ILogger } from "../services/logger-service";
+import { Result } from '../result/result'; // Import Result from core module
+import { IRulesTemplateManager, TemplateCustomization } from '../../types/rules-template-types'; // Import interfaces
+import { LLMAgent } from '../llm/llm-agent'; // Assuming LLMAgent location
+import { Inject, Injectable } from '../di';
+import { IFileOperations } from '../file-operations/interfaces';
+import { ILogger } from '../services/logger-service';
 
 @Injectable()
 /**
@@ -18,9 +18,9 @@ export class RulesTemplateManager implements IRulesTemplateManager {
    * @param llmAgent - LLM Agent (injected but not directly used in current manager logic, kept as per plan).
    */
   constructor(
-    @Inject("IFileOperations") private readonly fileOps: IFileOperations,
-    @Inject("ILogger") private readonly logger: ILogger,
-    @Inject("LLMAgent") private readonly llmAgent: LLMAgent // LLMAgent might not be needed directly in manager, but keeping as per subtask doc for now
+    @Inject('IFileOperations') private readonly fileOps: IFileOperations,
+    @Inject('ILogger') private readonly logger: ILogger,
+    @Inject('LLMAgent') private readonly llmAgent: LLMAgent // LLMAgent might not be needed directly in manager, but keeping as per subtask doc for now
   ) {}
 
   /**
@@ -90,7 +90,7 @@ export class RulesTemplateManager implements IRulesTemplateManager {
         this.logger.info(
           `No customization file found for mode: ${mode} at ${customPath}. Returning empty string.`
         );
-        return Result.ok(""); // No customizations found
+        return Result.ok(''); // No customizations found
       }
 
       const content = await this.fileOps.readFile(customPath);
@@ -122,7 +122,7 @@ export class RulesTemplateManager implements IRulesTemplateManager {
    */
   public mergeTemplates(base: string, custom: string): Result<string, Error> {
     try {
-      this.logger.info("Merging base and custom templates.");
+      this.logger.info('Merging base and custom templates.');
       const baseTemplate = this.parseTemplate(base);
       const customTemplate = this.parseTemplate(custom);
 
@@ -160,7 +160,7 @@ export class RulesTemplateManager implements IRulesTemplateManager {
         mergedContent += `## ${name}\n${content}\n\n`; // Example markdown-like section format
       }
 
-      this.logger.info("Templates merged successfully.");
+      this.logger.info('Templates merged successfully.');
       return Result.ok(mergedContent);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
@@ -181,10 +181,10 @@ export class RulesTemplateManager implements IRulesTemplateManager {
    */
   public validateTemplate(template: string): Result<void, Error> {
     try {
-      this.logger.info("Validating template structure.");
+      this.logger.info('Validating template structure.');
       // Basic validation: check if it's a non-empty string
       if (!template || template.trim().length === 0) {
-        return Result.err(new Error("Template content is empty."));
+        return Result.err(new Error('Template content is empty.'));
       }
 
       // Attempt to parse to check for basic structural validity (depends on parseTemplate implementation)
@@ -214,14 +214,14 @@ export class RulesTemplateManager implements IRulesTemplateManager {
 
         if (missingSections.length > 0) {
           this.logger.error(
-            `Template validation failed: Missing required sections for mode ${parsedTemplate.mode}: ${missingSections.join(", ")}`
+            `Template validation failed: Missing required sections for mode ${parsedTemplate.mode}: ${missingSections.join(', ')}`
           );
-          return Result.err(new Error(`Missing required sections: ${missingSections.join(", ")}`));
+          return Result.err(new Error(`Missing required sections: ${missingSections.join(', ')}`));
         }
         this.logger.info(`Required sections check passed for mode ${parsedTemplate.mode}.`);
       }
 
-      this.logger.info("Template validation successful.");
+      this.logger.info('Template validation successful.');
       return Result.ok(undefined);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
@@ -267,13 +267,13 @@ export class RulesTemplateManager implements IRulesTemplateManager {
    * @throws Error if the template format is invalid or parsing fails.
    */
   private parseTemplate(template: string): TemplateCustomization {
-    this.logger.info("Parsing template string.");
+    this.logger.info('Parsing template string.');
 
     const sections: { name: string; content: string; priority: number }[] = [];
-    let mode = "";
+    let mode = '';
     const contextualRulesMarkers: string[] = []; // Store markers found
 
-    const lines = template.split("\n");
+    const lines = template.split('\n');
     let currentSectionName: string | null = null;
     let currentSectionContent: string[] = [];
     let sectionPriorityCounter = 100; // Assign decreasing priority
@@ -292,7 +292,7 @@ export class RulesTemplateManager implements IRulesTemplateManager {
         if (currentSectionName !== null) {
           sections.push({
             name: currentSectionName,
-            content: currentSectionContent.join("\n").trim(),
+            content: currentSectionContent.join('\n').trim(),
             priority: sectionPriorityCounter--,
           });
         }
@@ -301,8 +301,8 @@ export class RulesTemplateManager implements IRulesTemplateManager {
         currentSectionContent = [];
       } else {
         // Add line to current section content or process markers
-        if (line.includes("{{CONTEXTUAL_RULES}}")) {
-          contextualRulesMarkers.push("{{CONTEXTUAL_RULES}}"); // Found the marker
+        if (line.includes('{{CONTEXTUAL_RULES}}')) {
+          contextualRulesMarkers.push('{{CONTEXTUAL_RULES}}'); // Found the marker
           // Optionally, you might want to remove the marker from the content
           // currentSectionContent.push(line.replace("{{CONTEXTUAL_RULES}}", "").trim());
         } else {
@@ -315,14 +315,14 @@ export class RulesTemplateManager implements IRulesTemplateManager {
     if (currentSectionName !== null) {
       sections.push({
         name: currentSectionName,
-        content: currentSectionContent.join("\n").trim(),
+        content: currentSectionContent.join('\n').trim(),
         priority: sectionPriorityCounter--,
       });
     }
 
     // Basic validation: ensure at least one section was found if template is not empty
-    if (template.trim().length > 0 && sections.length === 0 && mode === "") {
-      this.logger.warn("Template parsing found no sections or mode metadata.");
+    if (template.trim().length > 0 && sections.length === 0 && mode === '') {
+      this.logger.warn('Template parsing found no sections or mode metadata.');
       // Depending on requirements, this might be an error. For now, just log.
     }
 
@@ -347,7 +347,7 @@ export class RulesTemplateManager implements IRulesTemplateManager {
     base: TemplateCustomization,
     custom: TemplateCustomization
   ): string {
-    this.logger.info("Merging parsed template sections.");
+    this.logger.info('Merging parsed template sections.');
 
     const mergedSections = new Map<string, { content: string; priority: number }>();
     let hasContextualRulesMarker = false;
@@ -389,9 +389,9 @@ export class RulesTemplateManager implements IRulesTemplateManager {
     }
 
     // Ensure the {{CONTEXTUAL_RULES}} marker is present if it was in either template
-    if (hasContextualRulesMarker && !mergedContent.includes("{{CONTEXTUAL_RULES}}")) {
-      mergedContent += "\n{{CONTEXTUAL_RULES}}\n"; // Append if not found in merged sections
-      this.logger.warn("Contextual rules marker not found in merged sections, appending to end.");
+    if (hasContextualRulesMarker && !mergedContent.includes('{{CONTEXTUAL_RULES}}')) {
+      mergedContent += '\n{{CONTEXTUAL_RULES}}\n'; // Append if not found in merged sections
+      this.logger.warn('Contextual rules marker not found in merged sections, appending to end.');
     }
 
     return mergedContent;
@@ -405,10 +405,10 @@ export class RulesTemplateManager implements IRulesTemplateManager {
   private getRequiredSectionsForMode(mode: string): string[] {
     // Define required sections for each supported mode.
     switch (mode) {
-      case "typescript":
-        return ["Overview", "Coding Standards", "Testing"];
-      case "javascript":
-        return ["Overview", "Coding Style"];
+      case 'typescript':
+        return ['Overview', 'Coding Standards', 'Testing'];
+      case 'javascript':
+        return ['Overview', 'Coding Style'];
       default:
         return []; // No required sections by default
     }

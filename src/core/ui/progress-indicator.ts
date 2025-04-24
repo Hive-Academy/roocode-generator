@@ -1,5 +1,5 @@
-import { Injectable } from "../di/decorators";
-import ora, { Ora } from "ora";
+import { Injectable } from '../di/decorators';
+import ora, { Ora } from 'ora';
 
 @Injectable()
 export class ProgressIndicator {
@@ -8,8 +8,8 @@ export class ProgressIndicator {
   start(message: string): void {
     this.spinner = ora({
       text: message,
-      spinner: "dots",
-      color: "blue",
+      spinner: 'dots',
+      color: 'blue',
     }).start();
   }
 

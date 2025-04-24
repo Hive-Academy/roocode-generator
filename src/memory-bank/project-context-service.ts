@@ -1,46 +1,46 @@
-import { IProjectConfigService } from "../core/config/interfaces";
-import { IFileOperations } from "../core/file-operations/interfaces";
-import { Result } from "../core/result/result";
-import { ILogger } from "../core/services/logger-service";
-import { IProjectContextService } from "./interfaces";
-import { Injectable, Inject } from "../core/di/decorators";
-import { Dirent } from "fs";
-import path from "path";
+import { IProjectConfigService } from '../core/config/interfaces';
+import { IFileOperations } from '../core/file-operations/interfaces';
+import { Result } from '../core/result/result';
+import { ILogger } from '../core/services/logger-service';
+import { IProjectContextService } from './interfaces';
+import { Injectable, Inject } from '../core/di/decorators';
+import { Dirent } from 'fs';
+import path from 'path';
 
 @Injectable()
 export class ProjectContextService implements IProjectContextService {
   // Common binary file extensions to skip
   private readonly BINARY_EXTENSIONS = new Set([
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".gif",
-    ".ico",
-    ".pdf",
-    ".zip",
-    ".tar",
-    ".gz",
-    ".7z",
-    ".rar",
-    ".exe",
-    ".dll",
-    ".so",
-    ".dylib",
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.gif',
+    '.ico',
+    '.pdf',
+    '.zip',
+    '.tar',
+    '.gz',
+    '.7z',
+    '.rar',
+    '.exe',
+    '.dll',
+    '.so',
+    '.dylib',
   ]);
 
   // Directories to skip
   private readonly SKIP_DIRECTORIES = new Set([
-    "node_modules",
-    ".git",
-    "dist",
-    "build",
-    "coverage",
+    'node_modules',
+    '.git',
+    'dist',
+    'build',
+    'coverage',
   ]);
 
   constructor(
-    @Inject("IFileOperations") private readonly fileOperations: IFileOperations,
-    @Inject("IProjectConfigService") private readonly projectConfigService: IProjectConfigService,
-    @Inject("ILogger") private readonly logger: ILogger
+    @Inject('IFileOperations') private readonly fileOperations: IFileOperations,
+    @Inject('IProjectConfigService') private readonly projectConfigService: IProjectConfigService,
+    @Inject('ILogger') private readonly logger: ILogger
   ) {}
 
   async gatherContext(paths: string[]): Promise<Result<string, Error>> {
@@ -57,10 +57,10 @@ export class ProjectContextService implements IProjectContextService {
       }
 
       if (contextData.length === 0) {
-        return Result.err(new Error("No valid content found in the provided paths"));
+        return Result.err(new Error('No valid content found in the provided paths'));
       }
 
-      return Result.ok(contextData.join("\n"));
+      return Result.ok(contextData.join('\n'));
     } catch (error) {
       return Result.err(
         new Error(
@@ -142,7 +142,7 @@ export class ProjectContextService implements IProjectContextService {
   private shouldSkipEntry(entry: Dirent): boolean {
     return (
       !entry.name || // Skip entries with no name
-      entry.name.startsWith(".") || // Skip hidden files/directories
+      entry.name.startsWith('.') || // Skip hidden files/directories
       (entry.isDirectory() && this.SKIP_DIRECTORIES.has(entry.name))
     );
   }

@@ -3,8 +3,8 @@
  * Provides methods for file system interactions with type safety and error handling.
  */
 
-import { Result } from "../result/result";
-import { Dirent } from "fs";
+import { Result } from '../result/result';
+import { Dirent } from 'fs';
 
 export interface IFileOperations {
   /**

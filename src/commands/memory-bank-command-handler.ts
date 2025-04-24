@@ -1,10 +1,10 @@
-import { Injectable, Inject } from "../core/di/decorators";
-import ora from "ora";
-import chalk from "chalk";
-import { MemoryBankGenerator } from "../memory-bank/memory-bank-generator";
-import { IFileOperations } from "../core/file-operations/interfaces";
-import { ILogger } from "../core/services/logger-service";
-import { IProjectContextService } from "../memory-bank/interfaces";
+import { Injectable, Inject } from '../core/di/decorators';
+import ora from 'ora';
+import chalk from 'chalk';
+import { MemoryBankGenerator } from '../memory-bank/memory-bank-generator';
+import { IFileOperations } from '../core/file-operations/interfaces';
+import { ILogger } from '../core/services/logger-service';
+import { IProjectContextService } from '../memory-bank/interfaces';
 
 /**
  * Command handler for the 'generate memory-bank' command.
@@ -13,10 +13,10 @@ import { IProjectContextService } from "../memory-bank/interfaces";
 @Injectable()
 export class MemoryBankCommandHandler {
   constructor(
-    @Inject("MemoryBankGenerator") private memoryBankGenerator: MemoryBankGenerator,
-    @Inject("IFileOperations") private fileOperations: IFileOperations,
-    @Inject("ILogger") private logger: ILogger,
-    @Inject("IProjectContextService") private projectContextService: IProjectContextService
+    @Inject('MemoryBankGenerator') private memoryBankGenerator: MemoryBankGenerator,
+    @Inject('IFileOperations') private fileOperations: IFileOperations,
+    @Inject('ILogger') private logger: ILogger,
+    @Inject('IProjectContextService') private projectContextService: IProjectContextService
   ) {}
 
   /**
@@ -36,7 +36,7 @@ export class MemoryBankCommandHandler {
 
     // If no context paths provided, use current directory
     if (contextPaths.length === 0) {
-      contextPaths = ["."]; // ProjectContextService will handle recursive scanning and filtering
+      contextPaths = ['.']; // ProjectContextService will handle recursive scanning and filtering
     }
 
     const outputDir = output || process.cwd();
@@ -49,7 +49,7 @@ export class MemoryBankCommandHandler {
       if (contextResult.isErr()) {
         spinner.fail(
           chalk.red(
-            `Failed to gather project context: ${contextResult.error?.message ?? "Unknown error"}`
+            `Failed to gather project context: ${contextResult.error?.message ?? 'Unknown error'}`
           )
         );
         return;
@@ -63,7 +63,7 @@ export class MemoryBankCommandHandler {
 
       if (result.isErr()) {
         spinner.fail(
-          chalk.red(`Memory bank generation failed: ${result.error?.message ?? "Unknown error"}`)
+          chalk.red(`Memory bank generation failed: ${result.error?.message ?? 'Unknown error'}`)
         );
         return;
       }
@@ -71,7 +71,7 @@ export class MemoryBankCommandHandler {
       spinner.succeed(chalk.green(`Memory bank generation completed`));
     } catch (error) {
       spinner.fail(chalk.red(`Unexpected error: ${(error as Error).message}`));
-      this.logger.error("Error in memory bank command execution", error as Error);
+      this.logger.error('Error in memory bank command execution', error as Error);
     }
   }
 }

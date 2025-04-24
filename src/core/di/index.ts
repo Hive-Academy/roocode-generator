@@ -1,17 +1,17 @@
-import "reflect-metadata";
+import 'reflect-metadata';
 
-import { Container } from "./container";
-import { Injectable, Inject } from "./decorators";
-import { ServiceLifetime, type Constructor, type Factory } from "./types";
-import type { ServiceDescriptor } from "./types";
+import { Container } from './container';
+import { Injectable, Inject } from './decorators';
+import { ServiceLifetime, type Constructor, type Factory } from './types';
+import type { ServiceDescriptor } from './types';
 import {
   DIError,
   DependencyResolutionError,
   CircularDependencyError,
   ServiceRegistrationError,
   ContainerNotInitializedError,
-} from "./errors";
-import { registerServices } from "./registrations";
+} from './errors';
+import { registerServices } from './registrations';
 
 // Re-export all public types and functions
 export {

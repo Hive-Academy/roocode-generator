@@ -1,18 +1,18 @@
-import path from "path";
-import { Injectable, Inject } from "../di/decorators";
-import { ILLMAgent } from "./interfaces";
-import { Result } from "../result/result";
-import { IFileOperations } from "../file-operations/interfaces";
-import { ILogger } from "../services/logger-service";
-import { Dirent } from "fs";
-import { LLMProviderRegistry } from "./provider-registry";
+import path from 'path';
+import { Injectable, Inject } from '../di/decorators';
+import { ILLMAgent } from './interfaces';
+import { Result } from '../result/result';
+import { IFileOperations } from '../file-operations/interfaces';
+import { ILogger } from '../services/logger-service';
+import { Dirent } from 'fs';
+import { LLMProviderRegistry } from './provider-registry';
 
 @Injectable()
 export class LLMAgent implements ILLMAgent {
   constructor(
-    @Inject("LLMProviderRegistry") private readonly llmProviderRegistry: LLMProviderRegistry,
-    @Inject("IFileOperations") private readonly fileOps: IFileOperations,
-    @Inject("ILogger") private readonly logger: ILogger
+    @Inject('LLMProviderRegistry') private readonly llmProviderRegistry: LLMProviderRegistry,
+    @Inject('IFileOperations') private readonly fileOps: IFileOperations,
+    @Inject('ILogger') private readonly logger: ILogger
   ) {}
 
   /**
@@ -28,35 +28,35 @@ export class LLMAgent implements ILLMAgent {
       const providerResult = await this.llmProviderRegistry.getProvider();
       if (providerResult.isErr()) {
         this.logger.error(`LLM Provider not found: ${providerResult.error?.message}`);
-        return Result.err(providerResult.error ?? new Error("LLM Provider not found"));
+        return Result.err(providerResult.error ?? new Error('LLM Provider not found'));
       }
 
       const provider = providerResult.value;
       if (!provider) {
-        this.logger.error("LLM Provider instance is undefined");
-        return Result.err(new Error("LLM Provider instance is undefined"));
+        this.logger.error('LLM Provider instance is undefined');
+        return Result.err(new Error('LLM Provider instance is undefined'));
       }
 
       const completionResult = await provider.getCompletion(
-        "System: Analyze the following project files.",
+        'System: Analyze the following project files.',
         prompt
       );
 
       if (completionResult.isErr()) {
         this.logger.error(
-          `LLM Provider returned an error: ${completionResult.error?.message ?? "Unknown error"}`
+          `LLM Provider returned an error: ${completionResult.error?.message ?? 'Unknown error'}`
         );
-        return Result.err(completionResult.error ?? new Error("Unknown error from LLM Provider"));
+        return Result.err(completionResult.error ?? new Error('Unknown error from LLM Provider'));
       }
 
       let analysis: any;
       try {
-        analysis = JSON.parse(completionResult.value ?? "{}");
+        analysis = JSON.parse(completionResult.value ?? '{}');
       } catch (jsonError) {
         this.logger.error(
           `Failed to parse LLM completion JSON: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}`
         );
-        return Result.err(new Error("Failed to parse LLM completion JSON"));
+        return Result.err(new Error('Failed to parse LLM completion JSON'));
       }
 
       return Result.ok(analysis);
@@ -64,7 +64,7 @@ export class LLMAgent implements ILLMAgent {
       this.logger.error(
         `LLMAgent analysis error: ${error instanceof Error ? error.message : String(error)}`
       );
-      return Result.err(error instanceof Error ? error : new Error("LLMAgent analysis error"));
+      return Result.err(error instanceof Error ? error : new Error('LLMAgent analysis error'));
     }
   }
 
@@ -82,7 +82,7 @@ export class LLMAgent implements ILLMAgent {
       this.logger.error(`Failed to read file: ${filePath}: ${errorToLog.message}`);
       return Result.err(errorToLog);
     }
-    if (typeof contentResult.value !== "string") {
+    if (typeof contentResult.value !== 'string') {
       const err = new Error(`File content is not a string or is undefined for: ${filePath}`);
       this.logger.error(err.message);
       return Result.err(err);
@@ -122,7 +122,7 @@ export class LLMAgent implements ILLMAgent {
     files: string[]
   ): Promise<void> {
     for (const entry of entries) {
-      if (typeof entry.name !== "string") {
+      if (typeof entry.name !== 'string') {
         this.logger.error(`Invalid entry name type encountered in directory: ${dir}`);
         continue;
       }
@@ -149,7 +149,7 @@ export class LLMAgent implements ILLMAgent {
   }
 
   private buildPromptFromFiles(files: string[]): string {
-    return files.join("\n\n");
+    return files.join('\n\n');
   }
 
   /**
@@ -163,12 +163,12 @@ export class LLMAgent implements ILLMAgent {
       const providerResult = await this.llmProviderRegistry.getProvider();
       if (providerResult.isErr()) {
         this.logger.error(`Failed to get LLM provider: ${providerResult.error?.message}`);
-        return Result.err(providerResult.error ?? new Error("Failed to get LLM provider"));
+        return Result.err(providerResult.error ?? new Error('Failed to get LLM provider'));
       }
 
       const provider = providerResult.value;
       if (!provider) {
-        return Result.err(new Error("LLM provider is undefined"));
+        return Result.err(new Error('LLM provider is undefined'));
       }
 
       return await provider.getCompletion(systemPrompt, userPrompt);

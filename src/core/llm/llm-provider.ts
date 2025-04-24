@@ -1,10 +1,10 @@
-import { Injectable } from "../di/decorators";
-import { ChatAnthropic } from "@langchain/anthropic";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { ChatOpenAI } from "@langchain/openai";
-import { ILLMProvider } from "./interfaces";
-import { Result } from "../result/result";
-import { LLMConfig } from "../../../types/shared";
+import { Injectable } from '../di/decorators';
+import { ChatAnthropic } from '@langchain/anthropic';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { ChatOpenAI } from '@langchain/openai';
+import { ILLMProvider } from './interfaces';
+import { Result } from '../result/result';
+import { LLMConfig } from '../../../types/shared';
 
 /**
  * Base class for LLM providers.
@@ -22,7 +22,7 @@ export abstract class BaseLLMProvider implements ILLMProvider {
  */
 @Injectable()
 export class OpenAILLMProvider extends BaseLLMProvider {
-  public readonly name = "openai";
+  public readonly name = 'openai';
 
   private model: ChatOpenAI;
 
@@ -42,7 +42,7 @@ export class OpenAILLMProvider extends BaseLLMProvider {
       const response = await this.model.predict(`${systemPrompt}\n\nUser Input: ${userPrompt}`);
       return Result.ok(response);
     } catch (error) {
-      return Result.err(error instanceof Error ? error : new Error("OpenAI LLMProvider error"));
+      return Result.err(error instanceof Error ? error : new Error('OpenAI LLMProvider error'));
     }
   }
 }
@@ -52,7 +52,7 @@ export class OpenAILLMProvider extends BaseLLMProvider {
  */
 @Injectable()
 export class GoogleGenAILLMProvider extends BaseLLMProvider {
-  public readonly name = "google-genai";
+  public readonly name = 'google-genai';
 
   private model: ChatGoogleGenerativeAI;
 
@@ -73,7 +73,7 @@ export class GoogleGenAILLMProvider extends BaseLLMProvider {
       return Result.ok(response);
     } catch (error) {
       return Result.err(
-        error instanceof Error ? error : new Error("Google GenAI LLMProvider error")
+        error instanceof Error ? error : new Error('Google GenAI LLMProvider error')
       );
     }
   }
@@ -84,7 +84,7 @@ export class GoogleGenAILLMProvider extends BaseLLMProvider {
  */
 @Injectable()
 export class AnthropicLLMProvider extends BaseLLMProvider {
-  public readonly name = "anthropic";
+  public readonly name = 'anthropic';
 
   private model: ChatAnthropic;
 
@@ -104,7 +104,7 @@ export class AnthropicLLMProvider extends BaseLLMProvider {
       const response = await this.model.predict(`${systemPrompt}\n\nUser Input: ${userPrompt}`);
       return Result.ok(response);
     } catch (error) {
-      return Result.err(error instanceof Error ? error : new Error("Anthropic LLMProvider error"));
+      return Result.err(error instanceof Error ? error : new Error('Anthropic LLMProvider error'));
     }
   }
 }

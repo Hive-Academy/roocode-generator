@@ -1,7 +1,7 @@
-import type { ProjectConfig } from "../../../types/shared";
-import { Inject, Injectable } from "../di/decorators";
-import { IFileOperations } from "../file-operations/interfaces";
-import { Result } from "../result/result";
+import type { ProjectConfig } from '../../../types/shared';
+import { Inject, Injectable } from '../di/decorators';
+import { IFileOperations } from '../file-operations/interfaces';
+import { Result } from '../result/result';
 
 /**
  * Service for managing project configuration.
@@ -10,7 +10,7 @@ import { Result } from "../result/result";
  */
 @Injectable()
 export class ProjectConfigService {
-  constructor(@Inject("IFileOperations") private readonly fileOps: IFileOperations) {}
+  constructor(@Inject('IFileOperations') private readonly fileOps: IFileOperations) {}
 
   /**
    * Loads the project configuration from file.
@@ -19,11 +19,11 @@ export class ProjectConfigService {
   async loadConfig(): Promise<Result<ProjectConfig, Error>> {
     const configPath = `${process.cwd()}/roocode-config.json`;
     const defaultConfig: ProjectConfig = {
-      name: "default-project", // Provide a default name
-      baseDir: ".",
-      rootDir: ".roo",
+      name: 'default-project', // Provide a default name
+      baseDir: '.',
+      rootDir: '.roo',
       generators: [], // Default to no generators
-      description: "Default project configuration.",
+      description: 'Default project configuration.',
     };
 
     try {
@@ -34,7 +34,7 @@ export class ProjectConfigService {
         // Assuming fileOps returns an error with a 'code' property or similar identifier
         // Adjust this check based on the actual error structure from IFileOperations
         const isFileNotFound =
-          readResult.error instanceof Error && (readResult.error as any).code === "ENOENT";
+          readResult.error instanceof Error && (readResult.error as any).code === 'ENOENT';
 
         if (isFileNotFound) {
           // File not found, return the default config
@@ -43,7 +43,7 @@ export class ProjectConfigService {
           return Result.ok(defaultConfig);
         } else {
           // Other read error, ensure we pass an Error object
-          return Result.err(readResult.error ?? new Error("Unknown error reading config file"));
+          return Result.err(readResult.error ?? new Error('Unknown error reading config file'));
         }
       }
 
@@ -59,7 +59,7 @@ export class ProjectConfigService {
 
       return Result.ok(parsed);
     } catch (error) {
-      return Result.err(error instanceof Error ? error : new Error("Failed to load config"));
+      return Result.err(error instanceof Error ? error : new Error('Failed to load config'));
     }
   }
 
@@ -69,13 +69,13 @@ export class ProjectConfigService {
    * @returns string error message if invalid, or null if valid
    */
   public validateConfig(config: ProjectConfig): string | null {
-    if (!config.name || typeof config.name !== "string" || config.name.trim() === "") {
+    if (!config.name || typeof config.name !== 'string' || config.name.trim() === '') {
       return "Missing or invalid 'name'";
     }
-    if (!config.baseDir || typeof config.baseDir !== "string" || config.baseDir.trim() === "") {
+    if (!config.baseDir || typeof config.baseDir !== 'string' || config.baseDir.trim() === '') {
       return "Missing or invalid 'baseDir'";
     }
-    if (!config.rootDir || typeof config.rootDir !== "string" || config.rootDir.trim() === "") {
+    if (!config.rootDir || typeof config.rootDir !== 'string' || config.rootDir.trim() === '') {
       return "Missing or invalid 'rootDir'";
     }
     if (!Array.isArray(config.generators)) {
@@ -99,7 +99,7 @@ export class ProjectConfigService {
       }
       return Result.ok(undefined);
     } catch (error) {
-      return Result.err(error instanceof Error ? error : new Error("Failed to save config"));
+      return Result.err(error instanceof Error ? error : new Error('Failed to save config'));
     }
   }
 }

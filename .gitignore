@@ -15,3 +15,4 @@ coverage/
 /RooCode-Common-Code-Practices.md
 /progress-tracker
 /.vscode/mcp.json
+/.eslintcache

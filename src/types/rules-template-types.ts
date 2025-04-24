@@ -1,4 +1,4 @@
-import { Result } from "../core/result/result"; // Use existing Result type from core module
+import { Result } from '../core/result/result'; // Use existing Result type from core module
 
 /**
  * Interface for managing rules templates.

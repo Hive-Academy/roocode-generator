@@ -1,21 +1,21 @@
-import path from "path";
-import { Injectable, Inject } from "../core/di/decorators";
-import { IMemoryBankValidator, MemoryBankFileType, TemplateType } from "./interfaces";
-import { IFileOperations } from "../core/file-operations/interfaces";
-import { ILogger } from "../core/services/logger-service";
-import { Result } from "../core/result/result";
+import path from 'path';
+import { Injectable, Inject } from '../core/di/decorators';
+import { IMemoryBankValidator, MemoryBankFileType, TemplateType } from './interfaces';
+import { IFileOperations } from '../core/file-operations/interfaces';
+import { ILogger } from '../core/services/logger-service';
+import { Result } from '../core/result/result';
 
 @Injectable()
 export class MemoryBankValidator implements IMemoryBankValidator {
   constructor(
-    @Inject("IFileOperations") private readonly fileOps: IFileOperations,
-    @Inject("ILogger") private readonly logger: ILogger
+    @Inject('IFileOperations') private readonly fileOps: IFileOperations,
+    @Inject('ILogger') private readonly logger: ILogger
   ) {}
 
   async validateRequiredFiles(baseDir: string): Promise<Result<void>> {
     try {
-      const memoryBankDir = path.join(baseDir, "memory-bank");
-      const templateDir = path.join(baseDir, "templates", "memory-bank", "templates");
+      const memoryBankDir = path.join(baseDir, 'memory-bank');
+      const templateDir = path.join(baseDir, 'templates', 'memory-bank', 'templates');
 
       const missingFiles: string[] = [];
 
@@ -38,13 +38,13 @@ export class MemoryBankValidator implements IMemoryBankValidator {
       }
 
       if (missingFiles.length > 0) {
-        return Result.err(new Error(`Missing required files:\n${missingFiles.join("\n")}`));
+        return Result.err(new Error(`Missing required files:\n${missingFiles.join('\n')}`));
       }
 
       return Result.ok(undefined);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error("Error validating memory bank files", err);
+      this.logger.error('Error validating memory bank files', err);
       return Result.err(err);
     }
   }

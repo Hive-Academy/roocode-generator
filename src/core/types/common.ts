@@ -37,7 +37,7 @@ export function isError(value: unknown): value is Error {
  * ```
  */
 export function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return typeof value === 'object' && value !== null;
 }
 
 /**
@@ -56,7 +56,7 @@ export function isObject(value: unknown): value is Record<string, unknown> {
  * ```
  */
 export function isString(value: unknown): value is string {
-  return typeof value === "string";
+  return typeof value === 'string';
 }
 
 /**
@@ -75,7 +75,7 @@ export function isString(value: unknown): value is string {
  * ```
  */
 export function isNumber(value: unknown): value is number {
-  return typeof value === "number" && !isNaN(value);
+  return typeof value === 'number' && !isNaN(value);
 }
 
 /**
@@ -94,7 +94,7 @@ export function isNumber(value: unknown): value is number {
  * ```
  */
 export function isBoolean(value: unknown): value is boolean {
-  return typeof value === "boolean";
+  return typeof value === 'boolean';
 }
 
 /**
@@ -120,7 +120,7 @@ export function isBoolean(value: unknown): value is boolean {
 export function isFunction<Args extends unknown[] = unknown[], Return = unknown>(
   value: unknown
 ): value is (...args: Args) => Return {
-  return typeof value === "function";
+  return typeof value === 'function';
 }
 
 /**
@@ -167,7 +167,7 @@ export function getErrorMessage(error: unknown): string {
   if (isString(error)) {
     return error;
   }
-  return "Unknown error";
+  return 'Unknown error';
 }
 
 /**
@@ -189,7 +189,7 @@ export function getErrorMessage(error: unknown): string {
  */
 export function assertDefined<T>(
   value: T | undefined | null,
-  message = "Value is undefined or null"
+  message = 'Value is undefined or null'
 ): asserts value is T {
   if (value === undefined || value === null) {
     throw new Error(message);

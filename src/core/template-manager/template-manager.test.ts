@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { TemplateManager } from "./template-manager";
+import { TemplateManager } from './template-manager';
 
 // describe("TemplateManager Integration Tests", () => {
 /*

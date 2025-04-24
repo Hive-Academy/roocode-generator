@@ -1,7 +1,7 @@
-import { Dirent, promises as fsPromises } from "fs";
-import * as pathModule from "path";
-import { Injectable, Inject } from "../di/decorators";
-import { IFileOperations } from "./interfaces";
+import { Dirent, promises as fsPromises } from 'fs';
+import * as pathModule from 'path';
+import { Injectable, Inject } from '../di/decorators';
+import { IFileOperations } from './interfaces';
 import {
   FileOperationError,
   FileNotFoundError,
@@ -9,9 +9,9 @@ import {
   InvalidPathError,
   FileReadError,
   FileWriteError,
-} from "./errors";
-import { Result } from "../result/result";
-import { ILogger } from "../services/logger-service";
+} from './errors';
+import { Result } from '../result/result';
+import { ILogger } from '../services/logger-service';
 
 /**
  * FileOperations service implementation.
@@ -21,7 +21,7 @@ import { ILogger } from "../services/logger-service";
 export class FileOperations implements IFileOperations {
   private logger: ILogger;
 
-  constructor(@Inject("ILogger") logger: ILogger) {
+  constructor(@Inject('ILogger') logger: ILogger) {
     this.logger = logger;
   }
 
@@ -37,12 +37,12 @@ export class FileOperations implements IFileOperations {
         this.logger.error(`Invalid path provided to readFile: ${path}`);
         return Result.err(new InvalidPathError(path));
       }
-      const data = await fsPromises.readFile(normalizedPath, { encoding: "utf-8" });
+      const data = await fsPromises.readFile(normalizedPath, { encoding: 'utf-8' });
       return Result.ok(data);
     } catch (error: unknown) {
       const errObj = error instanceof Error ? error : new Error(String(error));
       this.logger.error(`Error reading file at path: ${path}`, errObj);
-      if ((errObj as any).code === "ENOENT") {
+      if ((errObj as any).code === 'ENOENT') {
         return Result.err(new FileNotFoundError(path, errObj));
       }
       return Result.err(new FileReadError(path, errObj));
@@ -63,7 +63,7 @@ export class FileOperations implements IFileOperations {
         this.logger.error(`Invalid path provided to writeFile: ${path}`);
         return Result.err(new InvalidPathError(path));
       }
-      await fsPromises.writeFile(normalizedPath, content, { encoding: "utf-8" });
+      await fsPromises.writeFile(normalizedPath, content, { encoding: 'utf-8' });
       return Result.ok(undefined);
     } catch (error: unknown) {
       const errObj = error instanceof Error ? error : new Error(String(error));
@@ -101,10 +101,10 @@ export class FileOperations implements IFileOperations {
    */
   validatePath(path: string): boolean {
     try {
-      if (!path || typeof path !== "string") {
+      if (!path || typeof path !== 'string') {
         return false;
       }
-      if (path.includes("\0")) {
+      if (path.includes('\0')) {
         return false;
       }
       return true;
@@ -158,7 +158,7 @@ export class FileOperations implements IFileOperations {
       await fsPromises.access(normalizedPath);
       return Result.ok(true);
     } catch (error: any) {
-      if (error.code === "ENOENT") {
+      if (error.code === 'ENOENT') {
         // File or directory does not exist
         return Result.ok(false);
       }
@@ -186,7 +186,7 @@ export class FileOperations implements IFileOperations {
     } catch (error: unknown) {
       const errObj = error instanceof Error ? error : new Error(String(error));
       this.logger.error(`Error checking if path is directory: ${path}`, errObj);
-      if ((errObj as any).code === "ENOENT") {
+      if ((errObj as any).code === 'ENOENT') {
         return Result.err(new FileNotFoundError(path, errObj));
       }
       return Result.err(new FileOperationError(path, errObj));
