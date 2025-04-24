@@ -1,20 +1,20 @@
-import { Inject, Injectable } from "../../core/di";
-import { IServiceContainer } from "../../core/di/interfaces";
-import { BaseGenerator } from "../../core/generators/base-generator";
-import { Result } from "../../core/result/result";
-import { ILogger } from "../../core/services/logger-service";
+import { Inject, Injectable } from '../../core/di';
+import { IServiceContainer } from '../../core/di/interfaces';
+import { BaseGenerator } from '../../core/generators/base-generator';
+import { Result } from '../../core/result/result';
+import { ILogger } from '../../core/services/logger-service';
 import {
   DependencyGraph,
   IProjectAnalyzer,
   ProjectContext,
   ProjectStructure,
   TechStackAnalysis,
-} from "../../core/analysis/types";
-import { IFileOperations } from "../../core/file-operations/interfaces";
-import { LLMAgent } from "../../core/llm/llm-agent";
-import path from "path";
-import { ProjectConfig } from "../../../types/shared";
-import { IRulesContentProcessor } from "./interfaces"; // Import the interface
+} from '../../core/analysis/types';
+import { IFileOperations } from '../../core/file-operations/interfaces';
+import { LLMAgent } from '../../core/llm/llm-agent';
+import path from 'path';
+import { ProjectConfig } from '../../../types/shared';
+import { IRulesContentProcessor } from './interfaces'; // Import the interface
 
 interface RuleMetadata {
   title: string;
@@ -36,17 +36,17 @@ interface RuleFile {
  */
 @Injectable()
 export class RulesGenerator extends BaseGenerator<ProjectConfig> {
-  readonly name = "rules";
-  private readonly rulesDir = ".roo/rules";
+  readonly name = 'rules';
+  private readonly rulesDir = '.roo/rules';
 
   constructor(
-    @Inject("IServiceContainer") protected container: IServiceContainer,
-    @Inject("ILogger") private readonly logger: ILogger,
-    @Inject("IFileOperations") private readonly fileOps: IFileOperations,
-    @Inject("IProjectAnalyzer") private readonly projectAnalyzer: IProjectAnalyzer,
-    @Inject("LLMAgent") private readonly llmAgent: LLMAgent,
+    @Inject('IServiceContainer') protected container: IServiceContainer,
+    @Inject('ILogger') private readonly logger: ILogger,
+    @Inject('IFileOperations') private readonly fileOps: IFileOperations,
+    @Inject('IProjectAnalyzer') private readonly projectAnalyzer: IProjectAnalyzer,
+    @Inject('LLMAgent') private readonly llmAgent: LLMAgent,
     // Add the new dependency
-    @Inject("IRulesContentProcessor") private readonly contentProcessor: IRulesContentProcessor
+    @Inject('IRulesContentProcessor') private readonly contentProcessor: IRulesContentProcessor
   ) {
     super(container);
     this.logger.debug(`${this.name} initialized`);
@@ -80,10 +80,10 @@ export class RulesGenerator extends BaseGenerator<ProjectConfig> {
     contextPaths: string[]
   ): Promise<Result<string, Error>> {
     try {
-      this.logger.info("Generating project coding standards...");
+      this.logger.info('Generating project coding standards...');
 
       if (!contextPaths?.length) {
-        return Result.err(new Error("No context path provided"));
+        return Result.err(new Error('No context path provided'));
       }
 
       const contextPath = contextPaths[0];
@@ -151,31 +151,31 @@ export class RulesGenerator extends BaseGenerator<ProjectConfig> {
 
   private formatRuleContent(metadata: RuleMetadata, content: string): string {
     const yamlFrontMatter = [
-      "---",
+      '---',
       `title: ${metadata.title}`,
       `version: ${metadata.version}`,
       `lastUpdated: ${metadata.lastUpdated}`,
       `sectionId: ${metadata.sectionId}`,
-      `applicableLanguages: [${metadata.applicableLanguages.join(", ")}]`,
-      `relatedSections: [${metadata.relatedSections.join(", ")}]`,
-      "---",
-      "",
+      `applicableLanguages: [${metadata.applicableLanguages.join(', ')}]`,
+      `relatedSections: [${metadata.relatedSections.join(', ')}]`,
+      '---',
+      '',
       content, // Content is already processed before this step
-    ].join("\n");
+    ].join('\n');
 
     return yamlFrontMatter;
   }
 
   private generateSummary(ruleFiles: RuleFile[]): string {
     return [
-      "# Generated Rules Summary",
-      "",
-      "The following rule files have been generated:",
-      "",
+      '# Generated Rules Summary',
+      '',
+      'The following rule files have been generated:',
+      '',
       ...ruleFiles.map((rule) => `- ${rule.filename}: ${rule.metadata.title}`),
-      "",
+      '',
       `Total files generated: ${ruleFiles.length}`,
-    ].join("\n");
+    ].join('\n');
   }
 
   private async generateRulesContent(context: ProjectContext): Promise<RuleFile[]> {
@@ -184,17 +184,11 @@ export class RulesGenerator extends BaseGenerator<ProjectConfig> {
 
     // Define rule sections
     const sections = [
-      { id: "1", name: "code-style-and-formatting" },
-      { id: "2", name: "project-structure" },
-      { id: "3", name: "naming-conventions" },
-      { id: "4", name: "documentation" },
-      { id: "5", name: "testing" },
-      { id: "6", name: "error-handling" },
-      { id: "7", name: "performance" },
-      { id: "8", name: "security" },
-      { id: "9", name: "dependency-management" },
-      { id: "10", name: "code-review" },
-      { id: "11", name: "programming-language-best-practices" },
+      { id: '1', name: 'code-style-and-formatting' },
+      { id: '2', name: 'project-structure' },
+      { id: '3', name: 'naming-conventions' },
+      { id: '4', name: 'dependency-management' },
+      { id: '5', name: 'programming-language-best-practices' },
     ];
 
     // Generate content for each section using LLM
@@ -251,16 +245,16 @@ export class RulesGenerator extends BaseGenerator<ProjectConfig> {
     languages: string[]
   ): RuleFile {
     const title = section.name
-      .split("-")
+      .split('-')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
+      .join(' ');
 
     return {
       filename,
       content,
       metadata: {
         title,
-        version: "1.0.0",
+        version: '1.0.0',
         lastUpdated: new Date().toISOString(),
         sectionId: section.id,
         applicableLanguages: languages,
@@ -274,11 +268,11 @@ export class RulesGenerator extends BaseGenerator<ProjectConfig> {
     return `You are a software development expert. Generate concise, focused coding rules and standards for the "${sectionName}" section.
     
 Consider the following project context:
-- Tech Stack: ${context.techStack.languages.join(", ")}
-- Frameworks: ${context.techStack.frameworks.join(", ")}
+- Tech Stack: ${context.techStack.languages.join(', ')}
+- Frameworks: ${context.techStack.frameworks.join(', ')}
 - Project Structure: ${JSON.stringify(context.structure, null, 2)}
 
-Generate detailed but concise rules specific to ${sectionName.replace(/-/g, " ")}.
+Generate detailed but concise rules specific to ${sectionName.replace(/-/g, ' ')}.
 Format the output in markdown with clear subsections.
 Focus on must-have rules only, avoiding verbose explanations.
 Use bullet points for clarity and brevity.
@@ -296,15 +290,15 @@ DO NOT include trailing markdown closing backticks.`;
     return content
       .replace(
         /^Okay,\s+(here|I'll)\s+(are|provide|present|create|generate)\s+comprehensive\s+coding\s+rules\s+and\s+standards.+?(?=#{1,3}\s+)/is,
-        ""
+        ''
       )
       .replace(
         /^Here\s+are\s+comprehensive\s+coding\s+rules\s+and\s+standards.+?(?=#{1,3}\s+)/is,
-        ""
+        ''
       )
       .replace(
         /^I'll\s+provide\s+comprehensive\s+coding\s+rules\s+and\s+standards.+?(?=#{1,3}\s+)/is,
-        ""
+        ''
       )
       .trim();
   }
@@ -313,12 +307,12 @@ DO NOT include trailing markdown closing backticks.`;
    * Limits content to approximately 250 lines while preserving the most important parts
    */
   private limitContentSize(content: string): string {
-    const lines = content.split("\n");
-    if (lines.length <= 350) {
+    const lines = content.split('\n');
+    if (lines.length <= 250) {
       return content;
     }
 
-    this.logger.info(`Trimming content from ${lines.length} lines to ~350 lines`);
+    this.logger.info(`Trimming content from ${lines.length} lines to ~250 lines`);
 
     // Strategy: Keep important sections but reduce examples and verbose explanations
     const result: string[] = [];
@@ -337,7 +331,7 @@ DO NOT include trailing markdown closing backticks.`;
       }
 
       // Handle code blocks
-      if (line.trim().startsWith("```")) {
+      if (line.trim().startsWith('```')) {
         inCodeBlock = !inCodeBlock;
 
         if (inCodeBlock) {
@@ -358,14 +352,14 @@ DO NOT include trailing markdown closing backticks.`;
           codeBlockLines++;
         } else if (codeBlockLines === MAX_CODE_BLOCK_LINES) {
           // Add a truncation notice
-          result.push("// ... additional code omitted for brevity ...");
+          result.push('// ... additional code omitted for brevity ...');
           codeBlockLines++; // Increment so we don't add this message again
         }
         continue;
       }
 
       // For non-code content, prioritize short lines and bullets
-      if (line.trim().startsWith("-") || line.trim().startsWith("*") || line.trim().length < 80) {
+      if (line.trim().startsWith('-') || line.trim().startsWith('*') || line.trim().length < 80) {
         result.push(line);
       } else if (result.length < 240) {
         // Include some longer lines if we're well under the limit
@@ -373,18 +367,18 @@ DO NOT include trailing markdown closing backticks.`;
       }
 
       // Stop if we've reached our target
-      if (result.length >= 350) {
+      if (result.length >= 250) {
         break;
       }
     }
 
-    return result.join("\n");
+    return result.join('\n');
   }
 
   private generateTemplateForSection(sectionName: string, context: ProjectContext): string {
     // Fallback templates for each section using arrow functions to preserve 'this' context
     const templates: { [key: string]: (context: ProjectContext) => string } = {
-      "code-style-and-formatting": () => this.generateCodingStandards(),
+      'code-style-and-formatting': () => this.generateCodingStandards(),
       testing: () => this.generateTestingStandards(),
       documentation: () => this.generateDocumentationStandards(),
       security: () => this.generateSecurityGuidelines(),

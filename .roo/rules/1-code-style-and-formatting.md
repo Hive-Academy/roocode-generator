@@ -1,94 +1,148 @@
 ---
 title: Code Style And Formatting
 version: 1.0.0
-lastUpdated: 2025-04-23T18:18:30.460Z
+lastUpdated: 2025-04-24T16:04:56.634Z
 sectionId: 1
 applicableLanguages: [TypeScript, JavaScript]
 relatedSections: []
 ---
 
-# Code Style and Formatting Rules
+### Code Style and Formatting
 
-## 1. Automation & Enforcement
+**Automation:**
 
-- **Prettier:** All code **must** be formatted using Prettier with the project's `.prettierrc` configuration.
-- **ESLint:** All code **must** pass ESLint checks based on the project's `.eslintrc.js` configuration.
-- **Pre-commit Hook:** Use the configured Husky hook to run formatting and linting before each commit. Fix all reported issues.
+*   **Mandatory:** Use Prettier and ESLint for automated formatting and linting. Configure your editor to format on save.
+*   Adhere strictly to the configurations defined in `.prettierrc` (or `package.json`) and `.eslintrc.js`. Modifications require team consensus.
 
-## 2. Formatting (Handled by Prettier)
+**General Formatting (Enforced by Prettier):**
 
-- **Indentation:** 2 spaces.
-- **Line Length:** Max 120 characters.
-- **Semicolons:** Always required at the end of statements.
-- **Quotes:** Use single quotes (`'`) for strings. Use template literals (`` ` ``) for interpolation or multi-line strings.
-- **Trailing Commas:** Use trailing commas for multi-line arrays, objects, and parameter lists (`es5` or `all` setting in Prettier).
-- **Spacing:** Consistent spacing around operators, keywords, commas, colons, and after semicolons in `for` loops (enforced by Prettier).
-- **Braces:** Opening braces (`{`) on the same line. Always use braces for `if`, `for`, `while`, etc., even for single-line blocks.
+*   **Indentation:** Use 2 spaces per indentation level. Do not use tabs.
+*   **Line Length:** Maximum line length is 100 characters. Break longer lines logically.
+*   **Quotes:** Use single quotes (`'`) for all strings unless double quotes (`"`) are required (e.g., JSON content, avoiding escapes).
+    ```typescript
+    // Good
+    const message = 'Use single quotes';
 
-  ```typescript
-  // Good
-  if (condition) {
-    doSomething();
-  }
+    // Bad
+    const message = "Use single quotes";
+    ```
+*   **Semicolons:** Terminate every statement with a semicolon (`;`).
+    ```typescript
+    // Good
+    const count = 10;
+    console.log(count);
 
-  // Bad
-  if (condition) doSomething();
-  ```
-
-## 3. Naming Conventions
-
-- **Variables, Functions, Methods, Parameters:** `camelCase`.
-- **Classes, Interfaces, Type Aliases, Enums:** `PascalCase`.
-- **Constants (global or static):** `UPPER_SNAKE_CASE`.
-- **File Names:** `kebab-case.ts` (e.g., `project-analyzer.ts`, `llm-config.service.ts`).
-  - Type definition files: `*.types.ts` (e.g., `analysis.types.ts`).
-  - Interface files (if dedicated): `*.interfaces.ts` (e.g., `config.interfaces.ts`).
-- **Private Members (TypeScript):** Use the `private` keyword. Avoid `_` prefix unless necessary for JavaScript compatibility.
-
-## 4. TypeScript Specifics
-
-- **Type Annotations:** Use explicit types for function parameters, return types, and complex variable declarations.
-- **Avoid `any`:** Use `unknown` instead of `any` and perform necessary type checks/narrowing. Use `any` only as a last resort with a clear justification.
-- **`interface` vs `type`:**
-  - Use `interface` for defining object shapes and public APIs (classes can implement interfaces).
-  - Use `type` for unions, intersections, primitive aliases, mapped types, or conditional types.
-- **Access Modifiers:** Explicitly use `public`, `private`, `protected`. Default is `public`.
-- **Readonly:** Use `readonly` for properties that should not be reassigned after object creation.
-
-  ```typescript
-  interface UserConfig {
-    readonly userId: string;
-    theme: "light" | "dark"; // Type alias used implicitly
-  }
-
-  class SettingsService {
-    private apiKey: string;
-    public constructor(key: string) {
-      this.apiKey = key;
+    // Bad: Missing semicolons
+    const count = 10
+    console.log(count)
+    ```
+*   **Trailing Commas:** Use trailing commas in multi-line object literals, array literals, function parameters, import/export lists (`"trailingComma": "es5"` or `"all"` in Prettier config).
+    ```typescript
+    // Good
+    const config = {
+      key1: 'value1',
+      key2: 'value2', // Trailing comma
+    };
+    ```
+*   **Braces:** Use K&R style (opening brace on the same line as the statement). Always use braces for control flow (`if`, `for`, `while`, etc.), even for single-line blocks.
+    ```typescript
+    // Good
+    if (isValid) {
+      process();
     }
-    // ...
-  }
-  ```
 
-## 5. Imports
+    // Bad: Inconsistent bracing
+    if (isValid) process();
+    if (isValid)
+    {
+      process();
+    }
+    ```
+*   **Spacing:** Maintain consistent spacing (enforced by Prettier):
+    *   Around operators (`=`, `+`, `-`, `*`, `/`, `===`, etc.).
+    *   After commas (`,`) and colons (`:`) in object properties/type annotations.
+    *   After keywords (`if`, `for`, `while`, `async`, etc.).
+    *   Inside curly braces (`{ }`) for object literals and imports/exports.
+    *   No space between function/method names and opening parentheses (`()`).
+    ```typescript
+    // Good
+    const result: number = value + 1;
+    import { Injectable, Inject } from 'src/core/di';
 
-- **Ordering:** Group imports in the following order, separated by blank lines:
-  1.  Node.js built-in modules (`import fs from 'fs';`)
-  2.  External packages (`import { injectable } from 'inversify';`)
-  3.  Internal absolute/aliased paths (`import { LoggerService } from '@/core/services';`)
-  4.  Internal relative paths (`import { ChildComponent } from './child-component';`)
-- **Named Imports:** Prefer named imports over default imports for better clarity and refactoring.
-- **Avoid `* as`:** Avoid `import * as Name` unless necessary to import a module with many exports or for dynamic access.
+    // Bad: Inconsistent spacing
+    const result:number=value+1;
+    import {Injectable,Inject} from 'src/core/di';
+    ```
 
-## 6. Comments
+**Blank Lines:**
 
-- **Purpose:** Explain _why_ something is done, not _what_ the code does (code should be self-explanatory). Document complex logic, assumptions, or workarounds.
-- **Style:**
-  - Use `//` for single-line comments.
-  - Use `/** ... */` JSDoc style for documenting exported functions, classes, methods, interfaces, and types.
-- **TODO/FIXME:** Use standard markers like `// TODO:` or `// FIXME:` with a brief explanation.
+*   Use a single blank line to separate logical blocks of code (e.g., between methods, classes, functions, import groups).
+*   Use a single blank line before `return` statements, unless it's the only statement in the block.
+*   Avoid multiple consecutive blank lines.
 
-## 7. Blank Lines
+**Imports:**
 
-- Use single blank lines to separate logical blocks of code (e.g., between methods, functions, import groups, related statements).
-- Avoid multiple consecutive blank lines.
+*   **Order:** Follow a consistent import order, enforced by ESLint (`eslint-plugin-import`):
+    1.  Node.js built-ins (`fs`, `path`)
+    2.  External packages (`langchain`, `commander`, `@langchain/core`)
+    3.  Internal absolute paths (`src/core/services`, `types/shared`)
+    4.  Parent relative paths (`../`)
+    5.  Sibling relative paths (`./`)
+*   **Grouping:** Separate import groups with a single blank line.
+    ```typescript
+    import path from 'path';
+
+    import { injectable } from 'tsyringe';
+    import ora from 'ora';
+
+    import { LoggerService } from 'src/core/services/logger-service';
+    import { IResult } from 'src/core/result/result';
+
+    import { ParentService } from '../services/parent-service';
+
+    import { SiblingUtil } from './sibling-util';
+    ```
+
+**TypeScript Specifics:**
+
+*   **Type Annotations:** Use a single space after colons (`:`) in type annotations. No space before the colon.
+    ```typescript
+    // Good
+    let userId: string;
+    function processData(data: unknown): void {}
+
+    // Bad
+    let userId : string;
+    function processData(data:unknown) : void{}
+    ```
+*   **Interfaces vs. Types:**
+    *   Prefer `interface` for defining object shapes and class implementations (`implements`).
+    *   Use `type` for primitive aliases, unions, intersections, tuples, and complex mapped types.
+*   **Readonly:** Use the `readonly` modifier for properties/variables that should not be reassigned after initialization, especially in interfaces and class properties.
+    ```typescript
+    interface AppConfig {
+      readonly apiUrl: string;
+      timeout: number; // Mutable
+    }
+    ```
+*   **Return Types:** Explicitly declare return types for all functions and methods, except for trivial inline callbacks where inference is obvious.
+*   **Access Modifiers:** Always specify access modifiers (`public`, `private`, `protected`) for class members (methods, properties, constructor parameters). Avoid relying on the default `public`.
+
+**Comments:**
+
+*   Use `//` for single-line comments. Start the comment text with a space.
+*   Use `/** ... */` for multi-line documentation comments (TSDoc).
+*   Place comments on a separate line *above* the code they describe. Avoid trailing comments on the same line as code, unless very short and clarifying.
+    ```typescript
+    // Good: Describes the following block
+    // Fetch user data from the API
+    const user = await fetchUser(id);
+
+    /**
+     * Processes the provided configuration object.
+     * @param config The configuration object.
+     * @returns A status result.
+     */
+    function processConfig(config: AppConfig): IResult<void> {
+      // ... implementation ...
+    }

@@ -1,10 +1,10 @@
-import { describe, expect, it } from "@jest/globals";
-import { Result } from "../result";
+import { describe, expect, it } from '@jest/globals';
+import { Result } from '../result';
 
-describe("Result", () => {
-  describe("success", () => {
-    it("should create a success result with data", () => {
-      const data = { value: "test" };
+describe('Result', () => {
+  describe('success', () => {
+    it('should create a success result with data', () => {
+      const data = { value: 'test' };
       const result = Result.success(data);
 
       expect(result.success).toBe(true);
@@ -13,23 +13,23 @@ describe("Result", () => {
       expect(result.details).toBeUndefined();
     });
 
-    it("should correctly identify as success with type guard", () => {
-      const data = { value: "test" };
+    it('should correctly identify as success with type guard', () => {
+      const data = { value: 'test' };
       const result = Result.success(data);
 
       if (result.isSuccess()) {
         // TypeScript should recognize data as defined here
-        expect(result.data.value).toBe("test");
+        expect(result.data.value).toBe('test');
       } else {
         // This branch should never execute
-        throw new Error("Result should be success");
+        throw new Error('Result should be success');
       }
     });
   });
 
-  describe("failure", () => {
-    it("should create a failure result with error message", () => {
-      const error = "Test error";
+  describe('failure', () => {
+    it('should create a failure result with error message', () => {
+      const error = 'Test error';
       const details = { code: 500 };
       const result = Result.failure<string>(error, details);
 
@@ -39,8 +39,8 @@ describe("Result", () => {
       expect(result.details).toBe(details);
     });
 
-    it("should correctly identify as failure with type guard", () => {
-      const error = "Test error";
+    it('should correctly identify as failure with type guard', () => {
+      const error = 'Test error';
       const result = Result.failure<string>(error);
 
       if (result.isFailure()) {
@@ -48,12 +48,12 @@ describe("Result", () => {
         expect(result.error).toBe(error);
       } else {
         // This branch should never execute
-        throw new Error("Result should be failure");
+        throw new Error('Result should be failure');
       }
     });
 
-    it("should handle failure without details", () => {
-      const error = "Test error";
+    it('should handle failure without details', () => {
+      const error = 'Test error';
       const result = Result.failure<string>(error);
 
       expect(result.success).toBe(false);
@@ -62,36 +62,36 @@ describe("Result", () => {
     });
   });
 
-  describe("type safety", () => {
-    it("should maintain type safety for success results", () => {
+  describe('type safety', () => {
+    it('should maintain type safety for success results', () => {
       interface TestData {
         id: number;
         name: string;
       }
 
-      const data: TestData = { id: 1, name: "test" };
+      const data: TestData = { id: 1, name: 'test' };
       const result = Result.success<TestData>(data);
 
       if (result.isSuccess()) {
         // TypeScript should recognize these properties exist
         expect(result.data.id).toBe(1);
-        expect(result.data.name).toBe("test");
+        expect(result.data.name).toBe('test');
       }
     });
 
-    it("should maintain type safety for failure results", () => {
+    it('should maintain type safety for failure results', () => {
       interface TestData {
         id: number;
         name: string;
       }
 
-      const result = Result.failure<TestData>("error");
+      const result = Result.failure<TestData>('error');
 
       if (result.isFailure()) {
         // Should not have access to data in failure case
         expect(result.data).toBeUndefined();
         // But should have access to error
-        expect(typeof result.error).toBe("string");
+        expect(typeof result.error).toBe('string');
       }
     });
   });

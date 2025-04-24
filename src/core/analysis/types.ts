@@ -1,4 +1,4 @@
-import { Result } from "../result/result"; // Use existing Result type
+import { Result } from '../result/result'; // Use existing Result type
 
 /**
  * Defines the contract for analyzing various aspects of a project.

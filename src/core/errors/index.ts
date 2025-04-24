@@ -69,7 +69,7 @@ export class RooCodeError extends Error {
  */
 export class ValidationError extends RooCodeError {
   constructor(message: string, context?: Record<string, unknown>, cause?: Error) {
-    super(message, "VALIDATION_ERROR", context, cause);
+    super(message, 'VALIDATION_ERROR', context, cause);
   }
 }
 
@@ -89,7 +89,7 @@ export class ValidationError extends RooCodeError {
  */
 export class ConfigurationError extends RooCodeError {
   constructor(message: string, context?: Record<string, unknown>, cause?: Error) {
-    super(message, "CONFIGURATION_ERROR", context, cause);
+    super(message, 'CONFIGURATION_ERROR', context, cause);
   }
 }
 
@@ -115,7 +115,7 @@ export class FileSystemError extends RooCodeError {
     context?: Record<string, unknown>,
     cause?: Error
   ) {
-    super(message, "FILESYSTEM_ERROR", { ...context, path }, cause);
+    super(message, 'FILESYSTEM_ERROR', { ...context, path }, cause);
   }
 }
 
@@ -141,7 +141,7 @@ export class GeneratorError extends RooCodeError {
     context?: Record<string, unknown>,
     cause?: Error
   ) {
-    super(message, "GENERATOR_ERROR", { ...context, generatorName }, cause);
+    super(message, 'GENERATOR_ERROR', { ...context, generatorName }, cause);
   }
 }
 
@@ -167,7 +167,7 @@ export class TemplateError extends RooCodeError {
     context?: Record<string, unknown>,
     cause?: Error
   ) {
-    super(message, "TEMPLATE_ERROR", { ...context, templateName }, cause);
+    super(message, 'TEMPLATE_ERROR', { ...context, templateName }, cause);
   }
 }
 
@@ -193,7 +193,7 @@ export class PluginError extends RooCodeError {
     context?: Record<string, unknown>,
     cause?: Error
   ) {
-    super(message, "PLUGIN_ERROR", { ...context, pluginName }, cause);
+    super(message, 'PLUGIN_ERROR', { ...context, pluginName }, cause);
   }
 }
 
@@ -221,7 +221,7 @@ export class TimeoutError extends RooCodeError {
     context?: Record<string, unknown>,
     cause?: Error
   ) {
-    super(message, "TIMEOUT_ERROR", { ...context, operationName, timeoutMs }, cause);
+    super(message, 'TIMEOUT_ERROR', { ...context, operationName, timeoutMs }, cause);
   }
 }
 
@@ -247,7 +247,7 @@ export class CancellationError extends RooCodeError {
     context?: Record<string, unknown>,
     cause?: Error
   ) {
-    super(message, "CANCELLATION_ERROR", { ...context, operationName }, cause);
+    super(message, 'CANCELLATION_ERROR', { ...context, operationName }, cause);
   }
 }
 
@@ -273,6 +273,6 @@ export class UnsupportedOperationError extends RooCodeError {
     context?: Record<string, unknown>,
     cause?: Error
   ) {
-    super(message, "UNSUPPORTED_OPERATION_ERROR", { ...context, operationName }, cause);
+    super(message, 'UNSUPPORTED_OPERATION_ERROR', { ...context, operationName }, cause);
   }
 }

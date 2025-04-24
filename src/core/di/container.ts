@@ -1,16 +1,16 @@
-import "reflect-metadata";
-import { Result } from "../result/result";
-import { ServiceLifetime, ServiceDescriptor, Constructor, Factory, ServiceToken } from "./types";
+import 'reflect-metadata';
+import { Result } from '../result/result';
+import { ServiceLifetime, ServiceDescriptor, Constructor, Factory, ServiceToken } from './types';
 import {
   DIError,
   DependencyResolutionError,
   CircularDependencyError,
   ServiceRegistrationError,
   ContainerNotInitializedError,
-} from "./errors";
-import { getErrorMessage } from "../types/common";
-import { isInjectable, getInjectionTokens } from "./decorators";
-import { IServiceContainer } from "./interfaces";
+} from './errors';
+import { getErrorMessage } from '../types/common';
+import { isInjectable, getInjectionTokens } from './decorators';
+import { IServiceContainer } from './interfaces';
 
 /**
  * A dependency injection container that manages service registration and resolution.
@@ -64,7 +64,7 @@ export class Container implements IServiceContainer {
       if (!isInjectable(implementation)) {
         throw new ServiceRegistrationError(
           String(token),
-          "Service class must be decorated with @Injectable()"
+          'Service class must be decorated with @Injectable()'
         );
       }
 
@@ -140,7 +140,7 @@ export class Container implements IServiceContainer {
 
       const descriptor = this.services.get(token);
       if (!descriptor) {
-        throw new DependencyResolutionError(String(token), "Service not registered");
+        throw new DependencyResolutionError(String(token), 'Service not registered');
       }
 
       this.resolutionStack.push(token);
@@ -201,7 +201,7 @@ export class Container implements IServiceContainer {
         if (error instanceof Error) {
           throw error;
         }
-        throw new DependencyResolutionError(String(token), "Failed to resolve dependency");
+        throw new DependencyResolutionError(String(token), 'Failed to resolve dependency');
       }
       return result.value;
     });
@@ -223,15 +223,15 @@ export class Container implements IServiceContainer {
   }
 
   private validateToken(token: ServiceToken): void {
-    if (!token || (typeof token !== "string" && typeof token !== "symbol")) {
-      throw new ServiceRegistrationError(String(token), "Invalid token");
+    if (!token || (typeof token !== 'string' && typeof token !== 'symbol')) {
+      throw new ServiceRegistrationError(String(token), 'Invalid token');
     }
   }
 
   private validateRegistration(token: ServiceToken, implementation: Constructor<unknown>): void {
     this.validateToken(token);
-    if (!implementation || typeof implementation !== "function") {
-      throw new ServiceRegistrationError(String(token), "Invalid implementation");
+    if (!implementation || typeof implementation !== 'function') {
+      throw new ServiceRegistrationError(String(token), 'Invalid implementation');
     }
   }
 

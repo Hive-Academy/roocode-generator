@@ -1,10 +1,10 @@
-import { Injectable, Inject } from "../di/decorators";
-import { IGeneratorOrchestrator } from "./interfaces";
-import { Result } from "../result/result";
-import { IGenerator } from "../generators/base-generator";
-import { IProjectConfigService } from "../config/interfaces";
-import { ILogger } from "../services/logger-service";
-import { ProjectConfig } from "../../../types/shared";
+import { Injectable, Inject } from '../di/decorators';
+import { IGeneratorOrchestrator } from './interfaces';
+import { Result } from '../result/result';
+import { IGenerator } from '../generators/base-generator';
+import { IProjectConfigService } from '../config/interfaces';
+import { ILogger } from '../services/logger-service';
+import { ProjectConfig } from '../../../types/shared';
 
 @Injectable()
 export class GeneratorOrchestrator implements IGeneratorOrchestrator {
@@ -12,22 +12,22 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
 
   constructor(
     generators: Array<IGenerator<unknown>>,
-    @Inject("IProjectConfigService") private readonly projectConfigService: IProjectConfigService,
-    @Inject("ILogger") private readonly logger: ILogger
+    @Inject('IProjectConfigService') private readonly projectConfigService: IProjectConfigService,
+    @Inject('ILogger') private readonly logger: ILogger
   ) {
     this.generatorsMap = new Map<string, IGenerator<unknown>>();
 
     const generatorIdentifiers = {
-      "memory-bank": "MemoryBank",
-      rules: "rules",
-      "system-prompts": "system-prompts",
-      roomodes: "roomodes",
-      "vscode-copilot-rules": "vscode-copilot-rules",
+      'memory-bank': 'MemoryBank',
+      rules: 'rules',
+      'system-prompts': 'system-prompts',
+      roomodes: 'roomodes',
+      'vscode-copilot-rules': 'vscode-copilot-rules',
     };
 
     for (const generator of generators) {
       const name = generator.name;
-      if (typeof name === "string") {
+      if (typeof name === 'string') {
         const cliId = Object.entries(generatorIdentifiers).find(
           ([_, className]) => className === name
         )?.[0];
@@ -65,14 +65,14 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     config: ProjectConfig,
     selectedGenerators: string[]
   ): Promise<Result<void, Error>> {
-    this.logger.info(`Starting generator orchestration for: ${selectedGenerators.join(", ")}`);
+    this.logger.info(`Starting generator orchestration for: ${selectedGenerators.join(', ')}`);
 
     for (const genName of selectedGenerators) {
       const generator = this.generatorsMap.get(genName);
       if (!generator) {
         const availableGenerators = Array.from(this.generatorsMap.keys())
-          .filter((g) => !g.includes("Generator"))
-          .join(", ");
+          .filter((g) => !g.includes('Generator'))
+          .join(', ');
         const errorMsg = `Generator not found: ${genName}. Available generators: ${availableGenerators}`;
         this.logger.error(errorMsg);
         return Result.err(new Error(errorMsg));
@@ -94,13 +94,13 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
       }
     }
 
-    this.logger.info("All selected generators executed successfully.");
+    this.logger.info('All selected generators executed successfully.');
     return Result.ok(undefined);
   }
 
   async execute(selectedGenerators?: string[]): Promise<void> {
     const availableGenerators = Array.from(this.generatorsMap.keys()).filter(
-      (name) => !name.includes("Generator")
+      (name) => !name.includes('Generator')
     );
 
     const generatorsToRun =
@@ -110,12 +110,12 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
 
     if (generatorsToRun.length === 0) {
       this.logger.warn(
-        `No valid generators selected. Available generators: ${availableGenerators.filter((g) => !g.includes("Generator")).join(", ")}`
+        `No valid generators selected. Available generators: ${availableGenerators.filter((g) => !g.includes('Generator')).join(', ')}`
       );
       return;
     }
 
-    this.logger.info(`Executing generators: ${generatorsToRun.join(", ")}`);
+    this.logger.info(`Executing generators: ${generatorsToRun.join(', ')}`);
 
     const configResult = await this.projectConfigService.loadConfig();
     if (configResult.isErr()) {
@@ -123,11 +123,11 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
         `Failed to load project config: ${configResult.error?.message}`,
         configResult.error
       );
-      throw configResult.error ?? new Error("Failed to load project config");
+      throw configResult.error ?? new Error('Failed to load project config');
     }
     const config = configResult.value;
     if (!config) {
-      const err = new Error("Project config is undefined");
+      const err = new Error('Project config is undefined');
       this.logger.error(err.message, err);
       throw err;
     }
@@ -136,7 +136,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     const result = await this.executeGenerators(config, validGenerators);
     if (result.isErr()) {
       this.logger.error(`Execution failed: ${result.error?.message}`, result.error);
-      throw result.error ?? new Error("Execution failed");
+      throw result.error ?? new Error('Execution failed');
     }
   }
 }

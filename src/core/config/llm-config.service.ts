@@ -1,10 +1,10 @@
-import { Inject, Injectable } from "../di/decorators";
-import { IFileOperations } from "../file-operations/interfaces";
-import { Result } from "../result/result";
-import type { DistinctQuestion } from "inquirer";
-import { ILogger } from "../services/logger-service";
-import { LLMConfig } from "../../../types/shared";
-import { ILLMConfigService } from "./interfaces";
+import { Inject, Injectable } from '../di/decorators';
+import { IFileOperations } from '../file-operations/interfaces';
+import { Result } from '../result/result';
+import type { DistinctQuestion } from 'inquirer';
+import { ILogger } from '../services/logger-service';
+import { LLMConfig } from '../../../types/shared';
+import { ILLMConfigService } from './interfaces';
 
 /**
  * Service for managing LLM configuration.
@@ -15,9 +15,9 @@ export class LLMConfigService implements ILLMConfigService {
   private readonly configPath = `${process.cwd()}/llm.config.json`;
 
   constructor(
-    @Inject("IFileOperations") private readonly fileOps: IFileOperations,
-    @Inject("ILogger") private readonly logger: ILogger,
-    @Inject("Inquirer") private readonly inquirer: { prompt: (questions: any) => Promise<any> }
+    @Inject('IFileOperations') private readonly fileOps: IFileOperations,
+    @Inject('ILogger') private readonly logger: ILogger,
+    @Inject('Inquirer') private readonly inquirer: { prompt: (questions: any) => Promise<any> }
   ) {}
 
   /**
@@ -41,10 +41,10 @@ export class LLMConfigService implements ILLMConfigService {
       return Result.ok(parsed);
     } catch (error) {
       this.logger.error(
-        "Failed to load LLM config",
+        'Failed to load LLM config',
         error instanceof Error ? error : new Error(String(error))
       );
-      return Result.err(error instanceof Error ? error : new Error("Failed to load LLM config"));
+      return Result.err(error instanceof Error ? error : new Error('Failed to load LLM config'));
     }
   }
 
@@ -54,13 +54,13 @@ export class LLMConfigService implements ILLMConfigService {
    * @returns string error message if invalid, or null if valid
    */
   public validateConfig(config: LLMConfig): string | null {
-    if (!config.provider || typeof config.provider !== "string" || config.provider.trim() === "") {
+    if (!config.provider || typeof config.provider !== 'string' || config.provider.trim() === '') {
       return "Missing or invalid 'provider'";
     }
-    if (!config.apiKey || typeof config.apiKey !== "string" || config.apiKey.trim() === "") {
+    if (!config.apiKey || typeof config.apiKey !== 'string' || config.apiKey.trim() === '') {
       return "Missing or invalid 'apiKey'";
     }
-    if (!config.model || typeof config.model !== "string" || config.model.trim() === "") {
+    if (!config.model || typeof config.model !== 'string' || config.model.trim() === '') {
       return "Missing or invalid 'model'";
     }
     return null;
@@ -81,10 +81,10 @@ export class LLMConfigService implements ILLMConfigService {
       return Result.ok(undefined);
     } catch (error) {
       this.logger.error(
-        "Failed to save LLM config",
+        'Failed to save LLM config',
         error instanceof Error ? error : new Error(String(error))
       );
-      return Result.err(error instanceof Error ? error : new Error("Failed to save LLM config"));
+      return Result.err(error instanceof Error ? error : new Error('Failed to save LLM config'));
     }
   }
 
@@ -101,26 +101,26 @@ export class LLMConfigService implements ILLMConfigService {
       // Define questions for interactive editing
       const questions: DistinctQuestion[] = [
         {
-          type: "input",
-          name: "provider",
-          message: "LLM Provider:",
+          type: 'input',
+          name: 'provider',
+          message: 'LLM Provider:',
           default: editableConfig.provider,
-          validate: (input: string) => input.trim().length > 0 || "Provider cannot be empty",
+          validate: (input: string) => input.trim().length > 0 || 'Provider cannot be empty',
         },
         {
-          type: "password",
-          name: "apiKey",
-          message: "API Key:",
+          type: 'password',
+          name: 'apiKey',
+          message: 'API Key:',
           default: editableConfig.apiKey,
-          mask: "*",
-          validate: (input: string) => input.trim().length > 0 || "API Key cannot be empty",
+          mask: '*',
+          validate: (input: string) => input.trim().length > 0 || 'API Key cannot be empty',
         },
         {
-          type: "input",
-          name: "model",
-          message: "Model:",
+          type: 'input',
+          name: 'model',
+          message: 'Model:',
           default: editableConfig.model,
-          validate: (input: string) => input.trim().length > 0 || "Model cannot be empty",
+          validate: (input: string) => input.trim().length > 0 || 'Model cannot be empty',
         },
       ];
 
@@ -141,11 +141,11 @@ export class LLMConfigService implements ILLMConfigService {
       return Result.ok(undefined);
     } catch (error) {
       this.logger.error(
-        "Failed interactive edit of LLM config",
+        'Failed interactive edit of LLM config',
         error instanceof Error ? error : new Error(String(error))
       );
       return Result.err(
-        error instanceof Error ? error : new Error("Failed interactive edit of LLM config")
+        error instanceof Error ? error : new Error('Failed interactive edit of LLM config')
       );
     }
   }

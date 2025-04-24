@@ -1,14 +1,14 @@
-import { BaseGenerator, IGenerator } from "../core/generators/base-generator";
-import { IFileOperations } from "../core/file-operations/interfaces";
-import { IProjectConfigService } from "../core/config/interfaces";
-import { IServiceContainer } from "../core/di/interfaces";
-import { Result } from "../core/result/result";
-import { Inject, Injectable } from "../core/di";
-import { ITemplateManager } from "../core/template-manager/interfaces";
-import { ILogger } from "../core/services/logger-service";
-import { GeneratorError } from "../core/errors";
-import path from "path";
-import { ProjectConfig } from "../../types/shared";
+import { BaseGenerator, IGenerator } from '../core/generators/base-generator';
+import { IFileOperations } from '../core/file-operations/interfaces';
+import { IProjectConfigService } from '../core/config/interfaces';
+import { IServiceContainer } from '../core/di/interfaces';
+import { Result } from '../core/result/result';
+import { Inject, Injectable } from '../core/di';
+import { ITemplateManager } from '../core/template-manager/interfaces';
+import { ILogger } from '../core/services/logger-service';
+import { GeneratorError } from '../core/errors';
+import path from 'path';
+import { ProjectConfig } from '../../types/shared';
 
 /**
  * @description Generator for creating system prompt files for different RooCode modes.
@@ -20,7 +20,7 @@ export class SystemPromptsGenerator extends BaseGenerator<string> implements IGe
   /**
    * @description The unique name identifier for this generator.
    */
-  public readonly name = "system-prompts";
+  public readonly name = 'system-prompts';
 
   // Dependencies injected via constructor
   protected templateManager: ITemplateManager;
@@ -37,11 +37,11 @@ export class SystemPromptsGenerator extends BaseGenerator<string> implements IGe
    * @param {IServiceContainer} container - The DI container instance.
    */
   constructor(
-    @Inject("ITemplateManager") templateManager: ITemplateManager,
-    @Inject("IFileOperations") fileOperations: IFileOperations,
-    @Inject("ILogger") logger: ILogger,
-    @Inject("IProjectConfigService") projectConfigService: IProjectConfigService,
-    @Inject("IServiceContainer") container: IServiceContainer
+    @Inject('ITemplateManager') templateManager: ITemplateManager,
+    @Inject('IFileOperations') fileOperations: IFileOperations,
+    @Inject('ILogger') logger: ILogger,
+    @Inject('IProjectConfigService') projectConfigService: IProjectConfigService,
+    @Inject('IServiceContainer') container: IServiceContainer
   ) {
     super(container);
     this.templateManager = templateManager;
@@ -79,7 +79,7 @@ export class SystemPromptsGenerator extends BaseGenerator<string> implements IGe
     const configResult = await this.projectConfigService.loadConfig();
     if (configResult.isErr()) {
       const error = new GeneratorError(
-        "Failed to load project configuration for generation.",
+        'Failed to load project configuration for generation.',
         this.name,
         undefined,
         configResult.error
@@ -92,10 +92,10 @@ export class SystemPromptsGenerator extends BaseGenerator<string> implements IGe
     this.logger.info(`Starting system prompts generation...`);
 
     const modes = [
-      { slug: "architect", template: "system-prompt-architect.md" },
-      { slug: "boomerang", template: "system-prompt-boomerang.md" },
-      { slug: "code", template: "system-prompt-code.md" },
-      { slug: "code-review", template: "system-prompt-code-review.md" },
+      { slug: 'architect', template: 'system-prompt-architect.md' },
+      { slug: 'boomerang', template: 'system-prompt-boomerang.md' },
+      { slug: 'code', template: 'system-prompt-code.md' },
+      { slug: 'code-review', template: 'system-prompt-code-review.md' },
     ];
 
     const outputBaseDir = path.resolve(config.rootDir);
@@ -120,7 +120,7 @@ export class SystemPromptsGenerator extends BaseGenerator<string> implements IGe
 
       // Explicitly check if the processed content is valid before writing
       const processedContent = processResult.value;
-      if (typeof processedContent !== "string") {
+      if (typeof processedContent !== 'string') {
         const error = new GeneratorError(
           `Template processing returned invalid content (not a string) for: ${templatePath}`,
           this.name,
@@ -148,7 +148,7 @@ export class SystemPromptsGenerator extends BaseGenerator<string> implements IGe
     }
 
     this.logger.info(`System prompts generation completed successfully.`);
-    return Result.ok("System prompts generated successfully.");
+    return Result.ok('System prompts generated successfully.');
   }
 
   /**
@@ -161,7 +161,7 @@ export class SystemPromptsGenerator extends BaseGenerator<string> implements IGe
     const configResult = await this.projectConfigService.loadConfig();
     if (configResult.isErr()) {
       const error = new GeneratorError(
-        "Failed to load project configuration for validation.",
+        'Failed to load project configuration for validation.',
         this.name,
         undefined,
         configResult.error

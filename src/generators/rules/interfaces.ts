@@ -1,11 +1,11 @@
-import { ProjectConfig } from "../../../types/shared";
-import { Result } from "../../core/result/result";
+import { ProjectConfig } from '../../../types/shared';
+import { Result } from '../../core/result/result';
 
 export interface RulesMetadata {
   mode: string;
-  format?: "markdown" | "json";
+  format?: 'markdown' | 'json';
   options?: {
-    analysisDepth?: "basic" | "detailed";
+    analysisDepth?: 'basic' | 'detailed';
     includeExamples?: boolean;
   };
 }
@@ -27,24 +27,24 @@ export interface IRulesFileManager {
 }
 
 // Omit baseDir from ProjectConfig since it's optional in our case
-export interface RulesConfig extends Omit<ProjectConfig, "baseDir"> {
+export interface RulesConfig extends Omit<ProjectConfig, 'baseDir'> {
   mode: string;
   baseDir: string;
   contextPaths: string[];
   options?: {
-    format?: "markdown" | "json";
-    analysisDepth?: "basic" | "detailed";
+    format?: 'markdown' | 'json';
+    analysisDepth?: 'basic' | 'detailed';
     includeExamples?: boolean;
   };
 }
 
-export interface MultiModeRulesConfig extends Omit<ProjectConfig, "baseDir"> {
+export interface MultiModeRulesConfig extends Omit<ProjectConfig, 'baseDir'> {
   modes?: string[];
   baseDir: string;
   contextPaths: string[];
   options?: {
-    format: "markdown" | "json";
-    analysisDepth?: "basic" | "detailed";
+    format: 'markdown' | 'json';
+    analysisDepth?: 'basic' | 'detailed';
     includeExamples?: boolean;
   };
 }

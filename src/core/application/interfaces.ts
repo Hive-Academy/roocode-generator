@@ -3,8 +3,8 @@
  * These define contracts for core components used by ApplicationContainer.
  */
 
-import { Result } from "../result/result";
-import { ProjectConfig } from "../../../types/shared";
+import { Result } from '../result/result';
+import { ProjectConfig } from '../../../types/shared';
 
 export interface IGeneratorOrchestrator {
   /**

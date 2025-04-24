@@ -1,10 +1,10 @@
-import { Result } from "../result/result";
-import { ITemplateManager, ITemplate } from "./interfaces";
-import { Template } from "./template";
-import { TemplateError, TemplateNotFoundError } from "./errors";
-import { Injectable, Inject } from "../di/decorators";
-import { ILogger } from "../services/logger-service";
-import { IFileOperations } from "../file-operations/interfaces";
+import { Result } from '../result/result';
+import { ITemplateManager, ITemplate } from './interfaces';
+import { Template } from './template';
+import { TemplateError, TemplateNotFoundError } from './errors';
+import { Injectable, Inject } from '../di/decorators';
+import { ILogger } from '../services/logger-service';
+import { IFileOperations } from '../file-operations/interfaces';
 /**
  * TemplateManager class implementing ITemplateManager interface.
  * Responsible for loading, validating, processing, and caching templates.
@@ -17,13 +17,13 @@ export class TemplateManager implements ITemplateManager {
   private templateExt: string;
 
   constructor(
-    @Inject("IFileOperations")
+    @Inject('IFileOperations')
     private fileOperations: IFileOperations,
-    @Inject("ILogger") private logger: ILogger,
+    @Inject('ILogger') private logger: ILogger,
     config?: { templateDir?: string; templateExt?: string }
   ) {
-    this.templateDir = config?.templateDir ?? "templates";
-    this.templateExt = config?.templateExt ?? ".tpl";
+    this.templateDir = config?.templateDir ?? 'templates';
+    this.templateExt = config?.templateExt ?? '.tpl';
   }
 
   /**
@@ -48,22 +48,22 @@ export class TemplateManager implements ITemplateManager {
 
       // For simplicity, assume metadata is parsed from content header or separate file
       // Implement basic metadata extraction from content front matter (YAML-like)
-      let metadata = { name, version: "1.0.0" };
+      let metadata = { name, version: '1.0.0' };
       const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
       if (frontMatterMatch) {
         try {
           const yaml = frontMatterMatch[1];
           // Simple YAML parsing: key: value per line
-          const lines = yaml.split("\n");
+          const lines = yaml.split('\n');
           metadata = lines.reduce(
             (acc: { [key: string]: string } & { name: string; version: string }, line) => {
-              const [key, ...rest] = line.split(":");
+              const [key, ...rest] = line.split(':');
               if (key && rest.length > 0) {
-                acc[key.trim()] = rest.join(":").trim();
+                acc[key.trim()] = rest.join(':').trim();
               }
               return acc;
             },
-            { name, version: "1.0.0" }
+            { name, version: '1.0.0' }
           );
         } catch {
           // Ignore parse errors, fallback to default metadata
@@ -73,7 +73,7 @@ export class TemplateManager implements ITemplateManager {
       const template = new Template(metadata, content);
       const validation = template.validate();
       if (validation.isErr()) {
-        return Result.err(validation.error ?? new TemplateError("Unknown validation error"));
+        return Result.err(validation.error ?? new TemplateError('Unknown validation error'));
       }
 
       this.cache.set(name, template);
@@ -97,7 +97,7 @@ export class TemplateManager implements ITemplateManager {
   public async validateTemplate(name: string): Promise<Result<void, TemplateError>> {
     const templateResult = await this.loadTemplate(name);
     if (templateResult.isErr()) {
-      return Result.err(templateResult.error ?? new TemplateError("Unknown error"));
+      return Result.err(templateResult.error ?? new TemplateError('Unknown error'));
     }
     return templateResult.unwrap().validate();
   }
@@ -114,7 +114,7 @@ export class TemplateManager implements ITemplateManager {
   ): Promise<Result<string, TemplateError>> {
     const templateResult = await this.loadTemplate(name);
     if (templateResult.isErr()) {
-      return Result.err(templateResult.error ?? new TemplateError("Unknown error"));
+      return Result.err(templateResult.error ?? new TemplateError('Unknown error'));
     }
     return templateResult.unwrap().process(context);
   }

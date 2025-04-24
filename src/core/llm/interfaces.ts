@@ -1,5 +1,5 @@
-import { Result } from "../result/result";
-import type { AnalysisResult, LLMConfig } from "../../../types/shared";
+import { Result } from '../result/result';
+import type { AnalysisResult, LLMConfig } from '../../../types/shared';
 
 export interface ILLMProvider {
   readonly name: string;

@@ -1,6 +1,6 @@
-import { Injectable, Inject } from "../core/di/decorators";
-import path from "path";
-import { IFileOperations } from "../core/file-operations/interfaces";
+import { Injectable, Inject } from '../core/di/decorators';
+import path from 'path';
+import { IFileOperations } from '../core/file-operations/interfaces';
 import {
   IMemoryBankValidator,
   IMemoryBankFileManager,
@@ -9,14 +9,14 @@ import {
   MemoryBankFileType,
   IProjectContextService,
   IPromptBuilder,
-} from "./interfaces";
-import { ILogger } from "../core/services/logger-service";
-import { Result } from "../core/result/result";
-import { BaseGenerator } from "../core/generators/base-generator";
-import { IProjectConfigService } from "../core/config/interfaces";
-import { IServiceContainer } from "../core/di/interfaces";
-import { LLMAgent } from "../core/llm/llm-agent";
-import { ProjectConfig } from "../../types/shared";
+} from './interfaces';
+import { ILogger } from '../core/services/logger-service';
+import { Result } from '../core/result/result';
+import { BaseGenerator } from '../core/generators/base-generator';
+import { IProjectConfigService } from '../core/config/interfaces';
+import { IServiceContainer } from '../core/di/interfaces';
+import { LLMAgent } from '../core/llm/llm-agent';
+import { ProjectConfig } from '../../types/shared';
 
 interface MemoryBankConfig extends ProjectConfig {
   fileType?: MemoryBankFileType;
@@ -25,21 +25,21 @@ interface MemoryBankConfig extends ProjectConfig {
 
 @Injectable()
 export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
-  readonly name = "MemoryBank";
+  readonly name = 'MemoryBank';
 
   constructor(
-    @Inject("IServiceContainer") protected container: IServiceContainer,
-    @Inject("IMemoryBankValidator") private readonly validator: IMemoryBankValidator,
-    @Inject("IMemoryBankFileManager") private readonly fileManager: IMemoryBankFileManager,
-    @Inject("IMemoryBankTemplateManager")
+    @Inject('IServiceContainer') protected container: IServiceContainer,
+    @Inject('IMemoryBankValidator') private readonly validator: IMemoryBankValidator,
+    @Inject('IMemoryBankFileManager') private readonly fileManager: IMemoryBankFileManager,
+    @Inject('IMemoryBankTemplateManager')
     private readonly templateManager: IMemoryBankTemplateManager,
-    @Inject("IContentProcessor") private readonly contentProcessor: IContentProcessor,
-    @Inject("ILogger") private readonly logger: ILogger,
-    @Inject("IProjectConfigService") private readonly projectConfigService: IProjectConfigService,
-    @Inject("IProjectContextService")
+    @Inject('IContentProcessor') private readonly contentProcessor: IContentProcessor,
+    @Inject('ILogger') private readonly logger: ILogger,
+    @Inject('IProjectConfigService') private readonly projectConfigService: IProjectConfigService,
+    @Inject('IProjectContextService')
     private readonly projectContextService: IProjectContextService,
-    @Inject("IPromptBuilder") private readonly promptBuilder: IPromptBuilder,
-    @Inject("LLMAgent")
+    @Inject('IPromptBuilder') private readonly promptBuilder: IPromptBuilder,
+    @Inject('LLMAgent')
     private readonly llmAgent: LLMAgent
   ) {
     super(container);
@@ -57,7 +57,7 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
       !this.promptBuilder ||
       !this.llmAgent
     ) {
-      return Result.err(new Error("Required dependencies are not initialized"));
+      return Result.err(new Error('Required dependencies are not initialized'));
     }
     return Result.ok(undefined);
   }
@@ -73,7 +73,7 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
       // Validate configuration
       const configValidation = this.validateConfig(config);
       if (configValidation.isErr()) {
-        return Result.err(configValidation.error ?? new Error("Invalid configuration"));
+        return Result.err(configValidation.error ?? new Error('Invalid configuration'));
       }
 
       // Create memory bank directory if it doesn't exist
@@ -81,24 +81,24 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
         config.baseDir || process.cwd()
       );
       if (dirResult.isErr()) {
-        return Result.err(dirResult.error ?? new Error("Unknown error"));
+        return Result.err(dirResult.error ?? new Error('Unknown error'));
       }
 
       // Gather project context from provided paths
       const contextResult = await this.projectContextService.gatherContext(contextPaths);
       if (contextResult.isErr()) {
-        return Result.err(contextResult.error ?? new Error("Failed to gather context"));
+        return Result.err(contextResult.error ?? new Error('Failed to gather context'));
       }
 
       // Load template for the specified file type
       const templateResult = await this.templateManager.loadTemplate(fileType);
       if (templateResult.isErr()) {
-        return Result.err(templateResult.error ?? new Error("Template content is undefined"));
+        return Result.err(templateResult.error ?? new Error('Template content is undefined'));
       }
 
       // Ensure values are defined before using them
-      const contextValue = contextResult.value || "";
-      const templateValue = templateResult.value || "";
+      const contextValue = contextResult.value || '';
+      const templateValue = templateResult.value || '';
 
       // Build file-type specific instructions
       const instructions = this.getFileTypeInstructions(fileType);
@@ -110,7 +110,7 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
         templateValue
       );
       if (promptResult.isErr()) {
-        return Result.err(promptResult.error ?? new Error("Failed to build prompt"));
+        return Result.err(promptResult.error ?? new Error('Failed to build prompt'));
       }
 
       // Build system prompt with role-specific context
@@ -120,11 +120,11 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
         templateValue
       );
       if (systemPromptResult.isErr()) {
-        return Result.err(systemPromptResult.error ?? new Error("Failed to build system prompt"));
+        return Result.err(systemPromptResult.error ?? new Error('Failed to build system prompt'));
       }
 
       if (!systemPromptResult.value || !promptResult.value) {
-        return Result.err(new Error("Generated prompts are undefined"));
+        return Result.err(new Error('Generated prompts are undefined'));
       }
 
       const llmResponse = await this.llmAgent.getCompletion(
@@ -132,11 +132,11 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
         promptResult.value
       );
       if (llmResponse.isErr()) {
-        return Result.err(llmResponse.error ?? new Error("LLM invocation failed"));
+        return Result.err(llmResponse.error ?? new Error('LLM invocation failed'));
       }
 
       if (!llmResponse.value) {
-        return Result.err(new Error("LLM response is undefined"));
+        return Result.err(new Error('LLM response is undefined'));
       }
 
       // Process the template with enhanced metadata
@@ -145,27 +145,27 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
         {
           fileType: String(fileType),
           baseDir: config.baseDir || process.cwd(),
-          projectName: config.name ?? "Unknown Project",
+          projectName: config.name ?? 'Unknown Project',
           projectContext: contextValue,
           taskId: this.generateTaskId(),
           taskName: `Generate ${String(fileType)}`,
           implementationSummary: `Generated ${String(fileType)} based on project context`,
-          currentDate: new Date().toISOString().split("T")[0],
+          currentDate: new Date().toISOString().split('T')[0],
         }
       );
       if (processedContentResult.isErr()) {
-        return Result.err(processedContentResult.error ?? new Error("Failed to process content"));
+        return Result.err(processedContentResult.error ?? new Error('Failed to process content'));
       }
 
       const content = processedContentResult.value;
       if (!content) {
-        return Result.err(new Error("Processed content is undefined"));
+        return Result.err(new Error('Processed content is undefined'));
       }
 
       return Result.ok(content);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error("Error in memory bank generation", err);
+      this.logger.error('Error in memory bank generation', err);
       return Result.err(err);
     }
   }
@@ -187,10 +187,10 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
       // Load template for the specified file type
       const templateResult = await this.templateManager.loadTemplate(fileTypeToGenerate);
       if (templateResult.isErr()) {
-        return Result.err(templateResult.error ?? new Error("Template content is undefined"));
+        return Result.err(templateResult.error ?? new Error('Template content is undefined'));
       }
 
-      const templateValue = templateResult.value || "";
+      const templateValue = templateResult.value || '';
 
       // Build file-type specific instructions
       const instructions = this.getFileTypeInstructions(fileTypeToGenerate);
@@ -202,7 +202,7 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
         templateValue
       );
       if (promptResult.isErr()) {
-        return Result.err(promptResult.error ?? new Error("Failed to build prompt"));
+        return Result.err(promptResult.error ?? new Error('Failed to build prompt'));
       }
 
       // Build system prompt with role-specific context
@@ -212,11 +212,11 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
         templateValue
       );
       if (systemPromptResult.isErr()) {
-        return Result.err(systemPromptResult.error ?? new Error("Failed to build system prompt"));
+        return Result.err(systemPromptResult.error ?? new Error('Failed to build system prompt'));
       }
 
       if (!systemPromptResult.value || !promptResult.value) {
-        return Result.err(new Error("Generated prompts are undefined"));
+        return Result.err(new Error('Generated prompts are undefined'));
       }
 
       const llmResponse = await this.llmAgent.getCompletion(
@@ -224,50 +224,50 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
         promptResult.value
       );
       if (llmResponse.isErr()) {
-        return Result.err(llmResponse.error ?? new Error("LLM invocation failed"));
+        return Result.err(llmResponse.error ?? new Error('LLM invocation failed'));
       }
 
       if (!llmResponse.value) {
-        return Result.err(new Error("LLM response is undefined"));
+        return Result.err(new Error('LLM response is undefined'));
       }
 
       // Strip markdown code blocks from LLM response
       const strippedContentResult = this.contentProcessor.stripMarkdownCodeBlock(llmResponse.value);
       if (strippedContentResult.isErr()) {
         return Result.err(
-          strippedContentResult.error ?? new Error("Failed to strip markdown code blocks")
+          strippedContentResult.error ?? new Error('Failed to strip markdown code blocks')
         );
       }
 
       const strippedContent = strippedContentResult.value;
       if (!strippedContent) {
-        return Result.err(new Error("Stripped content is undefined"));
+        return Result.err(new Error('Stripped content is undefined'));
       }
 
       // Process the template with enhanced metadata
       const processedContentResult = await this.contentProcessor.processTemplate(strippedContent, {
         fileType: String(fileTypeToGenerate),
         baseDir: process.cwd(),
-        projectName: "memory-bank",
+        projectName: 'memory-bank',
         projectContext: projectContext,
         taskId: this.generateTaskId(),
         taskName: `Generate ${String(fileTypeToGenerate)}`,
         implementationSummary: `Generated ${String(fileTypeToGenerate)} based on project context`,
-        currentDate: new Date().toISOString().split("T")[0],
+        currentDate: new Date().toISOString().split('T')[0],
       });
       if (processedContentResult.isErr()) {
-        return Result.err(processedContentResult.error ?? new Error("Failed to process content"));
+        return Result.err(processedContentResult.error ?? new Error('Failed to process content'));
       }
 
       const content = processedContentResult.value;
       if (!content) {
-        return Result.err(new Error("Processed content is undefined"));
+        return Result.err(new Error('Processed content is undefined'));
       }
 
       return Result.ok(content);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error("Error in memory bank generation", err);
+      this.logger.error('Error in memory bank generation', err);
       return Result.err(err);
     }
   }
@@ -276,17 +276,17 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
     context?: string;
     output?: string;
   }): Promise<Result<void, Error>> {
-    const projectContext = options.context || "";
+    const projectContext = options.context || '';
     const outputDir = options.output || process.cwd();
     try {
       // Get file operations service
-      const fileOpsResult = this.container.resolve<IFileOperations>("IFileOperations");
+      const fileOpsResult = this.container.resolve<IFileOperations>('IFileOperations');
       if (fileOpsResult.isErr()) {
-        return Result.err(new Error("Failed to resolve IFileOperations"));
+        return Result.err(new Error('Failed to resolve IFileOperations'));
       }
       const fileOps = fileOpsResult.value;
       if (!fileOps) {
-        return Result.err(new Error("IFileOperations is undefined after resolution"));
+        return Result.err(new Error('IFileOperations is undefined after resolution'));
       }
 
       // Create the memory-bank directory and templates subdirectory
@@ -294,15 +294,15 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
       if (dirResult.isErr()) {
         return Result.err(
           new Error(
-            `Failed to create memory-bank directory structure: ${dirResult.error?.message ?? "Unknown error"}`
+            `Failed to create memory-bank directory structure: ${dirResult.error?.message ?? 'Unknown error'}`
           )
         );
       }
 
       // Generate each memory bank file type
-      this.logger.info("Generating memory bank files...");
+      this.logger.info('Generating memory bank files...');
       const fileTypesToGenerate = Object.values(MemoryBankFileType);
-      const memoryBankDir = path.join(outputDir, "memory-bank");
+      const memoryBankDir = path.join(outputDir, 'memory-bank');
 
       for (const fileType of fileTypesToGenerate) {
         // Generate content
@@ -311,7 +311,7 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
 
         if (result.isErr()) {
           this.logger.error(
-            `Generation failed for ${String(fileType)}: ${result.error?.message ?? "Unknown error"}`
+            `Generation failed for ${String(fileType)}: ${result.error?.message ?? 'Unknown error'}`
           );
           continue;
         }
@@ -329,7 +329,7 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
 
         if (writeResult.isErr()) {
           this.logger.error(
-            `Failed to write ${String(fileType)}: ${writeResult.error?.message ?? "Unknown error"}`
+            `Failed to write ${String(fileType)}: ${writeResult.error?.message ?? 'Unknown error'}`
           );
           continue;
         }
@@ -338,9 +338,9 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
       }
 
       // Copy templates directory
-      this.logger.info("Copying template files...");
-      const sourceTemplatesDir = path.join("templates", "memory-bank", "templates");
-      const destTemplatesDir = path.join(memoryBankDir, "templates");
+      this.logger.info('Copying template files...');
+      const sourceTemplatesDir = path.join('templates', 'memory-bank', 'templates');
+      const destTemplatesDir = path.join(memoryBankDir, 'templates');
 
       this.logger.debug(`Copying templates from ${sourceTemplatesDir} to ${destTemplatesDir}`);
       const copyResult = await this.copyDirectoryRecursive(
@@ -350,25 +350,25 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
       );
       if (copyResult.isErr()) {
         this.logger.error(
-          `Failed to copy templates: ${copyResult.error?.message ?? "Unknown error"}`
+          `Failed to copy templates: ${copyResult.error?.message ?? 'Unknown error'}`
         );
         // Continue execution even if template copying fails
       } else {
-        this.logger.info("Templates copied successfully");
+        this.logger.info('Templates copied successfully');
       }
 
-      this.logger.info("Memory bank generation completed");
+      this.logger.info('Memory bank generation completed');
       return Result.ok(undefined);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error("Error in memory bank generation", err);
+      this.logger.error('Error in memory bank generation', err);
       return Result.err(err);
     }
   }
 
   private validateConfig(config: MemoryBankConfig): Result<void, Error> {
     if (!config) {
-      return Result.err(new Error("Config is undefined"));
+      return Result.err(new Error('Config is undefined'));
     }
     if (!config.baseDir) {
       config.baseDir = process.cwd();
@@ -396,7 +396,7 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
 
   private getSystemPrompt(fileType: MemoryBankFileType): string {
     const basePrompt =
-      "You are Roo Architect, an experienced technical leader with expertise in software architecture and documentation.";
+      'You are Roo Architect, an experienced technical leader with expertise in software architecture and documentation.';
 
     switch (fileType) {
       case MemoryBankFileType.ProjectOverview:
@@ -435,7 +435,7 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
       if (createDirResult.isErr()) {
         return Result.err(
           new Error(
-            `Failed to create directory ${destDir}: ${createDirResult.error?.message ?? "Unknown error"}`
+            `Failed to create directory ${destDir}: ${createDirResult.error?.message ?? 'Unknown error'}`
           )
         );
       }
@@ -445,7 +445,7 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
       if (readDirResult.isErr()) {
         return Result.err(
           new Error(
-            `Failed to read directory ${sourceDir}: ${readDirResult.error?.message ?? "Unknown error"}`
+            `Failed to read directory ${sourceDir}: ${readDirResult.error?.message ?? 'Unknown error'}`
           )
         );
       }
@@ -481,7 +481,7 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
           if (readResult.isErr()) {
             return Result.err(
               new Error(
-                `Failed to read file ${sourcePath}: ${readResult.error?.message ?? "Unknown error"}`
+                `Failed to read file ${sourcePath}: ${readResult.error?.message ?? 'Unknown error'}`
               )
             );
           }
@@ -495,7 +495,7 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
           if (writeResult.isErr()) {
             return Result.err(
               new Error(
-                `Failed to write file ${destPath}: ${writeResult.error?.message ?? "Unknown error"}`
+                `Failed to write file ${destPath}: ${writeResult.error?.message ?? 'Unknown error'}`
               )
             );
           }

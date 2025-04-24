@@ -1,16 +1,16 @@
-import path from "path";
-import { format } from "date-fns"; // For timestamp generation
-import { Result } from "../../core/result/result";
-import { IFileOperations } from "../../core/file-operations/interfaces";
-import { ILogger } from "../../core/services/logger-service"; // Corrected import path
-import { Inject, Injectable } from "../../core/di/decorators"; // Corrected import path for custom DI
+import path from 'path';
+import { format } from 'date-fns'; // For timestamp generation
+import { Result } from '../../core/result/result';
+import { IFileOperations } from '../../core/file-operations/interfaces';
+import { ILogger } from '../../core/services/logger-service'; // Corrected import path
+import { Inject, Injectable } from '../../core/di/decorators'; // Corrected import path for custom DI
 import {
   GeneratedRules,
   IRulesFileManager,
   RulesFileStructure,
   RuleVersion,
   // RulesMetadata, // Removed as it's part of RuleVersion/GeneratedRules
-} from "./interfaces";
+} from './interfaces';
 
 // Define a type for the version history file content
 type VersionHistory = {
@@ -46,14 +46,14 @@ export class RulesFileManager implements IRulesFileManager {
    * @param {ILogger} logger - Service for logging.
    */
   constructor(
-    @Inject("IFileOperations") private readonly fileOps: IFileOperations,
-    @Inject("ILogger") private readonly logger: ILogger
+    @Inject('IFileOperations') private readonly fileOps: IFileOperations,
+    @Inject('ILogger') private readonly logger: ILogger
   ) {
     this.fileStructure = {
-      baseDir: ".roo",
-      modesDir: "rules",
-      backupDir: "rules-backup",
-      versionFile: "rules-versions.json",
+      baseDir: '.roo',
+      modesDir: 'rules',
+      backupDir: 'rules-backup',
+      versionFile: 'rules-versions.json',
     };
 
     this.baseDirPath = path.resolve(this.fileStructure.baseDir);
@@ -101,10 +101,10 @@ export class RulesFileManager implements IRulesFileManager {
    */
   private async ensureModeDirectory(
     mode: string,
-    type: "rules" | "backup"
+    type: 'rules' | 'backup'
   ): Promise<Result<void, Error>> {
     const dirPath =
-      type === "rules" ? path.join(this.modesDirPath, mode) : path.join(this.backupDirPath, mode);
+      type === 'rules' ? path.join(this.modesDirPath, mode) : path.join(this.backupDirPath, mode);
     try {
       const result = await this.fileOps.createDirectory(dirPath);
       if (result.isErr()) return result;
@@ -126,7 +126,7 @@ export class RulesFileManager implements IRulesFileManager {
    * @returns {string} The generated version string.
    */
   private generateVersionId(): string {
-    return format(new Date(), "yyyyMMddHHmmss");
+    return format(new Date(), 'yyyyMMddHHmmss');
   }
 
   /**
@@ -258,7 +258,7 @@ export class RulesFileManager implements IRulesFileManager {
       const relativePath = path.relative(this.baseDirPath, filePath);
 
       // 3. Ensure mode-specific directory exists
-      const ensureModeResult = await this.ensureModeDirectory(mode, "rules");
+      const ensureModeResult = await this.ensureModeDirectory(mode, 'rules');
       if (ensureModeResult.isErr()) return Result.err(ensureModeResult.error as Error); // Return specific error type
 
       // 4. Prepare content to save
@@ -329,7 +329,7 @@ export class RulesFileManager implements IRulesFileManager {
    */
   async loadRules(mode: string, version?: string): Promise<Result<GeneratedRules, Error>> {
     this.logger.info(
-      `Attempting to load rules for mode: ${mode}${version ? `, version: ${version}` : " (latest)"}`
+      `Attempting to load rules for mode: ${mode}${version ? `, version: ${version}` : ' (latest)'}`
     );
     try {
       const historyResult = await this.readVersionHistory();
@@ -408,7 +408,7 @@ export class RulesFileManager implements IRulesFileManager {
     } catch (error) {
       // General catch block
       const err = new Error(
-        `Failed to load rules for mode ${mode}${version ? ` (version ${version})` : ""}: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to load rules for mode ${mode}${version ? ` (version ${version})` : ''}: ${error instanceof Error ? error.message : String(error)}`
       );
       this.logger.error(err.message, err);
       return Result.err(err);
@@ -455,7 +455,7 @@ export class RulesFileManager implements IRulesFileManager {
       }
 
       // 3. Determine backup path
-      const backupTimestamp = format(new Date(), "yyyyMMddHHmmssSSS");
+      const backupTimestamp = format(new Date(), 'yyyyMMddHHmmssSSS');
       const backupFilePath = this.getBackupFilePath(
         mode,
         latestVersionInfo.version,
@@ -463,7 +463,7 @@ export class RulesFileManager implements IRulesFileManager {
       );
 
       // 4. Ensure backup directory exists
-      const ensureDirResult = await this.ensureModeDirectory(mode, "backup");
+      const ensureDirResult = await this.ensureModeDirectory(mode, 'backup');
       if (ensureDirResult.isErr()) return ensureDirResult; // Propagate error
 
       // 5. Copy the file (Workaround: read source, write destination)
