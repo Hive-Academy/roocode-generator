@@ -1,26 +1,24 @@
+import { IProjectConfigService } from '@core/config/interfaces';
 import { Container } from '@core/di/container';
 import { resolveDependency } from '@core/di/registrations'; // Import helper
-import { ILogger } from '@core/services/logger-service';
 import { IFileOperations } from '@core/file-operations/interfaces';
-import { IProjectConfigService } from '@core/config/interfaces';
 import { LLMAgent } from '@core/llm/llm-agent';
-import { MemoryBankCommandHandler } from '@commands/memory-bank-command-handler';
-import { MemoryBankGenerator } from '@memory-bank/memory-bank-generator';
-import { MemoryBankValidator } from '@memory-bank/memory-bank-validator';
-import { MemoryBankFileManager } from '@memory-bank/memory-bank-file-manager';
-import { MemoryBankTemplateManager } from '@memory-bank/memory-bank-template-manager';
+import { ILogger } from '@core/services/logger-service';
 import { ContentProcessor } from '@memory-bank/content-processor';
-import { ProjectContextService } from '@memory-bank/project-context-service';
-import { PromptBuilder } from '@memory-bank/prompt-builder';
 import {
-  IMemoryBankValidator,
+  IContentProcessor,
   IMemoryBankFileManager,
   IMemoryBankTemplateManager,
-  IContentProcessor,
+  IMemoryBankValidator,
   IProjectContextService,
   IPromptBuilder,
 } from '@memory-bank/interfaces';
-import { Factory } from '@core/di/types';
+import { MemoryBankFileManager } from '@memory-bank/memory-bank-file-manager';
+import { MemoryBankGenerator } from '@memory-bank/memory-bank-generator';
+import { MemoryBankTemplateManager } from '@memory-bank/memory-bank-template-manager';
+import { MemoryBankValidator } from '@memory-bank/memory-bank-validator';
+import { ProjectContextService } from '@memory-bank/project-context-service';
+import { PromptBuilder } from '@memory-bank/prompt-builder';
 
 export function registerMemoryBankModule(container: Container): void {
   // Register MemoryBank specific services
@@ -98,38 +96,4 @@ export function registerMemoryBankModule(container: Container): void {
       llmAgent
     );
   });
-
-  // Register MemoryBankCommandHandler
-  const memoryBankHandlerFactory: Factory<MemoryBankCommandHandler> = () => {
-    const logger = resolveDependency<ILogger>(container, 'ILogger'); // Resolve logger first for error handling
-    try {
-      const generator = resolveDependency<MemoryBankGenerator>(container, 'MemoryBankGenerator');
-      const fileOps = resolveDependency<IFileOperations>(container, 'IFileOperations');
-      const projectContextService = resolveDependency<IProjectContextService>(
-        container,
-        'IProjectContextService'
-      );
-
-      return new MemoryBankCommandHandler(generator, fileOps, logger, projectContextService);
-    } catch (error) {
-      logger.error('Error creating MemoryBankCommandHandler instance', error as Error);
-      throw error; // Re-throw to indicate factory failure
-    }
-  };
-
-  const registrationResult = container.registerFactory(
-    'MemoryBankCommandHandler',
-    memoryBankHandlerFactory
-  );
-
-  if (registrationResult.isErr()) {
-    const logger = resolveDependency<ILogger>(container, 'ILogger');
-    logger.error(
-      `Failed to register MemoryBankCommandHandler: ${registrationResult.error?.message}`,
-      registrationResult.error
-    );
-    throw new Error(
-      `Failed to register MemoryBankCommandHandler: ${registrationResult.error?.message}`
-    );
-  }
 }
