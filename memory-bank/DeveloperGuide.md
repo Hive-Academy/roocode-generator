@@ -165,6 +165,54 @@ This project uses a **Trunk-based** development workflow.
   - **Static Analysis**: Use `npm run lint` to check for code style and potential errors.
   - **Type Checking**: Use `npm run typecheck` (or rely on `tsc` during the build) to ensure type safety.
 
+### Modular DI Registration Pattern
+
+To enhance organization and maintainability, the project's custom Dependency Injection (DI) registration logic has been modularized. Instead of a single large registration function (previously in `src/core/di/registrations.ts`), dependencies are now registered in dedicated module files located under `src/core/di/modules/`. Each module typically corresponds to a major feature area or core functionality (e.g., `app-module.ts`, `core-module.ts`, `llm-module.ts`).
+
+**Key Principles:**
+
+- **Separation of Concerns:** Each module file (`*.ts` under `src/core/di/modules/`) contains registration logic (often using the project's factory pattern) specific to its domain.
+- **Centralized Loading:** The main registration entry point (e.g., `src/core/di/registrations.ts`) imports these modules and calls their respective registration functions to build the complete dependency graph for the container.
+- **Scalability:** This pattern makes it easier to add or modify dependencies for specific features without altering a single, large registration file.
+
+**Example Structure:**
+
+```
+src/
+  core/
+    di/
+      container.ts       # Main container setup/access
+      registrations.ts   # Central registration logic, imports & calls modules
+      modules/
+        app-module.ts    # Registers application-specific services via factory pattern
+        core-module.ts   # Registers core framework services via factory pattern
+        feature-x-module.ts # Registers services for Feature X via factory pattern
+```
+
+### Modular DI Registration Pattern
+
+To enhance organization and maintainability, the project's custom Dependency Injection (DI) registration logic has been modularized. Instead of a single large registration function (previously in `src/core/di/registrations.ts`), dependencies are now registered in dedicated module files located under `src/core/di/modules/`. Each module typically corresponds to a major feature area or core functionality (e.g., `app-module.ts`, `core-module.ts`, `llm-module.ts`).
+
+**Key Principles:**
+
+- **Separation of Concerns:** Each module file (`*.ts` under `src/core/di/modules/`) contains registration logic (often using the project's factory pattern) specific to its domain.
+- **Centralized Loading:** The main registration entry point (e.g., `src/core/di/registrations.ts`) imports these modules and calls their respective registration functions to build the complete dependency graph for the container.
+- **Scalability:** This pattern makes it easier to add or modify dependencies for specific features without altering a single, large registration file.
+
+**Example Structure:**
+
+```
+src/
+  core/
+    di/
+      container.ts       # Main container setup/access
+      registrations.ts   # Central registration logic, imports & calls modules
+      modules/
+        app-module.ts    # Registers application-specific services via factory pattern
+        core-module.ts   # Registers core framework services via factory pattern
+        feature-x-module.ts # Registers services for Feature X via factory pattern
+```
+
 ## Common Operations
 
 ### Development Tasks
@@ -252,18 +300,18 @@ Interacting with the template system typically involves using the `IRulesTemplat
 1.  **Loading Base Templates:**
 
     ```typescript
-    import { container } from "./inversify.config"; // Adjust path as needed
-    import { IRulesTemplateManager } from "./core/template/IRulesTemplateManager"; // Adjust path
+    import { container } from './inversify.config'; // Adjust path as needed
+    import { IRulesTemplateManager } from './core/template/IRulesTemplateManager'; // Adjust path
 
-    const templateManager = container.resolve<IRulesTemplateManager>("IRulesTemplateManager");
-    const baseTemplateResult = await templateManager.loadBaseTemplate("architect"); // Load template for 'architect' mode
+    const templateManager = container.resolve<IRulesTemplateManager>('IRulesTemplateManager');
+    const baseTemplateResult = await templateManager.loadBaseTemplate('architect'); // Load template for 'architect' mode
 
     if (baseTemplateResult.isOk()) {
       const template = baseTemplateResult.value;
-      console.log("Loaded base template:", template);
+      console.log('Loaded base template:', template);
       // Proceed to apply customizations or process
     } else {
-      console.error("Failed to load base template:", baseTemplateResult.error);
+      console.error('Failed to load base template:', baseTemplateResult.error);
       // Handle error
     }
     ```
@@ -273,7 +321,7 @@ Interacting with the template system typically involves using the `IRulesTemplat
     Customizations allow overriding or adding sections to base templates.
 
     ```typescript
-    const customResult = await templateManager.loadCustomizations("architect");
+    const customResult = await templateManager.loadCustomizations('architect');
 
     if (customResult.isOk() && baseTemplateResult.isOk()) {
       const mergedResult = templateManager.mergeTemplates(
@@ -282,14 +330,14 @@ Interacting with the template system typically involves using the `IRulesTemplat
       );
       if (mergedResult.isOk()) {
         const mergedTemplate = mergedResult.value;
-        console.log("Merged template:", mergedTemplate);
+        console.log('Merged template:', mergedTemplate);
         // Use the merged template for processing
       } else {
-        console.error("Failed to merge templates:", mergedResult.error);
+        console.error('Failed to merge templates:', mergedResult.error);
         // Handle error
       }
     } else if (customResult.isErr()) {
-      console.warn("No customizations found or failed to load:", customResult.error);
+      console.warn('No customizations found or failed to load:', customResult.error);
       // Can proceed with just the base template if appropriate
     }
     ```
@@ -299,24 +347,24 @@ Interacting with the template system typically involves using the `IRulesTemplat
     The `TemplateProcessor` integrates LLM-generated content (contextual rules) into the template.
 
     ```typescript
-    import { TemplateProcessor } from "./core/template/TemplateProcessor"; // Adjust path
+    import { TemplateProcessor } from './core/template/TemplateProcessor'; // Adjust path
     // Assume mergedTemplate is available from the previous step
     // Assume projectContext is an object containing relevant project information
 
-    const templateProcessor = container.resolve<TemplateProcessor>("TemplateProcessor");
+    const templateProcessor = container.resolve<TemplateProcessor>('TemplateProcessor');
 
     const processedResult = await templateProcessor.processTemplate({
-      mode: "architect", // The mode the template is for
+      mode: 'architect', // The mode the template is for
       baseTemplate: mergedTemplate, // The template content (base or merged)
       projectContext: projectContext, // Contextual data for LLM
     });
 
     if (processedResult.isOk()) {
       const finalContent = processedResult.value;
-      console.log("Final processed content:", finalContent);
+      console.log('Final processed content:', finalContent);
       // This content is ready for file generation
     } else {
-      console.error("Template processing failed:", processedResult.error);
+      console.error('Template processing failed:', processedResult.error);
       // Handle error
     }
     ```
@@ -411,10 +459,10 @@ The Rules Generator has been enhanced with LLM integration to generate contextua
 #### Project Analyzer Usage
 
 ```typescript
-import { IProjectAnalyzer } from "./generators/rules/interfaces";
+import { IProjectAnalyzer } from './generators/rules/interfaces';
 
 // Get analyzer from DI container
-const analyzer = container.resolve<IProjectAnalyzer>("IProjectAnalyzer");
+const analyzer = container.resolve<IProjectAnalyzer>('IProjectAnalyzer');
 
 // Analyze project context
 const techStackResult = await analyzer.analyzeTechStack(paths);
@@ -434,10 +482,10 @@ if (techStackResult.isOk() && structureResult.isOk() && dependenciesResult.isOk(
 #### Template Manager Integration
 
 ```typescript
-import { IRulesTemplateManager } from "./generators/rules/interfaces";
+import { IRulesTemplateManager } from './generators/rules/interfaces';
 
 // Get template manager from DI container
-const templateManager = container.resolve<IRulesTemplateManager>("IRulesTemplateManager");
+const templateManager = container.resolve<IRulesTemplateManager>('IRulesTemplateManager');
 
 // Load and process templates
 const baseTemplate = await templateManager.loadBaseTemplate(mode);
@@ -455,27 +503,27 @@ if (baseTemplate.isOk() && customizations.isOk()) {
 #### File Management
 
 ```typescript
-import { IRulesFileManager } from "./generators/rules/interfaces";
+import { IRulesFileManager } from './generators/rules/interfaces';
 
 // Get file manager from DI container
-const fileManager = container.resolve<IRulesFileManager>("IRulesFileManager");
+const fileManager = container.resolve<IRulesFileManager>('IRulesFileManager');
 
 // Save generated rules
 const saveResult = await fileManager.saveRules({
-  mode: "architect",
+  mode: 'architect',
   content: generatedContent,
   metadata: {
-    version: "1.0.0",
+    version: '1.0.0',
     timestamp: new Date().toISOString(),
     // ... other metadata
   },
 });
 
 // Load specific version
-const loadResult = await fileManager.loadRules("architect", "v1.0.0");
+const loadResult = await fileManager.loadRules('architect', 'v1.0.0');
 
 // List available versions
-const versions = await fileManager.listRuleVersions("architect");
+const versions = await fileManager.listRuleVersions('architect');
 ```
 
 ### Error Handling Patterns
@@ -500,9 +548,9 @@ const data = result.value;
 
 ```typescript
 // Operation logging
-logger.debug("Starting rules generation", { mode, context });
-logger.info("Templates loaded successfully", { mode });
-logger.error("Generation failed", { error, mode, context });
+logger.debug('Starting rules generation', { mode, context });
+logger.info('Templates loaded successfully', { mode });
+logger.error('Generation failed', { error, mode, context });
 ```
 
 ### Best Practices
