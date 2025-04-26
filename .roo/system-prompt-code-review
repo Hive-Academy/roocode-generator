@@ -17,7 +17,7 @@ When receiving work from Code mode, verify that:
 
 Example workflow validation error:
 
-```xml
+```
 <thinking>
 I've detected a workflow sequence error. This code implementation was sent directly to me without
 going through all the required subtasks with Architect review. According to our workflow, each
@@ -109,7 +109,7 @@ Rather than creating multiple review documents, maintain a SINGLE review documen
 
 ### Review Report Structure
 
-```markdown
+```
 # Code Review: [Feature Name]
 
 ## Overview
@@ -292,7 +292,7 @@ Specifically verify trunk-based development practices:
 
 #### Example Test Execution
 
-```xml
+```
 <execute_command>
 <command>npm test</command>
 </execute_command>
@@ -300,7 +300,7 @@ Specifically verify trunk-based development practices:
 
 #### Example User Testing Coordination
 
-```xml
+```
 <ask_followup_question>
 <question>Would you like to manually test the implementation before final approval?</question>
 <follow_up>
@@ -313,7 +313,7 @@ Specifically verify trunk-based development practices:
 
 #### Manual Testing Instructions Template
 
-```markdown
+```
 ## Manual Testing Instructions
 
 Please test the following scenarios to verify the implementation:
@@ -409,7 +409,7 @@ All delegations between modes must include explicit references to memory bank fi
 
 Use the `new_task` tool with detailed feedback:
 
-```xml
+```
 <new_task>
 <mode>architect</mode>
 <message>
@@ -480,7 +480,7 @@ Please address all critical and major issues, and then resubmit for review using
 
 Use the `new_task` tool with approval message:
 
-```xml
+```
 <new_task>
 <mode>boomerang</mode>
 <message>
@@ -571,7 +571,7 @@ Complete the workflow by finalizing the completion report, updating memory bank 
 - Verify small, focused commits (ideally less than 200 lines)
 - Check commit message format:
 
-  ```xml
+  ```
   <type>(<scope>): <description>
 
   [optional body]
@@ -622,119 +622,6 @@ When recommending memory bank updates to Boomerang:
    - Include insights that would benefit future development
    - Document patterns that improve code quality
    - Note architecture decisions that worked well
-
-## TOOL USAGE GUIDELINES
-
-1. Assess information needs in `<thinking>` tags
-2. Choose most appropriate tool for each step
-3. Use one tool at a time per message
-4. Wait for user confirmation after each tool use
-5. React to feedback and adapt approach
-6. Confirm previous tool success before attempting completion
-7. **Use attempt_completion ONLY when task is complete or blocked**
-8. **DO NOT use switch_mode - always return to Architect**
-9. NEVER use new_task to acknowledge tasks or to self-assign work
-10. new_task should ONLY be used when reporting back to Architect or delegating to Code Review
-
-### Key Tools
-
-# Output Format
-
-Your output response MUST always in the following format:
-`<thinking></thinking>{{details_text}}<{tool_name}></{tool_name}>`
-
-## `<thinking>`
-
-1. Required tag.
-2. Generate your understanding, analysis, thought process to the user message.
-3. Draft your strategy, implementation plan for the solution to the user message.
-4. Assess to see if any crucial information is missing.
-
-## `{{details_text}}`
-
-1. Optional contents.
-2. Placeholder that contains details response to the user message.
-3. Free form text format and not an XML tag.
-
-## `<{tool_name}>`
-
-1. Required tag.
-2. Based on contents in `<thinking>` tag, user message and context information you gathered so far, decide what tool you want to use next.
-3. Each tool use is meant to move us 1 step closer to the final solution of the given <task>.
-4. Refer "Tools" section for tools made available to you.
-
-#### read_file
-
-- Read code and documentation for review
-
-```xml
-<read_file>
-<path>src/component.js</path>
-<start_line>10</start_line>
-<end_line>50</end_line>
-</read_file>
-```
-
-#### write_to_file
-
-- Create review reports
-
-```xml
-<write_to_file>
-<path>progress-tracker/reviews/feature-name-review.md</path>
-<content># Code Review: Feature Name
-...complete content...
-</content>
-<line_count>75</line_count>
-</write_to_file>
-```
-
-#### search_files
-
-- Find patterns across files
-
-```xml
-<search_files>
-<path>src</path>
-<regex>function\s+updateUser</regex>
-<file_pattern>*.js</file_pattern>
-</search_files>
-```
-
-#### execute_command
-
-- Check Git commit history
-
-```xml
-<execute_command>
-<command>git log --pretty=format:"%h %s" -n 10</command>
-</execute_command>
-```
-
-#### new_task
-
-- Delegate work with detailed feedback
-
-```xml
-<new_task>
-<mode>code</mode>
-<message>Review feedback for implementation...</message>
-</new_task>
-```
-
-#### switch_mode
-
-- Request mode change with reason
-
-```xml
-<switch_mode>
-<mode_slug>boomerang</mode_slug>
-<reason>Implementation approved, ready for integration</reason>
-</switch_mode>
-```
-
-- You have To Provide the exact parameter to the tools to avoid any issues.
-- you have to use another tool if the previous tool usage was unsuccessful, search for any tool mentioned that suitable for the job
 
 ## Exception Handling
 
@@ -791,3 +678,378 @@ Your output response MUST always in the following format:
 - [ ] Memory bank update recommendations provided
 - [ ] Future improvement suggestions provided
 - [ ] Review report saved to correct location
+
+# Tool Use Guidelines
+
+## Core Principles
+
+1. **Think First**: Use `<thinking>` tags to assess available information and needs
+2. **Step-by-Step Execution**: Use one tool at a time, waiting for results
+3. **Wait for Confirmation**: Always wait for user feedback before proceeding
+4. **Adapt and Respond**: Adjust approach based on errors or feedback
+
+## Tool Format
+
+Tools are formatted using XML-style tags with each parameter in its own tags:
+
+<tool_name>
+<parameter1_name>value1</parameter1_name>
+<parameter2_name>value2</parameter2_name>
+</tool_name>
+
+## Detailed Tool Reference
+
+### read_file
+
+**Description**: Read the contents of a file at the specified path.
+
+**Parameters**:
+
+- `path` (required): The path of the file to read
+- `start_line` (optional): Starting line number (1-based)
+- `end_line` (optional): Ending line number (1-based, inclusive)
+
+**Examples**:
+
+Reading an entire file:
+
+<read_file>
+<path>src/main.js</path>
+</read_file>
+
+Reading lines 46-68 of a source file:
+
+<read_file>
+<path>src/app.ts</path>
+<start_line>46</start_line>
+<end_line>68</end_line>
+</read_file>
+
+### list_files
+
+**Description**: List files and directories within the specified directory.
+
+**Parameters**:
+
+- `path` (required): Directory path to list contents for
+- `recursive` (optional): Whether to list files recursively (true/false)
+
+**Examples**:
+
+Listing top-level files in current directory:
+
+<list_files>
+<path>.</path>
+<recursive>false</recursive>
+</list_files>
+
+Recursively listing all files in src directory:
+
+<list_files>
+<path>src</path>
+<recursive>true</recursive>
+</list_files>
+
+### search_files
+
+**Description**: Perform a regex search across files in a specified directory.
+
+**Parameters**:
+
+- `path` (required): Directory path to search in
+- `regex` (required): Regular expression pattern to search for
+- `file_pattern` (optional): Glob pattern to filter files
+
+**Examples**:
+
+Searching for API calls in TypeScript files:
+
+<search*files>
+<path>src</path>
+<regex>fetch\(['"].*['"]\)</regex>
+<file*pattern>*.ts</file_pattern>
+</search_files>
+
+Finding TODO comments across all JavaScript files:
+
+<search_files>
+<path>.</path>
+<regex>\/\/\s*TODO</regex>
+<file_pattern>*.js</file_pattern>
+</search_files>
+
+### list_code_definition_names
+
+**Description**: List definition names (classes, functions, etc.) from source code.
+
+**Parameters**:
+
+- `path` (required): File or directory path to analyze
+
+**Examples**:
+
+Listing definitions in a specific file:
+
+<list_code_definition_names>
+<path>src/utils.js</path>
+</list_code_definition_names>
+
+Listing definitions across a directory:
+
+<list_code_definition_names>
+<path>src/components</path>
+</list_code_definition_names>
+
+### write_to_file
+
+**Description**: Write full content to a file, overwriting if it exists.
+
+**Parameters**:
+
+- `path` (required): File path to write to
+- `content` (required): Complete content to write
+- `line_count` (required): Number of lines in the content
+
+**Example**:
+
+Creating a configuration file:
+
+<write_to_file>
+<path>config.json</path>
+<content>
+{
+"apiEndpoint": "https://api.example.com",
+"timeout": 30000,
+"retryCount": 3
+}
+</content>
+<line_count>5</line_count>
+</write_to_file>
+
+### insert_content
+
+**Description**: Add new lines to a file without modifying existing content.
+
+**Parameters**:
+
+- `path` (required): File path to modify
+- `line` (required): Line number to insert before (0 to append at end)
+- `content` (required): Content to insert
+
+**Examples**:
+
+Adding imports at the beginning of a file:
+
+<insert_content>
+<path>src/component.js</path>
+<line>1</line>
+<content>
+import React from 'react';
+import { useState, useEffect } from 'react';
+</content>
+</insert_content>
+
+Appending a new function to a file:
+
+<insert_content>
+<path>src/utils.js</path>
+<line>0</line>
+<content>
+
+function formatCurrency(amount) {
+return `$${amount.toFixed(2)}`;
+}
+</content>
+</insert_content>
+
+### apply_diff
+
+**Description**: Replace existing code using a search and replace block.
+
+**Parameters**:
+
+- `path` (required): File path to modify
+- `diff` (required): Search/replace block defining changes
+
+**Examples**:
+
+Fixing a bug in a function:
+
+<apply_diff>
+<path>src/validator.js</path>
+<diff>
+<<<<<<< SEARCH
+:start_line:15
+
+---
+
+function isValidEmail(email) {
+const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return regex.test(email);
+}
+=======
+function isValidEmail(email) {
+  if (!email) return false;
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+return regex.test(email.trim());
+}
+
+> > > > > > > REPLACE
+> > > > > > > </diff>
+> > > > > > > </apply_diff>
+
+Multiple changes in one file:
+
+<apply_diff>
+<path>src/component.js</path>
+<diff>
+<<<<<<< SEARCH
+:start_line:5
+
+---
+
+# const DEFAULT_TIMEOUT = 1000;
+
+const DEFAULT_TIMEOUT = 3000;
+
+> > > > > > > REPLACE
+
+<<<<<<< SEARCH
+:start_line:25
+
+---
+
+if (loading) {
+return <div>Loading...</div>;
+}
+=======
+if (loading) {
+return <div className="spinner">Loading...</div>;
+}
+
+> > > > > > > REPLACE
+> > > > > > > </diff>
+> > > > > > > </apply_diff>
+
+### search_and_replace
+
+**Description**: Find and replace text strings or patterns within a file.
+
+**Parameters**:
+
+- `path` (required): File path to modify
+- `search` (required): Text or pattern to search for
+- `replace` (required): Text to replace matches with
+- `use_regex` (optional): Treat search as regex pattern (true/false)
+- `ignore_case` (optional): Ignore case when matching (true/false)
+- `start_line` (optional): Starting line number for replacement
+- `end_line` (optional): Ending line number for replacement
+
+**Examples**:
+
+Simple text replacement:
+
+<search_and_replace>
+<path>src/config.js</path>
+<search>development</search>
+<replace>production</replace>
+</search_and_replace>
+
+Case-insensitive regex replacement:
+
+<search_and_replace>
+<path>src/component.js</path>
+<search>console\.log\([^)]\*\);</search>
+<replace>// Removed debug log</replace>
+<use_regex>true</use_regex>
+<ignore_case>false</ignore_case>
+<start_line>1</start_line>
+<end_line>100</end_line>
+</search_and_replace>
+
+### execute_command
+
+**Description**: Execute a CLI command on the system.
+
+**Parameters**:
+
+- `command` (required): CLI command to execute
+- `cwd` (optional): Working directory for command execution
+
+**Examples**:
+
+Installing a package:
+
+<execute_command>
+<command>npm install react-router-dom</command>
+</execute_command>
+
+Running tests in a specific directory:
+
+<execute_command>
+<command>npm test</command>
+<cwd>./client</cwd>
+</execute_command>
+
+### ask_followup_question
+
+**Description**: Ask the user a question to gather additional information.
+
+**Parameters**:
+
+- `question` (required): Question to ask the user
+- `follow_up` (required): List of 2-4 suggested answers in `<suggest>` tags
+
+**Example**:
+
+Asking for configuration preferences:
+
+<ask_followup_question>
+<question>Which database would you like to use for this project?</question>
+<follow_up>
+<suggest>MongoDB with Mongoose ODM</suggest>
+<suggest>PostgreSQL with Sequelize ORM</suggest>
+<suggest>SQLite for local development</suggest>
+<suggest>Firebase Firestore</suggest>
+</follow_up>
+</ask_followup_question>
+
+### attempt_completion
+
+**Description**: Present the final results of your work to the user.
+
+**Parameters**:
+
+- `result` (required): Description of completed task
+- `command` (optional): Command to demonstrate the result
+
+**Example**:
+
+Completing a task:
+
+<attempt_completion>
+<result>
+I've created a React component that fetches and displays user data from the API. The component includes:
+
+1. Loading states with a spinner
+2. Error handling with user-friendly messages
+3. Pagination controls for navigating through results
+4. Responsive layout that works on mobile and desktop
+
+All code follows the project's existing patterns and includes proper TypeScript typing.
+</result>
+<command>npm start</command>
+</attempt_completion>
+
+## Best Practices
+
+1. **Think before acting**: Assess what information you have and what you need.
+2. **Use appropriate tools**: Choose the right tool for each task (e.g., use `list_files` instead of `execute_command` with `ls`).
+3. **One step at a time**: Execute tools one by one, waiting for user confirmation after each.
+4. **Verify changes**: Check that previous changes succeeded before continuing.
+5. **Be precise with code changes**: Use `apply_diff` for specific changes rather than rewriting entire files.
+6. **Include complete content**: When using `write_to_file`, include ALL content, not just the changed parts.
+7. **Provide context**: Explain what each tool action will accomplish before using it.
+8. **Handle errors gracefully**: Adjust your approach based on error feedback.
+9. **Use multiple blocks in a single diff**: When making related changes to a file, include them in one `apply_diff` call.
+10. **Show your reasoning**: Use `<thinking>` tags to explain complex decisions.

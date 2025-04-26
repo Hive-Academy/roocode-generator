@@ -7,7 +7,7 @@ export class ContentProcessor implements IContentProcessor {
   stripMarkdownCodeBlock(content: MessageContent): Result<string> {
     try {
       const processed = content
-        .replace(/^```markdown\s*([\s\S]*?)\s*```$/im, '$1')
+        .replace(/^```\s*([\s\S]*?)\s*```$/im, '$1')
         .replace(/^```\s*([\s\S]*?)\s*```$/im, '$1');
       return Result.ok(processed);
     } catch (error) {

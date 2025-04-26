@@ -4,6 +4,7 @@ import { Container } from '../di/container';
 import { Inject, Injectable } from '../di/decorators';
 import { Result } from '../result/result';
 import { ILogger } from '../services/logger-service';
+import { ProgressIndicator } from '../ui/progress-indicator';
 import { ICliInterface, IGeneratorOrchestrator, IProjectManager } from './interfaces';
 
 type ParsedArgs = {
@@ -18,16 +19,23 @@ export class ApplicationContainer {
     private readonly generatorOrchestrator: IGeneratorOrchestrator,
     @Inject('IProjectManager') private readonly projectManager: IProjectManager,
     @Inject('ICliInterface') private readonly cliInterface: ICliInterface,
-    @Inject('ILogger') private readonly logger: ILogger
+    @Inject('ILogger') private readonly logger: ILogger,
+    @Inject('ProgressIndicator') private readonly progressIndicator: ProgressIndicator
   ) {}
 
   private async executeGenerateCommand(options: Record<string, any>): Promise<Result<void, Error>> {
+    const progress = this.progressIndicator;
+    progress.start('Generating...');
+
     try {
       const selectedGenerators = options.generators as string[];
       if (!selectedGenerators || selectedGenerators.length === 0) {
+        progress.fail(
+          "No generators specified. Use 'generate --generators memory-bank' for memory bank generation."
+        );
         return Result.err(
           new Error(
-            "No generators specified. Use 'generate memory-bank' for memory bank generation."
+            "No generators specified. Use 'generate --generators memory-bank' for memory bank generation."
           )
         );
       }
@@ -41,11 +49,14 @@ export class ApplicationContainer {
         `Executing 'generate' command with generators: ${selectedGenerators?.join(', ') || 'All (default)'}`
       );
       await this.generatorOrchestrator.execute(selectedGenerators, { modes });
+
       this.logger.debug("Generator orchestrator execution completed for 'generate' command.");
+      progress.succeed('Generation completed successfully.');
       return Result.ok(undefined);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Generator execution failed: ${errorMessage}`);
+      progress.fail(`Generator execution failed: ${errorMessage}`);
       return Result.err(new Error(`Generator execution failed: ${errorMessage}`));
     }
   }
@@ -189,7 +200,6 @@ export class ApplicationContainer {
     switch (parsedArgs.command) {
       case 'generate':
         return await this.executeGenerateCommand(parsedArgs.options);
-
       case 'config':
         return await this.executeConfigCommand(parsedArgs.options);
 
