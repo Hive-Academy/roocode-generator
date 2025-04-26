@@ -1,5 +1,4 @@
 import { LLMConfig } from '../../../types/shared';
-import { MemoryBankCommandHandler } from '../../commands/memory-bank-command-handler';
 import { ILLMConfigService } from '../config/interfaces';
 import { Container } from '../di/container';
 import { Inject, Injectable } from '../di/decorators';
@@ -190,28 +189,6 @@ export class ApplicationContainer {
     switch (parsedArgs.command) {
       case 'generate':
         return await this.executeGenerateCommand(parsedArgs.options);
-
-      case 'memory-bank-suite': {
-        const handlerResult = Container.getInstance().resolve<MemoryBankCommandHandler>(
-          'MemoryBankCommandHandler'
-        );
-        if (handlerResult.isErr()) {
-          return Result.err(new Error('Failed to resolve MemoryBankCommandHandler'));
-        }
-        const handler = handlerResult.value;
-        if (!handler) {
-          return Result.err(new Error('MemoryBankCommandHandler is undefined after resolution'));
-        }
-
-        try {
-          await handler.execute(parsedArgs.options);
-          return Result.ok(undefined);
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          this.logger.error(`Memory bank command execution failed: ${errorMessage}`);
-          return Result.err(new Error(`Memory bank command execution failed: ${errorMessage}`));
-        }
-      }
 
       case 'config':
         return await this.executeConfigCommand(parsedArgs.options);
