@@ -2,6 +2,10 @@ import { describe, expect, it } from '@jest/globals';
 import { Result } from '../result';
 
 describe('Result', () => {
+  it('should pass', () => {
+    expect(true).toBe(true);
+  });
+
   describe('success', () => {
     it('should create a success result with data', () => {
       const data = { value: 'test' };

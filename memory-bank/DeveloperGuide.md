@@ -274,7 +274,7 @@ Templates are Markdown files located in the `src/templates/` directory. They can
 
 Example Template Structure:
 
-```markdown
+```
 # Base Template Title
 
 ## Introduction

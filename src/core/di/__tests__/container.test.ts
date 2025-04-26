@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { describe, expect, it, beforeEach, jest } from '@jest/globals';
 import { Container } from '../container';
 import { resolveDependency } from '../registrations'; // Import registerServices
@@ -156,12 +155,6 @@ jest.mock('@core/application/application-container', () => ({
   ApplicationContainer: jest.fn().mockImplementation(() => ({
     resolve: jest.fn((token: string) => {
       // Basic mock resolve logic for testing purposes
-      if (token === 'MemoryBankCommandHandler') {
-        const MockHandler = jest.requireMock(
-          '@commands/memory-bank-command-handler'
-        ).MemoryBankCommandHandler; // Cast to any to access property
-        return Result.ok(new MockHandler());
-      }
       // Add other tokens if needed for app container tests
       return Result.err(new Error(`Mock AppContainer cannot resolve: ${token}`));
     }),
