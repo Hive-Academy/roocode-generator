@@ -196,12 +196,13 @@ jest.mock('@langchain/anthropic', () => ({ ChatAnthropic: jest.fn() }));
 describe('Container', () => {
   let container: Container;
 
+  // Reset the container singleton before each test to prevent test interference
+  // This is necessary because Container uses the singleton pattern
   beforeEach(() => {
-    // Reset the singleton instance and mocks before each test
-    (Container as any).instance = null;
-    container = Container.getInstance();
-    container.initialize(); // Initialize the new container instance
-    jest.clearAllMocks(); // Clear mocks to avoid interference between tests
+    (Container as any).instance = null; // Reset singleton instance
+    container = Container.getInstance(); // Get fresh instance
+    container.initialize(); // Initialize for testing
+    jest.clearAllMocks(); // Prevent mock interference
   });
 
   // --- Basic Container Tests ---
