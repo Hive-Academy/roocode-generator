@@ -103,25 +103,43 @@ export class LLMConfigService implements ILLMConfigService {
         {
           type: 'input',
           name: 'provider',
-          message: 'LLM Provider:',
-          default: editableConfig.provider,
-          validate: (input: string) => input.trim().length > 0 || 'Provider cannot be empty',
+          message: 'Enter the LLM provider name (e.g., openai, anthropic, google):',
+          default: editableConfig.provider || 'openai', // Provide a common default
+          validate: (input: string) =>
+            input.trim().length > 0 || 'Provider name is required and cannot be empty.',
         },
         {
           type: 'password',
           name: 'apiKey',
-          message: 'API Key:',
+          message: 'Enter the API key for the selected provider:',
           default: editableConfig.apiKey,
           mask: '*',
-          validate: (input: string) => input.trim().length > 0 || 'API Key cannot be empty',
+          validate: (input: string) =>
+            input.trim().length > 0 || 'API Key is required and cannot be empty.',
         },
         {
           type: 'input',
           name: 'model',
-          message: 'Model:',
-          default: editableConfig.model,
-          validate: (input: string) => input.trim().length > 0 || 'Model cannot be empty',
+          message: 'Enter the specific model name to use (e.g., gpt-4, claude-3-opus, gemini-pro):',
+          default: editableConfig.model || 'gpt-4', // Provide a common default
+          validate: (input: string) =>
+            input.trim().length > 0 || 'Model name is required and cannot be empty.',
         },
+        // Optional: Add prompts for maxTokens and temperature if needed in interactive mode
+        // {
+        //   type: 'number',
+        //   name: 'maxTokens',
+        //   message: 'Enter the maximum number of tokens for responses (e.g., 2048):',
+        //   default: editableConfig.maxTokens ?? 2048,
+        //   validate: (input: number) => !isNaN(input) && input > 0 || 'Max tokens must be a positive number.',
+        // },
+        // {
+        //   type: 'number',
+        //   name: 'temperature',
+        //   message: 'Enter the creativity level (0.0 to 1.0, e.g., 0.7):',
+        //   default: editableConfig.temperature ?? 0.7,
+        //   validate: (input: number) => !isNaN(input) && input >= 0 && input <= 1 || 'Temperature must be between 0.0 and 1.0.',
+        // },
       ];
 
       // Prompt user for input
