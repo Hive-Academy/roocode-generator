@@ -219,4 +219,76 @@ describe('CliInterface', () => {
     expect(args.command).toBeNull(); // Command should not be set
     expect(args.options).toEqual({}); // Options should be empty
   });
+
+  // New test cases for error handling and help
+
+  it('should call process.exit with code 1 on unknown option for generate command', async () => {
+    // Arrange
+    process.argv = ['node', 'cli.js', 'generate', '--unknown-option'];
+
+    // Act & Assert
+    // Commander.js should detect the unknown option and trigger exit(1)
+    await expect(cliInterface.parseArgs()).resolves.toBeUndefined();
+    expect(mockExit).toHaveBeenCalledWith(1);
+
+    // Verify state
+    const args = cliInterface.getParsedArgs();
+    // Command might be set before Commander detects the error and exits
+    expect(args.command).toBe('generate');
+    // Check that options might contain defaults even if an error occurred before full processing
+    expect(args.options).toEqual({
+      context: [], // Default value
+      generators: [], // Default value
+      output: undefined, // Default value
+    });
+  });
+
+  it('should call process.exit with code 1 on unknown option for config command', async () => {
+    // Arrange
+    process.argv = ['node', 'cli.js', 'config', '--invalid-flag'];
+
+    // Act & Assert
+    await expect(cliInterface.parseArgs()).resolves.toBeUndefined();
+    expect(mockExit).toHaveBeenCalledWith(1);
+
+    // Verify state
+    const args = cliInterface.getParsedArgs();
+    // Command might be set before Commander detects the error and exits
+    expect(args.command).toBe('config');
+    expect(args.options).toEqual({});
+  });
+
+  it('should call process.exit with code 0 on general help request (--help)', async () => {
+    // Arrange
+    process.argv = ['node', 'cli.js', '--help'];
+
+    // Act & Assert
+    // Commander.js should handle --help and trigger exit(0)
+    await expect(cliInterface.parseArgs()).resolves.toBeUndefined();
+    expect(mockExit).toHaveBeenCalledWith(0);
+
+    // Verify state (command might not be set depending on Commander internals for help)
+    // const args = cliInterface.getParsedArgs();
+    // Depending on Commander version, command might be null or the default action
+    // Options should likely be empty or contain help:true
+    // We primarily care about the exit code here.
+  });
+
+  it('should call process.exit with code 0 on command-specific help request (generate --help)', async () => {
+    // Arrange
+    process.argv = ['node', 'cli.js', 'generate', '--help'];
+
+    // Act & Assert
+    await expect(cliInterface.parseArgs()).resolves.toBeUndefined();
+    expect(mockExit).toHaveBeenCalledWith(0);
+  });
+
+  it('should call process.exit with code 0 on command-specific help request (config --help)', async () => {
+    // Arrange
+    process.argv = ['node', 'cli.js', 'config', '--help'];
+
+    // Act & Assert
+    await expect(cliInterface.parseArgs()).resolves.toBeUndefined();
+    expect(mockExit).toHaveBeenCalledWith(0);
+  });
 });
