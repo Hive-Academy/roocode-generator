@@ -1,16 +1,16 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 // import chalk from 'chalk';
 // import ora from 'ora';
-import { ApplicationContainer } from '../../../src/core/application/application-container';
-import {
-  ICliInterface,
-  IGeneratorOrchestrator,
-  IProjectManager,
-} from '../../../src/core/application/interfaces';
+// Removed unused imports for ApplicationContainer, IGeneratorOrchestrator, IProjectManager, ILogger, ProgressIndicator
 import { CliInterface } from '../../../src/core/cli/cli-interface';
-import { ILogger } from '../../../src/core/services/logger-service';
-import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
+// Removed unused ICliInterface import
 
+// Mock 'inquirer' which is a direct dependency of CliInterface
+jest.mock('inquirer', () => ({
+  prompt: jest.fn(),
+}));
+import inquirer from 'inquirer'; // Import the mocked module
+
+// Mocks for ora and chalk remain as they might be used by CliInterface indirectly or in future tests
 jest.mock('ora', () => {
   const mockOra = () => ({
     start: jest.fn().mockReturnThis(),
@@ -35,96 +35,158 @@ jest.mock('chalk', () => {
   };
 });
 
-describe('CLI Command Routing', () => {
-  let applicationContainer: ApplicationContainer;
+describe('CliInterface', () => {
   let cliInterface: CliInterface;
-  // const mockedOra = jest.mocked(ora);
-  // const mockedChalk = jest.mocked(chalk);
+  let inquirerMock: jest.Mocked<typeof inquirer>;
+  let originalArgv: string[];
 
   beforeEach(() => {
-    const generatorOrchestratorMock: IGeneratorOrchestrator = {
-      execute: jest.fn(),
-    } as any;
+    // Store original process.argv
+    originalArgv = process.argv;
 
-    const projectManagerMock: IProjectManager = {
-      loadProjectConfig: jest.fn(),
-    } as any;
+    // Reset mocks before each test
+    jest.clearAllMocks();
 
-    const cliInterfaceMock: ICliInterface = {
-      parseArgs: jest.fn().mockImplementation(() => {
-        (cliInterface as any).parsedArgs = {
-          command: 'generate',
-          options: { generators: ['memory-bank'] },
-        };
-      }),
-      getParsedArgs: jest.fn(),
-      output: jest.fn(),
-      prompt: jest.fn(),
-    } as any;
+    // Get the mocked inquirer instance
+    inquirerMock = inquirer as jest.Mocked<typeof inquirer>;
+    inquirerMock.prompt.mockResolvedValue({}); // Default mock implementation
 
-    const loggerServiceMock: ILogger = {
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-    } as any;
-
-    const progressIndicatorMock: ProgressIndicator = {
-      start: jest.fn(),
-      stop: jest.fn(),
-      update: jest.fn(),
-    } as any;
-
-    applicationContainer = new ApplicationContainer(
-      generatorOrchestratorMock,
-      projectManagerMock,
-      cliInterfaceMock,
-      loggerServiceMock,
-      progressIndicatorMock
-    );
-
-    // Create a mock for the inquirer parameter
-    const inquirerMock = jest.fn().mockReturnValue({});
-
-    // Create the CliInterface instance with the mock
-    cliInterface = new CliInterface(inquirerMock as any);
-
-    // Set the parsedArgs property directly for testing
-    (cliInterface as any).parsedArgs = {
-      command: 'generate',
-      options: { generators: ['memory-bank'] },
-    };
+    // Initialize CLI interface with mocked dependencies
+    cliInterface = new CliInterface(inquirerMock);
+    // DO NOT mock parseArgs here. We will test the actual method.
   });
 
-  it('should route the generate --generators memory-bank command to the GeneratorOrchestrator', () => {
-    // Access parsedArgs to check if the arguments are parsed correctly
-    expect((cliInterface as any).parsedArgs.command).toBe('generate');
-    expect((cliInterface as any).parsedArgs.options.generators).toEqual(['memory-bank']);
-
-    // Manually call the execute method since we're not actually routing commands in this test
-    (applicationContainer as any).generatorOrchestrator.execute(['memory-bank'], {
-      modes: undefined,
-    });
-
-    // Verify the execute method was called with the correct arguments
-    expect((applicationContainer as any).generatorOrchestrator.execute).toHaveBeenCalledWith(
-      ['memory-bank'],
-      { modes: undefined }
-    );
+  afterEach(() => {
+    // Restore original process.argv after each test
+    process.argv = originalArgv;
   });
 
-  // it('should display a success message when the generator completes successfully', () => {
-  //   expect(mockedOra().start).toHaveBeenCalled();
-  //   expect(mockedChalk.green).toHaveBeenCalled();
-  // });
+  it('should properly parse generate command with memory-bank generator', async () => {
+    // Arrange
+    const expectedCommand = 'generate';
+    const expectedGenerators = ['memory-bank'];
+    // Set process.argv for this specific test case
+    // Includes node executable and script path placeholders
+    process.argv = ['node', 'cli.js', 'generate', '--generators', 'memory-bank'];
 
-  // it('should display an error message when the generator fails', () => {
-  //   expect(mockedOra().start).toHaveBeenCalled();
-  //   expect(mockedChalk.red).toHaveBeenCalled();
-  // });
+    // Act
+    // Call the actual parseArgs method (no arguments needed)
+    await cliInterface.parseArgs();
+    const args = cliInterface.getParsedArgs();
 
-  it('should throw an error for the old memory-bank-suite command', () => {
-    // This is a placeholder test to ensure we have at least two tests in the suite
-    expect(true).toBe(true);
+    // Assert
+    expect(args.command).toBe(expectedCommand);
+    // Commander parses options into the options object directly
+    expect(args.options.generators).toEqual(expectedGenerators);
+  });
+
+  it('should parse generate command with multiple generators', async () => {
+    // Arrange
+    const expectedCommand = 'generate';
+    const expectedGenerators = ['rules', 'prompts'];
+    process.argv = ['node', 'cli.js', 'generate', '--generators', 'rules', 'prompts']; // Commander handles multiple args
+
+    // Act
+    await cliInterface.parseArgs();
+    const args = cliInterface.getParsedArgs();
+
+    // Assert
+    expect(args.command).toBe(expectedCommand);
+    expect(args.options.generators).toEqual(expectedGenerators);
+  });
+
+  it('should handle generate command with no specific generators provided', async () => {
+    // Arrange
+    const expectedCommand = 'generate';
+    // Commander sets the option value to an empty array if the flag is present but has no value(s)
+    // Or undefined if the flag is not present at all. Let's test presence without value.
+    const expectedGenerators: undefined = undefined; // Or [] depending on commander config/version
+    process.argv = ['node', 'cli.js', 'generate']; // No --generators flag
+
+    // Act
+    await cliInterface.parseArgs();
+    const args = cliInterface.getParsedArgs();
+
+    // Assert
+    expect(args.command).toBe(expectedCommand);
+    expect(args.options.generators).toEqual(expectedGenerators);
+  });
+
+  it('should parse config command with provider option', async () => {
+    // Arrange
+    const expectedCommand = 'config';
+    const expectedProvider = 'openai';
+    process.argv = ['node', 'cli.js', 'config', '--provider', 'openai'];
+
+    // Act
+    await cliInterface.parseArgs();
+    const args = cliInterface.getParsedArgs();
+
+    // Assert
+    expect(args.command).toBe(expectedCommand);
+    expect(args.options.provider).toBe(expectedProvider);
+    expect(args.options.apiKey).toBeUndefined();
+    expect(args.options.model).toBeUndefined();
+  });
+
+  it('should parse config command with all options', async () => {
+    // Arrange
+    const expectedCommand = 'config';
+    const expectedProvider = 'anthropic';
+    const expectedApiKey = 'sk-123';
+    const expectedModel = 'claude-3';
+    process.argv = [
+      'node',
+      'cli.js',
+      'config',
+      '--provider',
+      expectedProvider,
+      '--api-key',
+      expectedApiKey,
+      '--model',
+      expectedModel,
+    ];
+
+    // Act
+    await cliInterface.parseArgs();
+    const args = cliInterface.getParsedArgs();
+
+    // Assert
+    expect(args.command).toBe(expectedCommand);
+    expect(args.options.provider).toBe(expectedProvider);
+    expect(args.options.apiKey).toBe(expectedApiKey);
+    expect(args.options.model).toBe(expectedModel);
+  });
+
+  // Test case for when no command is provided (should default or show help)
+  it('should have null command when no command is provided', async () => {
+    // Arrange
+    const expectedCommand = null; // As per parseArgs logic
+    process.argv = ['node', 'cli.js']; // Only node and script name
+
+    // Act
+    await cliInterface.parseArgs();
+    const args = cliInterface.getParsedArgs();
+
+    // Assert
+    expect(args.command).toBe(expectedCommand);
+    expect(args.options).toEqual({}); // Should be empty options
+  });
+
+  // Test case for an unknown command
+  it('should have null command for an unknown command', async () => {
+    // Arrange
+    const expectedCommand = null; // Commander doesn't call action for unknown commands
+    process.argv = ['node', 'cli.js', 'unknown-command', '--some-option'];
+
+    // Act
+    // Note: Commander might exit or show help here in a real scenario,
+    // but our parseArgs implementation catches this.
+    await cliInterface.parseArgs();
+    const args = cliInterface.getParsedArgs();
+
+    // Assert
+    expect(args.command).toBe(expectedCommand);
+    expect(args.options).toEqual({});
   });
 });
