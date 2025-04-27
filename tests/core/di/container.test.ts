@@ -347,6 +347,53 @@ describe('Container', () => {
     });
   });
 
+  describe('clear', () => {
+    it('should clear all registrations, singletons, and resolution state', () => {
+      // 1. Setup: Register factory and singleton
+      const FACTORY_TOKEN = 'ClearTestFactory';
+      const SINGLETON_TOKEN = 'ClearTestSingleton';
+      @Injectable()
+      class ClearTestService {}
+
+      container.registerFactory(FACTORY_TOKEN, () => new ClearTestService());
+      container.registerSingleton(SINGLETON_TOKEN, ClearTestService);
+
+      // 2. Resolve to ensure registration and singleton instantiation
+      const resolveFactoryResult1 = container.resolve(FACTORY_TOKEN);
+      expect(resolveFactoryResult1.isOk()).toBe(true); // Verify registration worked
+      const resolveSingletonResult1 = container.resolve(SINGLETON_TOKEN);
+      expect(resolveSingletonResult1.isOk()).toBe(true); // Verify registration worked
+
+      // Optional: Check internal state before clear (requires accessing private members)
+      expect((container as any).services.size).toBeGreaterThan(0);
+      expect((container as any).singletons.size).toBeGreaterThan(0);
+
+      // 3. Act: Call clear()
+      container.clear();
+
+      // 4. Assert: Verify state after clear
+      // 4a. Verify resolution fails for previously registered tokens
+      const resolveFactoryResult2 = container.resolve(FACTORY_TOKEN);
+      expect(resolveFactoryResult2.isErr()).toBe(true);
+      expect(resolveFactoryResult2.error).toBeInstanceOf(DIError);
+      expect(resolveFactoryResult2.error?.message).toContain(
+        `Failed to resolve dependency '${FACTORY_TOKEN}': Service not registered`
+      );
+
+      const resolveSingletonResult2 = container.resolve(SINGLETON_TOKEN);
+      expect(resolveSingletonResult2.isErr()).toBe(true);
+      expect(resolveSingletonResult2.error).toBeInstanceOf(DIError);
+      expect(resolveSingletonResult2.error?.message).toContain(
+        `Failed to resolve dependency '${SINGLETON_TOKEN}': Service not registered`
+      );
+
+      // 4b. Verify internal maps are cleared (accessing private members)
+      expect((container as any).services.size).toBe(0);
+      expect((container as any).singletons.size).toBe(0);
+      expect((container as any).resolutionStack.length).toBe(0); // Verify resolution stack is cleared
+    });
+  });
+
   // --- Tests for registerServices (New Suite) ---
   // TODO: Fix mock/type issues causing TS errors when this suite runs
   // describe('registerServices', () => {
