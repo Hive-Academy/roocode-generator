@@ -159,11 +159,45 @@ This project uses a **Trunk-based** development workflow.
 
 ### Quality and Testing
 
-- **Testing Approach**: Currently, the project has **None** specified for formal automated testing. Future plans include implementing unit and integration tests using a framework like Jest or Vitest. Manual testing of the CLI commands is required for now.
-- **Coverage Goals**: **N/A** - Test coverage goals will be defined once a testing strategy is implemented.
+- **Testing Approach**: The project uses **Jest** as the primary testing framework, configured with `ts-jest` for TypeScript support. Unit and integration tests are located in the `tests/` directory, following the naming convention `*.test.ts`.
+- **Coverage Goals**: The project enforces a minimum coverage threshold of 80% for branches, functions, lines, and statements, as configured in `jest.config.js`.
 - **Validation**:
   - **Static Analysis**: Use `npm run lint` to check for code style and potential errors.
   - **Type Checking**: Use `npm run typecheck` (or rely on `tsc` during the build) to ensure type safety.
+- **Running Tests**:
+  - Run all tests once:
+    ```bash
+    npm test
+    # or
+    yarn test
+    ```
+  - Run tests in watch mode:
+    ```bash
+    npm run test:watch
+    # or
+    yarn test:watch
+    ```
+  - Generate coverage reports:
+    ```bash
+    npm run test:coverage
+    # or
+    yarn test:coverage
+    ```
+- **Testing Framework Setup**:
+  - Jest configuration is defined in `jest.config.js` with:
+    - `preset: 'ts-jest'` for TypeScript support.
+    - `testEnvironment: 'node'`.
+    - Test files matched by `<rootDir>/tests/**/*.test.ts`.
+    - Coverage reports output to `coverage/` directory.
+    - Coverage reporters: `text` and `lcov`.
+- **Test Maintenance Guidelines**:
+  - Write tests for new features and bug fixes to maintain or improve coverage.
+  - Place test files in the `tests/` directory using the `*.test.ts` pattern.
+  - Use descriptive test names and group related tests with `describe` blocks.
+  - Mock external dependencies as needed to isolate units under test.
+  - Follow existing code style and formatting guidelines.
+  - Run tests locally before committing.
+  - CI pipelines enforce test execution and coverage thresholds on pull requests.
 
 ### Modular DI Registration Pattern
 

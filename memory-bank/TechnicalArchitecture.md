@@ -38,6 +38,23 @@ L -- Provides processed content --> H{File Generator};
 H -- Writes files --> D;
 C -- Displays output/status --> I[Terminal Output (chalk, ora)];
 B -- Uses --> I;
+
+## Testing Strategy and Coverage Overview
+
+The `roocode-generator` project employs a comprehensive testing strategy to ensure code quality, reliability, and maintainability.
+
+- **Testing Framework**: The project uses [Jest](https://jestjs.io/) as the primary testing framework, configured with `ts-jest` for seamless TypeScript support. Unit and integration tests reside in the `tests/` directory, following the `*.test.ts` naming convention.
+
+- **Coverage Goals**: A minimum coverage threshold of 80% is enforced across branches, functions, lines, and statements, as configured in `jest.config.js`.
+
+- **Testing Practices**: Tests are maintained with descriptive names, grouped logically, and mock external dependencies to isolate units under test. Continuous Integration (CI) pipelines enforce test execution and coverage thresholds on pull requests.
+
+- **Coverage Summary Highlights**:
+  - Critical modules such as the CLI Interface, Command Handlers, and Template Engine have been prioritized for test coverage improvements.
+  - Some core modules currently have skipped or failing tests, including `cli-interface.ts`, `rules-template-manager.ts`, and `container.ts`.
+  - Incremental improvements are planned to address these gaps, starting with the highest priority modules.
+
+For detailed testing guidelines and maintenance practices, see the [Developer Guide - Quality and Testing](memory-bank/DeveloperGuide.md#quality-and-testing).
 _Diagram illustrating the flow from user command to file generation, including the Rules Template System components and optional LLM interaction._
 
 ### Core Components

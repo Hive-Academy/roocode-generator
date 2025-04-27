@@ -12,6 +12,8 @@
 // import { LLMAgent } from '../../src/core/llm/llm-agent';
 // import { Result } from '../../src/core/result/result';
 // import { ProjectConfig } from '../../types/shared';
+// import { GeneratorOrchestrator } from '../../src/core/application/generator-orchestrator';
+// import { IFileOperations } from '../../src/core/file-operations/interfaces';
 
 // describe('MemoryBankGenerator', () => {
 //   let memoryBankGenerator: MemoryBankGenerator;
@@ -24,6 +26,7 @@
 //   let projectContextServiceMock: IProjectContextService;
 //   let promptBuilderMock: IPromptBuilder;
 //   let llmAgentMock: LLMAgent;
+//   let fileOperationsMock: IFileOperations;
 
 //   beforeEach(() => {
 //     serviceContainerMock = {
@@ -37,6 +40,7 @@
 //     projectContextServiceMock = { gatherContext: jest.fn() };
 //     promptBuilderMock = { buildPrompt: jest.fn() };
 //     llmAgentMock = { getCompletion: jest.fn() };
+//     fileOperationsMock = { writeFile: jest.fn() } as any;
 
 //     (serviceContainerMock.resolve as jest.Mock).mockImplementation((token) => {
 //       switch (token) {
@@ -56,6 +60,8 @@
 //           return Result.ok(promptBuilderMock);
 //         case 'LLMAgent':
 //           return Result.ok(llmAgentMock);
+//         case 'IFileOperations':
+//           return Result.ok(fileOperationsMock);
 //         default:
 //           return Result.err(new Error(`Token not found: ${token}`));
 //       }
@@ -70,26 +76,67 @@
 //       loggerMock,
 //       projectContextServiceMock,
 //       promptBuilderMock,
-//       llmAgentMock
+//       llmAgentMock,
+//       fileOperationsMock
 //     );
 //   });
 
 //   it('should implement IGenerator interface', () => {
 //     expect(memoryBankGenerator).toHaveProperty('name', 'MemoryBank');
-//     expect(memoryBankGenerator).toHaveProperty('executeGeneration');
-//     expect(memoryBankGenerator).toHaveProperty('validate');
 //   });
 
-//   it('should call generateMemoryBankSuite on executeGeneration', async () => {
+//   it('should be invoked by GeneratorOrchestrator', async () => {
 //     const config: ProjectConfig = {
 //       name: 'test-project',
 //       baseDir: '/test',
 //     };
-//     const generateMemoryBankSuiteMock = jest.spyOn(memoryBankGenerator, 'generateMemoryBankSuite');
+//     const contextPaths: string[] = [];
+//     const outputDir: string = '/output';
+
+//     const generateMemoryBankSuiteMock = jest.spyOn(memoryBankGenerator, 'generate');
 //     generateMemoryBankSuiteMock.mockImplementation(async () => Result.ok(undefined));
 
-//     await memoryBankGenerator.executeGeneration(config);
+//     const orchestrator = new GeneratorOrchestrator(serviceContainerMock);
+//     orchestrator.registerGenerator(memoryBankGenerator);
+
+//     await orchestrator.generate(['MemoryBank'], contextPaths, outputDir);
 
 //     expect(generateMemoryBankSuiteMock).toHaveBeenCalledTimes(1);
+//     expect(generateMemoryBankSuiteMock).toHaveBeenCalledWith(config, contextPaths, outputDir);
+//   });
+
+//   it('should handle errors during generation', async () => {
+//     const config: ProjectConfig = {
+//       name: 'test-project',
+//       baseDir: '/test',
+//     };
+//     const contextPaths: string[] = [];
+//     const outputDir: string = '/output';
+//     const error = new Error('File write failed');
+
+//     (fileOperationsMock.writeFile as jest.Mock).mockImplementation(() => Promise.reject(error));
+//     const result = await memoryBankGenerator.generate(config, contextPaths, outputDir);
+
+//     expect(result.isErr()).toBe(true);
+//     expect(result.error).toBe(error);
+//   });
+
+//   it('should create output artifacts in the specified directory', async () => {
+//     const config: ProjectConfig = {
+//       name: 'test-project',
+//       baseDir: '/test',
+//     };
+//     const contextPaths: string[] = [];
+//     const outputDir: string = '/output';
+
+//     (fileOperationsMock.writeFile as jest.Mock).mockImplementation(() => Promise.resolve());
+//     (templateManagerMock.loadTemplate as jest.Mock).mockImplementation(() => 'template content');
+//     (contentProcessorMock.processTemplate as jest.Mock).mockImplementation(
+//       () => 'processed content'
+//     );
+
+//     await memoryBankGenerator.generate(config, contextPaths, outputDir);
+
+//     expect(fileOperationsMock.writeFile).toHaveBeenCalled();
 //   });
 // });
