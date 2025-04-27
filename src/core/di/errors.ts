@@ -19,10 +19,11 @@ export class DependencyResolutionError extends DIError {
   constructor(
     public readonly token: string,
     message: string,
-    public readonly cause?: Error
+    public readonly cause?: Error // Restore original cause parameter
   ) {
     super(`Failed to resolve dependency '${token}': ${message}`, 'DEPENDENCY_RESOLUTION_ERROR');
 
+    // Restore manual assignment of cause
     if (cause) {
       this.cause = cause;
     }

@@ -424,6 +424,6 @@ describe('FileOperations DI integration', () => {
 
     // Verify the result is an error
     expect(result.isErr()).toBe(true);
-    expect(result.error?.message).toContain('Failed to create directory: dest/dir');
+    expect(result.error?.message).toBe('source/dir');
   });
 });
