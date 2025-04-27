@@ -39,6 +39,7 @@ describe('CliInterface', () => {
   let cliInterface: CliInterface;
   let inquirerMock: jest.Mocked<typeof inquirer>;
   let originalArgv: string[];
+  let mockExit: jest.SpyInstance; // Declare mock spy
 
   beforeEach(() => {
     // Store original process.argv
@@ -46,6 +47,9 @@ describe('CliInterface', () => {
 
     // Reset mocks before each test
     jest.clearAllMocks();
+
+    // Mock process.exit to prevent test termination and allow assertion
+    mockExit = jest.spyOn(process, 'exit').mockImplementation(() => undefined as never);
 
     // Get the mocked inquirer instance
     inquirerMock = inquirer as jest.Mocked<typeof inquirer>;
@@ -59,6 +63,10 @@ describe('CliInterface', () => {
   afterEach(() => {
     // Restore original process.argv after each test
     process.argv = originalArgv;
+    // Restore process.exit mock
+    if (mockExit) {
+      mockExit.mockRestore();
+    }
   });
 
   it('should properly parse generate command with memory-bank generator', async () => {
@@ -100,7 +108,7 @@ describe('CliInterface', () => {
     const expectedCommand = 'generate';
     // Commander sets the option value to an empty array if the flag is present but has no value(s)
     // Or undefined if the flag is not present at all. Let's test presence without value.
-    const expectedGenerators: undefined = undefined; // Or [] depending on commander config/version
+    const expectedGenerators: string[] = []; // Commander returns [] when the option is defined but not provided
     process.argv = ['node', 'cli.js', 'generate']; // No --generators flag
 
     // Act
