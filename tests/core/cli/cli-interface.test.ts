@@ -197,4 +197,26 @@ describe('CliInterface', () => {
     expect(args.command).toBe(expectedCommand);
     expect(args.options).toEqual({});
   });
+
+  it('should call process.exit with code 1 on unknown command', async () => {
+    // Arrange
+    const unknownCommand = 'nonexistent-command';
+    process.argv = ['node', 'cli.js', unknownCommand];
+
+    // Act
+    // Commander.js internally calls process.exit upon encountering an unknown command.
+    // Our mock intercepts this. We expect parseArgs to complete without throwing.
+    await expect(cliInterface.parseArgs()).resolves.toBeUndefined();
+
+    // Assert
+    // Verify that our process.exit mock was called
+    expect(mockExit).toHaveBeenCalled();
+    // Verify that it was called with the expected exit code (1 for error)
+    expect(mockExit).toHaveBeenCalledWith(1);
+
+    // Optional: Verify the state after the attempted exit
+    const args = cliInterface.getParsedArgs();
+    expect(args.command).toBeNull(); // Command should not be set
+    expect(args.options).toEqual({}); // Options should be empty
+  });
 });
