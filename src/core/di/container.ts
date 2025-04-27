@@ -155,7 +155,12 @@ export class Container implements IServiceContainer {
       return Result.err(
         error instanceof DIError
           ? error
-          : new DependencyResolutionError(String(token), getErrorMessage(error))
+          : new DependencyResolutionError( // Wrap non-DI errors
+              String(token),
+              // Include original error message directly
+              `Resolution failed. Original error: ${getErrorMessage(error)}`,
+              error instanceof Error ? error : new Error(String(error)) // Still pass cause, even if test struggles
+            )
       );
     }
   }
@@ -211,7 +216,9 @@ export class Container implements IServiceContainer {
     } catch (error) {
       throw new DependencyResolutionError(
         implementation.name,
-        `Failed to instantiate service: ${getErrorMessage(error)}`
+        // Include original error message directly
+        `Failed to instantiate service '${implementation.name}'. Original error: ${getErrorMessage(error)}`,
+        error instanceof Error ? error : new Error(String(error)) // Still pass cause
       );
     }
   }
