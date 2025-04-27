@@ -6,7 +6,7 @@ import { Container } from '@core/di/container';
 import { resolveDependency } from '@core/di/utils'; // Import helpers from utils
 import { ILogger } from '@core/services/logger-service';
 import { IFileOperations } from '@core/file-operations/interfaces';
-import { IProjectConfigService } from '@core/config/interfaces';
+import { ILLMConfigService, IProjectConfigService } from '@core/config/interfaces';
 import { ITemplateManager } from '@core/template-manager/interfaces';
 import { ApplicationContainer } from '@core/application/application-container';
 import {
@@ -129,12 +129,14 @@ export function registerAppModule(container: Container): void {
     const cliInterface = resolveDependency<ICliInterface>(container, 'ICliInterface');
     const logger = resolveDependency<ILogger>(container, 'ILogger');
     const progressIndicator = resolveDependency<ProgressIndicator>(container, 'ProgressIndicator');
+    const llmConfigService = resolveDependency<ILLMConfigService>(container, 'ILLMConfigService');
     return new ApplicationContainer(
       generatorOrchestrator,
       projectManager,
       cliInterface,
       logger,
-      progressIndicator
+      progressIndicator,
+      llmConfigService
     );
   });
 }
