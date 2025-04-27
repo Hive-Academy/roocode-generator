@@ -12,6 +12,7 @@ import { Injectable } from '@core/di/decorators'; // Added for TestService
 import { Result } from '@core/result/result'; // Import Result (still used by mocks)
 import { Container } from '@core/di/container'; // Import Container
 import { DIError, ServiceRegistrationError } from '@core/di/errors'; // Import DIError and ServiceRegistrationError
+import { ServiceLifetime } from '@core/di/types'; // Import ServiceLifetime
 // import { IFileOperations } from '@core/file-operations/interfaces';
 // import { LLMProviderRegistry } from '@core/llm/provider-registry';
 // import { IRulesFileManager } from '@generators/rules/interfaces';
@@ -244,6 +245,39 @@ describe('Container', () => {
       expect(result.error?.message).toEqual(
         `Failed to register service '${TEST_TOKEN_FACTORY}': Service already registered`
       );
+    });
+
+    it('should cache and reuse singleton factory instances', () => {
+      const SINGLETON_FACTORY_TOKEN = 'SingletonFactoryToken';
+      let factoryCallCount = 0;
+      const factoryFn = () => {
+        factoryCallCount++;
+        return { id: Math.random() }; // Simple object instance
+      };
+
+      // Register the factory as a singleton
+      const regResult = container.registerFactory(
+        SINGLETON_FACTORY_TOKEN,
+        factoryFn,
+        ServiceLifetime.Singleton
+      );
+      expect(regResult.isOk()).toBe(true);
+
+      // Resolve the token multiple times
+      const resolve1Result = container.resolve<{ id: number }>(SINGLETON_FACTORY_TOKEN);
+      const resolve2Result = container.resolve<{ id: number }>(SINGLETON_FACTORY_TOKEN);
+
+      // Verify resolutions are successful
+      expect(resolve1Result.isOk()).toBe(true);
+      expect(resolve2Result.isOk()).toBe(true);
+      expect(resolve1Result.value).toBeDefined();
+      expect(resolve2Result.value).toBeDefined();
+
+      // Verify the same instance is returned (caching)
+      expect(resolve1Result.value).toBe(resolve2Result.value);
+
+      // Verify the factory function was called only once
+      expect(factoryCallCount).toBe(1);
     });
   });
 
