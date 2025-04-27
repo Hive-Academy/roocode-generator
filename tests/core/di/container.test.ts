@@ -1,4 +1,5 @@
 import { jest } from '@jest/globals';
+import { Injectable } from '@core/di/decorators'; // Added for TestService
 // Import registerServices
 // Unused imports removed due to commented-out test suite:
 // import { registerServices } from '../registrations';
@@ -206,6 +207,7 @@ describe('Container', () => {
   });
 
   // --- Basic Container Tests ---
+  @Injectable() // Added decorator
   class TestService {
     public value = 'test';
   }
