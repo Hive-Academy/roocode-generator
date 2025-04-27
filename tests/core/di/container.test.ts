@@ -242,7 +242,7 @@ describe('Container', () => {
       expect(result.error).toBeInstanceOf(DIError); // Check for DIError
       // Use stringContaining for more robust error message checking
       expect(result.error?.message).toEqual(
-        expect.stringContaining(`Token ${TEST_TOKEN_FACTORY} is already registered as a Factory`)
+        `Failed to register service '${TEST_TOKEN_FACTORY}': Service already registered`
       );
     });
   });
@@ -274,9 +274,7 @@ describe('Container', () => {
       expect(result.isErr()).toBe(true);
       expect(result.error).toBeInstanceOf(DIError); // Check for DIError
       expect(result.error?.message).toEqual(
-        expect.stringContaining(
-          `Token ${TEST_TOKEN_SINGLETON} is already registered as a Singleton`
-        )
+        `Failed to register service '${TEST_TOKEN_SINGLETON}': Service already registered`
       );
     });
   });

@@ -59,6 +59,9 @@ export class Container implements IServiceContainer {
   ): Result<void, DIError> {
     try {
       // Removed validateInitialization() check from register
+      if (this.services.has(token)) {
+        throw new ServiceRegistrationError(String(token), 'Service already registered');
+      }
       this.validateRegistration(token, implementation);
 
       if (!isInjectable(implementation)) {
@@ -109,6 +112,9 @@ export class Container implements IServiceContainer {
   ): Result<void, DIError> {
     try {
       // Removed validateInitialization() check from registerFactory
+      if (this.services.has(token)) {
+        throw new ServiceRegistrationError(String(token), 'Service already registered');
+      }
       this.validateToken(token);
 
       this.services.set(token, {
