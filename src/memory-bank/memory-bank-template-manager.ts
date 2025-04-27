@@ -4,98 +4,138 @@ import { IMemoryBankTemplateManager, MemoryBankFileType } from './interfaces';
 import { IFileOperations } from '../core/file-operations/interfaces';
 import { ILogger } from '../core/services/logger-service';
 import { Result } from '../core/result/result';
+import { ITemplate, ITemplateManager } from '../core/template-manager/interfaces';
+import { TemplateError } from '../core/template-manager/errors';
+import { Template } from '../core/template-manager/template';
 
 @Injectable()
 export class MemoryBankTemplateManager implements IMemoryBankTemplateManager {
-  private cache: Map<MemoryBankFileType, string> = new Map();
+  private cache: Map<MemoryBankFileType, ITemplate> = new Map();
 
   constructor(
     @Inject('IFileOperations') private readonly fileOps: IFileOperations,
-    @Inject('ILogger') private readonly logger: ILogger
+    @Inject('ILogger') private readonly logger: ILogger,
+    @Inject('ITemplateManager') private readonly templateManager: ITemplateManager
   ) {}
 
-  async loadTemplate(name: MemoryBankFileType): Promise<Result<string>> {
+  async loadTemplate(type: MemoryBankFileType): Promise<Result<ITemplate, TemplateError>> {
     try {
-      this.logger.debug(
-        `DEBUG (TemplateManager): loadTemplate received name: ${JSON.stringify(name)}`
-      );
+      this.logger.debug(`Loading template for type: ${type}`);
 
       // Check cache first
-      if (this.cache.has(name)) {
-        this.logger.debug(`Template cache hit for ${String(name)}`);
-        return Result.ok(this.cache.get(name)!);
+      const cachedTemplate = this.cache.get(type);
+      if (cachedTemplate) {
+        this.logger.debug(`Template cache hit for ${String(type)}`);
+        return Result.ok(cachedTemplate);
       }
 
-      // Try primary location first
-      const filename = String(name) + '-template.md';
+      // Try loading from template manager first
+      const templateResult = await this.templateManager.loadTemplate(String(type));
+      if (templateResult.isOk() && templateResult.value) {
+        const template = templateResult.value;
+        this.cache.set(type, template);
+        return Result.ok(template);
+      }
+
+      // If template manager fails, create fallback template
+      const fallbackContent = this.createFallbackTemplate(type);
+      const metadata = {
+        name: String(type),
+        version: '1.0.0',
+        description: `Fallback template for ${type}`,
+        generated: true,
+      };
+
+      const fallbackTemplate = new Template(metadata, fallbackContent);
+      this.cache.set(type, fallbackTemplate);
+
+      // Try to save the fallback template
+      const filename = String(type) + '-template.md';
       const templatePath = path.join(process.cwd(), 'templates', 'memory-bank', filename);
-      this.logger.debug(`Attempting to load template from: "${templatePath}"`);
 
-      const readResult = await this.fileOps.readFile(templatePath);
-      if (readResult.isOk() && readResult.value) {
-        const content = readResult.value;
-        if (this.validateTemplate(content, name).isOk()) {
-          this.logger.debug(`Successfully loaded template from: ${templatePath}`);
-          this.cache.set(name, content);
-          return Result.ok(content);
-        }
-      }
-
-      // If both locations fail, create and save a fallback template
-      this.logger.warn(`Failed to load template from both locations: ${templatePath}`);
-
-      const fallbackTemplate = this.createFallbackTemplate(name);
-      this.cache.set(name, fallbackTemplate);
-
-      // Try to write the fallback template to the primary location
-      const templateDir = path.dirname(templatePath);
-      const createDirResult = await this.fileOps.createDirectory(templateDir);
-      if (createDirResult.isErr() && !createDirResult.error?.message.includes('EEXIST')) {
-        this.logger.warn(
-          `Failed to create template directory ${templateDir}: ${createDirResult.error?.message}`
-        );
-      }
-
-      const writeResult = await this.fileOps.writeFile(templatePath, fallbackTemplate);
-      if (writeResult.isErr()) {
-        this.logger.warn(
-          `Failed to write fallback template to ${templatePath}: ${writeResult.error?.message}`
-        );
-      } else {
-        this.logger.debug(`Successfully wrote fallback template to: ${templatePath}`);
-      }
+      await this.fileOps.createDirectory(path.dirname(templatePath));
+      await this.fileOps.writeFile(templatePath, fallbackContent);
 
       return Result.ok(fallbackTemplate);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       this.logger.error('Error loading template', err);
-      return Result.err(err);
+      return Result.err(new TemplateError('Failed to load template', err));
     }
   }
 
-  validateTemplate(content: string, type: MemoryBankFileType): Result<boolean> {
+  async validateTemplate(type: MemoryBankFileType): Promise<Result<void, TemplateError>> {
     try {
-      // Basic validation: content should not be empty
-      if (!content || content.trim().length === 0) {
-        return Result.err(new Error('Template content is empty'));
+      const templateResult = await this.loadTemplate(type);
+      if (templateResult.isErr()) {
+        return Result.err(
+          new TemplateError('Template validation failed', {
+            error: templateResult.error,
+            templateName: String(type),
+          })
+        );
       }
 
-      // Check for required sections based on template type
-      const requiredSections = this.getRequiredSections(type);
-      const contentLower = content.toLowerCase();
+      const template = templateResult.value as ITemplate;
+      const validationResult = template.validate();
 
-      for (const section of requiredSections) {
-        if (!contentLower.includes(section.toLowerCase())) {
-          return Result.err(
-            new Error(`Template validation failed: Missing required section "${section}"`)
-          );
-        }
+      if (validationResult.isErr()) {
+        return Result.err(
+          new TemplateError('Template validation failed', {
+            error: validationResult.error,
+            templateName: String(type),
+          })
+        );
       }
 
-      return Result.ok(true);
+      return validationResult;
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      return Result.err(err);
+      return Result.err(
+        new TemplateError('Template validation failed', {
+          error: err,
+          templateName: String(type),
+        })
+      );
+    }
+  }
+
+  async processTemplate(
+    type: MemoryBankFileType,
+    context: Record<string, unknown>
+  ): Promise<Result<string, TemplateError>> {
+    try {
+      const templateResult = await this.loadTemplate(type);
+      if (templateResult.isErr()) {
+        return Result.err(
+          new TemplateError('Template processing failed', {
+            error: templateResult.error,
+            templateName: String(type),
+          })
+        );
+      }
+
+      const template = templateResult.value as ITemplate;
+      const processResult = template.process(context);
+
+      if (processResult.isErr()) {
+        return Result.err(
+          new TemplateError('Template processing failed', {
+            error: processResult.error,
+            templateName: String(type),
+          })
+        );
+      }
+
+      return processResult;
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      return Result.err(
+        new TemplateError('Template processing failed', {
+          error: err,
+          templateName: String(type),
+        })
+      );
     }
   }
 

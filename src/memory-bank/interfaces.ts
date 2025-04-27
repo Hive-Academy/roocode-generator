@@ -1,4 +1,6 @@
+import { ITemplate, ITemplateManager } from '@core/template-manager/interfaces';
 import { Result } from '../core/result/result';
+import { TemplateError } from '@core/template-manager/errors';
 
 export type MessageContent = string;
 
@@ -37,9 +39,31 @@ export interface IMemoryBankFileManager {
 }
 
 // Template management
-export interface IMemoryBankTemplateManager {
-  loadTemplate(name: MemoryBankFileType): Promise<Result<string>>;
-  validateTemplate(content: string, type: MemoryBankFileType): Result<boolean>;
+export interface IMemoryBankTemplateManager extends ITemplateManager {
+  /**
+   * Load a memory bank template by type
+   * @param type - The type of memory bank template to load
+   * @returns Result<ITemplate, TemplateError>
+   */
+  loadTemplate(type: MemoryBankFileType): Promise<Result<ITemplate, TemplateError>>;
+
+  /**
+   * Validate a memory bank template
+   * @param type - The type of memory bank template to validate
+   * @returns Result<void, TemplateError>
+   */
+  validateTemplate(type: MemoryBankFileType): Promise<Result<void, TemplateError>>;
+
+  /**
+   * Process a memory bank template with context data
+   * @param type - The type of memory bank template to process
+   * @param context - Data for processing
+   * @returns Result<string, TemplateError>
+   */
+  processTemplate(
+    type: MemoryBankFileType,
+    context: Record<string, unknown>
+  ): Promise<Result<string, TemplateError>>;
 }
 
 // Content processing
