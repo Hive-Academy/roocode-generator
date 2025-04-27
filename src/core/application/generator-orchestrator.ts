@@ -18,7 +18,7 @@ export class GeneratorOrchestrator implements IGeneratorOrchestrator {
     this.generatorsMap = new Map<string, IGenerator<unknown>>();
 
     const generatorIdentifiers = {
-      'memory-bank': 'MemoryBank',
+      'memory-bank': 'memory-bank',
       rules: 'rules',
       'system-prompts': 'system-prompts',
       roomodes: 'roomodes',

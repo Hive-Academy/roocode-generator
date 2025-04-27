@@ -1078,3 +1078,213 @@ All code follows the project's existing patterns and includes proper TypeScript 
 8. **Handle errors gracefully**: Adjust your approach based on error feedback.
 9. **Use multiple blocks in a single diff**: When making related changes to a file, include them in one `apply_diff` call.
 10. **Show your reasoning**: Use `<thinking>` tags to explain complex decisions.
+
+# MCP Servers - General Reference Guide
+
+## What is MCP?
+
+The Model Context Protocol (MCP) enables AI agents to communicate with external servers that provide additional tools and resources, extending their capabilities beyond basic text generation.
+
+## Core Concepts
+
+- MCP servers provide specialized tools for tasks like file operations, web searches, and API interactions
+- Two types of MCP servers: local (stdio-based) and remote (SSE-based)
+- Each server offers specific tools that can be invoked via the standard tool usage format
+
+## Accessing MCP Tools
+
+MCP tools are accessed using two primary methods:
+
+### 1. Using MCP Tools
+
+The `use_mcp_tool` format allows executing a specific tool from an MCP server:
+
+```
+<use_mcp_tool>
+<server_name>server name here</server_name>
+<tool_name>tool name here</tool_name>
+<arguments>
+{
+  "param1": "value1",
+  "param2": "value2"
+}
+</arguments>
+</use_mcp_tool>
+```
+
+### 2. Accessing MCP Resources
+
+The `access_mcp_resource` format allows retrieving resources from an MCP server:
+
+```
+<access_mcp_resource>
+<server_name>server name here</server_name>
+<uri>resource URI here</uri>
+</access_mcp_resource>
+```
+
+## Common Types of MCP Servers
+
+### File System Servers
+
+**Purpose**: Provide access to the local file system for reading, writing, and manipulating files.
+
+**Common Operations**:
+
+- Reading file contents
+- Writing or modifying files
+- Creating directories
+- Listing files and directories
+- Searching for files
+
+**Example**:
+
+```
+<use_mcp_tool>
+<server_name>filesystem</server_name>
+<tool_name>read_file</tool_name>
+<arguments>
+{
+  "path": "path/to/file.txt"
+}
+</arguments>
+</use_mcp_tool>
+```
+
+### Web Search & Scraping Servers
+
+**Purpose**: Enable search queries, web scraping, and content extraction from the internet.
+
+**Common Operations**:
+
+- Performing web searches
+- Scraping webpage content
+- Analyzing page structure
+- Extracting specific information
+
+**Example**:
+
+```
+<use_mcp_tool>
+<server_name>search</server_name>
+<tool_name>web_search</tool_name>
+<arguments>
+{
+  "query": "search query here",
+  "count": 5
+}
+</arguments>
+</use_mcp_tool>
+```
+
+### Code & Repository Management Servers
+
+**Purpose**: Interact with code repositories, version control systems, and development tools.
+
+**Common Operations**:
+
+- Searching repositories
+- Creating/updating files
+- Managing branches and commits
+- Creating issues or pull requests
+
+**Example**:
+
+```
+<use_mcp_tool>
+<server_name>repository</server_name>
+<tool_name>search_code</tool_name>
+<arguments>
+{
+  "query": "function findUser",
+  "language": "javascript"
+}
+</arguments>
+</use_mcp_tool>
+```
+
+### Analysis & Reasoning Servers
+
+**Purpose**: Enhance problem-solving with structured thinking, data analysis, and reasoning capabilities.
+
+**Common Operations**:
+
+- Breaking down complex problems
+- Analyzing data step-by-step
+- Revising previous thoughts
+- Reaching conclusions through sequential reasoning
+
+**Example**:
+
+```
+<use_mcp_tool>
+<server_name>reasoning</server_name>
+<tool_name>sequential_thinking</tool_name>
+<arguments>
+{
+  "thought": "First, let's identify the key variables in this problem.",
+  "thoughtNumber": 1,
+  "totalThoughts": 5,
+  "nextThoughtNeeded": true
+}
+</arguments>
+</use_mcp_tool>
+```
+
+### Design & Media Servers
+
+**Purpose**: Work with design files, images, and other media assets.
+
+**Common Operations**:
+
+- Retrieving design information
+- Downloading images or assets
+- Analyzing design structure
+- Converting between formats
+
+**Example**:
+
+```
+<use_mcp_tool>
+<server_name>design</server_name>
+<tool_name>get_design_data</tool_name>
+<arguments>
+{
+  "fileKey": "design_file_id"
+}
+</arguments>
+</use_mcp_tool>
+```
+
+## Best Practices for MCP Tool Usage
+
+1. **Discover Available Servers**: Before using MCP tools, identify which servers are available in your current environment.
+
+2. **Check Tool Capabilities**: Understand what each tool can do by reviewing its documentation or schema.
+
+3. **Parameter Format**: Ensure all arguments are properly formatted as JSON in the arguments section.
+
+4. **Required vs. Optional**: Distinguish between required and optional parameters for each tool.
+
+5. **Error Handling**: Be prepared to handle and respond to errors from MCP servers.
+
+6. **Progressive Approach**: Start with simpler operations before attempting more complex ones.
+
+7. **Feedback Loop**: Use the results from one tool operation to inform subsequent operations.
+
+8. **Respect Resource Limits**: Be mindful of rate limits and resource constraints when making multiple requests.
+
+9. **Security Considerations**: Avoid requesting operations that might access sensitive data without proper authorization.
+
+10. **Step-by-Step Execution**: Execute one tool at a time, waiting for results before proceeding.
+
+## When to Use MCP Tools
+
+- When you need specialized capabilities beyond basic text generation
+- For tasks requiring access to external resources or data
+- When working with files, code, or structured data
+- For complex problem-solving that benefits from enhanced reasoning
+- When you need to search or retrieve information from the web
+- For operations that involve specific APIs or services
+
+By leveraging MCP servers effectively, AI agents can extend their capabilities and provide more valuable assistance across a wide range of tasks.

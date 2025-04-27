@@ -1,84 +1,24 @@
----
-title: Developer Guide
-version: 1.0.0
-lastUpdated: [lastUpdated]
-type: core-documentation
-category: development
----
-
 # Developer Guide
 
-## Development Setup
+<!-- This is a fallback template generated automatically on 2025-04-27 -->
 
-### Prerequisites
+## Setup
 
-[prerequisites]
-
-### Environment Setup
-
-[setupInstructions]
-
-### Required Tools
-
-[requiredTools]
-
-## Project Structure
-
-[projectStructure]
-
-Refer to [[TechnicalArchitecture#Core-Components]] for detailed component information.
+Provide instructions for setting up the development environment.
 
 ## Development Workflow
 
-### Process Overview
+Describe the development process and workflow.
 
-[workflow]
+## Best Practices
 
-### Task Management
+Document coding standards and best practices.
 
-- Requirements: [[memory-bank/templates/task-description-template]]
-- Planning: [[memory-bank/templates/implementation-plan-template]]
-- Completion: [[memory-bank/templates/completion-report-template]]
+## Testing
 
-## Code Guidelines
+Explain testing requirements and procedures.
 
-### Standards and Practices
+## Deployment
 
-[codingStandards]
+Document the deployment process and requirements.
 
-### Quality and Testing
-
-- **Testing Approach**: [testing]
-- **Coverage Goals**: [testCoverage]
-- **Validation**: [validation]
-
-## Common Operations
-
-### Development Tasks
-
-[commonTasks]
-
-### Build and Deploy
-
-- **Build Process**: [buildProcess]
-- **Deployment**: [deploymentSteps]
-
-## Troubleshooting
-
-### Common Issues
-
-[troubleshootingGuide]
-
-### Support Resources
-
-[supportResources]
-
-## Environment Management
-
-### Infrastructure
-
-See [[TechnicalArchitecture#Infrastructure]] for detailed infrastructure setup.
-
-### Environments
-
-[environments]

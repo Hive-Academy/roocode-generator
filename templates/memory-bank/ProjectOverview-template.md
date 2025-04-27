@@ -1,68 +1,24 @@
----
-title: Project Overview
-version: 1.0.0
-lastUpdated: [lastUpdated]
-type: core-documentation
-category: overview
----
+# Project Overview
 
-# [projectName]
+<!-- This is a fallback template generated automatically on 2025-04-27 -->
 
 ## Overview
 
-[projectDescription]
+Provide a high-level overview of the project.
 
-## Project Essentials
+## Goals
 
-- **Status**: [projectStatus]
-- **Version**: [version]
-- **Phase**: [currentPhase]
-- **Start Date**: [startDate]
+List the main goals and objectives of the project.
 
-## Purpose and Goals
+## Scope
 
-[purpose]
+Define the scope and boundaries of the project.
 
-## Core Features
+## Stakeholders
 
-[keyFeatures]
+Identify key stakeholders and their roles.
 
-## Project Structure
+## Timeline
 
-### Technology Overview
+Outline the project timeline and major milestones.
 
-See [[TechnicalArchitecture#Stack]] for detailed technical specifications.
-
-- **Primary Stack**: [techStack]
-- **Development Flow**: [workflow]
-
-### Team and Organization
-
-- **Team Structure**: [teamStructure]
-- **Key Stakeholders**: [stakeholders]
-
-## Project Status
-
-Current state and next steps. See [[progress-tracker/task-progress.md]] for detailed progress.
-
-### Active Development
-
-- **Current Focus**: [currentFocus]
-- **Next Milestone**: [nextMilestone]
-
-### Known Constraints
-
-[constraints]
-
-## Documentation Index
-
-### Core Documentation
-
-- Technical Details: [[TechnicalArchitecture]]
-- Developer Setup: [[DeveloperGuide]]
-
-### Process Templates
-
-- Implementation Plans: [[templates/implementation-plan-template]]
-- Task Descriptions: [[templates/task-description-template]]
-- Completion Reports: [[templates/completion-report-template]]

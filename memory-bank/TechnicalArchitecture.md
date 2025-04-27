@@ -1,362 +1,241 @@
+Okay, Roo Architect is ready. Here is the Technical Architecture document based on the provided context.
+
+```markdown
 ---
 title: Technical Architecture
-version: 1.0.0
-lastUpdated: 2023-10-27 # Replace with current date
+version: 1.1.0
+lastUpdated: 2024-08-15 # Replace with current date
 type: core-documentation
 category: architecture
 ---
 
 # Technical Architecture
 
-## Overview
+## 1. Overview
 
-`roocode-generator` implements a **Modular CLI with LLM Integration** architecture. This document outlines the key technical components and design decisions for this CLI tool, which generates RooCode workflow configuration files for various tech stacks.
+`roocode-generator` is a command-line interface (CLI) tool built with Node.js and TypeScript. Its primary purpose is to generate RooCode workflow configuration files and associated documentation (`memory-bank` files) tailored to different project contexts and technology stacks. The architecture emphasizes modularity, extensibility, and leverages Large Language Models (LLMs) via Langchain for intelligent content generation.
 
-See [[ProjectOverview]] for high-level project information.
+This document outlines the system's design, core components, technology stack, data flow, and key technical decisions. It serves as a guide for understanding the internal structure and development principles of the `roocode-generator`.
 
-## System Design
+See [[ProjectOverview]] for high-level project goals and features.
 
-The system is designed as a command-line application that takes user input, potentially interacts with Large Language Models (LLMs) via Langchain, processes templates, and generates configuration files.
+## 2. System Design
 
-### Architecture Diagram
+The application follows a **Modular CLI Architecture with LLM Integration**. It operates as follows:
 
-mermaid
-graph TD
-A[User] -- Runs CLI command --> B(CLI Interface);
-B -- Parses args/prompts --> C{Command Handler};
-C -- Loads config/templates --> D[Filesystem];
-C -- Needs AI generation --> E{LLM Interaction Module};
-E -- Uses Langchain --> F[LLM APIs (OpenAI, Anthropic, Google)];
-F -- Returns generated content --> E;
-E -- Returns content to Handler --> C;
-C -- Orchestrates template processing --> J[Rules Generator];
-J -- Loads/Manages Templates --> K[RulesTemplateManager];
-K -- Reads templates --> D;
-K -- Provides templates --> L[TemplateProcessor];
-L -- Needs contextual rules --> E;
-L -- Provides processed content --> H{File Generator};
-H -- Writes files --> D;
-C -- Displays output/status --> I[Terminal Output (chalk, ora)];
-B -- Uses --> I;
+1.  **Initialization:** The CLI entry point (`bin/roocode-generator.js`) sets up module aliasing, environment variables (`dotenv`), and Reflect Metadata for decorators. It then initializes a custom Dependency Injection (DI) container (`@core/di`).
+2.  **DI Registration:** Services are registered in a modular fashion (`@core/di/modules/*`) within the container.
+3.  **Application Bootstrap:** The main `ApplicationContainer` is resolved from the DI container.
+4.  **Command Parsing:** The `ApplicationContainer` uses a dedicated `CliInterface` (built with `commander` and `inquirer`) to parse command-line arguments (`generate`, `config`) and options.
+5.  **Configuration Loading:** Relevant configuration services (`ProjectConfigService`, `LLMConfigService`) load project-specific (`roocode-config.json`) and LLM (`llm.config.json`) settings.
+6.  **Command Execution:** The `ApplicationContainer` routes the parsed command to the appropriate handler:
+    *   `config`: Manages LLM settings, potentially interactively.
+    *   `generate`: Orchestrates the execution of selected generator modules via the `GeneratorOrchestrator`.
+7.  **Generator Orchestration:** The `GeneratorOrchestrator` resolves the requested `IGenerator` instances (e.g., `MemoryBankGenerator`, `RulesGenerator`, `SystemPromptsGenerator`).
+8.  **Generation Process (varies by generator):**
+    *   **Context Gathering:** Generators like `MemoryBankGenerator` or `RulesGenerator` may use the `ProjectAnalyzer` (which uses `LLMAgent`) to analyze the project context (tech stack, structure, dependencies).
+    *   **Template Processing:** Generators may load and process templates (`TemplateManager`, `RulesTemplateManager`, `TemplateProcessor`). This might involve merging base templates with customizations and inserting LLM-generated content (e.g., contextual rules).
+    *   **LLM Interaction:** The `LLMAgent` interacts with the configured LLM provider (via `LLMProviderRegistry` and `langchain`) to generate content based on prompts constructed from project context and templates.
+    *   **File Operations:** Generators use the `FileOperations` service to write the generated files to the filesystem, potentially managing versions (`RulesFileManager`).
+9.  **User Feedback:** Throughout the process, `ProgressIndicator` (`ora`) and `LoggerService` (`chalk`) provide feedback to the user via the terminal.
+10. **Completion/Error Handling:** The application exits with appropriate status codes based on the `Result` of the main workflow. Top-level error handling catches unexpected issues.
 
-## Testing Strategy and Coverage Overview
-
-The `roocode-generator` project employs a comprehensive testing strategy to ensure code quality, reliability, and maintainability.
-
-- **Testing Framework**: The project uses [Jest](https://jestjs.io/) as the primary testing framework, configured with `ts-jest` for seamless TypeScript support. Unit and integration tests reside in the `tests/` directory, following the `*.test.ts` naming convention.
-
-- **Coverage Goals**: A minimum coverage threshold of 80% is enforced across branches, functions, lines, and statements, as configured in `jest.config.js`.
-
-- **Testing Practices**: Tests are maintained with descriptive names, grouped logically, and mock external dependencies to isolate units under test. Continuous Integration (CI) pipelines enforce test execution and coverage thresholds on pull requests.
-
-- **Coverage Summary Highlights**:
-  - Critical modules such as the CLI Interface, Command Handlers, and Template Engine have been prioritized for test coverage improvements.
-  - Some core modules currently have skipped or failing tests, including `cli-interface.ts`, `rules-template-manager.ts`, and `container.ts`.
-  - Incremental improvements are planned to address these gaps, starting with the highest priority modules.
-
-For detailed testing guidelines and maintenance practices, see the [Developer Guide - Quality and Testing](memory-bank/DeveloperGuide.md#quality-and-testing).
-_Diagram illustrating the flow from user command to file generation, including the Rules Template System components and optional LLM interaction._
-
-### Core Components
-
-- **CLI Interface (`inquirer`, command parsing logic):** Handles user input, command parsing, and orchestrates the overall workflow.
-- **Command Handlers:** Specific logic for different generation commands (e.g., `generate`, `init`). Organised based on the Feature-based folder structure.
-- **Configuration Loader:** Reads project-specific configuration or defaults.
-- **Template Engine:** Processes template files, replacing custom placeholders with generated or configured values.
-- **LLM Interaction Module (`langchain`, `@langchain/*` providers):** Abstract layer to interact with various LLM providers (OpenAI, Anthropic, Google GenAI) for intelligent content generation or suggestions.
-- **File Generator:** Takes processed template content and writes it to the appropriate files in the target directory structure.
-- **Utility Modules (`chalk`, `ora`):** Provide enhanced terminal output, including colored text and spinners for progress indication.
-
-## Technology Stack
-
-### Primary Stack {#Stack}
-
-- **Frontend**: N/A (Command Line Interface)
-- **Backend**: Node.js (Runtime Environment)
-- **Database**: N/A (State managed through configuration files and user input)
-
-### Infrastructure
-
-- **Cloud/Hosting**: Runs on the User's Local Machine. Distributed via npm.
-- **CI/CD Pipeline**: GitHub Actions (or similar) utilizing `semantic-release` for automated versioning and publishing, and `commitlint` for commit message standards.
-- **Monitoring**: N/A
-
-### Development Tools
-
-- **Testing**: None (Currently specified as "None").
-- **Code Quality**:
-  - `eslint`: Linting JavaScript/TypeScript code.
-  - `prettier`: Code formatting.
-  - `typescript`: Static typing.
-  - `@commitlint/cli`: Enforcing conventional commit messages.
-  - `husky`: Git hooks management (e.g., for pre-commit checks).
-- **Build Tools**:
-  - `typescript` (tsc): Compiling TypeScript to JavaScript.
-  - `copyfiles`: Utility for copying non-TS files during build.
-
-## Integration and Data Flow
-
-### External Services
-
-- **LLM APIs:** Interacts with external Large Language Model APIs (e.g., OpenAI, Anthropic, Google Gemini) via the Langchain library for specific generation tasks. Requires API keys.
-
-### Dependency Injection
-
-The core components of the system, including the Rules Template System, are integrated and managed through a Dependency Injection (DI) container. Key registered components include:
-
-- **IRulesTemplateManager:** Manages template loading, merging, and validation.
-- **TemplateProcessor:** Handles the processing of templates, including the insertion of contextual rules generated by the LLM.
-- **RuleDefinitionTemplateParser:** Responsible for parsing template content, extracting sections, and handling markers.
-
-### Integration Points
-
-- **User Terminal:** Primary interface for input and output.
-- **Local Filesystem:** Reads template files, configuration files, and writes generated output files.
-- **LLM APIs:** Sends prompts and receives generated text data via HTTPS requests managed by Langchain.
-
-### Data Flow
-
-1.  **User Input:** The user executes a command via the terminal (e.g., `roocode generate <stack>`).
-2.  **Parsing:** The CLI framework parses the command, arguments, and options. Interactive prompts (`inquirer`) may gather further details.
-3.  **Configuration Loading:** Relevant configuration files (project-specific or defaults) are loaded.
-4.  **LLM Interaction (Optional):** If the command requires AI assistance, the LLM Interaction Module constructs prompts using user input and configuration, sends them to the selected LLM via Langchain, and receives the response.
-5.  **Template Processing:** The Rules Template System components (`RulesTemplateManager`, `TemplateProcessor`, `RuleDefinitionTemplateParser`) are used to load base templates, apply customizations, process template sections, handle markers like `{{CONTEXTUAL_RULES}}`, and integrate LLM-generated content.
-6.  **File Generation:** The File Generator module takes the processed content and writes it to the target files and directories based on the chosen stack and Feature-based structure.
-7.  **Feedback:** Status updates, progress indicators (`ora`), and results are displayed to the user in the terminal (`chalk`).
-
-## Key Technical Decisions
-
-### Architecture Choices
-
-- **Modular CLI:** Designed for easy extension with new commands, tech stacks, or LLM providers.
-- **LLM Abstraction (Langchain):** Using Langchain provides flexibility to switch between or support multiple LLM providers without major code changes.
-- **Configuration-Driven:** Generation logic relies heavily on configuration files and templates, making it adaptable to different tech stacks.
-- **TypeScript:** Chosen for improved code maintainability, type safety, and developer experience in a growing codebase.
-
-### Design Patterns
-
-- **Generator Pattern:** The core purpose of the tool is to generate code/configuration.
-- **Configuration-Driven Development:** Behavior is significantly controlled by external configuration and templates.
-- **Template Engine (Custom Placeholders):** Uses a system (likely custom string replacement or a minimal library) to inject dynamic data into static templates.
-- **LLM Abstraction:** Isolates LLM interaction logic behind a consistent interface.
-- **Command Pattern:** CLI commands map to specific handler functions/modules.
-
-### Security Considerations
-
-- **API Key Management:** Sensitive LLM API keys must be handled securely. Users should be instructed to use environment variables or secure configuration methods, not hardcoding keys.
-- **Dependency Security:** Regularly audit dependencies (`npm audit`) for known vulnerabilities.
-- **Input Sanitization:** While primarily a developer tool, basic checks on input path manipulation could prevent accidental file overwrites outside the intended scope. (Low severity for typical use).
-
-## Development Guidelines
-
-Detailed setup and practices in [[DeveloperGuide]].
-
-### Standards
-
-- **Coding Style:** Enforced by ESLint and Prettier. Configuration files are included in the repository.
-- **Commit Messages:** Conventional Commits enforced by `@commitlint/cli` via Husky hooks.
-- **Typing:** Strict TypeScript usage is encouraged.
-
-### Best Practices
-
-- **Trunk-Based Development:** All development happens on the main branch with short-lived feature branches if necessary. Releases are tagged automatically.
-- **Modularity:** Keep components focused and decoupled. New tech stacks or features should ideally be added as separate modules.
-- **Error Handling:** Provide clear error messages to the user.
-- **User Feedback:** Utilize `chalk` and `ora` appropriately to inform the user about the tool's progress and status.
-
-### Dependencies
-
-#### Runtime Dependencies
-
-- `@langchain/anthropic`: Langchain integration for Anthropic models.
-- `@langchain/core`: Core Langchain abstractions and utilities.
-- `@langchain/google-genai`: Langchain integration for Google GenAI models.
-- `@langchain/openai`: Langchain integration for OpenAI models.
-- `langchain`: Main Langchain library orchestrating LLM interactions.
-- `chalk`: Terminal string styling.
-- `inquirer`: Interactive command-line user interfaces.
-- `ora`: Elegant terminal spinners.
-
-#### Development Dependencies
-
-- `typescript`: Language compiler and type checker.
-- `eslint`: Code linter.
-- `prettier`: Code formatter.
-- `semantic-release`: Automated version management and package publishing.
-- `husky`: Git hooks manager.
-- `@commitlint/cli`: Linter for commit messages.
-- `copyfiles`: Utility to copy files during the build process.
-
-## LLM-Based Rules Generator
-
-### Overview
-
-The Rules Generator has been enhanced with LLM integration to generate contextually relevant rules instead of direct file copying from templates. This system analyzes project context, processes templates, and generates customized rules using AI.
-
-### Component Architecture
+### 2.1. Architecture Diagram
 
 ```mermaid
 graph TD
-    RG[RulesGenerator] --> PA[Project Analyzer]
-    RG --> TM[Template Manager]
-    RG --> LLM[LLM Agent]
-    RG --> FM[File Manager]
+    subgraph User Interaction
+        A[User] -- Runs CLI --> B(CLI Entry Point);
+    end
 
-    PA --> PC[Project Context]
-    TM --> TP[Template Processing]
-    LLM --> RG[Rules Generation]
-    FM --> VF[Versioned Files]
+    subgraph Core Application
+        B -- Initializes --> C(DI Container);
+        C -- Registers --> D(Services / Modules);
+        B -- Resolves & Runs --> E(ApplicationContainer);
+        E -- Uses --> F(CliInterface);
+        F -- Parses Args --> E;
+        E -- Uses --> G(GeneratorOrchestrator);
+        E -- Uses --> H(Config Services);
+        E -- Uses --> I(LoggerService);
+        E -- Uses --> J(ProgressIndicator);
+    end
+
+    subgraph Generators [Generator Execution Flow]
+        G -- Executes --> K{Specific Generator (IGenerator)};
+        K -- Uses --> H;
+        K -- Uses --> L(ProjectAnalyzer);
+        K -- Uses --> M(TemplateProcessor);
+        K -- Uses --> N(FileManager);
+        L -- Uses --> O(LLMAgent);
+        M -- Uses --> O;
+        M -- Uses --> P(RulesTemplateManager);
+        O -- Uses --> Q(LLMProviderRegistry);
+        Q -- Uses --> H;
+        Q -- Creates --> R[LLM Providers (Langchain)];
+        R -- Calls --> S[External LLM APIs];
+        N -- Uses --> T(FileOperations);
+        P -- Uses --> T;
+        T -- Interacts --> U[Filesystem];
+    end
+
+    subgraph Output
+        E -- Displays --> V[Terminal Output];
+        I -- Logs --> V;
+        J -- Shows Progress --> V;
+    end
+
+    style Core Application fill:#f9f,stroke:#333,stroke-width:2px
+    style Generators fill:#ccf,stroke:#333,stroke-width:2px
 ```
 
-### Core Components
+_Diagram showing the initialization, command handling, and generator execution flow, including DI, LLM interaction, and file operations._
 
-#### Project Analyzer
+### 2.2. Core Components
 
-- Analyzes project tech stack and structure
-- Maps dependencies and relationships
-- Provides context for rule generation
-- Interfaces with existing project files
+*   **`@core/di` (Dependency Injection):** Custom DI container (`Container`) managing service registration (`registerServices`, modular modules) and resolution (`resolveDependency`). Uses `reflect-metadata` and decorators (`@Injectable`, `@Inject`).
+*   **`@core/application` (Application Core):**
+    *   `ApplicationContainer`: Orchestrates the main application lifecycle, command routing, and top-level workflow.
+    *   `GeneratorOrchestrator`: Manages the registration and execution of different generator modules (`IGenerator`).
+    *   `IProjectManager` (Stub): Placeholder for project-level state management (currently minimal).
+    *   `interfaces.ts`: Defines core application service contracts.
+*   **`@core/cli` (Command Line Interface):**
+    *   `CliInterface`: Handles argument parsing (`commander`), interactive prompts (`inquirer`), and basic console output.
+*   **`@core/config` (Configuration Management):**
+    *   `LLMConfigService`: Manages loading, saving, validation, and interactive editing of LLM settings (`llm.config.json`).
+    *   `ProjectConfigService`: Manages loading and validation of project settings (`roocode-config.json`).
+*   **`@core/llm` (LLM Interaction):**
+    *   `LLMAgent`: Central point for interacting with LLMs, orchestrating analysis or completion tasks.
+    *   `LLMProviderRegistry`: Dynamically loads and caches the configured LLM provider based on `llm.config.json`.
+    *   `LLMProvider` (Implementations: `OpenAILLMProvider`, etc.): Adapters for specific LLM services using `langchain` clients (`@langchain/*`).
+*   **`@core/generators` (Base Generator Logic):**
+    *   `BaseGenerator`: Abstract class providing common structure and lifecycle (`initialize`, `validate`, `generate`) for all generators.
+    *   `IGenerator`: Interface defining the contract for generator modules.
+*   **`@generators` (Specific Generators):** Modules implementing `IGenerator` for specific tasks:
+    *   `MemoryBankGenerator`: Generates core documentation (`ProjectOverview.md`, etc.). Includes sub-components like `IMemoryBankFileManager`, `IProjectContextService`, `IPromptBuilder`.
+    *   `RulesGenerator`: Generates coding standard rules. Includes sub-components like `IRulesFileManager`, `IRulesContentProcessor`, `IRulesPromptBuilder`.
+    *   `SystemPromptsGenerator`, `RoomodesGenerator`, `VSCodeCopilotRulesGenerator`: Simpler generators creating specific configuration files.
+*   **`@core/analysis` (Project Analysis):**
+    *   `ProjectAnalyzer`: Uses `LLMAgent` and `FileOperations` to analyze project structure, tech stack, and dependencies.
+    *   `ResponseParser`: Parses JSON responses from the LLM.
+    *   `types.ts`: Defines interfaces for analysis results (`ProjectContext`, `TechStackAnalysis`, etc.).
+*   **`@core/templating` (Template System):**
+    *   `RulesTemplateManager`: Loads, merges, and validates Markdown-based rule templates and customizations.
+    *   `TemplateProcessor`: Integrates LLM-generated contextual rules (`{{CONTEXTUAL_RULES}}`) into merged templates.
+*   **`@core/template-manager` (Generic Template Engine):**
+    *   `TemplateManager`, `Template`: Basic engine for loading and processing simple placeholder-based templates.
+*   **`@core/file-operations` (Filesystem Interaction):**
+    *   `FileOperations`: Provides abstracted, error-handled file system operations (read, write, check existence, etc.) using Node.js `fs.promises`.
+    *   `errors.ts`: Defines specific file operation error types.
+*   **`@core/result` (Error Handling):**
+    *   `Result`: A type-safe class implementing the Result pattern for explicit success/failure handling across the application.
+*   **`@core/errors` (Core Errors):** Defines base `RooCodeError` and specific error types (`ValidationError`, `ConfigurationError`, etc.) for consistent error handling.
+*   **`@core/services` (Utility Services):**
+    *   `LoggerService`: Basic console logging implementation (`ILogger`).
+    *   `BaseService`: Base class for services, potentially handling common initialization or dependency validation (though usage seems limited currently).
+*   **`@core/ui` (User Interface Elements):**
+    *   `ProgressIndicator`: Wrapper around `ora` for displaying spinners during long operations.
+*   **`@types` (Shared Types):** Contains core shared interfaces like `ProjectConfig`, `LLMConfig`, `AnalysisResult`.
 
-#### Template Manager
+## 3. Technology Stack
 
-- Manages base templates and customizations
-- Validates template structure
-- Handles template versioning
-- Processes template sections
+### 3.1. Primary Stack {#Stack}
 
-#### LLM Integration
+*   **Runtime Environment**: Node.js (>=16 specified in `package.json`)
+*   **Language**: TypeScript (v5.8.3 specified)
+*   **Package Manager**: npm (implied by `package-lock.json`)
+*   **Module System**: CommonJS (specified in `tsconfig.json`, used by `require` in entry point)
 
-- Generates contextual rules
-- Processes project context
-- Ensures rule relevance
-- Handles template modifications
+### 3.2. Key Libraries & Frameworks
 
-#### File Manager
+*   **CLI Framework**: `commander` (for argument parsing), `inquirer` (for interactive prompts)
+*   **LLM Interaction**: `langchain`, `@langchain/openai`, `@langchain/google-genai`, `@langchain/anthropic`
+*   **DI Container**: Custom implementation (`@core/di`) using `reflect-metadata`
+*   **Environment Variables**: `dotenv`
+*   **Module Aliasing**: `module-alias`
+*   **Utility**: `chalk` (terminal styling), `ora` (spinners), `date-fns` (date formatting)
+*   **Testing**: `jest`, `ts-jest`, `@jest/globals`
+*   **Code Quality**: `eslint`, `@typescript-eslint/parser`, `@typescript-eslint/eslint-plugin`, `prettier`
+*   **Build**: `typescript` (tsc), `copyfiles`
 
-- Manages rule file storage
-- Implements versioning system
-- Handles backups
-- Validates file structure
+### 3.3. Infrastructure
 
-### Data Flow
+*   **Execution Environment**: User's Local Machine (as a CLI tool)
+*   **Distribution**: npm Registry
+*   **CI/CD**: GitHub Actions (implied by use of `@semantic-release/github`), `semantic-release` for automated versioning and publishing.
+*   **Version Control**: Git
 
-1. Project Analysis:
+## 4. Integration and Data Flow
 
-```typescript
-interface ProjectContext {
-  techStack: TechStackAnalysis;
-  structure: ProjectStructure;
-  dependencies: DependencyGraph;
-}
+### 4.1. External Services
+
+*   **LLM APIs**: Interacts with external APIs (OpenAI, Google GenAI, Anthropic) via HTTPS, managed by `langchain` and configured through `llm.config.json` or environment variables. Requires API keys.
+
+### 4.2. Internal Integration
+
+*   **Dependency Injection:** Core components are loosely coupled and managed by the custom DI container. Services are registered centrally (`registerServices`) and resolved using tokens (strings). Factories are commonly used for instantiation, allowing dependency resolution within the factory function.
+*   **Result Pattern:** The `Result` class is used extensively for robust error handling, making success/failure explicit rather than relying solely on exceptions.
+*   **Modular Generators:** The `GeneratorOrchestrator` dynamically loads and executes generators based on CLI input or configuration, promoting extensibility.
+
+### 4.3. Data Flow (Generate Command Example)
+
+1.  **User Input:** `roocode generate memory-bank`
+2.  **CLI Parsing (`CliInterface`):** Command `generate`, options `{ generators: ['memory-bank'] }` identified.
+3.  **Application Routing (`ApplicationContainer`):** Routes to `executeGenerateCommand`.
+4.  **Orchestration (`GeneratorOrchestrator`):**
+    *   Resolves `MemoryBankGenerator` based on the 'memory-bank' identifier.
+    *   Loads `ProjectConfig` using `ProjectConfigService`.
+5.  **Memory Bank Generation (`MemoryBankGenerator`):**
+    *   Calls `IProjectContextService.gatherContext` to read project files (using `FileOperations`).
+    *   Calls `IMemoryBankTemplateManager.loadTemplate` for each file type (e.g., `ProjectOverview`).
+    *   Calls `IPromptBuilder.buildPrompt` using context and template.
+    *   Calls `LLMAgent.getCompletion` with prompts.
+    *   `LLMAgent` resolves the configured `ILLMProvider` via `LLMProviderRegistry`.
+    *   `ILLMProvider` uses `langchain` client to call the external LLM API.
+    *   LLM response is returned.
+    *   Calls `IContentProcessor.processTemplate` to potentially format the LLM response.
+    *   Calls `IMemoryBankFileManager.writeMemoryBankFile` (which uses `FileOperations`) to save the generated `.md` file.
+    *   Copies template files using `copyDirectoryRecursive` (via `FileOperations`).
+6.  **Feedback (`ProgressIndicator`, `LoggerService`):** Updates displayed in the terminal.
+7.  **Completion (`ApplicationContainer`):** Receives `Result.ok`, exits with code 0.
+
+## 5. Key Technical Decisions
+
+*   **Custom DI Container:** Provides control over dependency management without external libraries, leveraging `reflect-metadata`. Modular registration (`modules/*.ts`) improves organization.
+*   **Modular Generator Architecture:** Using `IGenerator` interface and `GeneratorOrchestrator` allows easy addition of new generators.
+*   **LLM Abstraction (`langchain` & Custom Registry):** `langchain` simplifies interaction with different LLMs. The `LLMProviderRegistry` adds a layer to dynamically select and instantiate the configured provider, decoupling the core logic from specific LLM client implementations.
+*   **Result Pattern for Error Handling:** Enforces explicit error handling throughout the codebase, improving robustness compared to relying solely on try/catch.
+*   **TypeScript:** Enables static typing, improving code quality, maintainability, and refactoring safety. Strict mode is enabled in `tsconfig.json`.
+*   **Feature-Based Folder Structure (with Core Separation):** Organizes code by feature (`generators`, `memory-bank`) alongside a central `core` directory, aiming for logical grouping.
+*   **Automated Release (`semantic-release`):** Standardizes versioning and publishing based on conventional commits.
+*   **Code Quality Tooling (`eslint`, `prettier`, `commitlint`, `husky`):** Enforces consistent code style and commit message standards automatically.
+*   **Module Aliasing (`module-alias`, `tsconfig.json` paths):** Simplifies internal imports using `@core`, `@generators`, etc., mapping to the compiled `dist` directory at runtime.
+
+## 6. Development Guidelines
+
+Refer to [[DeveloperGuide]] for detailed setup, workflow, and coding standards. Key points include:
+
+*   **Standards:** TypeScript, ESLint (`@typescript-eslint`), Prettier, Conventional Commits.
+*   **Workflow:** Trunk-Based Development with short-lived feature branches recommended for larger changes. Automated checks via Husky hooks.
+*   **Modularity:** Emphasized through DI and the generator pattern.
+*   **Error Handling:** Use the `Result` type consistently. Define specific error types extending `RooCodeError` or `FileOperationError`.
+*   **Testing:** Jest with `ts-jest`. Coverage goal of 80%. Tests located alongside source files (planned move from `tests/`).
+
+## 7. Security Considerations
+
+*   **API Key Management:** LLM API keys are sensitive. They are loaded via `dotenv` from a `.env` file (which is gitignored) and managed by `LLMConfigService`. Users must secure their `.env` file or configure keys securely in CI environments.
+*   **Dependency Security:** Relies on standard practices like `npm audit` and keeping dependencies updated.
+*   **File System Access:** The `FileOperations` service interacts with the local filesystem. While primarily a developer tool, path validation (`validatePath`) is implemented, but careful usage is still necessary to avoid unintended file writes, especially based on user input or configuration.
+*   **Command Execution (`execute_command` tool - if used via MCP):** Potential security risk if commands can be injected or manipulated. Usage should be carefully controlled and validated. (Note: `execute_command` is not directly part of the core generator logic but mentioned in system prompts).
+*   **LLM Interaction:** Prompts constructed from project files could potentially send sensitive source code snippets to external LLM APIs if not carefully managed. The `ProjectContextService` currently excludes common sensitive directories (`.git`, `node_modules`).
+
+## 8. Testing Strategy Overview
+
+*   **Framework:** Jest with `ts-jest` for TypeScript support.
+*   **Location:** Tests are planned to be colocated with source files (`*.test.ts`). Currently, some may reside in a top-level `tests/` directory.
+*   **Coverage:** Target of 80% global coverage (branches, functions, lines, statements) enforced via `jest.config.js`.
+*   **Types:** Unit tests for individual components/functions, Integration tests for component interactions (e.g., DI resolution, command routing).
+*   **CI:** Tests are run as part of the CI pipeline (implied by `semantic-release` setup).
+*   **Current Status:** Some tests are noted as skipped or failing in the context (`cli-interface.ts`, `rules-template-manager.ts`, `container.ts`), indicating areas needing improvement.
+
+Refer to [[DeveloperGuide#Quality-and-Testing]] for detailed testing practices.
 ```
-
-2. Template Processing:
-
-```typescript
-interface TemplateCustomization {
-  mode: string;
-  sections: {
-    name: string;
-    content: string;
-    priority: number;
-  }[];
-  contextualRules: string[];
-}
-```
-
-3. Rules Generation:
-
-```typescript
-interface GeneratedRules {
-  mode: string;
-  content: string;
-  metadata: RulesMetadata;
-  contextualInfo: {
-    techStack: TechStackAnalysis;
-    projectStructure: ProjectStructure;
-    generationDate: string;
-  };
-}
-```
-
-### File Structure
-
-```
-.roo/
-├── rules/
-│   ├── architect/
-│   ├── boomerang/
-│   ├── code/
-│   └── code-review/
-├── rules-backup/
-└── rules-versions.json
-```
-
-### Error Handling
-
-- Uses Result type for all operations
-- Implements comprehensive logging
-- Provides detailed error messages
-- Includes recovery strategies
-- Handles edge cases gracefully
-
-### Integration Points
-
-1. LLM Integration:
-
-   - Uses OpenAI's GPT models
-   - Implements retry mechanisms
-   - Handles rate limiting
-   - Validates responses
-
-2. File System:
-
-   - Manages file operations
-   - Handles concurrent access
-   - Implements versioning
-   - Provides backup/recovery
-
-3. Template System:
-   - Processes base templates
-   - Handles customizations
-   - Validates structure
-   - Manages versions
-
-### Performance Considerations
-
-1. Caching:
-
-   - Template caching
-   - Context analysis caching
-   - Version history caching
-
-2. Optimization:
-   - Parallel processing where possible
-   - Efficient file operations
-   - Smart context analysis
-
-### Security
-
-1. File Access:
-
-   - Proper permissions
-   - Safe file operations
-   - Input validation
-
-2. LLM Integration:
-   - API key management
-   - Response validation
-   - Content filtering
-
-### Future Considerations
-
-1. Extensibility:
-
-   - Plugin system
-   - Custom templates
-   - Additional modes
-
-2. Scalability:
-   - Multiple LLM providers
-   - Distributed processing
-   - Cloud storage integration

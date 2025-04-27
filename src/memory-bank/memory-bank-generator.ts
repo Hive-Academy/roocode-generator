@@ -23,7 +23,7 @@ export class MemoryBankGenerator
   extends BaseGenerator<ProjectConfig>
   implements IGenerator<ProjectConfig>
 {
-  readonly name = 'MemoryBank';
+  readonly name = 'memory-bank';
 
   constructor(
     @Inject('IServiceContainer') protected container: IServiceContainer,
@@ -196,7 +196,9 @@ export class MemoryBankGenerator
           return Result.err(processedContentResult.error ?? new Error('Failed to process content'));
         }
 
-        const content = processedContentResult.value;
+        const content = this.contentProcessor.stripMarkdownCodeBlock(
+          processedContentResult.value as string
+        );
         if (!content) {
           return Result.err(new Error('Processed content is undefined'));
         }
@@ -204,7 +206,7 @@ export class MemoryBankGenerator
         // Write the generated content
         const outputFilePath = path.join(memoryBankDir, `${String(fileType)}.md`);
         this.logger.debug(`Writing ${String(fileType)} to ${outputFilePath}`);
-        const writeResult = await fileOps.writeFile(outputFilePath, content);
+        const writeResult = await fileOps.writeFile(outputFilePath, content.value as string);
 
         if (writeResult.isErr()) {
           this.logger.error(

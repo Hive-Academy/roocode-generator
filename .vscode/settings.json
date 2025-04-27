@@ -4,13 +4,8 @@
   "eslint.validate": ["typescript", "typescriptreact", "javascript", "javascriptreact"],
   "eslint.run": "onSave",
   "editor.codeActionsOnSave": {
-<<<<<<< HEAD
-    "source.fixAll": true,
-    "source.fixAll.eslint": true
-=======
     "source.fixAll": "explicit",
     "source.fixAll.eslint": "explicit"
->>>>>>> 951d2d34bab619a928bd3cdaa6d90f3e330eb455
   },
   "[shellscript]": {
     "editor.defaultFormatter": "foxundermoon.shell-format"
