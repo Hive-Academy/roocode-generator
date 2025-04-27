@@ -1,11 +1,10 @@
+import type { DistinctQuestion } from 'inquirer';
+import { LLMConfig } from '../../../types/shared';
 import { Inject, Injectable } from '../di/decorators';
 import { IFileOperations } from '../file-operations/interfaces';
 import { Result } from '../result/result';
-import type { DistinctQuestion } from 'inquirer';
 import { ILogger } from '../services/logger-service';
-import { LLMConfig } from '../../../types/shared';
 import { ILLMConfigService } from './interfaces';
-
 /**
  * Service for managing LLM configuration.
  * Handles loading, saving, and interactive editing of LLM config from llm.config.json.
@@ -17,7 +16,7 @@ export class LLMConfigService implements ILLMConfigService {
   constructor(
     @Inject('IFileOperations') private readonly fileOps: IFileOperations,
     @Inject('ILogger') private readonly logger: ILogger,
-    @Inject('Inquirer') private readonly inquirer: { prompt: (questions: any) => Promise<any> }
+    @Inject('Inquirer') private readonly inquirer: any
   ) {}
 
   /**

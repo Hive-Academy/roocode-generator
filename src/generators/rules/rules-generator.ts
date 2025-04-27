@@ -45,7 +45,6 @@ export class RulesGenerator extends BaseGenerator<ProjectConfig> {
     @Inject('IFileOperations') private readonly fileOps: IFileOperations,
     @Inject('IProjectAnalyzer') private readonly projectAnalyzer: IProjectAnalyzer,
     @Inject('LLMAgent') private readonly llmAgent: LLMAgent,
-    // Add the new dependency
     @Inject('IRulesContentProcessor') private readonly contentProcessor: IRulesContentProcessor
   ) {
     super(container);

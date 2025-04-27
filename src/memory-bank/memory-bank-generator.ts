@@ -12,19 +12,17 @@ import {
 } from './interfaces';
 import { ILogger } from '../core/services/logger-service';
 import { Result } from '../core/result/result';
-import { BaseGenerator } from '../core/generators/base-generator';
+import { BaseGenerator, IGenerator } from '../core/generators/base-generator';
 import { IProjectConfigService } from '../core/config/interfaces';
 import { IServiceContainer } from '../core/di/interfaces';
 import { LLMAgent } from '../core/llm/llm-agent';
 import { ProjectConfig } from '../../types/shared';
 
-interface MemoryBankConfig extends ProjectConfig {
-  fileType?: MemoryBankFileType;
-  projectContext?: string;
-}
-
 @Injectable()
-export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
+export class MemoryBankGenerator
+  extends BaseGenerator<ProjectConfig>
+  implements IGenerator<ProjectConfig>
+{
   readonly name = 'MemoryBank';
 
   constructor(
@@ -62,209 +60,34 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
     return Result.ok(undefined);
   }
 
-  public async generate(
-    config: MemoryBankConfig,
-    contextPaths: string[]
-  ): Promise<Result<string, Error>> {
+  public async executeGeneration(config: ProjectConfig): Promise<Result<string, Error>> {
     try {
-      const fileType = config.fileType || MemoryBankFileType.ProjectOverview;
-      this.logger.debug(`DEBUG (Generator): Processing file type: ${String(fileType)}`);
-
-      // Validate configuration
-      const configValidation = this.validateConfig(config);
-      if (configValidation.isErr()) {
-        return Result.err(configValidation.error ?? new Error('Invalid configuration'));
-      }
-
-      // Create memory bank directory if it doesn't exist
-      const dirResult = await this.fileManager.createMemoryBankDirectory(
-        config.baseDir || process.cwd()
-      );
-      if (dirResult.isErr()) {
-        return Result.err(dirResult.error ?? new Error('Unknown error'));
-      }
-
-      // Gather project context from provided paths
-      const contextResult = await this.projectContextService.gatherContext(contextPaths);
+      // Gather project context
+      console.log('Gathering project context...', config);
+      const contextResult = await this.projectContextService.gatherContext([config.baseDir]);
       if (contextResult.isErr()) {
-        return Result.err(contextResult.error ?? new Error('Failed to gather context'));
-      }
-
-      // Load template for the specified file type
-      const templateResult = await this.templateManager.loadTemplate(fileType);
-      if (templateResult.isErr()) {
-        return Result.err(templateResult.error ?? new Error('Template content is undefined'));
-      }
-
-      // Ensure values are defined before using them
-      const contextValue = contextResult.value || '';
-      const templateValue = templateResult.value || '';
-
-      // Build file-type specific instructions
-      const instructions = this.getFileTypeInstructions(fileType);
-
-      // Build the prompt with enhanced context and instructions
-      const promptResult = this.promptBuilder.buildPrompt(
-        instructions,
-        contextValue,
-        templateValue
-      );
-      if (promptResult.isErr()) {
-        return Result.err(promptResult.error ?? new Error('Failed to build prompt'));
-      }
-
-      // Build system prompt with role-specific context
-      const systemPromptResult = this.promptBuilder.buildPrompt(
-        this.getSystemPrompt(fileType),
-        contextValue,
-        templateValue
-      );
-      if (systemPromptResult.isErr()) {
-        return Result.err(systemPromptResult.error ?? new Error('Failed to build system prompt'));
-      }
-
-      if (!systemPromptResult.value || !promptResult.value) {
-        return Result.err(new Error('Generated prompts are undefined'));
-      }
-
-      const llmResponse = await this.llmAgent.getCompletion(
-        systemPromptResult.value,
-        promptResult.value
-      );
-      if (llmResponse.isErr()) {
-        return Result.err(llmResponse.error ?? new Error('LLM invocation failed'));
-      }
-
-      if (!llmResponse.value) {
-        return Result.err(new Error('LLM response is undefined'));
-      }
-
-      // Process the template with enhanced metadata
-      const processedContentResult = await this.contentProcessor.processTemplate(
-        llmResponse.value,
-        {
-          fileType: String(fileType),
-          baseDir: config.baseDir || process.cwd(),
-          projectName: config.name ?? 'Unknown Project',
-          projectContext: contextValue,
-          taskId: this.generateTaskId(),
-          taskName: `Generate ${String(fileType)}`,
-          implementationSummary: `Generated ${String(fileType)} based on project context`,
-          currentDate: new Date().toISOString().split('T')[0],
-        }
-      );
-      if (processedContentResult.isErr()) {
-        return Result.err(processedContentResult.error ?? new Error('Failed to process content'));
-      }
-
-      const content = processedContentResult.value;
-      if (!content) {
-        return Result.err(new Error('Processed content is undefined'));
-      }
-
-      return Result.ok(content);
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error('Error in memory bank generation', err);
-      return Result.err(err);
-    }
-  }
-
-  protected async executeGeneration(
-    config: MemoryBankConfig,
-    contextPaths: string[]
-  ): Promise<Result<string, Error>> {
-    return this.generate(config, contextPaths);
-  }
-
-  private async executeGenerationForType(
-    fileTypeToGenerate: MemoryBankFileType,
-    projectContext: string
-  ): Promise<Result<string, Error>> {
-    try {
-      this.logger.debug(`DEBUG (Generator): Processing file type: ${String(fileTypeToGenerate)}`);
-
-      // Load template for the specified file type
-      const templateResult = await this.templateManager.loadTemplate(fileTypeToGenerate);
-      if (templateResult.isErr()) {
-        return Result.err(templateResult.error ?? new Error('Template content is undefined'));
-      }
-
-      const templateValue = templateResult.value || '';
-
-      // Build file-type specific instructions
-      const instructions = this.getFileTypeInstructions(fileTypeToGenerate);
-
-      // Build the prompt with enhanced context and instructions
-      const promptResult = this.promptBuilder.buildPrompt(
-        instructions,
-        projectContext,
-        templateValue
-      );
-      if (promptResult.isErr()) {
-        return Result.err(promptResult.error ?? new Error('Failed to build prompt'));
-      }
-
-      // Build system prompt with role-specific context
-      const systemPromptResult = this.promptBuilder.buildPrompt(
-        this.getSystemPrompt(fileTypeToGenerate),
-        projectContext,
-        templateValue
-      );
-      if (systemPromptResult.isErr()) {
-        return Result.err(systemPromptResult.error ?? new Error('Failed to build system prompt'));
-      }
-
-      if (!systemPromptResult.value || !promptResult.value) {
-        return Result.err(new Error('Generated prompts are undefined'));
-      }
-
-      const llmResponse = await this.llmAgent.getCompletion(
-        systemPromptResult.value,
-        promptResult.value
-      );
-      if (llmResponse.isErr()) {
-        return Result.err(llmResponse.error ?? new Error('LLM invocation failed'));
-      }
-
-      if (!llmResponse.value) {
-        return Result.err(new Error('LLM response is undefined'));
-      }
-
-      // Strip markdown code blocks from LLM response
-      const strippedContentResult = this.contentProcessor.stripMarkdownCodeBlock(llmResponse.value);
-      if (strippedContentResult.isErr()) {
         return Result.err(
-          strippedContentResult.error ?? new Error('Failed to strip markdown code blocks')
+          new Error(
+            `Failed to gather project context: ${contextResult.error?.message ?? 'Unknown error'}`
+          )
         );
       }
 
-      const strippedContent = strippedContentResult.value;
-      if (!strippedContent) {
-        return Result.err(new Error('Stripped content is undefined'));
+      // Call the MemoryBankGenerator to generate all memory bank files
+      const result = await this.generateMemoryBankSuite(
+        {
+          context: contextResult.value,
+        },
+        config
+      );
+
+      if (result.isErr()) {
+        return Result.err(
+          new Error(`Memory bank generation failed: ${result.error?.message ?? 'Unknown error'}`)
+        );
       }
 
-      // Process the template with enhanced metadata
-      const processedContentResult = await this.contentProcessor.processTemplate(strippedContent, {
-        fileType: String(fileTypeToGenerate),
-        baseDir: process.cwd(),
-        projectName: 'memory-bank',
-        projectContext: projectContext,
-        taskId: this.generateTaskId(),
-        taskName: `Generate ${String(fileTypeToGenerate)}`,
-        implementationSummary: `Generated ${String(fileTypeToGenerate)} based on project context`,
-        currentDate: new Date().toISOString().split('T')[0],
-      });
-      if (processedContentResult.isErr()) {
-        return Result.err(processedContentResult.error ?? new Error('Failed to process content'));
-      }
-
-      const content = processedContentResult.value;
-      if (!content) {
-        return Result.err(new Error('Processed content is undefined'));
-      }
-
-      return Result.ok(content);
+      return Result.ok('Memory bank generated successfully.');
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       this.logger.error('Error in memory bank generation', err);
@@ -272,12 +95,13 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
     }
   }
 
-  public async generateMemoryBankSuite(options: {
-    context?: string;
-    output?: string;
-  }): Promise<Result<void, Error>> {
+  public async generateMemoryBankSuite(
+    options: {
+      context?: string;
+    },
+    config: ProjectConfig
+  ): Promise<Result<void, Error>> {
     const projectContext = options.context || '';
-    const outputDir = options.output || process.cwd();
     try {
       // Get file operations service
       const fileOpsResult = this.container.resolve<IFileOperations>('IFileOperations');
@@ -290,7 +114,9 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
       }
 
       // Create the memory-bank directory and templates subdirectory
-      const dirResult = await this.fileManager.createMemoryBankDirectory(outputDir);
+      const dirResult = await this.fileManager.createMemoryBankDirectory(
+        config.baseDir || process.cwd()
+      );
       if (dirResult.isErr()) {
         return Result.err(
           new Error(
@@ -302,24 +128,77 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
       // Generate each memory bank file type
       this.logger.info('Generating memory bank files...');
       const fileTypesToGenerate = Object.values(MemoryBankFileType);
-      const memoryBankDir = path.join(outputDir, 'memory-bank');
+      const memoryBankDir = path.join(config.baseDir || process.cwd(), 'memory-bank');
 
       for (const fileType of fileTypesToGenerate) {
         // Generate content
         this.logger.debug(`Generating ${String(fileType)}...`);
-        const result = await this.executeGenerationForType(fileType, projectContext);
-
-        if (result.isErr()) {
-          this.logger.error(
-            `Generation failed for ${String(fileType)}: ${result.error?.message ?? 'Unknown error'}`
-          );
-          continue;
+        const templateResult = await this.templateManager.loadTemplate(fileType);
+        if (templateResult.isErr()) {
+          return Result.err(templateResult.error ?? new Error('Template content is undefined'));
         }
 
-        const content = result.value;
+        const templateValue = templateResult.value || '';
+
+        // Build file-type specific instructions
+        const instructions = this.getFileTypeInstructions(fileType);
+
+        // Build the prompt with enhanced context and instructions
+        const promptResult = this.promptBuilder.buildPrompt(
+          instructions,
+          projectContext,
+          templateValue
+        );
+        if (promptResult.isErr()) {
+          return Result.err(promptResult.error ?? new Error('Failed to build prompt'));
+        }
+
+        // Build system prompt with role-specific context
+        const systemPromptResult = this.promptBuilder.buildPrompt(
+          this.getSystemPrompt(fileType),
+          projectContext,
+          templateValue
+        );
+        if (systemPromptResult.isErr()) {
+          return Result.err(systemPromptResult.error ?? new Error('Failed to build system prompt'));
+        }
+
+        if (!systemPromptResult.value || !promptResult.value) {
+          return Result.err(new Error('Generated prompts are undefined'));
+        }
+
+        const llmResponse = await this.llmAgent.getCompletion(
+          systemPromptResult.value,
+          promptResult.value
+        );
+        if (llmResponse.isErr()) {
+          return Result.err(llmResponse.error ?? new Error('LLM invocation failed'));
+        }
+
+        if (!llmResponse.value) {
+          return Result.err(new Error('LLM response is undefined'));
+        }
+
+        // Process the template with enhanced metadata
+        const processedContentResult = await this.contentProcessor.processTemplate(
+          llmResponse.value,
+          {
+            fileType: String(fileType),
+            projectName: config.name ?? 'Unknown Project',
+            projectContext: projectContext,
+            taskId: this.generateTaskId(),
+            taskName: `Generate ${String(fileType)}`,
+            implementationSummary: `Generated ${String(fileType)} based on project context`,
+            currentDate: new Date().toISOString().split('T')[0],
+          }
+        );
+        if (processedContentResult.isErr()) {
+          return Result.err(processedContentResult.error ?? new Error('Failed to process content'));
+        }
+
+        const content = processedContentResult.value;
         if (!content) {
-          this.logger.error(`Generation failed for ${String(fileType)}: No content generated`);
-          continue;
+          return Result.err(new Error('Processed content is undefined'));
         }
 
         // Write the generated content
@@ -366,13 +245,8 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
     }
   }
 
-  private validateConfig(config: MemoryBankConfig): Result<void, Error> {
-    if (!config) {
-      return Result.err(new Error('Config is undefined'));
-    }
-    if (!config.baseDir) {
-      config.baseDir = process.cwd();
-    }
+  async validate(): Promise<Result<void, Error>> {
+    await Promise.resolve(this.validateDependencies());
     return Result.ok(undefined);
   }
 
@@ -505,11 +379,8 @@ export class MemoryBankGenerator extends BaseGenerator<MemoryBankConfig> {
       return Result.ok(undefined);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error('Error in memory bank generation', err);
       return Result.err(err);
     }
-  }
-
-  public async validate(): Promise<Result<void, Error>> {
-    return Promise.resolve(Result.ok(undefined));
   }
 }

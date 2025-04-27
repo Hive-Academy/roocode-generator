@@ -1,16 +1,18 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
 module.exports = {
-  preset: "ts-jest",
-  testEnvironment: "node",
-  roots: ["<rootDir>/src"],
-  testMatch: ["**/__tests__/**/*.test.ts", "**/?(*.)+(spec|test).ts"],
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  rootDir: '.',
+  modulePaths: ['<rootDir>/src'],
+  testMatch: ['<rootDir>/tests/**/*.test.ts'],
   transform: {
-    "^.+\\.tsx?$": "ts-jest",
+    '^.+\\.tsx?$': 'ts-jest',
   },
-  moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+  transformIgnorePatterns: ['/node_modules/(?!chalk|ora)/'],
   collectCoverage: true,
-  coverageDirectory: "coverage",
-  coverageReporters: ["text", "lcov"],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov'],
   coverageThreshold: {
     global: {
       branches: 80,
