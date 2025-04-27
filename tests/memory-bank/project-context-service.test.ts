@@ -46,6 +46,7 @@ describe('ProjectContextService', () => {
       isDirectory: jest.fn(),
       normalizePath: jest.fn((p) => p),
       validatePath: jest.fn((_path: string) => true), // Correct signature
+      copyDirectoryRecursive: jest.fn().mockResolvedValue(Result.ok(undefined)),
     };
 
     mockConfigService = {
@@ -169,15 +170,19 @@ describe('ProjectContextService', () => {
 
     it('should log warning and continue if reading a subdirectory fails', async () => {
       const subDirError = new Error('Subdir permission denied');
-      mockFileOps.readDir
-        .mockResolvedValueOnce(
-          Result.ok([
-            // Entries for testBaseDir
-            createMockDirent('file1.ts', false),
-            createMockDirent('subdir', true),
-          ])
-        )
-        .mockResolvedValueOnce(Result.err(subDirError)); // Fail reading subdir
+
+      // Use mockImplementation for more precise control
+      mockFileOps.readDir.mockImplementation((path) => {
+        if (path === testBaseDir) {
+          return Promise.resolve(
+            Result.ok([createMockDirent('file1.ts', false), createMockDirent('subdir', true)])
+          );
+        } else if (path === subDirPath) {
+          return Promise.resolve(Result.err(subDirError));
+        }
+        return Promise.resolve(Result.ok([]));
+      });
+
       mockFileOps.readFile.mockResolvedValue(Result.ok('Content of file1'));
 
       const result = await service.gatherContext([testBaseDir]);

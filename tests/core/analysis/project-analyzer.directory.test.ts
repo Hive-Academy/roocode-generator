@@ -1,230 +1,198 @@
-// import { ProjectAnalyzer } from "../../../src/core/analysis/project-analyzer";
-// import { IFileOperations } from "../../../src/core/file-operations/interfaces";
-// import { ILogger } from "../../../src/core/services/logger-service";
-// import { LLMAgent } from "../../../src/core/llm/llm-agent";
-// import { Result } from "../../../src/core/result/result";
-// import { Dirent } from "fs";
+/* eslint-disable @typescript-eslint/unbound-method */
+import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
+import { ResponseParser } from '../../../src/core/analysis/response-parser';
+import { IFileOperations } from '../../../src/core/file-operations/interfaces';
+import { LLMAgent } from '../../../src/core/llm/llm-agent';
+import { Result } from '../../../src/core/result/result';
+import { ILogger } from '../../../src/core/services/logger-service';
+import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
 
-// describe("ProjectAnalyzer Directory Handling", () => {
-//   let analyzer: ProjectAnalyzer;
-//   let mockFileOps: jest.Mocked<IFileOperations>;
-//   let mockLogger: jest.Mocked<ILogger>;
-//   let mockLLMAgent: jest.Mocked<LLMAgent>;
+describe('ProjectAnalyzer Directory Handling', () => {
+  let projectAnalyzer: ProjectAnalyzer;
+  let mockFileOps: jest.Mocked<IFileOperations>;
+  let mockLogger: jest.Mocked<ILogger>;
+  let mockLLMAgent: jest.Mocked<LLMAgent>;
+  let mockResponseParser: jest.Mocked<ResponseParser>;
+  let mockProgressIndicator: jest.Mocked<ProgressIndicator>;
 
-//   beforeEach(() => {
-//     mockFileOps = {
-//       readFile: jest.fn(),
-//       writeFile: jest.fn(),
-//       createDirectory: jest.fn(),
-//       validatePath: jest.fn(),
-//       normalizePath: jest.fn(),
-//       readDir: jest.fn(),
-//       exists: jest.fn(),
-//     };
+  beforeEach(() => {
+    mockFileOps = {
+      readFile: jest.fn(),
+      writeFile: jest.fn(),
+      exists: jest.fn(),
+      isDirectory: jest.fn(),
+      readDir: jest.fn(),
+      copyFile: jest.fn(),
+      copyDirectoryRecursive: jest.fn(),
+      deleteFile: jest.fn(),
+      deleteDirectory: jest.fn(),
+      createDirectory: jest.fn(),
+      getRelativePath: jest.fn(),
+      getAbsolutePath: jest.fn(),
+      joinPaths: jest.fn(),
+      dirname: jest.fn(),
+      basename: jest.fn(),
+      extname: jest.fn(),
+    } as unknown as jest.Mocked<IFileOperations>;
 
-//     mockLogger = {
-//       debug: jest.fn(),
-//       info: jest.fn(),
-//       warn: jest.fn(),
-//       error: jest.fn(),
-//     };
+    mockLogger = {
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+    } as jest.Mocked<ILogger>;
 
-//     mockLLMAgent = {
-//       getCompletion: jest.fn(),
-//       analyzeProject: jest.fn(),
-//     };
+    mockLLMAgent = {
+      getCompletion: jest.fn(),
+      getChatCompletion: jest.fn(),
+    } as unknown as jest.Mocked<LLMAgent>;
 
-//     analyzer = new ProjectAnalyzer(mockFileOps, mockLogger, mockLLMAgent);
-//   });
+    mockResponseParser = {
+      parseJSON: jest.fn(),
+    } as unknown as jest.Mocked<ResponseParser>;
 
-//   describe("isDirectory", () => {
-//     const expectDebugLog = (message: string): void => {
-//       expect(mockLogger.debug).toHaveBeenCalledWith(message);
-//     };
+    mockProgressIndicator = {
+      start: jest.fn(),
+      update: jest.fn(),
+      succeed: jest.fn(),
+      fail: jest.fn(),
+    } as unknown as jest.Mocked<ProgressIndicator>;
 
-//     const expectWarnLog = (message: string): void => {
-//       expect(mockLogger.warn).toHaveBeenCalledWith(message);
-//     };
+    projectAnalyzer = new ProjectAnalyzer(
+      mockFileOps,
+      mockLogger,
+      mockLLMAgent,
+      mockResponseParser,
+      mockProgressIndicator
+    );
+  });
 
-//     it("should handle non-existent paths", async (): Promise<void> => {
-//       mockFileOps.exists.mockResolvedValue(Result.ok(false));
+  describe('isDirectory', () => {
+    // Access the private method using type assertion
+    const isDirectory = (filePath: string) => {
+      return (projectAnalyzer as any).isDirectory(filePath);
+    };
 
-//       const result = await (analyzer as any).isDirectory("/non/existent/path");
+    it('should return true for directories', async () => {
+      mockFileOps.isDirectory.mockResolvedValue(Result.ok(true));
 
-//       expect(result.isOk()).toBe(true);
-//       expect(result.value).toBe(false);
-//       expectDebugLog("Path does not exist: /non/existent/path");
-//     });
+      const result = await isDirectory('/path/to/directory');
 
-//     it("should handle regular files", async (): Promise<void> => {
-//       mockFileOps.exists.mockResolvedValue(Result.ok(true));
-//       mockFileOps.readFile.mockResolvedValue(Result.ok("file content"));
+      expect(result.isOk()).toBe(true);
+      expect(result.value).toBe(true);
+      expect(mockFileOps.isDirectory).toHaveBeenCalledWith('/path/to/directory');
+    });
 
-//       const result = await (analyzer as any).isDirectory("/path/to/file.txt");
+    it('should return false for files', async () => {
+      mockFileOps.isDirectory.mockResolvedValue(Result.ok(false));
 
-//       expect(result.isOk()).toBe(true);
-//       expect(result.value).toBe(false);
-//       expectDebugLog("Path is a file: /path/to/file.txt");
-//     });
+      const result = await isDirectory('/path/to/file.txt');
 
-//     it("should handle ENOTDIR errors gracefully", async (): Promise<void> => {
-//       mockFileOps.exists.mockResolvedValue(Result.ok(true));
-//       mockFileOps.readFile.mockResolvedValue(Result.err(new Error("ENOTDIR: not a directory")));
+      expect(result.isOk()).toBe(true);
+      expect(result.value).toBe(false);
+      expect(mockFileOps.isDirectory).toHaveBeenCalledWith('/path/to/file.txt');
+    });
 
-//       const result = await (analyzer as any).isDirectory("/path/to/file.txt");
+    it('should handle errors gracefully', async () => {
+      const error = new Error('ENOTDIR: not a directory');
+      mockFileOps.isDirectory.mockResolvedValue(Result.err(error));
 
-//       expect(result.isOk()).toBe(true);
-//       expect(result.value).toBe(false);
-//       expectDebugLog("Path is not a directory: /path/to/file.txt");
-//     });
+      const result = await isDirectory('/path/to/nonexistent');
 
-//     it("should handle other file system errors", async (): Promise<void> => {
-//       mockFileOps.exists.mockResolvedValue(Result.ok(true));
-//       mockFileOps.readFile.mockResolvedValue(Result.err(new Error("Permission denied")));
+      expect(result.isErr()).toBe(true);
+      expect(result.error).toBe(error);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Error checking if path is directory')
+      );
+    });
+  });
 
-//       const result = await (analyzer as any).isDirectory("/path/to/something");
+  describe('collectProjectFiles', () => {
+    // Access the private method using type assertion
+    const collectProjectFiles = (rootDir: string) => {
+      return (projectAnalyzer as any).collectProjectFiles(rootDir);
+    };
 
-//       expect(result.isErr()).toBe(true);
-//       expectDebugLog(
-//         "Failed to read stats for path: /path/to/something , Error: Permission denied"
-//       );
-//     });
-//   });
+    it('should handle empty directories', async () => {
+      mockFileOps.readDir.mockResolvedValue(Result.ok([]));
 
-//   describe("discoverSourceDirectories", () => {
-//     const expectDebugLog = (message: string): void => {
-//       expect(mockLogger.debug).toHaveBeenCalledWith(message);
-//     };
+      const files = await collectProjectFiles('/empty/dir');
 
-//     const expectWarnLog = (message: string): void => {
-//       expect(mockLogger.warn).toHaveBeenCalledWith(message);
-//     };
+      expect(files).toEqual([]);
+      expect(mockFileOps.readDir).toHaveBeenCalledWith('/empty/dir');
+    });
 
-//     it("should skip non-directory entries", async (): Promise<void> => {
-//       mockFileOps.readDir.mockResolvedValue(
-//         Result.ok([
-//           { name: "src", isDirectory: () => true } as Dirent,
-//           { name: "package.json", isDirectory: () => false } as Dirent,
-//         ])
-//       );
+    it('should skip excluded directories', async () => {
+      mockFileOps.readDir.mockResolvedValue(
+        Result.ok([
+          {
+            name: 'node_modules',
+            path: 'node_modules',
+            parentPath: '/root',
+            isDirectory: () => true,
+            isFile: () => false,
+            isBlockDevice: () => false,
+            isCharacterDevice: () => false,
+            isSymbolicLink: () => false,
+            isFIFO: () => false,
+            isSocket: () => false,
+          },
+          {
+            name: 'dist',
+            path: 'dist',
+            parentPath: '/root',
+            isDirectory: () => true,
+            isFile: () => false,
+            isBlockDevice: () => false,
+            isCharacterDevice: () => false,
+            isSymbolicLink: () => false,
+            isFIFO: () => false,
+            isSocket: () => false,
+          },
+          {
+            name: '.git',
+            path: '.git',
+            parentPath: '/root',
+            isDirectory: () => true,
+            isFile: () => false,
+            isBlockDevice: () => false,
+            isCharacterDevice: () => false,
+            isSymbolicLink: () => false,
+            isFIFO: () => false,
+            isSocket: () => false,
+          },
+          {
+            name: 'coverage',
+            path: 'coverage',
+            parentPath: '/root',
+            isDirectory: () => true,
+            isFile: () => false,
+            isBlockDevice: () => false,
+            isCharacterDevice: () => false,
+            isSymbolicLink: () => false,
+            isFIFO: () => false,
+            isSocket: () => false,
+          },
+        ])
+      );
 
-//       mockFileOps.exists.mockImplementation(() => Promise.resolve(Result.ok(true)));
-//       mockFileOps.readFile.mockImplementation((path: string) => {
-//         if (path.includes("package.json")) {
-//           return Promise.resolve(Result.ok("file content"));
-//         }
-//         return Promise.resolve(Result.err(new Error("ENOTDIR")));
-//       });
+      const files = await collectProjectFiles('/root');
 
-//       const dirs = await (analyzer as any).discoverSourceDirectories("/root");
+      expect(files).toEqual([]);
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('Skipping excluded directory')
+      );
+    });
 
-//       expect(dirs).toContain("src");
-//       expect(dirs).not.toContain("package.json");
-//       expectDebugLog("Skipping non-directory entry: package.json");
-//     });
+    it('should handle directory read errors', async () => {
+      mockFileOps.readDir.mockResolvedValue(Result.err(new Error('Permission denied')));
 
-//     it("should handle directory check errors gracefully", async (): Promise<void> => {
-//       mockFileOps.readDir.mockResolvedValue(
-//         Result.ok([{ name: "src", isDirectory: () => true } as Dirent])
-//       );
+      const files = await collectProjectFiles('/root');
 
-//       mockFileOps.exists.mockResolvedValue(Result.ok(true));
-//       mockFileOps.readFile.mockResolvedValue(Result.err(new Error("Permission denied")));
-
-//       const dirs = await (analyzer as any).discoverSourceDirectories("/root");
-
-//       expect(dirs).toHaveLength(0);
-//       expectWarnLog("Error checking directory status: /root/src - Error: Permission denied");
-//     });
-//   });
-
-//   describe("containsSourceFiles", () => {
-//     const expectDebugLog = (message: string): void => {
-//       expect(mockLogger.debug).toHaveBeenCalledWith(message);
-//     };
-
-//     const expectWarnLog = (message: string): void => {
-//       expect(mockLogger.warn).toHaveBeenCalledWith(message);
-//     };
-
-//     it("should handle directory check errors gracefully", async (): Promise<void> => {
-//       mockFileOps.exists.mockResolvedValue(Result.ok(true));
-//       mockFileOps.readFile.mockResolvedValue(Result.err(new Error("Permission denied")));
-
-//       const result = await (analyzer as any).containsSourceFiles("/path/to/dir");
-
-//       expect(result).toBe(false);
-//       expectWarnLog("Error checking directory status: /path/to/dir - Error: Permission denied");
-//     });
-
-//     it("should skip non-directory paths", async (): Promise<void> => {
-//       mockFileOps.exists.mockResolvedValue(Result.ok(true));
-//       mockFileOps.readFile.mockResolvedValue(Result.ok("file content"));
-
-//       const result = await (analyzer as any).containsSourceFiles("/path/to/file.txt");
-
-//       expect(result).toBe(false);
-//       expectDebugLog("Skipping source files check for non-directory path: /path/to/file.txt");
-//     });
-//   });
-
-//   describe("findComponents", () => {
-//     const expectDebugLog = (message: string): void => {
-//       expect(mockLogger.debug).toHaveBeenCalledWith(message);
-//     };
-
-//     const expectWarnLog = (message: string): void => {
-//       expect(mockLogger.warn).toHaveBeenCalledWith(message);
-//     };
-
-//     it("should handle directory check errors gracefully", async (): Promise<void> => {
-//       mockFileOps.exists.mockResolvedValue(Result.ok(true));
-//       mockFileOps.readFile.mockResolvedValue(Result.err(new Error("Permission denied")));
-
-//       const components = await (analyzer as any).findComponents("/path/to/dir");
-
-//       expect(components).toHaveLength(0);
-//       expectWarnLog("Error checking directory status: /path/to/dir - Error: Permission denied");
-//     });
-
-//     it("should skip non-directory paths", async (): Promise<void> => {
-//       mockFileOps.exists.mockResolvedValue(Result.ok(true));
-//       mockFileOps.readFile.mockResolvedValue(Result.ok("file content"));
-
-//       const components = await (analyzer as any).findComponents("/path/to/file.txt");
-
-//       expect(components).toHaveLength(0);
-//       expectDebugLog("Skipping component search in non-directory: /path/to/file.txt");
-//     });
-//   });
-
-//   describe("findSourceFiles", () => {
-//     const expectDebugLog = (message: string): void => {
-//       expect(mockLogger.debug).toHaveBeenCalledWith(message);
-//     };
-
-//     const expectWarnLog = (message: string): void => {
-//       expect(mockLogger.warn).toHaveBeenCalledWith(message);
-//     };
-
-//     it("should handle directory check errors gracefully", async (): Promise<void> => {
-//       mockFileOps.exists.mockResolvedValue(Result.ok(true));
-//       mockFileOps.readFile.mockResolvedValue(Result.err(new Error("Permission denied")));
-
-//       const files = await (analyzer as any).findSourceFiles("/path/to/dir");
-
-//       expect(files).toHaveLength(0);
-//       expectWarnLog("Error checking directory status: /path/to/dir - Error: Permission denied");
-//     });
-
-//     it("should skip non-directory paths", async (): Promise<void> => {
-//       mockFileOps.exists.mockResolvedValue(Result.ok(true));
-//       mockFileOps.readFile.mockResolvedValue(Result.ok("file content"));
-
-//       const files = await (analyzer as any).findSourceFiles("/path/to/file.txt");
-
-//       expect(files).toHaveLength(0);
-//       expectDebugLog("Skipping source file search in non-directory: /path/to/file.txt");
-//     });
-//   });
-// });
+      expect(files).toEqual([]);
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to read directory')
+      );
+    });
+  });
+});

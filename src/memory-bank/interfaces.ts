@@ -1,7 +1,16 @@
-import { ITemplate, ITemplateManager } from '@core/template-manager/interfaces';
 import { Result } from '../core/result/result';
-import { TemplateError } from '@core/template-manager/errors';
+import { IMemoryBankTemplateManager } from './interfaces/template-manager.interface';
+import { IMemoryBankTemplateProcessor } from './interfaces/template-processor.interface';
+import { IMemoryBankContentGenerator } from './interfaces/content-generator.interface';
+import { IMemoryBankOrchestrator, GenerationOptions } from './interfaces/orchestrator.interface';
 
+export {
+  IMemoryBankTemplateManager,
+  IMemoryBankTemplateProcessor,
+  IMemoryBankContentGenerator,
+  IMemoryBankOrchestrator,
+  GenerationOptions,
+};
 export type MessageContent = string;
 
 export enum MemoryBankFileType {
@@ -36,34 +45,14 @@ export interface IMemoryBankFileManager {
   createMemoryBankDirectory(baseDir: string): Promise<Result<void>>;
   writeMemoryBankFile(path: string, content: string): Promise<Result<void>>;
   readMemoryBankFile(path: string): Promise<Result<string>>;
-}
-
-// Template management
-export interface IMemoryBankTemplateManager extends ITemplateManager {
-  /**
-   * Load a memory bank template by type
-   * @param type - The type of memory bank template to load
-   * @returns Result<ITemplate, TemplateError>
-   */
-  loadTemplate(type: MemoryBankFileType): Promise<Result<ITemplate, TemplateError>>;
 
   /**
-   * Validate a memory bank template
-   * @param type - The type of memory bank template to validate
-   * @returns Result<void, TemplateError>
+   * Recursively copies a directory from source to destination.
+   * @param sourceDir - Source directory path
+   * @param destDir - Destination directory path
+   * @returns A Result indicating success or failure
    */
-  validateTemplate(type: MemoryBankFileType): Promise<Result<void, TemplateError>>;
-
-  /**
-   * Process a memory bank template with context data
-   * @param type - The type of memory bank template to process
-   * @param context - Data for processing
-   * @returns Result<string, TemplateError>
-   */
-  processTemplate(
-    type: MemoryBankFileType,
-    context: Record<string, unknown>
-  ): Promise<Result<string, TemplateError>>;
+  copyDirectoryRecursive(sourceDir: string, destDir: string): Promise<Result<void, Error>>;
 }
 
 // Content processing

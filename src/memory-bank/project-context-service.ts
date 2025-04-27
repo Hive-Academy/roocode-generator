@@ -59,10 +59,11 @@ export class ProjectContextService implements IProjectContextService {
 
   async gatherContext(paths: string[]): Promise<Result<string, Error>> {
     try {
-      const contextData: string[] = [];
+      // Use a Set to ensure unique content
+      const contentSet = new Set<string>();
 
       for (const basePath of paths) {
-        const result = await this.processPath(basePath, contextData);
+        const result = await this.processPath(basePath, contentSet);
         if (result.isErr()) {
           this.logger.warn(`Error processing path ${basePath}: ${result.error?.message}`);
           // Continue processing other paths even if one fails
@@ -70,7 +71,7 @@ export class ProjectContextService implements IProjectContextService {
         }
       }
 
-      if (contextData.length === 0) {
+      if (contentSet.size === 0) {
         return Result.err(
           new MemoryBankError('No valid content found in the provided paths', {
             paths,
@@ -79,6 +80,8 @@ export class ProjectContextService implements IProjectContextService {
         );
       }
 
+      // Convert Set back to array for joining
+      const contextData = Array.from(contentSet);
       return Result.ok(contextData.join('\n'));
     } catch (error) {
       return this._wrapContextError('Error gathering context', 'gatherContextCatch', error, {
@@ -89,7 +92,7 @@ export class ProjectContextService implements IProjectContextService {
 
   private async processPath(
     currentPath: string,
-    contextData: string[]
+    contentSet: Set<string>
   ): Promise<Result<void, Error>> {
     try {
       // Normalize the path to handle any undefined cases
@@ -99,7 +102,12 @@ export class ProjectContextService implements IProjectContextService {
       const dirResult = await this.fileOperations.readDir(normalizedPath);
 
       if (dirResult.isErr()) {
-        // If we can't read as directory, try reading as file
+        // Log a warning for any directory read error
+        this.logger.warn(
+          `Skipping directory ${normalizedPath} due to error: ${dirResult.error?.message}`
+        );
+
+        // Try reading as file if this is a top-level path
         const fileResult = await this.fileOperations.readFile(normalizedPath);
         if (fileResult.isErr()) {
           // Wrap the file reading error if directory read failed first
@@ -112,7 +120,7 @@ export class ProjectContextService implements IProjectContextService {
         }
 
         if (this.shouldProcessFile(normalizedPath)) {
-          contextData.push(fileResult.value as string);
+          contentSet.add(fileResult.value as string);
         }
         return Result.ok(void 0);
       }
@@ -126,10 +134,11 @@ export class ProjectContextService implements IProjectContextService {
 
         const fullPath = path.join(normalizedPath, entry.name);
         if (entry.isDirectory()) {
-          const result = await this.processPath(fullPath, contextData);
-          if (result.isErr()) {
+          // Process subdirectory
+          const subdirResult = await this.processPath(fullPath, contentSet);
+          if (subdirResult.isErr()) {
             this.logger.warn(
-              `Skipping directory ${fullPath} due to error: ${result.error?.message}`
+              `Skipping directory ${fullPath} due to error: ${subdirResult.error?.message}`
             );
             continue;
           }
@@ -141,7 +150,7 @@ export class ProjectContextService implements IProjectContextService {
             );
             continue;
           }
-          contextData.push(fileResult.value as string);
+          contentSet.add(fileResult.value as string);
         }
       }
 

@@ -173,4 +173,38 @@ export class MemoryBankFileManager implements IMemoryBankFileManager {
       );
     }
   }
+
+  /**
+   * Recursively copies a directory from source to destination.
+   * @param sourceDir - Source directory path
+   * @param destDir - Destination directory path
+   * @returns A Result indicating success or failure
+   */
+  async copyDirectoryRecursive(sourceDir: string, destDir: string): Promise<Result<void, Error>> {
+    try {
+      this.logger.debug(`Copying directory recursively from ${sourceDir} to ${destDir}`);
+
+      // Use the core FileOperations service to perform the actual copy
+      const result = await this.fileOps.copyDirectoryRecursive(sourceDir, destDir);
+
+      if (result.isErr()) {
+        return this._handleFileError(
+          `Failed to copy directory ${sourceDir} to ${destDir}`,
+          sourceDir,
+          'copyDirectoryRecursive',
+          result.error
+        );
+      }
+
+      this.logger.debug(`Successfully copied directory from ${sourceDir} to ${destDir}`);
+      return Result.ok(undefined);
+    } catch (error) {
+      return this._wrapCaughtError(
+        `Unexpected error during directory copy`,
+        sourceDir,
+        'copyDirectoryRecursiveCatch',
+        error
+      );
+    }
+  }
 }

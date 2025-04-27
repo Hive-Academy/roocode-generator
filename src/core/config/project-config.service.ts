@@ -17,7 +17,6 @@ export class ProjectConfigService {
    * @returns Result wrapping ProjectConfig or error
    */
   async loadConfig(): Promise<Result<ProjectConfig, Error>> {
-    const configPath = `${process.cwd()}/roocode-config.json`;
     const defaultConfig: ProjectConfig = {
       name: 'default-project', // Provide a default name
       baseDir: '.',
@@ -27,37 +26,32 @@ export class ProjectConfigService {
     };
 
     try {
+      const configPath = `${process.cwd()}/roocode-config.json`;
       const readResult = await this.fileOps.readFile(configPath);
 
+      // If file doesn't exist or can't be read, return default config
       if (readResult.isErr()) {
-        // Check if the error is specifically 'File not found'
-        // Assuming fileOps returns an error with a 'code' property or similar identifier
-        // Adjust this check based on the actual error structure from IFileOperations
-        const isFileNotFound =
-          readResult.error instanceof Error && (readResult.error as any).code === 'ENOENT';
-
-        if (isFileNotFound) {
-          // File not found, return the default config
-          // Optionally log a warning here
-          // this.logger.warn(`Config file not found at ${configPath}. Using default config.`);
-          return Result.ok(defaultConfig);
-        } else {
-          // Other read error, ensure we pass an Error object
-          return Result.err(readResult.error ?? new Error('Unknown error reading config file'));
-        }
+        return Result.ok(defaultConfig);
       }
 
       // File read successfully, proceed with parsing
-      const rawContent = readResult.value!; // Value should be defined if isOk()
-      const parsed = JSON.parse(rawContent) as ProjectConfig;
+      try {
+        const parsedConfig = JSON.parse(readResult.value!) as ProjectConfig;
 
-      // Validate parsed config
-      const validationError = this.validateConfig(parsed);
-      if (validationError) {
-        return Result.err(new Error(`Invalid config: ${validationError}`));
+        // Validate parsed config
+        const validationError = this.validateConfig(parsedConfig);
+        if (validationError) {
+          return Result.err(new Error(`Invalid config: ${validationError}`));
+        }
+
+        return Result.ok(parsedConfig);
+      } catch (parseError) {
+        return Result.err(
+          new Error(
+            `Failed to parse config: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+          )
+        );
       }
-
-      return Result.ok(parsed);
     } catch (error) {
       return Result.err(error instanceof Error ? error : new Error('Failed to load config'));
     }
@@ -91,12 +85,20 @@ export class ProjectConfigService {
    */
   async saveConfig(config: ProjectConfig): Promise<Result<void, Error>> {
     try {
+      // Validate config before saving
+      const validationError = this.validateConfig(config);
+      if (validationError) {
+        return Result.err(new Error(`Cannot save invalid config: ${validationError}`));
+      }
+
       const configPath = `${process.cwd()}/roocode-config.json`;
       const content = JSON.stringify(config, null, 2);
       const writeResult = await this.fileOps.writeFile(configPath, content);
+
       if (writeResult.isErr()) {
         return Result.err(writeResult.error!);
       }
+
       return Result.ok(undefined);
     } catch (error) {
       return Result.err(error instanceof Error ? error : new Error('Failed to save config'));

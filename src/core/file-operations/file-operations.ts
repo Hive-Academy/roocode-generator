@@ -192,4 +192,91 @@ export class FileOperations implements IFileOperations {
       return Result.err(new FileOperationError(path, errObj));
     }
   }
+
+  /**
+   * Recursively copies a directory from source to destination.
+   * @param sourceDir - Source directory path
+   * @param destDir - Destination directory path
+   * @returns A Result indicating success or failure
+   */
+  async copyDirectoryRecursive(
+    sourceDir: string,
+    destDir: string
+  ): Promise<Result<void, FileOperationError>> {
+    try {
+      // Create destination directory if it doesn't exist
+      const createDirResult = await this.createDirectory(destDir);
+      // Ignore EEXIST, handle other errors
+      if (createDirResult.isErr() && !createDirResult.error?.message.includes('EEXIST')) {
+        this.logger.error(`Failed to create directory: ${destDir}`, createDirResult.error);
+        return Result.err(new DirectoryCreationError(destDir, createDirResult.error));
+      }
+
+      // Read source directory contents
+      const readDirResult = await this.readDir(sourceDir);
+      if (readDirResult.isErr()) {
+        this.logger.error(`Failed to read directory: ${sourceDir}`, readDirResult.error);
+        return Result.err(new FileOperationError(sourceDir, readDirResult.error));
+      }
+
+      const entries = readDirResult.value;
+      if (!entries) {
+        return Result.err(
+          new FileOperationError(sourceDir, new Error('No entries found in directory'))
+        );
+      }
+
+      // Process each entry
+      for (const entry of entries) {
+        const sourcePath = pathModule.join(sourceDir, entry.name);
+        const destPath = pathModule.join(destDir, entry.name);
+
+        // Validate paths before operations
+        if (!this.validatePath(sourcePath)) {
+          return Result.err(new InvalidPathError(sourcePath));
+        }
+
+        if (!this.validatePath(destPath)) {
+          return Result.err(new InvalidPathError(destPath));
+        }
+
+        if (entry.isDirectory()) {
+          // Recursively copy subdirectory
+          const copyResult = await this.copyDirectoryRecursive(sourcePath, destPath);
+          if (copyResult.isErr()) {
+            return copyResult;
+          }
+        } else {
+          // Copy file
+          const readResult = await this.readFile(sourcePath);
+          if (readResult.isErr()) {
+            this.logger.error(`Failed to read file: ${sourcePath}`, readResult.error);
+            return Result.err(new FileReadError(sourcePath, readResult.error));
+          }
+
+          const content = readResult.value;
+          if (content === undefined || content === null) {
+            return Result.err(
+              new FileOperationError(sourcePath, new Error('Empty or undefined content for file'))
+            );
+          }
+
+          const writeResult = await this.writeFile(destPath, content);
+          if (writeResult.isErr()) {
+            this.logger.error(`Failed to write file: ${destPath}`, writeResult.error);
+            return Result.err(new FileWriteError(destPath, writeResult.error));
+          }
+        }
+      }
+
+      return Result.ok(undefined);
+    } catch (error) {
+      const errObj = error instanceof Error ? error : new Error(String(error));
+      this.logger.error(
+        `Unexpected error during directory copy from ${sourceDir} to ${destDir}`,
+        errObj
+      );
+      return Result.err(new FileOperationError(sourceDir, errObj));
+    }
+  }
 }

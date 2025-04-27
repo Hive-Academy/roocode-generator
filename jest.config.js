@@ -3,12 +3,14 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   rootDir: '.',
-  modulePaths: ['<rootDir>/src'],
   testMatch: ['<rootDir>/tests/**/*.test.ts'],
   transform: {
     '^.+\\.tsx?$': 'ts-jest',
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+  moduleNameMapper: {
+    '^@(.*)$': '<rootDir>/src$1',
+  },
   transformIgnorePatterns: ['/node_modules/(?!chalk|ora)/'],
   collectCoverage: true,
   coverageDirectory: 'coverage',

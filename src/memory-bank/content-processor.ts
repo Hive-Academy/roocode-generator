@@ -1,10 +1,13 @@
-import { Injectable } from '../core/di/decorators';
+import { Injectable, Inject } from '../core/di/decorators';
 import { IContentProcessor, MessageContent } from './interfaces';
 import { Result } from '../core/result/result';
 import { MemoryBankError } from '../core/errors/memory-bank-errors';
+import { ILogger } from '../core/services/logger-service';
 
 @Injectable()
 export class ContentProcessor implements IContentProcessor {
+  constructor(@Inject('ILogger') private readonly logger: ILogger) {}
+
   // Helper method to wrap caught errors during processing
   private _wrapProcessingError(
     message: string,
@@ -14,8 +17,7 @@ export class ContentProcessor implements IContentProcessor {
   ): Result<never> {
     const cause = caughtError instanceof Error ? caughtError : new Error(String(caughtError));
     const error = new MemoryBankError(message, { ...additionalContext, operation }, cause);
-    // Note: ContentProcessor doesn't have a logger injected currently.
-    // If logging is desired here, it would need to be added via DI.
+    this.logger.error(error.message, error);
     return Result.err(error);
   }
 
