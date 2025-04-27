@@ -17,6 +17,7 @@ import { IProjectConfigService } from '../core/config/interfaces';
 import { IServiceContainer } from '../core/di/interfaces';
 import { LLMAgent } from '../core/llm/llm-agent';
 import { ProjectConfig } from '../../types/shared';
+import { ITemplate } from '../core/template-manager/interfaces';
 
 @Injectable()
 export class MemoryBankGenerator
@@ -138,7 +139,14 @@ export class MemoryBankGenerator
           return Result.err(templateResult.error ?? new Error('Template content is undefined'));
         }
 
-        const templateValue = templateResult.value || '';
+        // Process the template to get its content
+        const template = templateResult.value as ITemplate;
+        const processResult = template.process({});
+        if (processResult.isErr()) {
+          return Result.err(processResult.error ?? new Error('Failed to process template'));
+        }
+
+        const templateContent = processResult.value || '';
 
         // Build file-type specific instructions
         const instructions = this.getFileTypeInstructions(fileType);
@@ -147,7 +155,7 @@ export class MemoryBankGenerator
         const promptResult = this.promptBuilder.buildPrompt(
           instructions,
           projectContext,
-          templateValue
+          templateContent
         );
         if (promptResult.isErr()) {
           return Result.err(promptResult.error ?? new Error('Failed to build prompt'));
@@ -157,7 +165,7 @@ export class MemoryBankGenerator
         const systemPromptResult = this.promptBuilder.buildPrompt(
           this.getSystemPrompt(fileType),
           projectContext,
-          templateValue
+          templateContent // templateContent is now guaranteed to be defined
         );
         if (systemPromptResult.isErr()) {
           return Result.err(systemPromptResult.error ?? new Error('Failed to build system prompt'));
