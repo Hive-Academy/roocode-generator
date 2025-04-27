@@ -7,9 +7,10 @@ import 'reflect-metadata'; // Must be the first import for decorators
  * Implements top-level error handling and user-friendly CLI interface.
  */
 
+import { resolveDependency } from '@core/di/utils';
 import { ApplicationContainer } from '../src/core/application/application-container';
 import { Container } from '../src/core/di/container';
-import { registerServices, resolveDependency } from '../src/core/di/registrations';
+import { registerServices } from '../src/core/di/registrations';
 import { Result } from '../src/core/result/result';
 
 async function main(): Promise<void> {
