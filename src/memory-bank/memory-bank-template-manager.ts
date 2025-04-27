@@ -41,33 +41,8 @@ export class MemoryBankTemplateManager implements IMemoryBankTemplateManager {
         }
       }
 
-      // If primary location fails, try legacy location
-      const legacyFilename = String(name) + '-template.md';
-      const legacyTemplatePath = path.join(
-        process.cwd(),
-        'templates',
-        'memory-bank',
-        'templates',
-        legacyFilename
-      );
-      this.logger.debug(`Attempting to load legacy template from: "${legacyTemplatePath}"`);
-
-      const legacyResult = await this.fileOps.readFile(legacyTemplatePath);
-      if (legacyResult.isOk() && legacyResult.value) {
-        const content = legacyResult.value;
-        if (this.validateTemplate(content, name).isOk()) {
-          this.logger.debug(
-            `Successfully loaded template from legacy location: ${legacyTemplatePath}`
-          );
-          this.cache.set(name, content);
-          return Result.ok(content);
-        }
-      }
-
       // If both locations fail, create and save a fallback template
-      this.logger.warn(
-        `Failed to load template from both locations: ${templatePath} and ${legacyTemplatePath}. Using fallback template.`
-      );
+      this.logger.warn(`Failed to load template from both locations: ${templatePath}`);
 
       const fallbackTemplate = this.createFallbackTemplate(name);
       this.cache.set(name, fallbackTemplate);

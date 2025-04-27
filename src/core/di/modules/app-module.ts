@@ -21,6 +21,7 @@ import { RoomodesGenerator } from '@generators/roomodes-generator';
 import { SystemPromptsGenerator } from '@generators/system-prompts-generator';
 import { VSCodeCopilotRulesGenerator } from '@generators/vscode-copilot-rules-generator';
 import { Injectable } from '@core/di/decorators'; // Import Injectable
+import { ProgressIndicator } from '@core/ui/progress-indicator';
 
 // Stub for IProjectManager as it was in registrations.ts
 @Injectable()
@@ -84,7 +85,7 @@ export function registerAppModule(container: Container): void {
       'IGenerator.SystemPrompts',
       'IGenerator.Roomodes',
       'IGenerator.VSCodeCopilotRules',
-      // Add 'MemoryBankGenerator' token if it should be orchestrated
+      'MemoryBankGenerator',
     ];
 
     const generators: IGenerator<any>[] = [];
@@ -127,6 +128,13 @@ export function registerAppModule(container: Container): void {
     const projectManager = resolveDependency<IProjectManager>(container, 'IProjectManager');
     const cliInterface = resolveDependency<ICliInterface>(container, 'ICliInterface');
     const logger = resolveDependency<ILogger>(container, 'ILogger');
-    return new ApplicationContainer(generatorOrchestrator, projectManager, cliInterface, logger);
+    const progressIndicator = resolveDependency<ProgressIndicator>(container, 'ProgressIndicator');
+    return new ApplicationContainer(
+      generatorOrchestrator,
+      projectManager,
+      cliInterface,
+      logger,
+      progressIndicator
+    );
   });
 }
