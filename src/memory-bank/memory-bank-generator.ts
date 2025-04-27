@@ -18,6 +18,11 @@ import { IServiceContainer } from '../core/di/interfaces';
 import { LLMAgent } from '../core/llm/llm-agent';
 import { ProjectConfig } from '../../types/shared';
 import { ITemplate } from '../core/template-manager/interfaces';
+import {
+  MemoryBankGenerationError,
+  MemoryBankTemplateError,
+  MemoryBankFileError,
+} from '../core/errors/memory-bank-errors'; // Import new errors
 
 @Injectable()
 export class MemoryBankGenerator
@@ -44,33 +49,86 @@ export class MemoryBankGenerator
     super(container);
   }
 
+  // Helper for general generation errors
+  private _wrapGenerationError(
+    message: string,
+    operation: string,
+    caughtError: unknown,
+    additionalContext?: Record<string, unknown>
+  ): Result<never> {
+    const cause = caughtError instanceof Error ? caughtError : new Error(String(caughtError));
+    const error = new MemoryBankGenerationError(
+      message,
+      { ...additionalContext, operation },
+      cause
+    );
+    this.logger.error(error.message, error);
+    return Result.err(error);
+  }
+
+  // Helper for file errors originating within this generator (e.g., copy)
+  private _wrapFileError(
+    message: string,
+    filePath: string,
+    operation: string,
+    caughtError: unknown,
+    additionalContext?: Record<string, unknown>
+  ): Result<never> {
+    const cause = caughtError instanceof Error ? caughtError : new Error(String(caughtError));
+    const error = new MemoryBankFileError(
+      message,
+      filePath,
+      { ...additionalContext, operation },
+      cause
+    );
+    this.logger.error(error.message, error);
+    return Result.err(error);
+  }
+
   protected validateDependencies(): Result<void, Error> {
-    if (
-      !this.validator ||
-      !this.fileManager ||
-      !this.templateManager ||
-      !this.contentProcessor ||
-      !this.logger ||
-      !this.projectConfigService ||
-      !this.projectContextService ||
-      !this.promptBuilder ||
-      !this.llmAgent
-    ) {
-      return Result.err(new Error('Required dependencies are not initialized'));
+    const missing: string[] = [];
+    if (!this.validator) missing.push('IMemoryBankValidator');
+    if (!this.fileManager) missing.push('IMemoryBankFileManager');
+    if (!this.templateManager) missing.push('IMemoryBankTemplateManager');
+    if (!this.contentProcessor) missing.push('IContentProcessor');
+    if (!this.logger) missing.push('ILogger');
+    if (!this.projectConfigService) missing.push('IProjectConfigService');
+    if (!this.projectContextService) missing.push('IProjectContextService');
+    if (!this.promptBuilder) missing.push('IPromptBuilder');
+    if (!this.llmAgent) missing.push('LLMAgent');
+
+    if (missing.length > 0) {
+      // Use MemoryBankGenerationError for dependency issues
+      return Result.err(
+        new MemoryBankGenerationError('Required dependencies are not initialized', {
+          operation: 'validateDependencies',
+          missingDependencies: missing,
+        })
+      );
     }
     return Result.ok(undefined);
   }
 
   public async executeGeneration(config: ProjectConfig): Promise<Result<string, Error>> {
     try {
+      // Validate dependencies first
+      const depValidationResult = this.validateDependencies();
+      if (depValidationResult.isErr()) {
+        // Error is already MemoryBankGenerationError, return its error payload
+        // wrapped in a new Result matching the expected signature.
+        return Result.err(depValidationResult.error as Error);
+      }
+
       // Gather project context
-      console.log('Gathering project context...', config);
+      this.logger.info('Gathering project context...');
       const contextResult = await this.projectContextService.gatherContext([config.baseDir]);
       if (contextResult.isErr()) {
-        return Result.err(
-          new Error(
-            `Failed to gather project context: ${contextResult.error?.message ?? 'Unknown error'}`
-          )
+        // Wrap context error as GenerationError
+        return this._wrapGenerationError(
+          'Failed to gather project context',
+          'gatherContext',
+          contextResult.error,
+          { baseDir: config.baseDir }
         );
       }
 
@@ -83,16 +141,34 @@ export class MemoryBankGenerator
       );
 
       if (result.isErr()) {
-        return Result.err(
-          new Error(`Memory bank generation failed: ${result.error?.message ?? 'Unknown error'}`)
+        // Wrap suite generation error as GenerationError
+        // Check if it's already a MemoryBankError to avoid double wrapping
+        if (
+          result.error instanceof MemoryBankGenerationError ||
+          result.error instanceof MemoryBankTemplateError ||
+          result.error instanceof MemoryBankFileError
+        ) {
+          this.logger.error(
+            `Memory bank suite generation failed: ${result.error.message}`,
+            result.error
+          );
+          return Result.err(result.error);
+        }
+        return this._wrapGenerationError(
+          'Memory bank suite generation failed',
+          'generateMemoryBankSuite',
+          result.error
         );
       }
 
       return Result.ok('Memory bank generated successfully.');
     } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error('Error in memory bank generation', err);
-      return Result.err(err);
+      // Wrap unexpected errors as GenerationError
+      return this._wrapGenerationError(
+        'Unexpected error during memory bank execution',
+        'executeGenerationCatch',
+        error
+      );
     }
   }
 
@@ -107,11 +183,23 @@ export class MemoryBankGenerator
       // Get file operations service
       const fileOpsResult = this.container.resolve<IFileOperations>('IFileOperations');
       if (fileOpsResult.isErr()) {
-        return Result.err(new Error('Failed to resolve IFileOperations'));
+        // Wrap dependency resolution error as GenerationError
+        return this._wrapGenerationError(
+          'Failed to resolve IFileOperations',
+          'resolveDependency',
+          fileOpsResult.error,
+          { dependency: 'IFileOperations' }
+        );
       }
       const fileOps = fileOpsResult.value;
       if (!fileOps) {
-        return Result.err(new Error('IFileOperations is undefined after resolution'));
+        // Use GenerationError for undefined dependency
+        return Result.err(
+          new MemoryBankGenerationError('IFileOperations is undefined after resolution', {
+            operation: 'resolveDependency',
+            dependency: 'IFileOperations',
+          })
+        );
       }
 
       // Create the memory-bank directory and templates subdirectory
@@ -119,10 +207,12 @@ export class MemoryBankGenerator
         config.baseDir || process.cwd()
       );
       if (dirResult.isErr()) {
-        return Result.err(
-          new Error(
-            `Failed to create memory-bank directory structure: ${dirResult.error?.message ?? 'Unknown error'}`
-          )
+        // Wrap file manager error as GenerationError (halting setup step)
+        return this._wrapGenerationError(
+          'Failed to create memory-bank directory structure',
+          'createMemoryBankDirectory',
+          dirResult.error,
+          { baseDir: config.baseDir }
         );
       }
 
@@ -136,14 +226,30 @@ export class MemoryBankGenerator
         this.logger.debug(`Generating ${String(fileType)}...`);
         const templateResult = await this.templateManager.loadTemplate(fileType);
         if (templateResult.isErr()) {
-          return Result.err(templateResult.error ?? new Error('Template content is undefined'));
+          // Use MemoryBankTemplateError directly
+          const error = new MemoryBankTemplateError(
+            'Failed to load template',
+            String(fileType),
+            { operation: 'loadTemplate' },
+            templateResult.error
+          );
+          this.logger.error(error.message, error);
+          return Result.err(error);
         }
 
         // Process the template to get its content
         const template = templateResult.value as ITemplate;
         const processResult = template.process({});
         if (processResult.isErr()) {
-          return Result.err(processResult.error ?? new Error('Failed to process template'));
+          // Use MemoryBankTemplateError directly
+          const error = new MemoryBankTemplateError(
+            'Failed to process template content',
+            String(fileType),
+            { operation: 'processTemplateContent' },
+            processResult.error
+          );
+          this.logger.error(error.message, error);
+          return Result.err(error);
         }
 
         const templateContent = processResult.value || '';
@@ -158,21 +264,39 @@ export class MemoryBankGenerator
           templateContent
         );
         if (promptResult.isErr()) {
-          return Result.err(promptResult.error ?? new Error('Failed to build prompt'));
+          // Wrap prompt building error as GenerationError
+          return this._wrapGenerationError(
+            'Failed to build prompt',
+            'buildPrompt',
+            promptResult.error,
+            { fileType: String(fileType) }
+          );
         }
 
         // Build system prompt with role-specific context
         const systemPromptResult = this.promptBuilder.buildPrompt(
           this.getSystemPrompt(fileType),
           projectContext,
-          templateContent // templateContent is now guaranteed to be defined
+          templateContent
         );
         if (systemPromptResult.isErr()) {
-          return Result.err(systemPromptResult.error ?? new Error('Failed to build system prompt'));
+          // Wrap system prompt building error as GenerationError
+          return this._wrapGenerationError(
+            'Failed to build system prompt',
+            'buildSystemPrompt',
+            systemPromptResult.error,
+            { fileType: String(fileType) }
+          );
         }
 
         if (!systemPromptResult.value || !promptResult.value) {
-          return Result.err(new Error('Generated prompts are undefined'));
+          // Use GenerationError for undefined prompts
+          return Result.err(
+            new MemoryBankGenerationError('Generated prompts are undefined', {
+              operation: 'checkPrompts',
+              fileType: String(fileType),
+            })
+          );
         }
 
         const llmResponse = await this.llmAgent.getCompletion(
@@ -180,11 +304,23 @@ export class MemoryBankGenerator
           promptResult.value
         );
         if (llmResponse.isErr()) {
-          return Result.err(llmResponse.error ?? new Error('LLM invocation failed'));
+          // Wrap LLM error as GenerationError
+          return this._wrapGenerationError(
+            'LLM invocation failed',
+            'llmGetCompletion',
+            llmResponse.error,
+            { fileType: String(fileType) }
+          );
         }
 
         if (!llmResponse.value) {
-          return Result.err(new Error('LLM response is undefined'));
+          // Use GenerationError for undefined LLM response
+          return Result.err(
+            new MemoryBankGenerationError('LLM response is undefined', {
+              operation: 'checkLlmResponse',
+              fileType: String(fileType),
+            })
+          );
         }
 
         // Process the template with enhanced metadata
@@ -201,26 +337,55 @@ export class MemoryBankGenerator
           }
         );
         if (processedContentResult.isErr()) {
-          return Result.err(processedContentResult.error ?? new Error('Failed to process content'));
+          // Wrap content processor error as GenerationError
+          return this._wrapGenerationError(
+            'Failed to process LLM response content',
+            'processLlmResponse',
+            processedContentResult.error,
+            { fileType: String(fileType) }
+          );
         }
 
-        const content = this.contentProcessor.stripMarkdownCodeBlock(
+        const contentResult = this.contentProcessor.stripMarkdownCodeBlock(
           processedContentResult.value as string
         );
-        if (!content) {
-          return Result.err(new Error('Processed content is undefined'));
+        if (contentResult.isErr()) {
+          // Wrap content processor error as GenerationError
+          return this._wrapGenerationError(
+            'Failed to strip markdown from processed content',
+            'stripMarkdown',
+            contentResult.error,
+            { fileType: String(fileType) }
+          );
+        }
+        if (!contentResult.value) {
+          // Use GenerationError for undefined content after stripping
+          return Result.err(
+            new MemoryBankGenerationError(
+              'Processed content is undefined after stripping markdown',
+              {
+                operation: 'checkStrippedContent',
+                fileType: String(fileType),
+              }
+            )
+          );
         }
 
         // Write the generated content
         const outputFilePath = path.join(memoryBankDir, `${String(fileType)}.md`);
         this.logger.debug(`Writing ${String(fileType)} to ${outputFilePath}`);
-        const writeResult = await fileOps.writeFile(outputFilePath, content.value as string);
+        const writeResult = await fileOps.writeFile(outputFilePath, contentResult.value);
 
         if (writeResult.isErr()) {
-          this.logger.error(
-            `Failed to write ${String(fileType)}: ${writeResult.error?.message ?? 'Unknown error'}`
+          // Use MemoryBankFileError, log, and continue loop
+          const fileError = new MemoryBankFileError(
+            `Failed to write ${String(fileType)}`,
+            outputFilePath,
+            { operation: 'writeFileLoop' },
+            writeResult.error
           );
-          continue;
+          this.logger.error(fileError.message, fileError);
+          continue; // Skip to the next file type on write error
         }
 
         this.logger.info(`Generated ${String(fileType)} at ${outputFilePath}`);
@@ -238,9 +403,14 @@ export class MemoryBankGenerator
         destTemplatesDir
       );
       if (copyResult.isErr()) {
-        this.logger.error(
-          `Failed to copy templates: ${copyResult.error?.message ?? 'Unknown error'}`
+        // Use MemoryBankFileError, log, but allow completion
+        const copyError = new MemoryBankFileError(
+          `Failed to copy templates`,
+          sourceTemplatesDir,
+          { operation: 'copyTemplates', destination: destTemplatesDir },
+          copyResult.error
         );
+        this.logger.error(copyError.message, copyError);
         // Continue execution even if template copying fails
       } else {
         this.logger.info('Templates copied successfully');
@@ -249,15 +419,20 @@ export class MemoryBankGenerator
       this.logger.info('Memory bank generation completed');
       return Result.ok(undefined);
     } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error('Error in memory bank generation', err);
-      return Result.err(err);
+      // Wrap unexpected errors as GenerationError
+      return this._wrapGenerationError(
+        'Unexpected error during memory bank suite generation',
+        'generateMemoryBankSuiteCatch',
+        error
+      );
     }
   }
 
   async validate(): Promise<Result<void, Error>> {
-    await Promise.resolve(this.validateDependencies());
-    return Result.ok(undefined);
+    const result = this.validateDependencies();
+    await Promise.resolve(); // Keep async nature if needed later
+    // Return the result from validateDependencies (which is already MemoryBankGenerationError on failure)
+    return result;
   }
 
   private getFileTypeInstructions(fileType: MemoryBankFileType): string {
@@ -316,27 +491,36 @@ export class MemoryBankGenerator
     try {
       // Create destination directory if it doesn't exist
       const createDirResult = await fileOps.createDirectory(destDir);
-      if (createDirResult.isErr()) {
-        return Result.err(
-          new Error(
-            `Failed to create directory ${destDir}: ${createDirResult.error?.message ?? 'Unknown error'}`
-          )
+      // Ignore EEXIST, wrap other errors as FileError
+      if (createDirResult.isErr() && !createDirResult.error?.message.includes('EEXIST')) {
+        return this._wrapFileError(
+          `Failed to create directory`,
+          destDir,
+          'copyRecursiveCreateDir',
+          createDirResult.error
         );
       }
 
       // Read source directory contents
       const readDirResult = await fileOps.readDir(sourceDir);
       if (readDirResult.isErr()) {
-        return Result.err(
-          new Error(
-            `Failed to read directory ${sourceDir}: ${readDirResult.error?.message ?? 'Unknown error'}`
-          )
+        // Wrap readDir error as FileError
+        return this._wrapFileError(
+          `Failed to read directory`,
+          sourceDir,
+          'copyRecursiveReadDir',
+          readDirResult.error
         );
       }
 
       const entries = readDirResult.value;
       if (!entries) {
-        return Result.err(new Error(`No entries found in directory ${sourceDir}`));
+        // Use FileError for missing entries
+        return Result.err(
+          new MemoryBankFileError(`No entries found in directory`, sourceDir, {
+            operation: 'copyRecursiveCheckEntries',
+          })
+        );
       }
 
       // Process each entry
@@ -346,41 +530,62 @@ export class MemoryBankGenerator
 
         // Validate paths before operations
         if (!fileOps.validatePath(sourcePath)) {
-          return Result.err(new Error(`Invalid source path: ${sourcePath}`));
+          // Use FileError for invalid path
+          return Result.err(
+            new MemoryBankFileError(`Invalid source path`, sourcePath, {
+              operation: 'copyRecursiveValidateSource',
+            })
+          );
         }
 
         if (!fileOps.validatePath(destPath)) {
-          return Result.err(new Error(`Invalid destination path: ${destPath}`));
+          // Use FileError for invalid path
+          return Result.err(
+            new MemoryBankFileError(`Invalid destination path`, destPath, {
+              operation: 'copyRecursiveValidateDest',
+            })
+          );
         }
 
         if (entry.isDirectory()) {
           // Recursively copy subdirectory
           const copyResult = await this.copyDirectoryRecursive(fileOps, sourcePath, destPath);
           if (copyResult.isErr()) {
+            // Error is already wrapped FileError from deeper call, just return it
             return copyResult;
           }
         } else {
           // Copy file
           const readResult = await fileOps.readFile(sourcePath);
           if (readResult.isErr()) {
-            return Result.err(
-              new Error(
-                `Failed to read file ${sourcePath}: ${readResult.error?.message ?? 'Unknown error'}`
-              )
+            // Wrap readFile error as FileError
+            return this._wrapFileError(
+              `Failed to read file`,
+              sourcePath,
+              'copyRecursiveReadFile',
+              readResult.error
             );
           }
 
           const content = readResult.value;
-          if (!content) {
-            return Result.err(new Error(`Empty content for file ${sourcePath}`));
+          // Check for undefined or null explicitly
+          if (content === undefined || content === null) {
+            // Use FileError for empty/undefined content
+            return Result.err(
+              new MemoryBankFileError(`Empty or undefined content for file`, sourcePath, {
+                operation: 'copyRecursiveCheckContent',
+              })
+            );
           }
 
           const writeResult = await fileOps.writeFile(destPath, content);
           if (writeResult.isErr()) {
-            return Result.err(
-              new Error(
-                `Failed to write file ${destPath}: ${writeResult.error?.message ?? 'Unknown error'}`
-              )
+            // Wrap writeFile error as FileError
+            return this._wrapFileError(
+              `Failed to write file`,
+              destPath,
+              'copyRecursiveWriteFile',
+              writeResult.error
             );
           }
         }
@@ -388,9 +593,14 @@ export class MemoryBankGenerator
 
       return Result.ok(undefined);
     } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error('Error in memory bank generation', err);
-      return Result.err(err);
+      // Wrap unexpected errors in copy as FileError
+      return this._wrapFileError(
+        `Unexpected error during directory copy`,
+        sourceDir, // Use sourceDir as context path
+        'copyRecursiveCatch',
+        error,
+        { destination: destDir }
+      );
     }
   }
 }
