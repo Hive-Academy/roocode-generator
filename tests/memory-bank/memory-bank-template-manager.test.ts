@@ -1,3 +1,4 @@
+import * as path from 'path';
 import { MemoryBankTemplateManager } from '../../src/memory-bank/memory-bank-template-manager';
 import { IFileOperations } from '../../src/core/file-operations/interfaces';
 import { ILogger } from '../../src/core/services/logger-service';
@@ -35,10 +36,12 @@ describe('MemoryBankTemplateManager', () => {
   describe('getTemplatePath', () => {
     it('should construct the correct path for memory bank templates', () => {
       // Since getTemplatePath is now public, we can test it directly
-      const path = templateManager.getTemplatePath('ProjectOverview');
+      const templatePath = templateManager.getTemplatePath('ProjectOverview');
 
       // Should be in format: templates/memory-bank/ProjectOverview-template.md
-      expect(path).toBe('templates/memory-bank/ProjectOverview-template.md');
+      expect(templatePath).toBe(
+        path.join('templates', 'memory-bank', 'ProjectOverview-template.md')
+      );
     });
 
     it('should use custom template directory if provided', () => {
@@ -46,10 +49,12 @@ describe('MemoryBankTemplateManager', () => {
         templateDir: 'custom-templates',
       });
 
-      const path = customTemplateManager.getTemplatePath('ProjectOverview');
+      const templatePath = customTemplateManager.getTemplatePath('ProjectOverview');
 
       // Should use the custom template directory
-      expect(path).toBe('custom-templates/memory-bank/ProjectOverview-template.md');
+      expect(templatePath).toBe(
+        path.join('custom-templates', 'memory-bank', 'ProjectOverview-template.md')
+      );
     });
   });
 
@@ -69,7 +74,9 @@ describe('MemoryBankTemplateManager', () => {
       // Use a function call to avoid unbound method warning
       const readFileCalls = mockFileOps.readFile.mock.calls;
       expect(readFileCalls.length).toBeGreaterThan(0);
-      expect(readFileCalls[0][0]).toBe('templates/memory-bank/ProjectOverview-template.md');
+      expect(readFileCalls[0][0]).toBe(
+        path.join('templates', 'memory-bank', 'ProjectOverview-template.md')
+      );
 
       // Verify the template content
       const template = result.unwrap();
@@ -91,7 +98,9 @@ describe('MemoryBankTemplateManager', () => {
       // Use a function call to avoid unbound method warning
       const readFileCalls = mockFileOps.readFile.mock.calls;
       expect(readFileCalls.length).toBeGreaterThan(0);
-      expect(readFileCalls[0][0]).toBe('templates/memory-bank/NonExistentTemplate-template.md');
+      expect(readFileCalls[0][0]).toBe(
+        path.join('templates', 'memory-bank', 'NonExistentTemplate-template.md')
+      );
     });
   });
 
