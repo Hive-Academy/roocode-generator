@@ -23,9 +23,11 @@ export class ContentProcessor implements IContentProcessor {
 
   stripMarkdownCodeBlock(content: MessageContent): Result<string> {
     try {
+      // Remove ^ and $ anchors to match code blocks anywhere in the string
+      // Also match and discard optional language identifier after ```
       const processed = content
-        .replace(/^```markdown\s*([\s\S]*?)\s*```$/im, '$1')
-        .replace(/^```\s*([\s\S]*?)\s*```$/im, '$1');
+        .replace(/```markdown\s*([\s\S]*?)\s*```/im, '$1') // Specific markdown block
+        .replace(/```[a-zA-Z]*\s*([\s\S]*?)\s*```/im, '$1'); // Generic block with optional language
       return Result.ok(processed);
     } catch (error) {
       return this._wrapProcessingError(
