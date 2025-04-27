@@ -39,9 +39,44 @@ To build and run the `roocode-generator` project locally, follow these steps:
 
     Using yarn:
 
-    ```bash
+## Running Tests
+
+To ensure code quality and verify functionality, the project includes a suite of unit and integration tests managed with Jest.
+
+### Running Tests Locally
+
+- Run all tests once:
+
+```bash
+npm test
+# or
+yarn test
+```
+
+- Run tests in watch mode (useful during development):
+
+```bash
+npm run test:watch
+# or
+yarn test:watch
+```
+
+- Generate test coverage reports:
+
+```bash
+npm run test:coverage
+# or
+yarn test:coverage
+```
+
+Coverage reports are output to the `coverage/` directory and include detailed metrics on branches, functions, lines, and statements.
+
+### Additional Resources
+
+For comprehensive testing guidelines, coverage goals, and maintenance best practices, refer to the [Developer Guide - Quality and Testing](memory-bank/DeveloperGuide.md#quality-and-testing).
+`bash
     yarn install
-    ```
+    `
 
 3.  **Prepare Git Hooks:**
     ```bash

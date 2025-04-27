@@ -1,159 +1,142 @@
-/*
-import { describe, it, expect, beforeEach, jest } from "@jest/globals";
-import { MemoryBankGenerator } from "../../src/memory-bank/MemoryBankGenerator";
-import {
-  IMemoryBankValidator,
-  IMemoryBankFileManager,
-  IMemoryBankTemplateManager,
-  IContentProcessor,
-  MemoryBankFileType,
-} from "../../src/memory-bank/interfaces";
-import { ILogger } from "../../src/core/services/logger-service";
-import { IProjectConfigService } from "../../src/core/config/interfaces";
-import { Result } from "../../src/core/result/result";
-import { ProjectConfig } from "../../types/shared";
+// import { MemoryBankGenerator } from '../../src/memory-bank/memory-bank-generator';
+// import { IServiceContainer } from '../../src/core/di/interfaces';
+// import {
+//   IMemoryBankValidator,
+//   IMemoryBankFileManager,
+//   IMemoryBankTemplateManager,
+//   IContentProcessor,
+//   IProjectContextService,
+//   IPromptBuilder,
+// } from '../../src/memory-bank/interfaces';
+// import { ILogger } from '../../src/core/services/logger-service';
+// import { LLMAgent } from '../../src/core/llm/llm-agent';
+// import { Result } from '../../src/core/result/result';
+// import { ProjectConfig } from '../../types/shared';
+// import { GeneratorOrchestrator } from '../../src/core/application/generator-orchestrator';
+// import { IFileOperations } from '../../src/core/file-operations/interfaces';
 
-// Mocks
-const mockValidator: jest.Mocked<IMemoryBankValidator> = {
-  validateRequiredFiles: jest.fn(),
-  validateTemplateFiles: jest.fn(),
-  validateFileContent: jest.fn(),
-};
+// describe('MemoryBankGenerator', () => {
+//   let memoryBankGenerator: MemoryBankGenerator;
+//   let serviceContainerMock: IServiceContainer;
+//   let validatorMock: IMemoryBankValidator;
+//   let fileManagerMock: IMemoryBankFileManager;
+//   let templateManagerMock: IMemoryBankTemplateManager;
+//   let contentProcessorMock: IContentProcessor;
+//   let loggerMock: ILogger;
+//   let projectContextServiceMock: IProjectContextService;
+//   let promptBuilderMock: IPromptBuilder;
+//   let llmAgentMock: LLMAgent;
+//   let fileOperationsMock: IFileOperations;
 
-const mockFileManager: jest.Mocked<IMemoryBankFileManager> = {
-  createMemoryBankDirectory: jest.fn(),
-  writeMemoryBankFile: jest.fn(),
-  readMemoryBankFile: jest.fn(),
-};
+//   beforeEach(() => {
+//     serviceContainerMock = {
+//       resolve: jest.fn(),
+//     };
+//     validatorMock = { validate: jest.fn() };
+//     fileManagerMock = { createMemoryBankDirectory: jest.fn() };
+//     templateManagerMock = { loadTemplate: jest.fn() };
+//     contentProcessorMock = { processTemplate: jest.fn() };
+//     loggerMock = { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+//     projectContextServiceMock = { gatherContext: jest.fn() };
+//     promptBuilderMock = { buildPrompt: jest.fn() };
+//     llmAgentMock = { getCompletion: jest.fn() };
+//     fileOperationsMock = { writeFile: jest.fn() } as any;
 
-const mockTemplateManager: jest.Mocked<IMemoryBankTemplateManager> = {
-  loadTemplate: jest.fn(),
-  validateTemplate: jest.fn(),
-};
+//     (serviceContainerMock.resolve as jest.Mock).mockImplementation((token) => {
+//       switch (token) {
+//         case 'IMemoryBankValidator':
+//           return Result.ok(validatorMock);
+//         case 'IMemoryBankFileManager':
+//           return Result.ok(fileManagerMock);
+//         case 'IMemoryBankTemplateManager':
+//           return Result.ok(templateManagerMock);
+//         case 'IContentProcessor':
+//           return Result.ok(contentProcessorMock);
+//         case 'ILogger':
+//           return Result.ok(loggerMock);
+//         case 'IProjectContextService':
+//           return Result.ok(projectContextServiceMock);
+//         case 'IPromptBuilder':
+//           return Result.ok(promptBuilderMock);
+//         case 'LLMAgent':
+//           return Result.ok(llmAgentMock);
+//         case 'IFileOperations':
+//           return Result.ok(fileOperationsMock);
+//         default:
+//           return Result.err(new Error(`Token not found: ${token}`));
+//       }
+//     });
 
-const mockContentProcessor: jest.Mocked<IContentProcessor> = {
-  stripMarkdownCodeBlock: jest.fn(),
-  processTemplate: jest.fn(),
-};
+//     memoryBankGenerator = new MemoryBankGenerator(
+//       serviceContainerMock,
+//       validatorMock,
+//       fileManagerMock,
+//       templateManagerMock,
+//       contentProcessorMock,
+//       loggerMock,
+//       projectContextServiceMock,
+//       promptBuilderMock,
+//       llmAgentMock,
+//       fileOperationsMock
+//     );
+//   });
 
-const mockLogger: jest.Mocked<ILogger> = {
-  debug: jest.fn(),
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-};
+//   it('should implement IGenerator interface', () => {
+//     expect(memoryBankGenerator).toHaveProperty('name', 'MemoryBank');
+//   });
 
-const mockProjectConfigService: jest.Mocked<IProjectConfigService> = {
-  loadConfig: jest.fn(),
-  saveConfig: jest.fn(),
-  getConfigFilePath: jest.fn(),
-};
+//   it('should be invoked by GeneratorOrchestrator', async () => {
+//     const config: ProjectConfig = {
+//       name: 'test-project',
+//       baseDir: '/test',
+//     };
+//     const contextPaths: string[] = [];
+//     const outputDir: string = '/output';
 
-describe("MemoryBankGenerator", () => {
-  let generator: MemoryBankGenerator;
-  const validConfig: ProjectConfig = {
-    name: "test-project",
-    baseDir: ".",
-    rootDir: ".roo",
-    generators: ["MemoryBank"],
-  };
+//     const generateMemoryBankSuiteMock = jest.spyOn(memoryBankGenerator, 'generate');
+//     generateMemoryBankSuiteMock.mockImplementation(async () => Result.ok(undefined));
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    // Provide all required mocks, including the new projectConfigService
-    generator = new MemoryBankGenerator(
-      mockValidator,
-      mockFileManager,
-      mockTemplateManager,
-      mockContentProcessor,
-      mockLogger,
-      mockProjectConfigService // Add the mock here
-    );
-    // Mock successful config loading by default
-    mockProjectConfigService.loadConfig.mockResolvedValue(Result.ok(validConfig));
-  });
+//     const orchestrator = new GeneratorOrchestrator(serviceContainerMock);
+//     orchestrator.registerGenerator(memoryBankGenerator);
 
-  it("should have the correct name", () => {
-    expect(generator.name).toBe("MemoryBank");
-  });
+//     await orchestrator.generate(['MemoryBank'], contextPaths, outputDir);
 
-  describe("validate", () => {
-    it("should return ok if validator succeeds", async () => {
-      mockValidator.validateRequiredFiles.mockResolvedValue(Result.ok(undefined));
-      const result = await generator.validate();
-      expect(result.isOk()).toBe(true);
-      expect(mockValidator.validateRequiredFiles).toHaveBeenCalledWith("."); // Assuming baseDir is '.'
-    });
+//     expect(generateMemoryBankSuiteMock).toHaveBeenCalledTimes(1);
+//     expect(generateMemoryBankSuiteMock).toHaveBeenCalledWith(config, contextPaths, outputDir);
+//   });
 
-    it("should return error if validator fails", async () => {
-      const error = new Error("Validation failed");
-      mockValidator.validateRequiredFiles.mockResolvedValue(Result.err(error));
-      const result = await generator.validate();
-      expect(result.isErr()).toBe(true);
-      expect(result.error).toBe(error);
-    });
-  });
+//   it('should handle errors during generation', async () => {
+//     const config: ProjectConfig = {
+//       name: 'test-project',
+//       baseDir: '/test',
+//     };
+//     const contextPaths: string[] = [];
+//     const outputDir: string = '/output';
+//     const error = new Error('File write failed');
 
-  describe("generate", () => {
-    beforeEach(() => {
-      // Setup successful validation and template loading for generate tests
-      mockValidator.validateRequiredFiles.mockResolvedValue(Result.ok(undefined));
-      mockTemplateManager.loadTemplate.mockImplementation(async (name) =>
-        Result.ok(`Template content for ${name}`)
-      );
-      mockFileManager.createMemoryBankDirectory.mockResolvedValue(Result.ok(undefined));
-      mockFileManager.writeMemoryBankFile.mockResolvedValue(Result.ok(undefined));
-    });
+//     (fileOperationsMock.writeFile as jest.Mock).mockImplementation(() => Promise.reject(error));
+//     const result = await memoryBankGenerator.generate(config, contextPaths, outputDir);
 
-    it("should return ok if generation succeeds for all files", async () => {
-      // Fix: Call generate without arguments
-      const result = await generator.generate();
-      expect(result.isOk()).toBe(true);
-      expect(mockFileManager.createMemoryBankDirectory).toHaveBeenCalledTimes(1);
-      // Check if write was called for each file type
-      expect(mockFileManager.writeMemoryBankFile).toHaveBeenCalledTimes(
-        Object.keys(MemoryBankFileType).length
-      );
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        "MemoryBank generation completed successfully."
-      );
-    });
+//     expect(result.isErr()).toBe(true);
+//     expect(result.error).toBe(error);
+//   });
 
-    it("should return error if project config loading fails", async () => {
-      const configError = new Error("Failed to load config");
-      mockProjectConfigService.loadConfig.mockResolvedValue(Result.err(configError));
-      // Fix: Call generate without arguments
-      const result = await generator.generate();
-      expect(result.isErr()).toBe(true);
-      expect(result.error?.message).toContain("Failed to load project config");
-    });
+//   it('should create output artifacts in the specified directory', async () => {
+//     const config: ProjectConfig = {
+//       name: 'test-project',
+//       baseDir: '/test',
+//     };
+//     const contextPaths: string[] = [];
+//     const outputDir: string = '/output';
 
-    it("should return error if creating directory fails", async () => {
-      const dirError = new Error("Cannot create dir");
-      mockFileManager.createMemoryBankDirectory.mockResolvedValue(Result.err(dirError));
-      // Fix: Call generate without arguments
-      const result = await generator.generate();
-      expect(result.isErr()).toBe(true);
-      expect(result.error).toBe(dirError);
-    });
+//     (fileOperationsMock.writeFile as jest.Mock).mockImplementation(() => Promise.resolve());
+//     (templateManagerMock.loadTemplate as jest.Mock).mockImplementation(() => 'template content');
+//     (contentProcessorMock.processTemplate as jest.Mock).mockImplementation(
+//       () => 'processed content'
+//     );
 
-    it("should return error if loading a template fails", async () => {
-      const templateError = new Error("Cannot load template");
-      mockTemplateManager.loadTemplate.mockResolvedValueOnce(Result.err(templateError)); // Fail first template load
-      // Fix: Call generate without arguments
-      const result = await generator.generate();
-      expect(result.isErr()).toBe(true);
-      expect(result.error).toBe(templateError);
-    });
+//     await memoryBankGenerator.generate(config, contextPaths, outputDir);
 
-    it("should return error if writing a file fails", async () => {
-      const writeError = new Error("Cannot write file");
-      mockFileManager.writeMemoryBankFile.mockResolvedValueOnce(Result.err(writeError)); // Fail first write
-      // Fix: Call generate without arguments
-      const result = await generator.generate();
-      expect(result.isErr()).toBe(true);
-      expect(result.error).toBe(writeError);
-    });
-  });
-});
-*/
+//     expect(fileOperationsMock.writeFile).toHaveBeenCalled();
+//   });
+// });
