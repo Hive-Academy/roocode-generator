@@ -273,8 +273,8 @@ describe('MemoryBankOrchestrator', () => {
 
       // Verify error was logged
       expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to copy templates'),
-        copyError
+        expect.stringContaining('Failed to copy templates directory'), // Updated message
+        expect.any(MemoryBankGenerationError) // Updated error type check
       );
 
       // Verify generation was still marked as successful

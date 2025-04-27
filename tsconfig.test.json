@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    /* Override main settings for Jest */
+    "module": "CommonJS", // Jest typically works best with CommonJS
+    "esModuleInterop": true, // Ensure compatibility
+    "allowSyntheticDefaultImports": true // Often needed with esModuleInterop
+  },
+  "include": [
+    "tests/**/*.ts", // Include all test files
+    "src/**/*.ts" // Include source files for type checking during tests
+  ]
+}

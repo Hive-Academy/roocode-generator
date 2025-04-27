@@ -3,7 +3,7 @@
 import { createPromptModule } from 'inquirer';
 
 import { Container } from '@core/di/container';
-import { resolveDependency } from '@core/di/registrations'; // Import helper
+import { resolveDependency, assertIsDefined } from '@core/di/utils'; // Import helpers from new utils file
 
 import { ILogger, LoggerService } from '@core/services/logger-service';
 import { IFileOperations } from '@core/file-operations/interfaces';
@@ -28,12 +28,7 @@ import { IRulesTemplateManager } from 'src/types/rules-template-types'; // Corre
 import { RulesTemplateManager } from '@core/templating/rules-template-manager';
 import { TemplateProcessor } from '@core/templating/template-processor';
 
-function assertIsDefined<T>(value: T | undefined, message: string): asserts value is T {
-  if (value === undefined) {
-    throw new Error(message);
-  }
-}
-
+// assertIsDefined moved to src/core/di/utils.ts
 export function registerCoreModule(container: Container): void {
   // Core Services
   container.registerSingleton<ILogger>('ILogger', LoggerService);

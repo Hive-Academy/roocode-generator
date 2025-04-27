@@ -1,10 +1,29 @@
+import { Result } from '../../src/core/result/result'; // Import Result
+import { DIError } from '../../src/core/di/errors'; // Import DIError for error case
 import { IProjectAnalyzer } from '../../src/core/analysis/types';
-import { IServiceContainer } from '../../src/core/di/interfaces';
+import { IServiceContainer } from '../../src/core/di/interfaces'; // Removed ServiceToken import
 import { IFileOperations } from '../../src/core/file-operations/interfaces';
 import { LLMAgent } from '../../src/core/llm/llm-agent';
 import { ILogger } from '../../src/core/services/logger-service';
 import { IRulesContentProcessor } from '../../src/generators/rules/interfaces';
 import { RulesGenerator } from '../../src/generators/rules/rules-generator';
+import { ProgressIndicator } from '../../src/core/ui/progress-indicator'; // Import the class to mock
+
+// Mock the ProgressIndicator module to prevent ESM issues with 'ora'
+jest.mock('../../src/core/ui/progress-indicator', () => {
+  return {
+    ProgressIndicator: jest.fn().mockImplementation(() => {
+      return {
+        start: jest.fn(),
+        succeed: jest.fn(),
+        fail: jest.fn(),
+        set text(value: string) {
+          /* no-op */
+        }, // Mock setter if needed
+      };
+    }),
+  };
+});
 
 describe('RulesGenerator', () => {
   let rulesGenerator: RulesGenerator;
@@ -66,6 +85,23 @@ describe('RulesGenerator', () => {
       registerFactory: jest.fn(),
       clear: jest.fn(),
     } as unknown as jest.Mocked<IServiceContainer>;
+
+    // Configure the mock container to return the mocked ProgressIndicator wrapped in Result.Ok
+    const MockedProgressIndicator = ProgressIndicator as jest.MockedClass<typeof ProgressIndicator>;
+    const mockProgressIndicatorInstance = new MockedProgressIndicator();
+    // Use 'any' for token type in mock implementation as ServiceToken is not exported
+    mockServiceContainer.resolve.mockImplementation((token: any): Result<unknown, DIError> => {
+      if (token === ProgressIndicator) {
+        return Result.ok(mockProgressIndicatorInstance); // Use Result.ok (lowercase)
+      }
+      // For any other token requested in this test setup, return an error Result
+      // This makes the mock more explicit about what it handles.
+      const error = new DIError(
+        `Mock does not handle resolution for token: ${token?.toString() ?? 'undefined'}`,
+        'MOCK_RESOLUTION_FAILURE' // Add error code
+      );
+      return Result.err(error); // Use Result.err (lowercase) and pass the error instance
+    });
 
     rulesGenerator = new RulesGenerator(
       mockServiceContainer,

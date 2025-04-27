@@ -1,5 +1,5 @@
 import { Container } from '@core/di/container';
-import { resolveDependency } from '@core/di/registrations'; // Import helper
+import { resolveDependency } from '@core/di/utils'; // Import helpers from utils
 import { IGenerator } from '@core/generators/base-generator';
 import { RulesGenerator } from '@generators/rules/rules-generator';
 import {

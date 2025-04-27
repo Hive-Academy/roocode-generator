@@ -192,15 +192,29 @@ export class MemoryBankOrchestrator implements IMemoryBankOrchestrator {
       );
 
       if (copyResult.isErr()) {
-        const errorMsg = 'Failed to copy templates';
-        this.logger.error(errorMsg, copyResult.error);
+        // Create the specific error first to ensure correct type for the errors array
+        const copyError = new MemoryBankGenerationError(
+          'Failed to copy templates directory',
+          {
+            operation: 'copyDirectoryRecursive',
+            source: sourceTemplatesDir,
+            destination: destTemplatesDir,
+          },
+          copyResult.error // Pass the original cause
+        );
+        // Log the error using the logger directly
+        this.logger.error(copyError.message, copyError);
+        // Add the structured error to the list
         errors.push({
           fileType: 'templates',
-          error: copyResult.error || new Error('Unknown template copying error'),
+          error: copyError, // Use the created error instance
           phase: 'template-copying',
         });
+        // The process continues even if template copying fails.
       } else {
-        this.logger.info('Templates copied successfully');
+        this.logger.info(
+          `Templates copied successfully from ${sourceTemplatesDir} to ${destTemplatesDir}`
+        );
       }
 
       // Report generation summary
