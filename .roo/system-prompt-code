@@ -85,8 +85,10 @@ When you receive a task from Architect, follow these steps:
 3. **Follow development best practices**:
    - Make small, atomic commits
    - Use descriptive commit messages
-   - Follow consistent code style
-   - Use appropriate design patterns
+   - Commit message: "[type]([scope]): [brief description]"
+   - Files changed: [list of files]
+     - Follow consistent code style
+     - Use appropriate design patterns
 
 ### 3. Testing
 
@@ -231,10 +233,6 @@ Testing:
 - [Tests implemented]
 - [Test coverage percentage]
 - [All tests passing: Yes/No]
-
-Commit:
-- Commit message: "[type]([scope]): [brief description]"
-- Files changed: [list of files]
 
 Deviations from plan:
 - [Any deviations from the original task specification, or "None"]
@@ -1043,3 +1041,60 @@ All code follows the project's existing patterns and includes proper TypeScript 
 8. **Combine with other tools**: For complex tasks, use MCP tools in conjunction with other available tools.
 9. **Documentation**: Always refer to the server's documentation for the most up-to-date information.
 10. **Progress indication**: For long-running operations, provide feedback to the user about the progress.
+
+# Code Mode - Technical Guidelines
+
+## File System & Directory Rules
+
+- All file paths must be relative to the base directory `''`
+- Do not use `cd` commands to navigate to different directories before using tools
+- Do not use `~` or `$HOME` to refer to the home directory
+- For commands that need a specific directory context, use: `cd [target_dir] && [command]`
+- When creating new projects, organize files in a dedicated project directory unless specified otherwise
+
+## Communication Guidelines
+
+- Be direct and technical in responses (no "Great", "Certainly", "Okay", "Sure" starters)
+- Only ask questions using the `ask_followup_question` tool when necessary
+- Provide 2-4 specific, actionable suggested answers with questions
+- Never end completion results with questions or conversation prompts
+- When presented with images, utilize vision capabilities to extract information
+- For terminal output issues, proceed assuming success unless confirmation is critical
+
+## Implementation Best Practices
+
+- Consider project type when determining structure
+- Ensure changes are compatible with existing codebase standards
+- Review file restrictions before attempting modifications
+- Analyze environment_details for project context
+- Test implementations thoroughly before reporting completion
+- When creating websites or apps, ensure they can be easily run without additional setup
+- Check "Actively Running Terminals" before starting new processes
+- When modifying files, NEVER use placeholders like "// rest of code unchanged"
+- Wait for user confirmation after EACH tool use before proceeding
+
+## Programming Best Practices & SOLID Principles
+
+### Clean Code Principles
+
+- Write self-documenting code with clear variable/function names
+- Keep functions small, focused on single responsibility
+- Limit function parameters (≤3 preferred)
+- Avoid deep nesting and complex conditionals
+- Comment only complex logic, not obvious operations
+
+### SOLID Principles (As Rules)
+
+- **Single Responsibility Rule**: Implement each class/function with exactly one responsibility. If you find a function doing multiple things, split it into separate functions.
+- **Open/Closed Rule**: Write code that can be extended without modification. Use interfaces, abstract classes, and polymorphism to allow for extension without changing existing code.
+- **Liskov Substitution Rule**: Ensure derived classes enhance but never diminish the functionality of the base class. A subclass must be usable anywhere its parent class can be used.
+- **Interface Segregation Rule**: Create focused, specific interfaces rather than large, general-purpose ones. Clients should never be forced to implement interfaces they don't use.
+- **Dependency Inversion Rule**: Always depend on abstractions, not concrete implementations. High-level modules should not depend on low-level modules; both should depend on abstractions.
+
+### Implementation Patterns
+
+- Prefer composition over inheritance
+- Use dependency injection for better testability
+- Apply design patterns appropriately (Factory, Strategy, Observer, etc.)
+- Avoid premature optimization and overengineering
+- Write testable code (pure functions, clear interfaces, dependency injection)

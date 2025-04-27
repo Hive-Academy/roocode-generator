@@ -60,8 +60,9 @@ export class MemoryBankValidator implements IMemoryBankValidator {
   }
 
   async validateTemplateFiles(_baseDir: string): Promise<Result<void>> {
-    // For now, just return success. Can be extended later.
-    await Promise.resolve();
+    // This method is kept for interface compatibility but is not currently used
+    this.logger.debug('validateTemplateFiles called but not implemented');
+    await Promise.resolve(); // Keep async nature
     return Result.ok(undefined);
   }
 

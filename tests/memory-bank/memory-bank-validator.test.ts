@@ -29,6 +29,7 @@ describe('MemoryBankValidator', () => {
       isDirectory: jest.fn(),
       normalizePath: jest.fn((p) => p),
       validatePath: jest.fn((_path: string) => true), // Correct signature
+      copyDirectoryRecursive: jest.fn().mockResolvedValue(Result.ok(undefined)),
     };
 
     mockLogger = {

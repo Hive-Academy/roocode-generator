@@ -1,172 +1,101 @@
-// import { ProjectAnalyzer } from "../../../src/core/analysis/project-analyzer";
-// import { IFileOperations } from "../../../src/core/file-operations/interfaces";
-// import { ILogger } from "../../../src/core/services/logger-service";
-// import { LLMAgent } from "../../../src/core/llm/llm-agent";
-// import { Result } from "../../../src/core/result/result";
-// import { Dirent } from "fs";
-// import path from "path";
+import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
+import { IFileOperations } from '../../../src/core/file-operations/interfaces';
+import { ILogger } from '../../../src/core/services/logger-service';
+import { LLMAgent } from '../../../src/core/llm/llm-agent';
+import { ResponseParser } from '../../../src/core/analysis/response-parser';
+import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
 
-// /**
-//  * Tests temporarily commented out - to be implemented later
-//  * These tests verify the fix for ENOTDIR errors in ProjectAnalyzer
-//  */
+describe('ProjectAnalyzer', () => {
+  let projectAnalyzer: ProjectAnalyzer;
+  let mockFileOps: jest.Mocked<IFileOperations>;
+  let mockLogger: jest.Mocked<ILogger>;
+  let mockLLMAgent: jest.Mocked<LLMAgent>;
+  let mockResponseParser: jest.Mocked<ResponseParser>;
+  let mockProgressIndicator: jest.Mocked<ProgressIndicator>;
 
-// describe("ProjectAnalyzer", () => {
-//   let projectAnalyzer: ProjectAnalyzer;
-//   let mockFileOps: jest.Mocked<IFileOperations>;
-//   let mockLogger: jest.Mocked<ILogger>;
-//   let mockLLMAgent: jest.Mocked<LLMAgent>;
+  beforeEach(() => {
+    mockFileOps = {
+      readFile: jest.fn(),
+      writeFile: jest.fn(),
+      exists: jest.fn(),
+      isDirectory: jest.fn(),
+      readDir: jest.fn(),
+      copyFile: jest.fn(),
+      copyDirectoryRecursive: jest.fn(),
+      deleteFile: jest.fn(),
+      deleteDirectory: jest.fn(),
+      createDirectory: jest.fn(),
+      getRelativePath: jest.fn(),
+      getAbsolutePath: jest.fn(),
+      joinPaths: jest.fn(),
+      dirname: jest.fn(),
+      basename: jest.fn(),
+      extname: jest.fn(),
+    } as unknown as jest.Mocked<IFileOperations>;
 
-//   beforeEach(() => {
-//     mockFileOps = {
-//       readFile: jest.fn(),
-//       writeFile: jest.fn(),
-//       createDirectory: jest.fn(),
-//       validatePath: jest.fn(),
-//       normalizePath: jest.fn(p => p),
-//       readDir: jest.fn(),
-//       exists: jest.fn(),
-//       isDirectory: jest.fn(),
-//     } as jest.Mocked<IFileOperations>;
+    mockLogger = {
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+    } as jest.Mocked<ILogger>;
 
-//     mockLogger = {
-//       debug: jest.fn(),
-//       info: jest.fn(),
-//       warn: jest.fn(),
-//       error: jest.fn(),
-//     } as jest.Mocked<ILogger>;
+    mockLLMAgent = {
+      getCompletion: jest.fn(),
+      getChatCompletion: jest.fn(),
+    } as unknown as jest.Mocked<LLMAgent>;
 
-//     mockLLMAgent = {
-//       getCompletion: jest.fn(),
-//       analyzeProject: jest.fn(),
-//     } as jest.Mocked<LLMAgent>;
+    mockResponseParser = {
+      parseJSON: jest.fn(),
+    } as unknown as jest.Mocked<ResponseParser>;
 
-//     projectAnalyzer = new ProjectAnalyzer(mockFileOps, mockLogger, mockLLMAgent);
-//   });
+    mockProgressIndicator = {
+      start: jest.fn(),
+      update: jest.fn(),
+      succeed: jest.fn(),
+      fail: jest.fn(),
+    } as unknown as jest.Mocked<ProgressIndicator>;
 
-//   describe("collectProjectFiles", () => {
-//     it("should handle files and directories correctly", async () => {
-//       // Mock directory structure:
-//       // root/
-//       //   ├── file1.ts
-//       //   ├── file2.js
-//       //   └── subdir/
-//       //        └── file3.ts
+    projectAnalyzer = new ProjectAnalyzer(
+      mockFileOps,
+      mockLogger,
+      mockLLMAgent,
+      mockResponseParser,
+      mockProgressIndicator
+    );
+  });
 
-//       const rootDir = "/root";
-//       const subdir = path.join(rootDir, "subdir");
-//       const testFile1 = path.join(rootDir, "file1.ts");
-//       const testFile2 = path.join(rootDir, "file2.js");
-//       const testFile3 = path.join(subdir, "file3.ts");
+  describe('shouldAnalyzeFile', () => {
+    // Access the private method using type assertion
+    const shouldAnalyzeFile = (fileName: string) => {
+      return (projectAnalyzer as any).shouldAnalyzeFile(fileName);
+    };
 
-//       // Mock readDir responses
-//       const mockReadDir = mockFileOps.readDir as jest.MockedFunction<typeof mockFileOps.readDir>;
-//       mockReadDir
-//         .mockResolvedValueOnce(Result.ok([
-//           { name: "file1.ts", isDirectory: () => false } as Dirent,
-//           { name: "file2.js", isDirectory: () => false } as Dirent,
-//           { name: "subdir", isDirectory: () => true } as Dirent,
-//         ]))
-//         .mockResolvedValueOnce(Result.ok([
-//           { name: "file3.ts", isDirectory: () => false } as Dirent,
-//         ]));
+    it('should return true for common file extensions', () => {
+      expect(shouldAnalyzeFile('app.js')).toBe(true);
+      expect(shouldAnalyzeFile('component.jsx')).toBe(true);
+      expect(shouldAnalyzeFile('service.ts')).toBe(true);
+      expect(shouldAnalyzeFile('component.tsx')).toBe(true);
+      expect(shouldAnalyzeFile('config.json')).toBe(true);
+      expect(shouldAnalyzeFile('config.yml')).toBe(true);
+      expect(shouldAnalyzeFile('config.yaml')).toBe(true);
+      expect(shouldAnalyzeFile('README.md')).toBe(true);
+    });
 
-//       // Mock isDirectory responses
-//       const mockIsDirectory = mockFileOps.isDirectory as jest.MockedFunction<typeof mockFileOps.isDirectory>;
-//       mockIsDirectory
-//         .mockResolvedValueOnce(Result.ok(false)) // file1.ts
-//         .mockResolvedValueOnce(Result.ok(false)) // file2.js
-//         .mockResolvedValueOnce(Result.ok(true))  // subdir
-//         .mockResolvedValueOnce(Result.ok(false)); // file3.ts
+    it('should return false for test files', () => {
+      expect(shouldAnalyzeFile('app.test.js')).toBe(false);
+      expect(shouldAnalyzeFile('component.spec.tsx')).toBe(false);
+    });
 
-//       // Mock readFile responses
-//       const mockReadFile = mockFileOps.readFile as jest.MockedFunction<typeof mockFileOps.readFile>;
-//       mockReadFile
-//         .mockResolvedValueOnce(Result.ok("content1"))
-//         .mockResolvedValueOnce(Result.ok("content2"))
-//         .mockResolvedValueOnce(Result.ok("content3"));
+    it('should return false for declaration and map files', () => {
+      expect(shouldAnalyzeFile('types.d.ts')).toBe(false);
+      expect(shouldAnalyzeFile('app.js.map')).toBe(false);
+    });
 
-//       const files = await projectAnalyzer["collectProjectFiles"](rootDir);
-
-//       // Verify correct files were collected
-//       expect(files).toHaveLength(3);
-//       expect(files).toContain(`File: file1.ts\ncontent1`);
-//       expect(files).toContain(`File: file2.js\ncontent2`);
-//       expect(files).toContain(`File: subdir/file3.ts\ncontent3`);
-
-//       // Verify directory checks
-//       expect(mockIsDirectory).toHaveBeenCalledWith(testFile1);
-//       expect(mockIsDirectory).toHaveBeenCalledWith(testFile2);
-//       expect(mockIsDirectory).toHaveBeenCalledWith(subdir);
-//       expect(mockIsDirectory).toHaveBeenCalledWith(testFile3);
-//     });
-
-//     it("should handle ENOTDIR errors gracefully", async () => {
-//       const rootDir = "/root";
-
-//       const mockReadDir = mockFileOps.readDir as jest.MockedFunction<typeof mockFileOps.readDir>;
-//       mockReadDir.mockResolvedValueOnce(Result.ok([
-//         { name: "file1.ts", isDirectory: () => false } as Dirent,
-//       ]));
-
-//       // Simulate ENOTDIR error when checking if file is directory
-//       const mockIsDirectory = mockFileOps.isDirectory as jest.MockedFunction<typeof mockFileOps.isDirectory>;
-//       mockIsDirectory.mockResolvedValueOnce(
-//         Result.err(new Error("ENOTDIR: not a directory"))
-//       );
-
-//       const files = await projectAnalyzer["collectProjectFiles"](rootDir);
-
-//       // Verify error was logged
-//       const mockWarn = mockLogger.warn as jest.MockedFunction<typeof mockLogger.warn>;
-//       expect(mockWarn).toHaveBeenCalledWith(
-//         expect.stringContaining("Error checking directory status")
-//       );
-
-//       // Verify we continued processing despite the error
-//       expect(files).toHaveLength(0);
-//     });
-
-//     it("should skip excluded directories", async () => {
-//       const rootDir = "/root";
-
-//       const mockReadDir = mockFileOps.readDir as jest.MockedFunction<typeof mockFileOps.readDir>;
-//       mockReadDir.mockResolvedValueOnce(Result.ok([
-//         { name: "node_modules", isDirectory: () => true } as Dirent,
-//         { name: "dist", isDirectory: () => true } as Dirent,
-//         { name: ".git", isDirectory: () => true } as Dirent,
-//         { name: "coverage", isDirectory: () => true } as Dirent,
-//       ]));
-
-//       const files = await projectAnalyzer["collectProjectFiles"](rootDir);
-
-//       // Verify excluded directories were skipped
-//       const mockIsDirectory = mockFileOps.isDirectory as jest.MockedFunction<typeof mockFileOps.isDirectory>;
-//       expect(mockIsDirectory).not.toHaveBeenCalled();
-//       expect(files).toHaveLength(0);
-
-//       // Verify skip was logged
-//       const mockDebug = mockLogger.debug as jest.MockedFunction<typeof mockLogger.debug>;
-//       expect(mockDebug).toHaveBeenCalledWith(
-//         expect.stringContaining("Skipping excluded directory")
-//       );
-//     });
-
-//     it("should handle readDir errors gracefully", async () => {
-//       const rootDir = "/root";
-
-//       const mockReadDir = mockFileOps.readDir as jest.MockedFunction<typeof mockFileOps.readDir>;
-//       mockReadDir.mockResolvedValueOnce(
-//         Result.err(new Error("Failed to read directory"))
-//       );
-
-//       const files = await projectAnalyzer["collectProjectFiles"](rootDir);
-
-//       expect(files).toHaveLength(0);
-//       const mockDebug = mockLogger.debug as jest.MockedFunction<typeof mockLogger.debug>;
-//       expect(mockDebug).toHaveBeenCalledWith(
-//         expect.stringContaining("Failed to read directory")
-//       );
-//     });
-//   });
-// });
+    it('should return false for unsupported file extensions', () => {
+      expect(shouldAnalyzeFile('image.png')).toBe(false);
+      expect(shouldAnalyzeFile('document.pdf')).toBe(false);
+      expect(shouldAnalyzeFile('archive.zip')).toBe(false);
+    });
+  });
+});

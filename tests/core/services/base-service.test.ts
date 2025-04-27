@@ -1,101 +1,111 @@
-/*
-// import { BaseService } from "../base-service";
-// import { Result } from "../../types/result";
-// import { IServiceContainer } from "../../di/interfaces";
-// import { ServiceToken } from "../../di/types";
+import { BaseService } from '../../../src/core/services/base-service';
+import { Result } from '../../../src/core/result/result';
+import { IServiceContainer } from '../../../src/core/di/interfaces';
+import { ServiceToken, Constructor, Factory, ServiceLifetime } from '../../../src/core/di/types';
+import { DIError, DependencyResolutionError } from '../../../src/core/di/errors';
 
-// class TestService extends BaseService {
-//   protected validateDependencies(): Result<void> {
-//     return Result.success(undefined);
-//   }
-// }
+class TestService extends BaseService {
+  protected validateDependencies(): Result<void, Error> {
+    return Result.ok(undefined);
+  }
+}
 
-// class MockContainer implements IServiceContainer {
-//   initialize(): void {}
-  
-//   register<T>(): Result<void, Error> {
-//     return Result.success(undefined);
-//   }
-  
-//   registerSingleton<T>(): Result<void, Error> {
-//     return Result.success(undefined);
-//   }
-  
-//   registerFactory<T>(): Result<void, Error> {
-//     return Result.success(undefined);
-//   }
-  
-//   resolve<T>(_token: ServiceToken): Result<T, Error> {
-//     return Result.success({} as T);
-//   }
-  
-//   clear(): void {}
-// }
+class MockContainer implements IServiceContainer {
+  initialize(): void {}
 
-// describe("BaseService", () => {
-//   let container: IServiceContainer;
+  register<T>(
+    _token: ServiceToken,
+    _implementation: Constructor<T>,
+    _lifetime?: ServiceLifetime
+  ): Result<void, DIError> {
+    return Result.ok(undefined);
+  }
 
-//   beforeEach(() => {
-//     container = new MockContainer();
-//   });
+  registerSingleton<T>(
+    _token: ServiceToken,
+    _implementation: Constructor<T>
+  ): Result<void, DIError> {
+    return Result.ok(undefined);
+  }
 
-//   describe("initialization", () => {
-//     it("should initialize successfully when dependencies are valid", () => {
-//       const service = new TestService(container);
-//       const result = service["initialize"]();
-//       expect(result.isSuccess()).toBe(true);
-//     });
+  registerFactory<T>(
+    _token: ServiceToken,
+    _factory: Factory<T>,
+    _lifetime?: ServiceLifetime
+  ): Result<void, DIError> {
+    return Result.ok(undefined);
+  }
 
-//     it("should fail initialization when dependencies are invalid", () => {
-//       const invalidContainer = new MockContainer();
-//       jest.spyOn(invalidContainer, "resolve").mockImplementation(() => {
-//         return Result.failure("Missing dependency");
-//       });
+  resolve<T>(_token: ServiceToken): Result<T, DIError> {
+    return Result.ok({} as T);
+  }
 
-//       const service = new TestService(invalidContainer);
-//       const result = service["initialize"]();
-//       expect(result.isFailure()).toBe(true);
-//       expect(result.error).toContain("Service initialization failed");
-//     });
-//   });
+  clear(): void {}
+}
 
-//   describe("dependency resolution", () => {
-//     it("should resolve dependencies successfully", () => {
-//       const mockDependency = { id: "test" };
-//       const container = new MockContainer();
-//       jest.spyOn(container, "resolve").mockImplementation(() => {
-//         return Result.success(mockDependency);
-//       });
+describe('BaseService', () => {
+  let container: IServiceContainer;
 
-//       const service = new TestService(container);
-//       const result = service["resolveDependency"]<typeof mockDependency>(Symbol("test"));
-//       expect(result.isSuccess()).toBe(true);
-//       expect(result.value).toBe(mockDependency);
-//     });
+  beforeEach(() => {
+    container = new MockContainer();
+  });
 
-//     it("should handle dependency resolution failures", () => {
-//       const container = new MockContainer();
-//       jest.spyOn(container, "resolve").mockImplementation(() => {
-//         return Result.failure("Resolution failed");
-//       });
+  describe('initialization', () => {
+    it('should initialize successfully when dependencies are valid', () => {
+      const service = new TestService(container);
+      const result = service['initialize']();
+      expect(result.isOk()).toBe(true);
+    });
 
-//       const service = new TestService(container);
-//       const result = service["resolveDependency"]<object>(Symbol("test"));
-//       expect(result.isFailure()).toBe(true);
-//       expect(result.error).toContain("Failed to resolve dependency");
-//     });
+    it('should fail initialization when dependencies are invalid', () => {
+      const invalidContainer = new MockContainer();
+      jest.spyOn(invalidContainer, 'resolve').mockImplementation(() => {
+        return Result.err(new DependencyResolutionError('test', 'Missing dependency'));
+      });
 
-//     it("should validate resolved dependency type", () => {
-//       const container = new MockContainer();
-//       jest.spyOn(container, "resolve").mockImplementation(() => {
-//         return Result.success(null);
-//       });
+      const service = new TestService(invalidContainer);
+      const result = service['initialize']();
+      expect(result.isErr()).toBe(true);
+      expect(result.error?.message).toContain('Service initialization failed');
+    });
+  });
 
-//       const service = new TestService(container);
-//       const result = service["resolveDependency"]<object>(Symbol("test"));
-//       expect(result.isFailure()).toBe(true);
-//       expect(result.error).toContain("Invalid dependency type");
-//     });
-//   });
-// });
-*/
+  describe('dependency resolution', () => {
+    it('should resolve dependencies successfully', () => {
+      const mockDependency = { id: 'test' };
+      const container = new MockContainer();
+      jest.spyOn(container, 'resolve').mockImplementation(() => {
+        return Result.ok(mockDependency);
+      });
+
+      const service = new TestService(container);
+      const result = service['resolveDependency']<typeof mockDependency>(Symbol('test'));
+      expect(result.isOk()).toBe(true);
+      expect(result.value).toBe(mockDependency);
+    });
+
+    it('should handle dependency resolution failures', () => {
+      const container = new MockContainer();
+      jest.spyOn(container, 'resolve').mockImplementation(() => {
+        return Result.err(new DependencyResolutionError('test', 'Resolution failed'));
+      });
+
+      const service = new TestService(container);
+      const result = service['resolveDependency']<object>(Symbol('test'));
+      expect(result.isErr()).toBe(true);
+      expect(result.error?.message).toContain('Resolution failed');
+    });
+
+    it('should validate resolved dependency type', () => {
+      const container = new MockContainer();
+      jest.spyOn(container, 'resolve').mockImplementation(() => {
+        return Result.ok(null as any);
+      });
+
+      const service = new TestService(container);
+      const result = service['resolveDependency']<object>(Symbol('test'));
+      expect(result.isErr()).toBe(true);
+      expect(result.error?.message).toContain('Invalid dependency type');
+    });
+  });
+});
