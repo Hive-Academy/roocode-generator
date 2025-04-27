@@ -11,7 +11,7 @@ import { Injectable } from '@core/di/decorators'; // Added for TestService
 // import { ApplicationContainer } from '@core/application/application-container';
 import { Result } from '@core/result/result'; // Import Result (still used by mocks)
 import { Container } from '@core/di/container'; // Import Container
-import { DIError } from '@core/di/errors'; // Import DIError
+import { DIError, ServiceRegistrationError } from '@core/di/errors'; // Import DIError and ServiceRegistrationError
 // import { IFileOperations } from '@core/file-operations/interfaces';
 // import { LLMProviderRegistry } from '@core/llm/provider-registry';
 // import { IRulesFileManager } from '@generators/rules/interfaces';
@@ -326,6 +326,23 @@ describe('Container', () => {
       // Check that the message includes the original error message
       expect(result.error?.message).toContain(
         `Failed to instantiate service 'ErrorService'. Original error: ${constructorError.message}`
+      );
+    });
+  });
+
+  describe('register', () => {
+    // Add a describe block for register-specific tests
+    it('should return error result when registering non-injectable class', () => {
+      const NON_INJECTABLE_TOKEN = 'NonInjectableToken';
+      class NonInjectableService {} // No @Injectable decorator
+
+      const result = container.register(NON_INJECTABLE_TOKEN, NonInjectableService);
+
+      expect(result.isErr()).toBe(true);
+      expect(result.error).toBeInstanceOf(ServiceRegistrationError);
+      // Check the specific error message thrown by the container
+      expect(result.error?.message).toEqual(
+        `Failed to register service '${NON_INJECTABLE_TOKEN}': Service class must be decorated with @Injectable()`
       );
     });
   });

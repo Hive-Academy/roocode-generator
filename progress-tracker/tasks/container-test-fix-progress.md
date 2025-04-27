@@ -1,36 +1,39 @@
-# Progress Tracking: Container Test Fix
+# Progress Tracking: Container Test Coverage
 
 ## References
 
 - Implementation Plan: [progress-tracker/implementation-plans/container-test-fix.md](../implementation-plans/container-test-fix.md)
 - Memory Bank References:
-  - memory-bank/TechnicalArchitecture.md (DI container architecture)
-  - memory-bank/DeveloperGuide.md (Testing standards)
+  - memory-bank/DeveloperGuide.md: Testing standards and practices
+  - memory-bank/TechnicalArchitecture.md: DI container design principles
 
 ## Overall Progress
 
 - Start Date: 2025-04-28
-- Current Status: Complete
-- Completion: 100%
+- Current Status: In Progress
+- Completion: 12.5% (1 of 8 tasks)
 
 ## Task Progress
 
-### Task 1: Add Injectable Decorator to TestService
+### Task 1: Test Injectable Decorator Validation
 
 **Status**: Complete - 100%
 
 **Implementation Notes**:
 
-- Added `@Injectable()` decorator import from `@core/di/decorators`.
-- Applied the decorator to the `TestService` class definition within `tests/core/di/container.test.ts`.
-- Verified that the core tests for successful singleton registration (`registerSingleton › should register...` and `registerSingleton › should return the same instance...`) now pass after this change.
-- Noted that other test failures related to duplicate registration checks and error cause propagation persist, but are either unrelated to this specific change or expected to be fixed in the next task.
+- Added a new test case within a `describe('register', ...)` block in `tests/core/di/container.test.ts`.
+- The test defines a class `NonInjectableService` without the `@Injectable()` decorator.
+- It attempts to register this class using `container.register()`.
+- Assertions verify that the registration returns an error (`isErr() === true`).
+- Assertions check that the error is an instance of `ServiceRegistrationError`.
+- Assertions verify the specific error message: `Failed to register service 'NonInjectableToken': Service class must be decorated with @Injectable()`.
+- Added `ServiceRegistrationError` to the imports in `tests/core/di/container.test.ts`.
 
 **Specific Changes**:
 
 - Modified `tests/core/di/container.test.ts`:
-  - Added import `import { Injectable } from '@core/di/decorators';`
-  - Added `@Injectable()` decorator above `class TestService`.
+  - Added import for `ServiceRegistrationError` from `@core/di/errors`.
+  - Added new test case `it('should return error result when registering non-injectable class', ...)` (lines ~334-347).
 
 **Deviations from Plan**:
 
@@ -39,38 +42,40 @@
 **Testing**:
 
 - Ran `npm test -- tests/core/di/container.test.ts`.
-- Confirmed the specific tests related to successful singleton registration of `TestService` pass.
-- Other failures observed are documented in Implementation Notes and are expected to be addressed later or investigated separately.
+- Confirmed all 10 tests in the suite pass, including the new test case.
+- Test command exited with code 1 due to global coverage thresholds not being met, which is expected at this stage.
 
-### Task 2: Fix Error Cause Propagation
+### Task 2: Test Container Clear Method
 
-**Status**: Complete - 100%
+**Status**: Not Started - 0%
+[This section will be updated when assigned this task]
 
-**Implementation Notes**:
+### Task 3: Test Singleton Factory Instance Caching
 
-- Updated the `resolve` method's main catch block in `src/core/di/container.ts` to wrap non-DI errors in `DependencyResolutionError`, passing the original error as the `cause` and embedding the original error message in the new error's message for better diagnostics.
-- Updated the `createInstance` method's catch block similarly to embed the original error message when throwing `DependencyResolutionError`.
-- Encountered issues with Jest correctly asserting the `error.cause` property in the test environment. As a workaround, removed the direct `cause` check and updated test assertions to verify the original error message is present within the wrapped error's message.
-- Fixed a test setup issue in `tests/core/di/container.test.ts` where the `ErrorService` class used for testing constructor errors was missing the `@Injectable()` decorator, preventing successful registration and causing the test to fail for the wrong reason. Added the decorator.
-- Removed a duplicate registration line accidentally added during debugging.
+**Status**: Not Started - 0%
+[This section will be updated when assigned this task]
 
-**Specific Changes**:
+### Task 4: Test Dependency Resolution Error Handling
 
-- Modified `src/core/di/container.ts`:
-  - Updated catch block in `resolve` (lines ~155-163) to create `DependencyResolutionError` with embedded original message and cause.
-  - Updated catch block in `createInstance` (lines ~218-224) to create `DependencyResolutionError` with embedded original message and cause.
-- Modified `tests/core/di/container.test.ts`:
-  - Updated error message assertion in factory error test (line ~307).
-  - Added `@Injectable()` decorator to `ErrorService` class definition (line ~316).
-  - Removed duplicate `registerSingleton` call (line ~323).
-  - Updated error message assertion in singleton constructor error test (line ~329) and commented out the problematic `cause` check (line ~327).
+**Status**: Not Started - 0%
+[This section will be updated when assigned this task]
 
-**Deviations from Plan**:
+### Task 5: Test Container Initialization Check
 
-- Could not reliably verify `error.cause` in Jest assertions. Modified tests to check for the original error message within the wrapped error's message instead. This ensures the core goal of error information propagation is met, although not via the standard `cause` property in the test assertion itself.
+**Status**: Not Started - 0%
+[This section will be updated when assigned this task]
 
-**Testing**:
+### Task 6: Test Token Validation
 
-- Ran `npm test -- tests/core/di/container.test.ts`.
-- Confirmed the tests `resolve › should return error result if factory throws error during resolution` and `resolve › should return error result if singleton constructor throws error during resolution` now pass after the changes.
-- Failures related to duplicate registration checks remain but are out of scope for this task.
+**Status**: Not Started - 0%
+[This section will be updated when assigned this task]
+
+### Task 7: Test Implementation Validation
+
+**Status**: Not Started - 0%
+[This section will be updated when assigned this task]
+
+### Task 8: Test Circular Dependency Detection
+
+**Status**: Not Started - 0%
+[This section will be updated when assigned this task]
