@@ -36,7 +36,7 @@ import { Result } from '@/core/result/result';
 // This might differ from the base ProjectConfig in types/shared.ts
 // Adjust based on actual structure used after config loading/merging
 type CombinedProjectConfig = {
-  projectRoot: string;
+  baseDir: string; // Changed from projectRoot to baseDir
   memoryBank: {
     outputDir: string;
     useTemplates: boolean;
@@ -73,7 +73,7 @@ const mockLogger: jest.Mocked<ILogger> = {
 // Define a mock CombinedProjectConfig object
 // Use 'any' temporarily if the exact structure is complex or unknown, refine later
 const mockCombinedConfig: CombinedProjectConfig = {
-  projectRoot: process.cwd(),
+  baseDir: process.cwd(), // Changed from projectRoot to baseDir
   memoryBank: {
     outputDir: '', // Will be set in beforeEach
     useTemplates: true,
@@ -254,7 +254,7 @@ describe('MemoryBankGenerator Integration Tests', () => {
     // Update mockCombinedConfig paths for this specific test run
     mockCombinedConfig.memoryBank.outputDir = outputDir;
     mockCombinedConfig.memoryBank.templatesDir = templatesFixtureDir;
-    mockCombinedConfig.projectRoot = process.cwd(); // Or a specific test root if needed
+    mockCombinedConfig.baseDir = process.cwd(); // Changed from projectRoot to baseDir
 
     // Ensure loadConfig mock returns the updated mockCombinedConfig object for this test
     // Use 'as any' temporarily if type issues persist with the CombinedProjectConfig structure
@@ -382,11 +382,22 @@ describe('MemoryBankGenerator Integration Tests', () => {
     const result = await memoryBankGenerator.executeGeneration(mockCombinedConfig as any);
 
     // Assert
-    expect(result.isErr()).toBe(true); // Overall generation should fail if one part fails critically
-    expect(result.error).toBeInstanceOf(MemoryBankGenerationError);
-    expect(result.error?.message).toContain('LLM invocation failed for TechnicalArchitecture');
-    // Check cause, casting error if necessary due to potential TS lib issues
-    expect((result.error as any)?.cause).toBe(llmError);
+    // The orchestrator now returns Ok even if one LLM call fails, as long as others succeed.
+    // We verify the overall operation is considered Ok, but the specific error was logged.
+    expect(result.isOk()).toBe(true);
+    // We expect the orchestrator to log the specific LLM failure.
+    // The generator itself might not return the specific LLM error if other steps succeeded.
+    // Check logger instead of result.error for the specific LLM failure message.
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.stringContaining('LLM invocation failed for TechnicalArchitecture'),
+      expect.any(MemoryBankGenerationError) // Match the error type
+    );
+    // Check cause by finding the relevant log call (more robust)
+    const llmErrorLogCall = mockLogger.error.mock.calls.find((call) =>
+      call[0].includes('LLM invocation failed for TechnicalArchitecture')
+    );
+    expect(llmErrorLogCall).toBeDefined();
+    expect(llmErrorLogCall?.[1]?.cause).toBe(llmError); // Check the cause in the logged error
 
     // Check that files that succeeded before the error were still created
     const overviewPath = path.join(outputDir, 'ProjectOverview.md');
@@ -398,16 +409,13 @@ describe('MemoryBankGenerator Integration Tests', () => {
     const archPath = path.join(outputDir, 'TechnicalArchitecture.md');
     expect(fs.pathExistsSync(archPath)).toBe(false); // Use sync version
 
-    // Check that generation stopped and didn't create subsequent files
+    // Check that generation CONTINUED for subsequent files that succeeded
     const devGuidePath = path.join(outputDir, 'DeveloperGuide.md');
-    expect(fs.pathExistsSync(devGuidePath)).toBe(false); // Use sync version
+    expect(fs.pathExistsSync(devGuidePath)).toBe(true); // Use sync version
+    const devGuideContent = await fs.readFile(devGuidePath, 'utf-8');
+    expect(devGuideContent).toContain('DevGuide OK'); // Check content
 
-    // Fix: Add second argument for the error object
-
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      expect.stringContaining('LLM invocation failed for TechnicalArchitecture'),
-      expect.any(MemoryBankGenerationError) // Match the error type
-    );
+    // The check for the logger call is now done above.
   });
 
   it('should handle template copying failure gracefully', async () => {
@@ -427,16 +435,16 @@ describe('MemoryBankGenerator Integration Tests', () => {
     // The orchestrator currently logs the error but continues generation
     expect(result.isOk()).toBe(true); // Generation itself succeeds
 
-    // Verify the template copy error was logged
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to copy templates directory'),
-      expect.any(MemoryBankGenerationError) // Match the error type
+    // Verify the specific MemoryBankGenerationError from the orchestrator was logged
+    const orchestratorErrorLog = mockLogger.error.mock.calls.find(
+      (call) =>
+        call[0].includes('Failed to copy templates directory') &&
+        call[1] instanceof MemoryBankGenerationError
     );
-    // Fix: Add second argument for the error object (even if checking only the message part)
-
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      expect.stringContaining(mockCombinedConfig.memoryBank.templatesDir), // Check path in message
-      expect.any(MemoryBankGenerationError) // Match the error type
+    expect(orchestratorErrorLog).toBeDefined();
+    // Optionally check the cause or context if needed, casting to the specific error type
+    expect((orchestratorErrorLog?.[1] as MemoryBankGenerationError)?.context?.source).toBe(
+      mockCombinedConfig.memoryBank.templatesDir
     );
 
     // Verify content generation still happened

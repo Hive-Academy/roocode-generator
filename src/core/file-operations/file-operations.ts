@@ -204,6 +204,20 @@ export class FileOperations implements IFileOperations {
     destDir: string
   ): Promise<Result<void, FileOperationError>> {
     try {
+      // Check if source directory exists first
+      const sourceExistsResult = await this.exists(sourceDir);
+      if (sourceExistsResult.isErr()) {
+        this.logger.error(
+          `Error checking existence of source directory: ${sourceDir}`,
+          sourceExistsResult.error
+        );
+        return Result.err(new FileOperationError(sourceDir, sourceExistsResult.error));
+      }
+      if (!sourceExistsResult.value) {
+        this.logger.error(`Source directory does not exist: ${sourceDir}`);
+        return Result.err(new FileNotFoundError(sourceDir));
+      }
+
       // Create destination directory if it doesn't exist
       const createDirResult = await this.createDirectory(destDir);
       // Ignore EEXIST, handle other errors

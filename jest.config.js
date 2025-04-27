@@ -13,6 +13,8 @@ module.exports = {
       ['ts-jest', { tsconfig: 'tsconfig.test.json', allowJs: true }],
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+  // Ignore compiled output directory
+  modulePathIgnorePatterns: ['<rootDir>/dist/'],
   moduleNameMapper: {
     // Existing mappings
     '^@core/(.*)$': '<rootDir>/src/core/$1',

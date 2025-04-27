@@ -72,10 +72,20 @@ export class MemoryBankOrchestrator implements IMemoryBankOrchestrator {
     const errors: { fileType: string; error: Error; phase: string }[] = [];
 
     try {
+      // Add check for memoryBank config
+      if (!config.memoryBank?.outputDir) {
+        return this._handleGenerationError(
+          'Memory bank output directory is not configured',
+          'orchestrateGeneration',
+          undefined,
+          { configKey: 'memoryBank.outputDir' }
+        );
+      }
+
       // Create the memory-bank directory structure
       this.logger.info('Creating memory bank directory structure...');
       const dirResult = await this.fileManager.createMemoryBankDirectory(
-        config.baseDir || process.cwd()
+        config.memoryBank.outputDir // Use the configured output directory
       );
 
       if (dirResult.isErr()) {
@@ -90,7 +100,17 @@ export class MemoryBankOrchestrator implements IMemoryBankOrchestrator {
       // Generate each memory bank file type
       this.logger.info('Generating memory bank files...');
       const fileTypesToGenerate = Object.values(MemoryBankFileType);
-      const memoryBankDir = path.join(config.baseDir || process.cwd(), 'memory-bank');
+      // Re-check config as it might have changed (though unlikely in this flow)
+      const outputDir = config.memoryBank?.outputDir;
+      if (!outputDir) {
+        // This should theoretically not be reached due to the earlier check, but good for safety
+        return this._handleGenerationError(
+          'Memory bank output directory became undefined during generation',
+          'orchestrateGeneration',
+          undefined,
+          { configKey: 'memoryBank.outputDir' }
+        );
+      }
       let successCount = 0;
 
       for (const fileType of fileTypesToGenerate) {
@@ -156,7 +176,7 @@ export class MemoryBankOrchestrator implements IMemoryBankOrchestrator {
           continue;
         }
 
-        const outputFilePath = path.join(memoryBankDir, `${String(fileType)}.md`);
+        const outputFilePath = path.join(outputDir, `${String(fileType)}.md`); // Use outputDir (already applied, but included for completeness)
         this.logger.debug(`Writing ${String(fileType)} to ${outputFilePath}`);
 
         const writeResult = await this.fileManager.writeMemoryBankFile(
@@ -178,44 +198,52 @@ export class MemoryBankOrchestrator implements IMemoryBankOrchestrator {
 
         successCount++;
         this.logger.info(`Generated ${String(fileType)} at ${outputFilePath}`);
-      }
+      } // End of for loop
 
-      // Copy templates directory
-      this.logger.info('Copying template files...');
-      const sourceTemplatesDir = path.join('templates', 'memory-bank', 'templates');
-      const destTemplatesDir = path.join(memoryBankDir, 'templates');
+      // Copy templates directory if enabled
+      if (config.memoryBank?.useTemplates) {
+        // Added check
+        this.logger.info('Copying template files...');
+        // Use configured templatesDir, fallback to default
+        const sourceTemplatesDir =
+          config.memoryBank?.templatesDir || path.join('templates', 'memory-bank', 'templates');
+        const destTemplatesDir = path.join(outputDir, 'templates'); // Use outputDir
 
-      this.logger.debug(`Copying templates from ${sourceTemplatesDir} to ${destTemplatesDir}`);
-      const copyResult = await this.fileManager.copyDirectoryRecursive(
-        sourceTemplatesDir,
-        destTemplatesDir
-      );
-
-      if (copyResult.isErr()) {
-        // Create the specific error first to ensure correct type for the errors array
-        const copyError = new MemoryBankGenerationError(
-          'Failed to copy templates directory',
-          {
-            operation: 'copyDirectoryRecursive',
-            source: sourceTemplatesDir,
-            destination: destTemplatesDir,
-          },
-          copyResult.error // Pass the original cause
+        this.logger.debug(`Copying templates from ${sourceTemplatesDir} to ${destTemplatesDir}`);
+        const copyResult = await this.fileManager.copyDirectoryRecursive(
+          sourceTemplatesDir,
+          destTemplatesDir
         );
-        // Log the error using the logger directly
-        this.logger.error(copyError.message, copyError);
-        // Add the structured error to the list
-        errors.push({
-          fileType: 'templates',
-          error: copyError, // Use the created error instance
-          phase: 'template-copying',
-        });
-        // The process continues even if template copying fails.
+
+        if (copyResult.isErr()) {
+          // Create the specific error first to ensure correct type for the errors array
+          const copyError = new MemoryBankGenerationError(
+            'Failed to copy templates directory',
+            {
+              operation: 'copyDirectoryRecursive',
+              source: sourceTemplatesDir,
+              destination: destTemplatesDir,
+            },
+            copyResult.error // Pass the original cause
+          );
+          // Log the error using the logger directly
+          this.logger.error(copyError.message, copyError);
+          // Add the structured error to the list
+          errors.push({
+            fileType: 'templates',
+            error: copyError, // Use the created error instance
+            phase: 'template-copying',
+          });
+          // The process continues even if template copying fails.
+        } else {
+          this.logger.info(
+            `Templates copied successfully from ${sourceTemplatesDir} to ${destTemplatesDir}`
+          );
+        }
       } else {
-        this.logger.info(
-          `Templates copied successfully from ${sourceTemplatesDir} to ${destTemplatesDir}`
-        );
-      }
+        // Added else block
+        this.logger.info('Template copying skipped as useTemplates is false.');
+      } // End of if (config.memoryBank?.useTemplates)
 
       // Report generation summary
       if (errors.length > 0) {

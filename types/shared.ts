@@ -36,6 +36,17 @@ export interface ProjectConfig {
     runtime: string[];
     development: string[];
   };
+  /** Memory bank specific configuration */
+  memoryBank?: {
+    outputDir: string;
+    useTemplates?: boolean;
+    templatesDir?: string;
+    generateProjectOverview?: boolean;
+    generateTechnicalArchitecture?: boolean;
+    generateDeveloperGuide?: boolean;
+    exclusions?: string[];
+    fileTypes?: { include?: string[]; exclude?: string[] };
+  };
   /** Optional custom configuration */
   options?: Record<string, unknown>;
 }
