@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { MemoryBankContentGenerator } from '../../src/memory-bank/memory-bank-content-generator';
-import { IPromptBuilder, MemoryBankFileType } from '../../src/memory-bank/interfaces';
+import {
+  IPromptBuilder,
+  MemoryBankFileType,
+  IContentProcessor, // Added import
+} from '../../src/memory-bank/interfaces';
 import { LLMAgent } from '../../src/core/llm/llm-agent';
 import { ILogger } from '../../src/core/services/logger-service';
 import { Result } from '../../src/core/result/result';
@@ -10,6 +14,7 @@ describe('MemoryBankContentGenerator', () => {
   let contentGenerator: MemoryBankContentGenerator;
   let mockLlmAgent: jest.Mocked<LLMAgent>;
   let mockPromptBuilder: jest.Mocked<IPromptBuilder>;
+  let mockContentProcessor: jest.Mocked<IContentProcessor>; // Added mock variable
   let mockLogger: jest.Mocked<ILogger>;
 
   beforeEach(() => {
@@ -23,6 +28,12 @@ describe('MemoryBankContentGenerator', () => {
       buildPrompt: jest.fn(),
     } as jest.Mocked<IPromptBuilder>;
 
+    mockContentProcessor = {
+      // Added mock definition
+      stripMarkdownCodeBlock: jest.fn(),
+      processTemplate: jest.fn(),
+    } as jest.Mocked<IContentProcessor>;
+
     mockLogger = {
       debug: jest.fn(),
       info: jest.fn(),
@@ -31,11 +42,18 @@ describe('MemoryBankContentGenerator', () => {
     } as jest.Mocked<ILogger>;
 
     // Create the content generator with mocks
-    contentGenerator = new MemoryBankContentGenerator(mockLlmAgent, mockPromptBuilder, mockLogger);
+    contentGenerator = new MemoryBankContentGenerator(
+      mockLlmAgent,
+      mockPromptBuilder,
+      mockContentProcessor, // Added mock to constructor
+      mockLogger
+    );
 
     // Default happy path mocks
     mockPromptBuilder.buildPrompt.mockReturnValue(Result.ok('Test prompt'));
-    mockLlmAgent.getCompletion.mockResolvedValue(Result.ok('Generated content'));
+    mockLlmAgent.getCompletion.mockResolvedValue(Result.ok('```markdown\nGenerated content\n```'));
+    // Default success mock for stripping
+    mockContentProcessor.stripMarkdownCodeBlock.mockReturnValue(Result.ok('Generated content'));
   });
 
   describe('generateContent', () => {
@@ -50,6 +68,11 @@ describe('MemoryBankContentGenerator', () => {
 
       // Assert
       expect(result.isOk()).toBe(true);
+      // Check that stripping was called with the raw LLM content
+      expect(mockContentProcessor.stripMarkdownCodeBlock).toHaveBeenCalledWith(
+        '```markdown\nGenerated content\n```'
+      );
+      // Check that the final result is the stripped content
       expect(result.value).toBe('Generated content');
       expect(mockPromptBuilder.buildPrompt).toHaveBeenCalledWith(
         expect.stringContaining('Create a project overview'),
@@ -64,7 +87,10 @@ describe('MemoryBankContentGenerator', () => {
         expect.stringContaining(`Generating content for ${fileType}`)
       );
       expect(mockLogger.debug).toHaveBeenCalledWith(
-        expect.stringContaining(`Successfully generated content for ${fileType}`)
+        expect.stringContaining(`attempting to strip markdown`)
+      );
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining(`Successfully stripped markdown for ${fileType}`)
       );
     });
 
@@ -79,6 +105,9 @@ describe('MemoryBankContentGenerator', () => {
 
       // Assert
       expect(result.isOk()).toBe(true);
+      expect(mockContentProcessor.stripMarkdownCodeBlock).toHaveBeenCalledWith(
+        '```markdown\nGenerated content\n```'
+      );
       expect(result.value).toBe('Generated content');
       expect(mockPromptBuilder.buildPrompt).toHaveBeenCalledWith(
         expect.stringContaining('Create a technical architecture'),
@@ -102,6 +131,9 @@ describe('MemoryBankContentGenerator', () => {
 
       // Assert
       expect(result.isOk()).toBe(true);
+      expect(mockContentProcessor.stripMarkdownCodeBlock).toHaveBeenCalledWith(
+        '```markdown\nGenerated content\n```'
+      );
       expect(result.value).toBe('Generated content');
       expect(mockPromptBuilder.buildPrompt).toHaveBeenCalledWith(
         expect.stringContaining('Create a developer guide'),
@@ -200,7 +232,6 @@ describe('MemoryBankContentGenerator', () => {
 
       // Act
       const result = await contentGenerator.generateContent(fileType, context, template);
-
       // Assert
       expect(result.isErr()).toBe(true);
       expect(result.error).toBeInstanceOf(MemoryBankGenerationError);
@@ -213,6 +244,61 @@ describe('MemoryBankContentGenerator', () => {
       expect(genError.cause).toBe(unexpectedError);
       expect(mockLogger.error).toHaveBeenCalledWith(
         expect.stringContaining(`Unexpected error generating content for ${fileType}`),
+        expect.any(MemoryBankGenerationError)
+      );
+    });
+
+    it('should return error when content stripping fails', async () => {
+      // Arrange
+      const fileType = MemoryBankFileType.ProjectOverview;
+      const context = 'Project context';
+      const template = 'Template content';
+      const stripError = new Error('Stripping failed');
+      mockContentProcessor.stripMarkdownCodeBlock.mockReturnValue(Result.err(stripError));
+      mockLlmAgent.getCompletion.mockResolvedValue(Result.ok('Raw LLM content')); // Ensure LLM part succeeds
+
+      // Act
+      const result = await contentGenerator.generateContent(fileType, context, template);
+
+      // Assert
+      expect(result.isErr()).toBe(true);
+      expect(result.error).toBeInstanceOf(MemoryBankGenerationError);
+      expect(result.error?.message).toContain(`Failed to strip markdown from ${fileType} content`);
+      const genError = result.error as MemoryBankGenerationError;
+      expect(genError.context?.operation).toBe('stripMarkdownCodeBlock');
+      expect(genError.context?.fileType).toBe(fileType);
+      expect(genError.cause).toBe(stripError);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining(`Failed to strip markdown for ${fileType}`),
+        expect.any(MemoryBankGenerationError)
+      );
+    });
+
+    it('should return error when content stripping returns undefined', async () => {
+      // Arrange
+      const fileType = MemoryBankFileType.ProjectOverview;
+      const context = 'Project context';
+      const template = 'Template content';
+      // Mock the processor to return Ok(undefined) - simulating the TS issue scenario
+      mockContentProcessor.stripMarkdownCodeBlock.mockReturnValue(
+        Result.ok(undefined as unknown as string) // Force undefined for test
+      );
+      mockLlmAgent.getCompletion.mockResolvedValue(Result.ok('Raw LLM content')); // Ensure LLM part succeeds
+
+      // Act
+      const result = await contentGenerator.generateContent(fileType, context, template);
+
+      // Assert
+      expect(result.isErr()).toBe(true);
+      expect(result.error).toBeInstanceOf(MemoryBankGenerationError);
+      expect(result.error?.message).toContain(
+        `Content stripping unexpectedly returned undefined for ${fileType}`
+      );
+      const genError = result.error as MemoryBankGenerationError;
+      expect(genError.context?.operation).toBe('stripMarkdownCodeBlock');
+      expect(genError.context?.fileType).toBe(fileType);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining(`Content stripping returned undefined for ${fileType}`),
         expect.any(MemoryBankGenerationError)
       );
     });

@@ -26,30 +26,4 @@ export function registerServices(): void {
   // For example, if there were registrations not fitting into specific modules.
 }
 
-/**
- * Helper function to resolve dependencies from the container with error handling.
- * This remains here as it might be used by the modules or future registrations.
- * Consider moving it to a more general utility location if appropriate.
- */
-export function resolveDependency<T>(container: Container, token: string): T {
-  const result = container.resolve<T>(token);
-  if (result.isErr()) {
-    const err = result.error;
-    // Log the error or handle it appropriately before throwing
-    console.error(`DI Resolution Error for token '${token}':`, err); // Basic logging
-    if (err instanceof Error) {
-      throw err; // Re-throw the original error if it's an Error instance
-    } else {
-      // Wrap non-Error types in a new Error for consistent stack traces
-      throw new Error(`DI Resolution Failed for token '${token}': ${String(err)}`);
-    }
-  }
-  const value = result.value;
-  if (value === undefined || value === null) {
-    // Check for undefined or null specifically
-    // Include container state or token info for better debugging context if possible
-    // Note: Container class might need a method like `hasToken(token)` or `getRegisteredTokens()` for better diagnostics.
-    throw new Error(`Dependency '${token}' resolved to null or undefined. Check registration.`);
-  }
-  return value;
-}
+// resolveDependency function moved to src/core/di/utils.ts to break circular dependency

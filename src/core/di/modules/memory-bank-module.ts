@@ -1,6 +1,6 @@
 import { IProjectConfigService } from '@core/config/interfaces';
 import { Container } from '@core/di/container';
-import { resolveDependency } from '@core/di/registrations'; // Import helper
+import { resolveDependency, assertIsDefined } from '@core/di/utils'; // Import helpers from utils
 import { IFileOperations } from '@core/file-operations/interfaces';
 import { LLMAgent } from '@core/llm/llm-agent';
 import { ILogger } from '@core/services/logger-service';
@@ -30,40 +30,51 @@ export function registerMemoryBankModule(container: Container): void {
   // Register MemoryBank specific services
   container.registerFactory<IMemoryBankValidator>('IMemoryBankValidator', () => {
     const fileOps = resolveDependency<IFileOperations>(container, 'IFileOperations');
+    assertIsDefined(fileOps, 'IFileOperations dependency not found');
     const logger = resolveDependency<ILogger>(container, 'ILogger');
+    assertIsDefined(logger, 'ILogger dependency not found');
     return new MemoryBankValidator(fileOps, logger);
   });
 
   container.registerFactory<IProjectContextService>('IProjectContextService', () => {
     const fileOps = resolveDependency<IFileOperations>(container, 'IFileOperations');
+    assertIsDefined(fileOps, 'IFileOperations dependency not found');
     const projectConfigService = resolveDependency<IProjectConfigService>(
       container,
       'IProjectConfigService'
     );
+    assertIsDefined(projectConfigService, 'IProjectConfigService dependency not found');
     const logger = resolveDependency<ILogger>(container, 'ILogger');
+    assertIsDefined(logger, 'ILogger dependency not found');
     return new ProjectContextService(fileOps, projectConfigService, logger);
   });
 
   container.registerFactory<IPromptBuilder>('IPromptBuilder', () => {
     const logger = resolveDependency<ILogger>(container, 'ILogger');
+    assertIsDefined(logger, 'ILogger dependency not found');
     return new PromptBuilder(logger);
   });
 
   container.registerFactory<IMemoryBankFileManager>('IMemoryBankFileManager', () => {
     const fileOps = resolveDependency<IFileOperations>(container, 'IFileOperations');
+    assertIsDefined(fileOps, 'IFileOperations dependency not found');
     const logger = resolveDependency<ILogger>(container, 'ILogger');
+    assertIsDefined(logger, 'ILogger dependency not found');
     return new MemoryBankFileManager(fileOps, logger);
   });
 
   container.registerFactory<IContentProcessor>('IContentProcessor', () => {
     const logger = resolveDependency<ILogger>(container, 'ILogger');
+    assertIsDefined(logger, 'ILogger dependency not found');
     return new ContentProcessor(logger);
   });
 
   // Register MemoryBankTemplateManager
   container.registerFactory<IMemoryBankTemplateManager>('IMemoryBankTemplateManager', () => {
     const fileOps = resolveDependency<IFileOperations>(container, 'IFileOperations');
+    assertIsDefined(fileOps, 'IFileOperations dependency not found');
     const logger = resolveDependency<ILogger>(container, 'ILogger');
+    assertIsDefined(logger, 'ILogger dependency not found');
     return new MemoryBankTemplateManager(fileOps, logger);
   });
 
@@ -73,16 +84,23 @@ export function registerMemoryBankModule(container: Container): void {
       container,
       'IMemoryBankTemplateManager'
     );
+    assertIsDefined(templateManager, 'IMemoryBankTemplateManager dependency not found');
     const logger = resolveDependency<ILogger>(container, 'ILogger');
+    assertIsDefined(logger, 'ILogger dependency not found');
     return new MemoryBankTemplateProcessor(templateManager, logger);
   });
 
   // Register MemoryBankContentGenerator
   container.registerFactory<IMemoryBankContentGenerator>('IMemoryBankContentGenerator', () => {
     const llmAgent = resolveDependency<LLMAgent>(container, 'LLMAgent');
+    assertIsDefined(llmAgent, 'LLMAgent dependency not found');
     const promptBuilder = resolveDependency<IPromptBuilder>(container, 'IPromptBuilder');
+    assertIsDefined(promptBuilder, 'IPromptBuilder dependency not found');
+    const contentProcessor = resolveDependency<IContentProcessor>(container, 'IContentProcessor'); // Resolve new dependency
+    assertIsDefined(contentProcessor, 'IContentProcessor dependency not found');
     const logger = resolveDependency<ILogger>(container, 'ILogger');
-    return new MemoryBankContentGenerator(llmAgent, promptBuilder, logger);
+    assertIsDefined(logger, 'ILogger dependency not found');
+    return new MemoryBankContentGenerator(llmAgent, promptBuilder, contentProcessor, logger); // Pass new dependency
   });
 
   // Register MemoryBankOrchestrator
@@ -91,34 +109,43 @@ export function registerMemoryBankModule(container: Container): void {
       container,
       'IMemoryBankTemplateProcessor'
     );
+    assertIsDefined(templateProcessor, 'IMemoryBankTemplateProcessor dependency not found');
     const contentGenerator = resolveDependency<IMemoryBankContentGenerator>(
       container,
       'IMemoryBankContentGenerator'
     );
+    assertIsDefined(contentGenerator, 'IMemoryBankContentGenerator dependency not found');
     const fileManager = resolveDependency<IMemoryBankFileManager>(
       container,
       'IMemoryBankFileManager'
     );
+    assertIsDefined(fileManager, 'IMemoryBankFileManager dependency not found');
     const logger = resolveDependency<ILogger>(container, 'ILogger');
+    assertIsDefined(logger, 'ILogger dependency not found');
     return new MemoryBankOrchestrator(templateProcessor, contentGenerator, fileManager, logger);
   });
 
   // Register MemoryBankGenerator
   container.registerFactory<MemoryBankGenerator>('MemoryBankGenerator', () => {
     const validator = resolveDependency<IMemoryBankValidator>(container, 'IMemoryBankValidator');
+    assertIsDefined(validator, 'IMemoryBankValidator dependency not found');
     const orchestrator = resolveDependency<IMemoryBankOrchestrator>(
       container,
       'IMemoryBankOrchestrator'
     );
+    assertIsDefined(orchestrator, 'IMemoryBankOrchestrator dependency not found');
     const logger = resolveDependency<ILogger>(container, 'ILogger');
+    assertIsDefined(logger, 'ILogger dependency not found');
     const projectConfigService = resolveDependency<IProjectConfigService>(
       container,
       'IProjectConfigService'
     );
+    assertIsDefined(projectConfigService, 'IProjectConfigService dependency not found');
     const projectContextService = resolveDependency<IProjectContextService>(
       container,
       'IProjectContextService'
     );
+    assertIsDefined(projectContextService, 'IProjectContextService dependency not found');
 
     return new MemoryBankGenerator(
       container,

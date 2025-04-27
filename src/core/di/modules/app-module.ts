@@ -3,7 +3,7 @@
 import { createPromptModule } from 'inquirer';
 
 import { Container } from '@core/di/container';
-import { resolveDependency } from '@core/di/registrations'; // Import helper
+import { resolveDependency } from '@core/di/utils'; // Import helpers from utils
 import { ILogger } from '@core/services/logger-service';
 import { IFileOperations } from '@core/file-operations/interfaces';
 import { IProjectConfigService } from '@core/config/interfaces';

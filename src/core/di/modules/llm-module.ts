@@ -3,7 +3,7 @@ import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatOpenAI } from '@langchain/openai';
 
 import { Container } from '@core/di/container';
-import { resolveDependency } from '@core/di/registrations'; // Import helper
+import { resolveDependency } from '@core/di/utils'; // Import helpers from utils
 import { ILLMProvider, LLMProviderFactory } from '@core/llm/interfaces';
 import { LLMAgent } from '@core/llm/llm-agent';
 import {

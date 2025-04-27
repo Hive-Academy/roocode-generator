@@ -2,7 +2,12 @@ import { Injectable, Inject } from '../core/di/decorators';
 import { ILogger } from '../core/services/logger-service';
 import { Result } from '../core/result/result';
 import { LLMAgent } from '../core/llm/llm-agent';
-import { IPromptBuilder, IMemoryBankContentGenerator, MemoryBankFileType } from './interfaces';
+import {
+  IPromptBuilder,
+  IMemoryBankContentGenerator,
+  MemoryBankFileType,
+  IContentProcessor, // Added import
+} from './interfaces';
 import { MemoryBankGenerationError } from '../core/errors/memory-bank-errors';
 
 /**
@@ -13,6 +18,7 @@ export class MemoryBankContentGenerator implements IMemoryBankContentGenerator {
   constructor(
     @Inject('LLMAgent') private readonly llmAgent: LLMAgent,
     @Inject('IPromptBuilder') private readonly promptBuilder: IPromptBuilder,
+    @Inject('IContentProcessor') private readonly contentProcessor: IContentProcessor, // Added dependency
     @Inject('ILogger') private readonly logger: ILogger
   ) {}
 
@@ -78,8 +84,36 @@ export class MemoryBankContentGenerator implements IMemoryBankContentGenerator {
         return Result.err(error);
       }
 
-      this.logger.debug(`Successfully generated content for ${fileType}`);
-      return Result.ok(content);
+      this.logger.debug(
+        `Successfully generated content for ${fileType}, attempting to strip markdown.`
+      );
+
+      // Strip markdown code blocks
+      const strippedContentResult = this.contentProcessor.stripMarkdownCodeBlock(content);
+
+      if (strippedContentResult.isErr()) {
+        const stripError = new MemoryBankGenerationError(
+          `Failed to strip markdown from ${fileType} content`,
+          { operation: 'stripMarkdownCodeBlock', fileType },
+          strippedContentResult.error
+        );
+        this.logger.error(`Failed to strip markdown for ${fileType}`, stripError);
+        return Result.err(stripError);
+      }
+
+      // Explicit check for undefined, potentially due to TS inference issue
+      if (strippedContentResult.value === undefined) {
+        const undefinedError = new MemoryBankGenerationError(
+          `Content stripping unexpectedly returned undefined for ${fileType}`,
+          { operation: 'stripMarkdownCodeBlock', fileType }
+        );
+        this.logger.error(`Content stripping returned undefined for ${fileType}`, undefinedError);
+        return Result.err(undefinedError);
+      }
+
+      // Now TS should be certain value is string
+      this.logger.debug(`Successfully stripped markdown for ${fileType}`);
+      return Result.ok(strippedContentResult.value);
     } catch (error) {
       const wrappedError = new MemoryBankGenerationError(
         `Unexpected error generating content for ${fileType}`,
