@@ -1,5 +1,3 @@
-# ROOCODE CONSOLIDATED RULES
-
 ## Code Style & Formatting
 
 - Use 2 spaces for indentation; never use tabs.

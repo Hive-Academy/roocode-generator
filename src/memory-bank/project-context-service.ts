@@ -6,6 +6,7 @@ import { IProjectContextService } from './interfaces';
 import { Injectable, Inject } from '../core/di/decorators';
 import { Dirent } from 'fs';
 import path from 'path';
+import { MemoryBankError } from '../core/errors/memory-bank-errors';
 
 @Injectable()
 export class ProjectContextService implements IProjectContextService {
@@ -43,6 +44,19 @@ export class ProjectContextService implements IProjectContextService {
     @Inject('ILogger') private readonly logger: ILogger
   ) {}
 
+  // Helper method to wrap caught errors during context gathering
+  private _wrapContextError(
+    message: string,
+    operation: string,
+    caughtError: unknown,
+    additionalContext?: Record<string, unknown>
+  ): Result<never> {
+    const cause = caughtError instanceof Error ? caughtError : new Error(String(caughtError));
+    const error = new MemoryBankError(message, { ...additionalContext, operation }, cause);
+    this.logger.error(error.message, error); // Log the wrapped error
+    return Result.err(error);
+  }
+
   async gatherContext(paths: string[]): Promise<Result<string, Error>> {
     try {
       const contextData: string[] = [];
@@ -57,16 +71,19 @@ export class ProjectContextService implements IProjectContextService {
       }
 
       if (contextData.length === 0) {
-        return Result.err(new Error('No valid content found in the provided paths'));
+        return Result.err(
+          new MemoryBankError('No valid content found in the provided paths', {
+            paths,
+            operation: 'gatherContext',
+          })
+        );
       }
 
       return Result.ok(contextData.join('\n'));
     } catch (error) {
-      return Result.err(
-        new Error(
-          `Error gathering context: ${error instanceof Error ? error.message : String(error)}`
-        )
-      );
+      return this._wrapContextError('Error gathering context', 'gatherContextCatch', error, {
+        paths,
+      });
     }
   }
 
@@ -85,8 +102,12 @@ export class ProjectContextService implements IProjectContextService {
         // If we can't read as directory, try reading as file
         const fileResult = await this.fileOperations.readFile(normalizedPath);
         if (fileResult.isErr()) {
-          return Result.err(
-            new Error(`Failed to process path ${normalizedPath}: ${fileResult.error?.message}`)
+          // Wrap the file reading error if directory read failed first
+          return this._wrapContextError(
+            `Failed to process path as directory or file: ${normalizedPath}`,
+            'processPathFileRead',
+            fileResult.error ?? new Error('Unknown file read error after dir read fail'),
+            { path: normalizedPath }
           );
         }
 
@@ -126,10 +147,11 @@ export class ProjectContextService implements IProjectContextService {
 
       return Result.ok(void 0);
     } catch (error) {
-      return Result.err(
-        new Error(
-          `Error processing path ${currentPath}: ${error instanceof Error ? error.message : String(error)}`
-        )
+      return this._wrapContextError(
+        `Error processing path ${currentPath}`,
+        'processPathCatch',
+        error,
+        { path: currentPath }
       );
     }
   }

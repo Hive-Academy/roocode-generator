@@ -4,6 +4,7 @@ import { IMemoryBankValidator, MemoryBankFileType, TemplateType } from './interf
 import { IFileOperations } from '../core/file-operations/interfaces';
 import { ILogger } from '../core/services/logger-service';
 import { Result } from '../core/result/result';
+import { MemoryBankValidationError } from '../core/errors/memory-bank-errors';
 
 @Injectable()
 export class MemoryBankValidator implements IMemoryBankValidator {
@@ -38,14 +39,23 @@ export class MemoryBankValidator implements IMemoryBankValidator {
       }
 
       if (missingFiles.length > 0) {
-        return Result.err(new Error(`Missing required files:\n${missingFiles.join('\n')}`));
+        return Result.err(
+          new MemoryBankValidationError('Missing required memory bank or template files', {
+            missingFiles,
+          })
+        );
       }
 
       return Result.ok(undefined);
     } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error('Error validating memory bank files', err);
-      return Result.err(err);
+      const cause = error instanceof Error ? error : new Error(String(error));
+      const validationError = new MemoryBankValidationError(
+        'Error validating memory bank files',
+        { operation: 'validateRequiredFiles' },
+        cause
+      );
+      this.logger.error(validationError.message, validationError);
+      return Result.err(validationError);
     }
   }
 
@@ -58,7 +68,12 @@ export class MemoryBankValidator implements IMemoryBankValidator {
   validateFileContent(content: string, type: MemoryBankFileType): Result<void> {
     // Basic validation example: check if content is non-empty
     if (!content || content.trim().length === 0) {
-      return Result.err(new Error(`Content for ${String(type)} is empty`));
+      return Result.err(
+        new MemoryBankValidationError(`Content for ${String(type)} is empty or whitespace`, {
+          fileType: String(type),
+          operation: 'validateFileContent',
+        })
+      );
     }
     return Result.ok(undefined);
   }

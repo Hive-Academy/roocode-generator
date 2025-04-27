@@ -1079,25 +1079,15 @@ All code follows the project's existing patterns and includes proper TypeScript 
 9. **Use multiple blocks in a single diff**: When making related changes to a file, include them in one `apply_diff` call.
 10. **Show your reasoning**: Use `<thinking>` tags to explain complex decisions.
 
-# MCP Servers - General Reference Guide
-
-## What is MCP?
-
-The Model Context Protocol (MCP) enables AI agents to communicate with external servers that provide additional tools and resources, extending their capabilities beyond basic text generation.
+# MCP Servers Reference Guide
 
 ## Core Concepts
 
-- MCP servers provide specialized tools for tasks like file operations, web searches, and API interactions
-- Two types of MCP servers: local (stdio-based) and remote (SSE-based)
-- Each server offers specific tools that can be invoked via the standard tool usage format
+- MCP (Model Context Protocol) enables communication with external servers that provide additional tools and resources
+- Two types of MCP servers: local (Stdio-based) and remote (SSE-based)
+- Access MCP tools via `use_mcp_tool` and resources via `access_mcp_resource`
 
-## Accessing MCP Tools
-
-MCP tools are accessed using two primary methods:
-
-### 1. Using MCP Tools
-
-The `use_mcp_tool` format allows executing a specific tool from an MCP server:
+## MCP Tools Format
 
 ```
 <use_mcp_tool>
@@ -1112,32 +1102,73 @@ The `use_mcp_tool` format allows executing a specific tool from an MCP server:
 </use_mcp_tool>
 ```
 
-### 2. Accessing MCP Resources
+## Connected MCP Servers
 
-The `access_mcp_resource` format allows retrieving resources from an MCP server:
+### sequential-thinking
 
-```
-<access_mcp_resource>
-<server_name>server name here</server_name>
-<uri>resource URI here</uri>
-</access_mcp_resource>
-```
+**Description**: Provides a detailed tool for dynamic and reflective problem-solving through structured thoughts.
 
-## Common Types of MCP Servers
+**Available Tools**:
 
-### File System Servers
+- **sequentialthinking**: Analyze problems through a flexible thinking process that adapts as understanding deepens.
 
-**Purpose**: Provide access to the local file system for reading, writing, and manipulating files.
+**When to Use**:
 
-**Common Operations**:
+- Breaking down complex problems into steps
+- Planning with room for revision
+- Analysis that might need course correction
+- Problems with unclear scope initially
+- Multi-step solutions
+- Tasks requiring maintained context
 
-- Reading file contents
-- Writing or modifying files
-- Creating directories
-- Listing files and directories
-- Searching for files
+**Parameters**:
+
+- `thought`: Current thinking step (analytical steps, revisions, questions, realizations)
+- `nextThoughtNeeded`: Boolean indicating if more thinking is needed
+- `thoughtNumber`: Current number in sequence
+- `totalThoughts`: Estimated total thoughts needed
+- `isRevision`: Boolean indicating if this revises previous thinking
+- `revisesThought`: Which thought is being reconsidered
+- `branchFromThought`: Branching point thought number
+- `branchId`: Identifier for the current branch
+- `needsMoreThoughts`: If reaching end but needing more thoughts
 
 **Example**:
+
+```
+<use_mcp_tool>
+<server_name>sequential-thinking</server_name>
+<tool_name>sequentialthinking</tool_name>
+<arguments>
+{
+  "thought": "First, I need to understand what variables influence this optimization problem.",
+  "nextThoughtNeeded": true,
+  "thoughtNumber": 1,
+  "totalThoughts": 5
+}
+</arguments>
+</use_mcp_tool>
+```
+
+### filesystem
+
+**Description**: Provides tools for interacting with the file system.
+
+**Available Tools**:
+
+- **read_file**: Read contents of a single file
+- **read_multiple_files**: Read contents of multiple files simultaneously
+- **write_file**: Create or overwrite a file with new content
+- **edit_file**: Make line-based edits to a text file
+- **create_directory**: Create a new directory or ensure it exists
+- **list_directory**: Get detailed listing of files and directories
+- **directory_tree**: Get recursive tree view of files and directories
+- **move_file**: Move or rename files and directories
+- **search_files**: Search for files matching a pattern
+- **get_file_info**: Retrieve metadata about a file or directory
+- **list_allowed_directories**: Show directories the server can access
+
+**Example - Reading a file**:
 
 ```
 <use_mcp_tool>
@@ -1145,146 +1176,278 @@ The `access_mcp_resource` format allows retrieving resources from an MCP server:
 <tool_name>read_file</tool_name>
 <arguments>
 {
-  "path": "path/to/file.txt"
+  "path": "src/components/Button.tsx"
 }
 </arguments>
 </use_mcp_tool>
 ```
 
-### Web Search & Scraping Servers
-
-**Purpose**: Enable search queries, web scraping, and content extraction from the internet.
-
-**Common Operations**:
-
-- Performing web searches
-- Scraping webpage content
-- Analyzing page structure
-- Extracting specific information
-
-**Example**:
+**Example - Writing a file**:
 
 ```
 <use_mcp_tool>
-<server_name>search</server_name>
-<tool_name>web_search</tool_name>
+<server_name>filesystem</server_name>
+<tool_name>write_file</tool_name>
 <arguments>
 {
-  "query": "search query here",
+  "path": "src/utils/helpers.js",
+  "content": "export function formatDate(date) {\n  return new Date(date).toLocaleDateString();\n}"
+}
+</arguments>
+</use_mcp_tool>
+```
+
+### github
+
+**Description**: Provides tools for interacting with GitHub repositories.
+
+**Available Tools**:
+
+- **create_or_update_file**: Create or update a file in a repository
+- **search_repositories**: Search for GitHub repositories
+- **create_repository**: Create a new GitHub repository
+- **get_file_contents**: Get contents of a file from a repository
+- **push_files**: Push multiple files in a single commit
+- **create_issue**: Create a new issue in a repository
+- **create_pull_request**: Create a new pull request
+- **fork_repository**: Fork a repository to your account
+- **create_branch**: Create a new branch in a repository
+- **list_commits**: Get list of commits in a branch
+- **list_issues**: List issues in a repository with filtering
+- **update_issue**: Update an existing issue
+- **add_issue_comment**: Add a comment to an issue
+- **search_code**: Search for code across repositories
+- **search_issues**: Search for issues and pull requests
+- **search_users**: Search for users on GitHub
+- **get_issue**: Get details of a specific issue
+- **get_pull_request**: Get details of a pull request
+- **list_pull_requests**: List and filter repository pull requests
+- **create_pull_request_review**: Create a review on a pull request
+- **merge_pull_request**: Merge a pull request
+- **get_pull_request_files**: Get list of files changed in a pull request
+- **get_pull_request_status**: Get status of all checks for a pull request
+- **update_pull_request_branch**: Update a pull request branch
+- **get_pull_request_comments**: Get review comments on a pull request
+- **get_pull_request_reviews**: Get reviews on a pull request
+
+**Example - Creating a repository**:
+
+```
+<use_mcp_tool>
+<server_name>github</server_name>
+<tool_name>create_repository</tool_name>
+<arguments>
+{
+  "name": "my-new-project",
+  "description": "A new project repository",
+  "private": false,
+  "autoInit": true
+}
+</arguments>
+</use_mcp_tool>
+```
+
+**Example - Creating a pull request**:
+
+```
+<use_mcp_tool>
+<server_name>github</server_name>
+<tool_name>create_pull_request</tool_name>
+<arguments>
+{
+  "owner": "username",
+  "repo": "repository-name",
+  "title": "Add new feature",
+  "body": "This PR implements the new feature as discussed in issue #42",
+  "head": "feature-branch",
+  "base": "main"
+}
+</arguments>
+</use_mcp_tool>
+```
+
+### brave-search
+
+**Description**: Provides tools for web and local search using Brave Search API.
+
+**Available Tools**:
+
+- **brave_web_search**: Perform general web search queries
+- **brave_local_search**: Search for local businesses and places
+
+**Example - Web search**:
+
+```
+<use_mcp_tool>
+<server_name>brave-search</server_name>
+<tool_name>brave_web_search</tool_name>
+<arguments>
+{
+  "query": "latest developments in artificial intelligence",
   "count": 5
 }
 </arguments>
 </use_mcp_tool>
 ```
 
-### Code & Repository Management Servers
-
-**Purpose**: Interact with code repositories, version control systems, and development tools.
-
-**Common Operations**:
-
-- Searching repositories
-- Creating/updating files
-- Managing branches and commits
-- Creating issues or pull requests
-
-**Example**:
+**Example - Local search**:
 
 ```
 <use_mcp_tool>
-<server_name>repository</server_name>
-<tool_name>search_code</tool_name>
+<server_name>brave-search</server_name>
+<tool_name>brave_local_search</tool_name>
 <arguments>
 {
-  "query": "function findUser",
-  "language": "javascript"
+  "query": "coffee shops near Central Park",
+  "count": 3
 }
 </arguments>
 </use_mcp_tool>
 ```
 
-### Analysis & Reasoning Servers
+### mcp-server-firecrawl
 
-**Purpose**: Enhance problem-solving with structured thinking, data analysis, and reasoning capabilities.
+**Description**: Provides advanced web scraping, crawling, and data extraction capabilities.
 
-**Common Operations**:
+**Available Tools**:
 
-- Breaking down complex problems
-- Analyzing data step-by-step
-- Revising previous thoughts
-- Reaching conclusions through sequential reasoning
+- **firecrawl_scrape**: Scrape a single webpage with advanced options
+- **firecrawl_map**: Discover URLs from a starting point
+- **firecrawl_crawl**: Start an asynchronous crawl of multiple pages
+- **firecrawl_check_crawl_status**: Check status of a crawl job
+- **firecrawl_search**: Search and retrieve content from web pages
+- **firecrawl_extract**: Extract structured information from web pages
+- **firecrawl_deep_research**: Conduct deep research on a query
+- **firecrawl_generate_llmstxt**: Generate standardized LLMs.txt for a website
 
-**Example**:
+**Example - Scraping a webpage**:
 
 ```
 <use_mcp_tool>
-<server_name>reasoning</server_name>
-<tool_name>sequential_thinking</tool_name>
+<server_name>mcp-server-firecrawl</server_name>
+<tool_name>firecrawl_scrape</tool_name>
 <arguments>
 {
-  "thought": "First, let's identify the key variables in this problem.",
-  "thoughtNumber": 1,
-  "totalThoughts": 5,
-  "nextThoughtNeeded": true
+  "url": "https://example.com/page",
+  "formats": ["markdown", "links"],
+  "onlyMainContent": true
 }
 </arguments>
 </use_mcp_tool>
 ```
 
-### Design & Media Servers
-
-**Purpose**: Work with design files, images, and other media assets.
-
-**Common Operations**:
-
-- Retrieving design information
-- Downloading images or assets
-- Analyzing design structure
-- Converting between formats
-
-**Example**:
+**Example - Deep research**:
 
 ```
 <use_mcp_tool>
-<server_name>design</server_name>
-<tool_name>get_design_data</tool_name>
+<server_name>mcp-server-firecrawl</server_name>
+<tool_name>firecrawl_deep_research</tool_name>
 <arguments>
 {
-  "fileKey": "design_file_id"
+  "query": "impact of climate change on marine ecosystems",
+  "maxDepth": 3,
+  "timeLimit": 120,
+  "maxUrls": 10
 }
 </arguments>
 </use_mcp_tool>
 ```
 
-## Best Practices for MCP Tool Usage
+### nx-mcp
 
-1. **Discover Available Servers**: Before using MCP tools, identify which servers are available in your current environment.
+**Description**: Provides tools for working with Nx workspaces and projects.
 
-2. **Check Tool Capabilities**: Understand what each tool can do by reviewing its documentation or schema.
+**Available Tools**:
 
-3. **Parameter Format**: Ensure all arguments are properly formatted as JSON in the arguments section.
+- **nx_docs**: Get documentation relevant to user queries
+- **nx_available_plugins**: List available Nx plugins
+- **nx_workspace**: Get project graph and nx.json configuration
+- **nx_project_details**: Get project configuration
+- **nx_generators**: List available generators
+- **nx_generator_schema**: Get detailed schema for a generator
 
-4. **Required vs. Optional**: Distinguish between required and optional parameters for each tool.
+**Example - Getting documentation**:
 
-5. **Error Handling**: Be prepared to handle and respond to errors from MCP servers.
+```
+<use_mcp_tool>
+<server_name>nx-mcp</server_name>
+<tool_name>nx_docs</tool_name>
+<arguments>
+{
+  "userQuery": "How do I configure caching in Nx?"
+}
+</arguments>
+</use_mcp_tool>
+```
 
-6. **Progressive Approach**: Start with simpler operations before attempting more complex ones.
+**Example - Getting project details**:
 
-7. **Feedback Loop**: Use the results from one tool operation to inform subsequent operations.
+```
+<use_mcp_tool>
+<server_name>nx-mcp</server_name>
+<tool_name>nx_project_details</tool_name>
+<arguments>
+{
+  "projectName": "my-app"
+}
+</arguments>
+</use_mcp_tool>
+```
 
-8. **Respect Resource Limits**: Be mindful of rate limits and resource constraints when making multiple requests.
+### Framelink Figma MCP
 
-9. **Security Considerations**: Avoid requesting operations that might access sensitive data without proper authorization.
+**Description**: Provides tools for interacting with Figma designs.
 
-10. **Step-by-Step Execution**: Execute one tool at a time, waiting for results before proceeding.
+**Available Tools**:
 
-## When to Use MCP Tools
+- **get_figma_data**: Get layout information from a Figma file
+- **download_figma_images**: Download SVG and PNG images from a Figma file
 
-- When you need specialized capabilities beyond basic text generation
-- For tasks requiring access to external resources or data
-- When working with files, code, or structured data
-- For complex problem-solving that benefits from enhanced reasoning
-- When you need to search or retrieve information from the web
-- For operations that involve specific APIs or services
+**Example - Getting Figma data**:
 
-By leveraging MCP servers effectively, AI agents can extend their capabilities and provide more valuable assistance across a wide range of tasks.
+```
+<use_mcp_tool>
+<server_name>Framelink Figma MCP</server_name>
+<tool_name>get_figma_data</tool_name>
+<arguments>
+{
+  "fileKey": "abcdefghijklm",
+  "depth": 2
+}
+</arguments>
+</use_mcp_tool>
+```
+
+**Example - Downloading Figma images**:
+
+```
+<use_mcp_tool>
+<server_name>Framelink Figma MCP</server_name>
+<tool_name>download_figma_images</tool_name>
+<arguments>
+{
+  "fileKey": "abcdefghijklm",
+  "nodes": [
+    {
+      "nodeId": "1234:5678",
+      "fileName": "logo.svg"
+    }
+  ],
+  "localPath": "./assets/images"
+}
+</arguments>
+</use_mcp_tool>
+```
+
+## Best Practices
+
+1. **Use the right server and tool**: Choose the MCP server and tool that best fits your specific task.
+2. **Check parameters carefully**: Ensure all required parameters are provided in the correct format.
+3. **Handle response data**: Process the response data returned by the MCP tool appropriately.
+4. **Error handling**: Be prepared to handle errors or unexpected responses from MCP tools.
+5. **Authentication**: Some MCP servers may require authentication or have usage limits.
+6. **Rate limiting**: Be mindful of rate limits when making multiple requests to external services.
+7. **Data privacy**: Consider data privacy and security when using MCP tools that process sensitive information.
+8. **Combine with other tools**: For complex tasks, use MCP tools in conjunction with other available tools.
+9. **Documentation**: Always refer to the server's documentation for the most up-to-date information.
+10. **Progress indication**: For long-running operations, provide feedback to the user about the progress.
