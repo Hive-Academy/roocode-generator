@@ -823,7 +823,7 @@ Creating a configuration file:
 "retryCount": 3
 }
 </content>
-<line_count>5</line_count>
+<line_count>total number of lines in the file, including empty lines</line_count>
 </write_to_file>
 
 ### insert_content
@@ -862,74 +862,99 @@ return `$${amount.toFixed(2)}`;
 </content>
 </insert_content>
 
-### apply_diff
+## apply_diff
 
-**Description**: Replace existing code using a search and replace block.
+Description: Request to replace existing code using a search and replace block.
+This tool allows for precise, surgical replaces to files by specifying exactly what content to search for and what to replace it with.
+The tool will maintain proper indentation and formatting while making changes.
+Only a single operation is allowed per tool use.
+The SEARCH section must exactly match existing content including whitespace and indentation.
+If you're not confident in the exact content to search for, use the read_file tool first to get the exact content.
+When applying the diffs, be extra careful to remember to change any closing brackets or other syntax that may be affected by the diff farther down in the file.
+ALWAYS make as many changes in a single 'apply_diff' request as possible using multiple SEARCH/REPLACE blocks
 
-**Parameters**:
+Parameters:
 
-- `path` (required): File path to modify
-- `diff` (required): Search/replace block defining changes
+- path: (required) The path of the file to modify (relative to the current workspace directory )
+- diff: (required) The search/replace block defining the changes.
 
-**Examples**:
+Diff format:
 
-Fixing a bug in a function:
-
-<apply_diff>
-<path>src/validator.js</path>
-<diff>
+```
 <<<<<<< SEARCH
-:start_line:15
-
----
-
-function isValidEmail(email) {
-const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return regex.test(email);
-}
+:start_line: (required) The line number of original content where the search block starts.
+-------
+[exact content to find including whitespace]
 =======
-function isValidEmail(email) {
-  if (!email) return false;
-  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-return regex.test(email.trim());
-}
+[new content to replace with]
+>>>>>>> REPLACE
 
-> > > > > > > REPLACE
-> > > > > > > </diff>
-> > > > > > > </apply_diff>
+```
 
-Multiple changes in one file:
+Example:
 
-<apply_diff>
-<path>src/component.js</path>
-<diff>
+Original file:
+
+```
+1 | def calculate_total(items):
+2 |     total = 0
+3 |     for item in items:
+4 |         total += item
+5 |     return total
+```
+
+Search/Replace content:
+
+```
 <<<<<<< SEARCH
-:start_line:5
-
----
-
-# const DEFAULT_TIMEOUT = 1000;
-
-const DEFAULT_TIMEOUT = 3000;
-
-> > > > > > > REPLACE
-
-<<<<<<< SEARCH
-:start_line:25
-
----
-
-if (loading) {
-return <div>Loading...</div>;
-}
+:start_line:1
+-------
+def calculate_total(items):
+    total = 0
+    for item in items:
+        total += item
+    return total
 =======
-if (loading) {
-return <div className="spinner">Loading...</div>;
-}
+def calculate_total(items):
+    """Calculate total with 10% markup"""
+    return sum(item * 1.1 for item in items)
+>>>>>>> REPLACE
 
-> > > > > > > REPLACE
-> > > > > > > </diff>
-> > > > > > > </apply_diff>
+```
+
+Search/Replace content with multi edits:
+
+```
+<<<<<<< SEARCH
+:start_line:1
+-------
+def calculate_total(items):
+    sum = 0
+=======
+def calculate_sum(items):
+    sum = 0
+>>>>>>> REPLACE
+
+<<<<<<< SEARCH
+:start_line:4
+-------
+        total += item
+    return total
+=======
+        sum += item
+    return sum
+>>>>>>> REPLACE
+```
+
+Usage:
+<apply_diff>
+<path>File path here</path>
+<diff>
+Your search/replace content here
+You can use multi search/replace block in one diff block, but make sure to include the line numbers for each block.
+Only use a single line of '=======' between search and replacement content, because multiple '=======' will corrupt the file.
+</diff>
+</apply_diff>
 
 ### search_and_replace
 
@@ -1053,3 +1078,376 @@ All code follows the project's existing patterns and includes proper TypeScript 
 8. **Handle errors gracefully**: Adjust your approach based on error feedback.
 9. **Use multiple blocks in a single diff**: When making related changes to a file, include them in one `apply_diff` call.
 10. **Show your reasoning**: Use `<thinking>` tags to explain complex decisions.
+
+# MCP Servers Reference Guide
+
+## Core Concepts
+
+- MCP (Model Context Protocol) enables communication with external servers that provide additional tools and resources
+- Two types of MCP servers: local (Stdio-based) and remote (SSE-based)
+- Access MCP tools via `use_mcp_tool` and resources via `access_mcp_resource`
+
+## MCP Tools Format
+
+```
+<use_mcp_tool>
+<server_name>server name here</server_name>
+<tool_name>tool name here</tool_name>
+<arguments>
+{
+  "param1": "value1",
+  "param2": "value2"
+}
+</arguments>
+</use_mcp_tool>
+```
+
+## Connected MCP Servers
+
+### sequential-thinking
+
+**Description**: Provides a detailed tool for dynamic and reflective problem-solving through structured thoughts.
+
+**Available Tools**:
+
+- **sequentialthinking**: Analyze problems through a flexible thinking process that adapts as understanding deepens.
+
+**When to Use**:
+
+- Breaking down complex problems into steps
+- Planning with room for revision
+- Analysis that might need course correction
+- Problems with unclear scope initially
+- Multi-step solutions
+- Tasks requiring maintained context
+
+**Parameters**:
+
+- `thought`: Current thinking step (analytical steps, revisions, questions, realizations)
+- `nextThoughtNeeded`: Boolean indicating if more thinking is needed
+- `thoughtNumber`: Current number in sequence
+- `totalThoughts`: Estimated total thoughts needed
+- `isRevision`: Boolean indicating if this revises previous thinking
+- `revisesThought`: Which thought is being reconsidered
+- `branchFromThought`: Branching point thought number
+- `branchId`: Identifier for the current branch
+- `needsMoreThoughts`: If reaching end but needing more thoughts
+
+**Example**:
+
+```
+<use_mcp_tool>
+<server_name>sequential-thinking</server_name>
+<tool_name>sequentialthinking</tool_name>
+<arguments>
+{
+  "thought": "First, I need to understand what variables influence this optimization problem.",
+  "nextThoughtNeeded": true,
+  "thoughtNumber": 1,
+  "totalThoughts": 5
+}
+</arguments>
+</use_mcp_tool>
+```
+
+### filesystem
+
+**Description**: Provides tools for interacting with the file system.
+
+**Available Tools**:
+
+- **read_file**: Read contents of a single file
+- **read_multiple_files**: Read contents of multiple files simultaneously
+- **write_file**: Create or overwrite a file with new content
+- **edit_file**: Make line-based edits to a text file
+- **create_directory**: Create a new directory or ensure it exists
+- **list_directory**: Get detailed listing of files and directories
+- **directory_tree**: Get recursive tree view of files and directories
+- **move_file**: Move or rename files and directories
+- **search_files**: Search for files matching a pattern
+- **get_file_info**: Retrieve metadata about a file or directory
+- **list_allowed_directories**: Show directories the server can access
+
+**Example - Reading a file**:
+
+```
+<use_mcp_tool>
+<server_name>filesystem</server_name>
+<tool_name>read_file</tool_name>
+<arguments>
+{
+  "path": "src/components/Button.tsx"
+}
+</arguments>
+</use_mcp_tool>
+```
+
+**Example - Writing a file**:
+
+```
+<use_mcp_tool>
+<server_name>filesystem</server_name>
+<tool_name>write_file</tool_name>
+<arguments>
+{
+  "path": "src/utils/helpers.js",
+  "content": "export function formatDate(date) {\n  return new Date(date).toLocaleDateString();\n}"
+}
+</arguments>
+</use_mcp_tool>
+```
+
+### github
+
+**Description**: Provides tools for interacting with GitHub repositories.
+
+**Available Tools**:
+
+- **create_or_update_file**: Create or update a file in a repository
+- **search_repositories**: Search for GitHub repositories
+- **create_repository**: Create a new GitHub repository
+- **get_file_contents**: Get contents of a file from a repository
+- **push_files**: Push multiple files in a single commit
+- **create_issue**: Create a new issue in a repository
+- **create_pull_request**: Create a new pull request
+- **fork_repository**: Fork a repository to your account
+- **create_branch**: Create a new branch in a repository
+- **list_commits**: Get list of commits in a branch
+- **list_issues**: List issues in a repository with filtering
+- **update_issue**: Update an existing issue
+- **add_issue_comment**: Add a comment to an issue
+- **search_code**: Search for code across repositories
+- **search_issues**: Search for issues and pull requests
+- **search_users**: Search for users on GitHub
+- **get_issue**: Get details of a specific issue
+- **get_pull_request**: Get details of a pull request
+- **list_pull_requests**: List and filter repository pull requests
+- **create_pull_request_review**: Create a review on a pull request
+- **merge_pull_request**: Merge a pull request
+- **get_pull_request_files**: Get list of files changed in a pull request
+- **get_pull_request_status**: Get status of all checks for a pull request
+- **update_pull_request_branch**: Update a pull request branch
+- **get_pull_request_comments**: Get review comments on a pull request
+- **get_pull_request_reviews**: Get reviews on a pull request
+
+**Example - Creating a repository**:
+
+```
+<use_mcp_tool>
+<server_name>github</server_name>
+<tool_name>create_repository</tool_name>
+<arguments>
+{
+  "name": "my-new-project",
+  "description": "A new project repository",
+  "private": false,
+  "autoInit": true
+}
+</arguments>
+</use_mcp_tool>
+```
+
+**Example - Creating a pull request**:
+
+```
+<use_mcp_tool>
+<server_name>github</server_name>
+<tool_name>create_pull_request</tool_name>
+<arguments>
+{
+  "owner": "username",
+  "repo": "repository-name",
+  "title": "Add new feature",
+  "body": "This PR implements the new feature as discussed in issue #42",
+  "head": "feature-branch",
+  "base": "main"
+}
+</arguments>
+</use_mcp_tool>
+```
+
+### brave-search
+
+**Description**: Provides tools for web and local search using Brave Search API.
+
+**Available Tools**:
+
+- **brave_web_search**: Perform general web search queries
+- **brave_local_search**: Search for local businesses and places
+
+**Example - Web search**:
+
+```
+<use_mcp_tool>
+<server_name>brave-search</server_name>
+<tool_name>brave_web_search</tool_name>
+<arguments>
+{
+  "query": "latest developments in artificial intelligence",
+  "count": 5
+}
+</arguments>
+</use_mcp_tool>
+```
+
+**Example - Local search**:
+
+```
+<use_mcp_tool>
+<server_name>brave-search</server_name>
+<tool_name>brave_local_search</tool_name>
+<arguments>
+{
+  "query": "coffee shops near Central Park",
+  "count": 3
+}
+</arguments>
+</use_mcp_tool>
+```
+
+### mcp-server-firecrawl
+
+**Description**: Provides advanced web scraping, crawling, and data extraction capabilities.
+
+**Available Tools**:
+
+- **firecrawl_scrape**: Scrape a single webpage with advanced options
+- **firecrawl_map**: Discover URLs from a starting point
+- **firecrawl_crawl**: Start an asynchronous crawl of multiple pages
+- **firecrawl_check_crawl_status**: Check status of a crawl job
+- **firecrawl_search**: Search and retrieve content from web pages
+- **firecrawl_extract**: Extract structured information from web pages
+- **firecrawl_deep_research**: Conduct deep research on a query
+- **firecrawl_generate_llmstxt**: Generate standardized LLMs.txt for a website
+
+**Example - Scraping a webpage**:
+
+```
+<use_mcp_tool>
+<server_name>mcp-server-firecrawl</server_name>
+<tool_name>firecrawl_scrape</tool_name>
+<arguments>
+{
+  "url": "https://example.com/page",
+  "formats": ["markdown", "links"],
+  "onlyMainContent": true
+}
+</arguments>
+</use_mcp_tool>
+```
+
+**Example - Deep research**:
+
+```
+<use_mcp_tool>
+<server_name>mcp-server-firecrawl</server_name>
+<tool_name>firecrawl_deep_research</tool_name>
+<arguments>
+{
+  "query": "impact of climate change on marine ecosystems",
+  "maxDepth": 3,
+  "timeLimit": 120,
+  "maxUrls": 10
+}
+</arguments>
+</use_mcp_tool>
+```
+
+### nx-mcp
+
+**Description**: Provides tools for working with Nx workspaces and projects.
+
+**Available Tools**:
+
+- **nx_docs**: Get documentation relevant to user queries
+- **nx_available_plugins**: List available Nx plugins
+- **nx_workspace**: Get project graph and nx.json configuration
+- **nx_project_details**: Get project configuration
+- **nx_generators**: List available generators
+- **nx_generator_schema**: Get detailed schema for a generator
+
+**Example - Getting documentation**:
+
+```
+<use_mcp_tool>
+<server_name>nx-mcp</server_name>
+<tool_name>nx_docs</tool_name>
+<arguments>
+{
+  "userQuery": "How do I configure caching in Nx?"
+}
+</arguments>
+</use_mcp_tool>
+```
+
+**Example - Getting project details**:
+
+```
+<use_mcp_tool>
+<server_name>nx-mcp</server_name>
+<tool_name>nx_project_details</tool_name>
+<arguments>
+{
+  "projectName": "my-app"
+}
+</arguments>
+</use_mcp_tool>
+```
+
+### Framelink Figma MCP
+
+**Description**: Provides tools for interacting with Figma designs.
+
+**Available Tools**:
+
+- **get_figma_data**: Get layout information from a Figma file
+- **download_figma_images**: Download SVG and PNG images from a Figma file
+
+**Example - Getting Figma data**:
+
+```
+<use_mcp_tool>
+<server_name>Framelink Figma MCP</server_name>
+<tool_name>get_figma_data</tool_name>
+<arguments>
+{
+  "fileKey": "abcdefghijklm",
+  "depth": 2
+}
+</arguments>
+</use_mcp_tool>
+```
+
+**Example - Downloading Figma images**:
+
+```
+<use_mcp_tool>
+<server_name>Framelink Figma MCP</server_name>
+<tool_name>download_figma_images</tool_name>
+<arguments>
+{
+  "fileKey": "abcdefghijklm",
+  "nodes": [
+    {
+      "nodeId": "1234:5678",
+      "fileName": "logo.svg"
+    }
+  ],
+  "localPath": "./assets/images"
+}
+</arguments>
+</use_mcp_tool>
+```
+
+## Best Practices
+
+1. **Use the right server and tool**: Choose the MCP server and tool that best fits your specific task.
+2. **Check parameters carefully**: Ensure all required parameters are provided in the correct format.
+3. **Handle response data**: Process the response data returned by the MCP tool appropriately.
+4. **Error handling**: Be prepared to handle errors or unexpected responses from MCP tools.
+5. **Authentication**: Some MCP servers may require authentication or have usage limits.
+6. **Rate limiting**: Be mindful of rate limits when making multiple requests to external services.
+7. **Data privacy**: Consider data privacy and security when using MCP tools that process sensitive information.
+8. **Combine with other tools**: For complex tasks, use MCP tools in conjunction with other available tools.
+9. **Documentation**: Always refer to the server's documentation for the most up-to-date information.
+10. **Progress indication**: For long-running operations, provide feedback to the user about the progress.
