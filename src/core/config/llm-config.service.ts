@@ -143,7 +143,7 @@ export class LLMConfigService implements ILLMConfigService {
       ];
 
       // Prompt user for input
-      const answers = await this.inquirer.prompt(questions);
+      const answers = await this.inquirer(questions);
 
       // Update editableConfig with answers
       editableConfig.provider = answers.provider;
