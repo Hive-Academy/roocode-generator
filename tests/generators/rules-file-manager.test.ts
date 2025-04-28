@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/unbound-method */
+ 
 // tests/generators/rules-file-manager.test.ts
 import { RulesFileManager } from '../../src/generators/rules/rules-file-manager';
 import { IFileOperations } from '../../src/core/file-operations/interfaces';

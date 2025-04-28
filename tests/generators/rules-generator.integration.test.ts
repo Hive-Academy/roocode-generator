@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/unbound-method */
+ 
 // tests/generators/rules-generator.integration.test.ts
 import { Container } from '../../src/core/di/container';
 import { IServiceContainer } from '../../src/core/di/interfaces';
