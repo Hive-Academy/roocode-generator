@@ -37,6 +37,27 @@ To build and run the `roocode-generator` project locally, follow these steps:
     npm install
     ```
 
+3.  **Install globally:**
+
+    ```bash
+    npm install -g .
+    ```
+
+4.  **Verify installation:**
+
+    Run the following script to verify the global command is installed and accessible:
+
+    ```bash
+    ./bin/verify-installation.sh
+    ```
+
+    Alternatively, you can check the command directly:
+
+    ```bash
+    which roocode
+    roocode --version
+    ```
+
     Using yarn:
 
 ## Running Tests

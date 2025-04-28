@@ -831,7 +831,7 @@ When you receive a task from Architect, follow these steps:
 
    ```
    <read_file>
-   <path>progress-tracker/tasks/[feature-name]-progress.md</path>
+   <path>progress-tracker/[feature-name]/[task-name]-progress.md</path>
    </read_file>
    ```
 
@@ -977,7 +977,7 @@ When first examining a project:
 
 ## References
 
-- Implementation Plan: [progress-tracker/implementation-plans/feature-name.md](../implementation-plans/feature-name.md)
+- Implementation Plan: [progress-tracker/[feature-name]/implementation-plan.md
 - Memory Bank References:
   - memory-bank/TechnicalArchitecture.md:XX-YY (relevant reference)
   - memory-bank/DeveloperGuide.md:XX-YY (relevant reference)
@@ -1057,7 +1057,7 @@ Dependencies:
 - [What future tasks will build on this one]
 
 The progress tracking file has been updated at:
-progress-tracker/tasks/[feature-name]-progress.md
+progress-tracker/[feature-name]/[task-name]-progress.md
 
 I am now awaiting the next task assignment. I will NOT proceed to any other tasks without explicit direction.
 </result>

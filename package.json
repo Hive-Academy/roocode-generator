@@ -4,8 +4,14 @@
   "description": "A CLI tool to generate RooCode workflow configuration files for any tech stack.",
   "main": "generate.js",
   "bin": {
-    "roocode-generator": "bin/roocode-generator.js"
+    "roocode": "./bin/roocode-generator.js"
   },
+  "files": [
+    "dist",
+    "bin",
+    "package.json",
+    "README.md"
+  ],
   "scripts": {
     "start": "cross-env NODE_PATH=dist/src node bin/roocode-generator.js",
     "build": "tsc && copyfiles -u 1 templates/**/* dist/templates",

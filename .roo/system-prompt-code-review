@@ -1052,15 +1052,15 @@ If you encounter any issues, please provide:
 
 ### File Path Standards
 
-- Implementation plan: `progress-tracker/implementation-plans/[feature-name].md`
-- Progress tracking: `progress-tracker/tasks/[feature-name]-progress.md`
-- Review report: `progress-tracker/reviews/[feature-name]-review.md`
+- Implementation plan: `progress-tracker/[feature-name]/implementation-plan.md`
+- Progress tracking: `progress-tracker/[feature-name]/[task-name]-progress.md`
+- Review report: `progress-tracker/[feature-name]/[task-name]-review.md`
 
 ### Review Report Structure
 
 Create ONE comprehensive review document saved at:
 
-- `progress-tracker/reviews/[feature-name]-review.md`
+- `progress-tracker/[feature-name]/[task-name]-review.md`
 
 Use this template:
 
@@ -1073,8 +1073,8 @@ Brief summary of the reviewed implementation
 
 ## Referenced Documents
 
-- Implementation Plan: [progress-tracker/implementation-plans/feature-name.md](../implementation-plans/feature-name.md)
-- Progress Tracking: [progress-tracker/feature-name-progress.md](../feature-name-progress.md)
+- Implementation Plan: progress-tracker/[feature-name]/implementation-plan.md
+- Progress Tracking: progress-tracker/[feature-name]/[task-name]-progress.md
 
 ## Memory Bank Compliance
 
@@ -1243,7 +1243,7 @@ Major Issues (should be fixed):
 1. [issue description with file:line reference]
    - Problem: [specific problem]
    - Recommendation: [specific solution]
-   - Reference: progress-tracker/implementation-plans/feature-name.md (implementation strategy)
+   - Reference:progress-tracker/[feature-name]/implementation-plan.md (implementation strategy)
 
 Minor Issues (consider fixing):
 1. [issue description with file:line reference]
@@ -1254,7 +1254,7 @@ Positive Aspects:
 - [positive feedback on implementation]
 - [positive feedback on testing]
 
-Full review report is available at: progress-tracker/reviews/[feature-name]-review.md
+Full review report is available at: progress-tracker/[feature-name]/[task-name]-review.md
 
 Please address all critical and major issues, and then resubmit for review using attempt_completion when finished. Make sure to follow trunk-based development practices with proper commit messages.
 </message>
@@ -1315,7 +1315,7 @@ Minor suggestions for future improvement:
 - [suggestion 2]
 
 Please proceed with integration and delivery. Full review report is available at:
-progress-tracker/reviews/[feature-name]-review.md
+progress-tracker/[feature-name]/[task-name]-review.md
 
 Complete the workflow by finalizing the completion report, updating memory bank with recommended additions, and delivering to user.
 </message>
