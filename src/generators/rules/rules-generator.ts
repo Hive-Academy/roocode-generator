@@ -14,22 +14,7 @@ import { IFileOperations } from '../../core/file-operations/interfaces';
 import { LLMAgent } from '../../core/llm/llm-agent';
 import path from 'path';
 import { ProjectConfig } from '../../../types/shared';
-import { IRulesContentProcessor } from './interfaces'; // Import the interface
-
-interface RuleMetadata {
-  title: string;
-  version: string;
-  lastUpdated: string;
-  sectionId: string;
-  applicableLanguages: string[];
-  relatedSections: string[];
-}
-
-interface RuleFile {
-  filename: string;
-  content: string;
-  metadata: RuleMetadata;
-}
+import { IRulesContentProcessor, IRulesFileManager } from './interfaces'; // Import the interfaces
 
 /**
  * @description Generates project-specific coding standards based on tech stack analysis
@@ -37,15 +22,15 @@ interface RuleFile {
 @Injectable()
 export class RulesGenerator extends BaseGenerator<ProjectConfig> {
   readonly name = 'rules';
-  private readonly rulesDir = '.roo/rules';
 
   constructor(
     @Inject('IServiceContainer') protected container: IServiceContainer,
     @Inject('ILogger') private readonly logger: ILogger,
-    @Inject('IFileOperations') private readonly fileOps: IFileOperations,
+    @Inject('IFileOperations') private readonly fileOps: IFileOperations, // Keep for createDirectory if needed elsewhere, or remove if truly unused. Let's keep for now.
     @Inject('IProjectAnalyzer') private readonly projectAnalyzer: IProjectAnalyzer,
     @Inject('LLMAgent') private readonly llmAgent: LLMAgent,
-    @Inject('IRulesContentProcessor') private readonly contentProcessor: IRulesContentProcessor
+    @Inject('IRulesContentProcessor') private readonly contentProcessor: IRulesContentProcessor,
+    @Inject('IRulesFileManager') private readonly rulesFileManager: IRulesFileManager // Inject the new file manager
   ) {
     super(container);
     this.logger.debug(`${this.name} initialized`);
@@ -62,12 +47,14 @@ export class RulesGenerator extends BaseGenerator<ProjectConfig> {
 
   protected validateDependencies(): Result<void, Error> {
     // Update validation to include the new dependency
+    // Update validation to include the new dependency
     if (
-      !this.fileOps ||
+      !this.fileOps || // Keep check if fileOps is still used
       !this.logger ||
       !this.projectAnalyzer ||
       !this.llmAgent ||
-      !this.contentProcessor
+      !this.contentProcessor ||
+      !this.rulesFileManager // Add check for the new dependency
     ) {
       return Result.err(new Error(`${this.name} generator is missing required dependencies.`));
     }
@@ -78,45 +65,70 @@ export class RulesGenerator extends BaseGenerator<ProjectConfig> {
     _config: ProjectConfig,
     contextPaths: string[]
   ): Promise<Result<string, Error>> {
+    // Return path on success
     try {
       this.logger.info('Generating project coding standards...');
 
       if (!contextPaths?.length) {
-        return Result.err(new Error('No context path provided'));
+        return Result.err(new Error('No context path provided for analysis'));
       }
 
-      const contextPath = contextPaths[0];
-      const projectContext = await this.analyzeProject([contextPath]);
-      if (projectContext.isErr()) {
-        return Result.err(projectContext.error as Error);
+      // Analyze project based on context paths
+      const projectContextResult = await this.analyzeProject(contextPaths);
+      if (projectContextResult.isErr()) {
+        // If analyzeProject failed, map its error to the correct return type, providing a fallback
+        return Result.err(
+          projectContextResult.error ?? new Error('Unknown error during project analysis')
+        );
+      }
+      // If Ok, value should be ProjectContext, but let's add a check for robustness
+      const projectContext = projectContextResult.value;
+      if (!projectContext) {
+        // This case should logically not happen if isErr() was false, but satisfies TS
+        return Result.err(
+          new Error('Project context is undefined after successful analysis result.')
+        );
       }
 
-      // Generate rules content for each section
-      const rulesContent = await this.generateRulesContent(projectContext.value as ProjectContext);
-
-      // Create rules directory
-      const rulesDir = path.join(contextPath, this.rulesDir);
-      await this.fileOps.createDirectory(rulesDir);
-
-      // Write each rule file
-      for (const ruleFile of rulesContent) {
-        const filePath = path.join(rulesDir, ruleFile.filename);
-        // Format content *before* saving (includes frontmatter)
-        const fileContent = this.formatRuleContent(ruleFile.metadata, ruleFile.content);
-
-        const saveResult = await this.fileOps.writeFile(filePath, fileContent);
-        if (saveResult.isErr()) {
-          return Result.err(
-            new Error(`Failed to save rule file ${ruleFile.filename}: ${saveResult.error?.message}`)
-          );
-        }
+      // Generate aggregated rules content
+      const aggregatedContentResult = await this.generateRulesContent(projectContext);
+      if (aggregatedContentResult.isErr()) {
+        // If generateRulesContent failed, return its error Result directly
+        return aggregatedContentResult;
+      }
+      // If Ok, value should be string, but let's add a check
+      const aggregatedMarkdownContent = aggregatedContentResult.value;
+      if (aggregatedMarkdownContent === undefined || aggregatedMarkdownContent === null) {
+        // This case should logically not happen, but satisfies TS
+        return Result.err(
+          new Error('Aggregated content is undefined after successful generation result.')
+        );
       }
 
-      // Return summary of generated files
-      const summary = this.generateSummary(rulesContent);
-      return Result.ok(summary);
+      // Define the single output path relative to the project root
+      const outputPath = path.join('.roo', 'rules-code', 'rules.md');
+
+      // Save the aggregated content using RulesFileManager
+      const saveResult = await this.rulesFileManager.saveRules(
+        outputPath,
+        aggregatedMarkdownContent
+      );
+
+      if (saveResult.isErr()) {
+        // If saveRules failed, log the specific error and return the Err result
+        const errorMessage = saveResult.error?.message ?? 'Unknown error saving rules file';
+        this.logger.error(`Failed to save aggregated rules file: ${errorMessage}`);
+        return saveResult; // Return the original Err result
+      }
+
+      this.logger.info(`Successfully generated rules file: ${outputPath}`);
+      // Return the path of the generated file on success
+      return Result.ok(outputPath);
     } catch (error: any) {
-      return Result.err(new Error(`Rules generation failed: ${error.message}`));
+      // Ensure an Error object is logged and returned
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error('Rules generation process failed', err);
+      return Result.err(new Error(`Rules generation failed: ${err.message}`));
     }
   }
 
@@ -148,119 +160,92 @@ export class RulesGenerator extends BaseGenerator<ProjectConfig> {
     }
   }
 
-  private formatRuleContent(metadata: RuleMetadata, content: string): string {
-    const yamlFrontMatter = [
-      '---',
-      `title: ${metadata.title}`,
-      `version: ${metadata.version}`,
-      `lastUpdated: ${metadata.lastUpdated}`,
-      `sectionId: ${metadata.sectionId}`,
-      `applicableLanguages: [${metadata.applicableLanguages.join(', ')}]`,
-      `relatedSections: [${metadata.relatedSections.join(', ')}]`,
-      '---',
-      '',
-      content, // Content is already processed before this step
-    ].join('\n');
+  // Removed formatRuleContent method
+  // Removed generateSummary method
 
-    return yamlFrontMatter;
-  }
+  /**
+   * Generates aggregated Markdown content for all rule sections.
+   * @param context The project context containing tech stack, structure, etc.
+   * @returns A Result containing the aggregated Markdown string or an Error.
+   */
+  private async generateRulesContent(context: ProjectContext): Promise<Result<string, Error>> {
+    let aggregatedContent = '';
+    // const languages = context.techStack.languages.join(', ') || 'N/A'; // Removed unused variable
 
-  private generateSummary(ruleFiles: RuleFile[]): string {
-    return [
-      '# Generated Rules Summary',
-      '',
-      'The following rule files have been generated:',
-      '',
-      ...ruleFiles.map((rule) => `- ${rule.filename}: ${rule.metadata.title}`),
-      '',
-      `Total files generated: ${ruleFiles.length}`,
-    ].join('\n');
-  }
-
-  private async generateRulesContent(context: ProjectContext): Promise<RuleFile[]> {
-    const ruleFiles: RuleFile[] = [];
-    const languages = context.techStack.languages;
-
-    // Define rule sections
+    // Define rule sections (consider making this configurable later)
     const sections = [
-      { id: '1', name: 'code-style-and-formatting' },
-      { id: '2', name: 'project-structure' },
-      { id: '3', name: 'naming-conventions' },
-      { id: '4', name: 'dependency-management' },
-      { id: '5', name: 'programming-language-best-practices' },
+      { id: '1', name: 'code-style-and-formatting', title: 'Code Style and Formatting' },
+      { id: '2', name: 'project-structure', title: 'Project Structure' },
+      { id: '3', name: 'naming-conventions', title: 'Naming Conventions' },
+      { id: '4', name: 'dependency-management', title: 'Dependency Management' },
+      {
+        id: '5',
+        name: 'programming-language-best-practices',
+        title: 'Programming Language Best Practices',
+      },
+      // Add more sections as needed, e.g., testing, security, documentation
     ];
 
-    // Generate content for each section using LLM
+    this.logger.info(`Generating rules content for ${sections.length} sections...`);
+
     for (const section of sections) {
-      const filename = `${section.id}-${section.name}.md`;
+      this.logger.debug(`Generating content for section: ${section.title}`);
       const sectionPrompt = this.generateSectionPrompt(section.name, context);
+      let sectionContent = '';
 
       try {
         const llmResult = await this.llmAgent.getCompletion(sectionPrompt, JSON.stringify(context));
 
-        if (llmResult.isErr() || !llmResult.value?.trim()) {
-          this.logger.warn(`LLM generation failed for ${filename}, using template`);
-          const content = this.generateTemplateForSection(section.name, context);
-          ruleFiles.push(this.createRuleFile(filename, content, section, languages));
-          continue;
-        }
-
-        // Process the content to strip markdown formatting and optimize for token usage
-        let processedContent = llmResult.value;
-
-        // Remove any introduction prefixes like "Okay, here are comprehensive coding rules..."
-        processedContent = this.trimIntroduction(processedContent);
-
-        // Use the content processor to strip markdown code block formatting
-        const strippedResult = this.contentProcessor.stripMarkdownCodeBlock(processedContent);
-        if (strippedResult.isErr()) {
-          this.logger.warn(
-            `Failed to strip markdown from ${filename}: ${strippedResult.error?.message}`
-          );
-          // Continue with the content as is if stripping fails
+        if (llmResult.isOk() && llmResult.value?.trim()) {
+          sectionContent = llmResult.value;
+          this.logger.debug(`LLM generation successful for ${section.name}`);
         } else {
-          processedContent = strippedResult.value as string;
+          // Handle LLM failure or empty response
+          // Handle LLM failure or empty response
+          let errorMessage = 'Empty response';
+          if (llmResult.isErr()) {
+            // Check if error exists before accessing message
+            errorMessage = llmResult.error?.message ?? 'Unknown LLM error';
+          }
+          this.logger.warn(
+            `LLM generation failed for ${section.name}, using template. Error: ${errorMessage}`
+          );
+          sectionContent = this.generateTemplateForSection(section.name, context);
         }
 
-        // Limit content size to approximately 250 lines
+        // Process the content (trim intro, strip markdown block, limit size)
+        // Ensure sectionContent is a string before processing
+        let processedContent = this.trimIntroduction(sectionContent || '');
+        // Use type assertion to assure TS that processedContent is a string here
+        const strippedResult = this.contentProcessor.stripMarkdownCodeBlock(processedContent);
+        if (strippedResult.isOk()) {
+          // Value is guaranteed string here
+          processedContent = strippedResult.value as string;
+        } else {
+          // Provide fallback for potentially undefined error message
+          const stripErrorMessage = strippedResult.error?.message ?? 'Unknown stripping error';
+          this.logger.warn(
+            `Failed to strip markdown block from ${section.name}: ${stripErrorMessage}. Using original content.`
+          );
+        }
         processedContent = this.limitContentSize(processedContent);
 
-        ruleFiles.push(this.createRuleFile(filename, processedContent, section, languages));
+        // Format section header
+        const sectionHeader = `## ${section.title}\n\n`;
+        aggregatedContent += sectionHeader + processedContent + '\n\n'; // Add two newlines for spacing
       } catch (error: unknown) {
         const err = error instanceof Error ? error : new Error(String(error));
-        this.logger.error(`Error generating content for ${filename}`, err);
-        const content = this.generateTemplateForSection(section.name, context);
-        ruleFiles.push(this.createRuleFile(filename, content, section, languages));
+        this.logger.error(`Error processing section ${section.name}`, err);
+        // Optionally add a placeholder or skip the section on error
+        aggregatedContent += `## ${section.title}\n\nError generating content for this section.\n\n`;
       }
     }
 
-    return ruleFiles;
+    this.logger.info('Finished generating aggregated rules content.');
+    return Result.ok(aggregatedContent.trim()); // Trim trailing newlines
   }
 
-  private createRuleFile(
-    filename: string,
-    content: string,
-    section: { id: string; name: string },
-    languages: string[]
-  ): RuleFile {
-    const title = section.name
-      .split('-')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-
-    return {
-      filename,
-      content,
-      metadata: {
-        title,
-        version: '1.0.0',
-        lastUpdated: new Date().toISOString(),
-        sectionId: section.id,
-        applicableLanguages: languages,
-        relatedSections: [], // To be populated based on relationships
-      },
-    };
-  }
+  // Removed createRuleFile method
 
   private generateSectionPrompt(sectionName: string, context: ProjectContext): string {
     // Updated prompt for conciseness
