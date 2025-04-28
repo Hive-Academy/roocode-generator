@@ -45,6 +45,7 @@ export function registerRulesModule(container: Container): void {
       container,
       'IRulesContentProcessor'
     );
+    const rulesFileManager = resolveDependency<IRulesFileManager>(container, 'IRulesFileManager'); // Added this line
 
     return new RulesGenerator(
       serviceContainer,
@@ -52,7 +53,8 @@ export function registerRulesModule(container: Container): void {
       fileOps,
       projectAnalyzer,
       llmAgent,
-      contentProcessor
+      contentProcessor,
+      rulesFileManager // Added this argument
     );
   });
 }
