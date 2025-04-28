@@ -33,12 +33,13 @@ The application follows a **Modular CLI Architecture with LLM Integration**. The
 4.  **Command Parsing (`CliInterface`):** The `ApplicationContainer` resolves the `CliInterface` (`@core/cli/cli-interface.ts`). The `CliInterface` uses the `commander` library to define commands (`generate`, `config`, etc.) and parse `process.argv`. Action callbacks capture the parsed command name and options into the `CliInterface` instance's `parsedArgs`.
 5.  **Configuration Loading:** Relevant configuration services (`ProjectConfigService`, `LLMConfigService`) load project-specific (`roocode-config.json`) and LLM (`llm.config.json`) settings, respectively.
 6.  **Command Routing (`ApplicationContainer`):** The `ApplicationContainer` retrieves the parsed command and options from the `CliInterface`. Its `executeCommand` method acts as a router, using a `switch` statement on the command name to delegate to specific handler methods (e.g., `executeGenerateCommand`, `executeConfigCommand`).
-7.  **Generator Orchestration (`generate` command):** When `executeGenerateCommand` is called, it resolves and uses the `GeneratorOrchestrator` (`@core/application/generator-orchestrator.ts`). The orchestrator identifies the requested `IGenerator` instances (e.g., `MemoryBankGenerator`, `RulesGenerator`) based on CLI arguments or defaults and executes their `generate` methods.
-8.  **Generation Process (varies by generator):**
-    - **Context Gathering:** Generators like `MemoryBankGenerator` or `RulesGenerator` may use the `ProjectAnalyzer` (`@core/analysis/project-analyzer.ts`) to analyze the project context (tech stack, structure, dependencies). This may involve reading files via `FileOperations` and potentially using the `LLMAgent`.
-    - **Template Processing:** Generators load and process templates (`TemplateManager`, `RulesTemplateManager`, `TemplateProcessor`). This might involve merging base templates with customizations and inserting LLM-generated content (e.g., contextual rules via `{{CONTEXTUAL_RULES}}`).
-    - **LLM Interaction:** The `LLMAgent` (`@core/llm/llm-agent.ts`) interacts with the configured LLM provider (via `LLMProviderRegistry` and `langchain`) to generate content based on prompts constructed from project context and templates.
-    - **File Operations:** Generators use the `FileOperations` service (`@core/file-operations/file-operations.ts`) to write the generated files to the filesystem, potentially managing versions (`RulesFileManager`).
+7.  **Generator Orchestration (`generate` command):** When `executeGenerateCommand` is called, it resolves and uses the `GeneratorOrchestrator` (`@core/application/generator-orchestrator.ts`). The orchestrator identifies the requested `IGenerator` instances (e.g., `AiMagicGenerator`, `RulesGenerator`) based on CLI arguments or defaults and executes their `generate` methods.
+8.  **Generation Process (Example: `AiMagicGenerator`):**
+    - **Project Analysis:** `AiMagicGenerator` uses the `ProjectAnalyzer` (`@core/analysis/project-analyzer.ts`) to analyze the project context (tech stack, structure, dependencies) via `FileOperations` and potentially `LLMAgent`.
+    - **Rules Generation:** It uses its internal logic (potentially `RulesPromptBuilder`, `TemplateProcessor`, `LLMAgent`) to generate context-aware coding rules.
+    - **Memory Bank Service Call:** It calls the `MemoryBankService` (`@memory-bank/memory-bank-service.ts`), passing the gathered `ProjectContext`.
+    - **Memory Bank Generation (within `MemoryBankService`):** The service uses its components (`MemoryBankOrchestrator`, `IMemoryBankTemplateProcessor`, `IMemoryBankContentGenerator`, `LLMAgent`, etc.) to generate the memory bank documentation files.
+    - **File Operations:** Both `AiMagicGenerator` (for rules) and `MemoryBankService` (for docs) use the `FileOperations` service (`@core/file-operations/file-operations.ts`) to write the generated files.
 9.  **User Feedback:** Throughout the process, `ProgressIndicator` (`ora`) and `LoggerService` (`chalk`) provide feedback to the user via the terminal.
 10. **Completion/Error Handling:** The application uses a `Result` type (`@core/result/result.ts`) for explicit success/failure handling. The main `run` method manages the overall result, and top-level error handling catches unexpected issues, exiting with appropriate status codes.
 
@@ -64,18 +65,21 @@ graph TD
 
     subgraph Generators [Generator Execution Flow]
         G -- Executes --> K{Specific Generator (IGenerator)};
-        K -- Uses --> H;
-        K -- May Use --> L(ProjectAnalyzer `@core/analysis/project-analyzer.ts`);
-        K -- May Use --> M(TemplateProcessor / Manager `@core/templating/*`);
-        K -- May Use --> N(FileManager / Specific (`@generators/*/file-manager.ts`));
+        K(AiMagicGenerator) -- Uses --> L(ProjectAnalyzer `@core/analysis/project-analyzer.ts`);
+        K -- Uses --> M(TemplateProcessor / Manager `@core/templating/*`); # For rules
+        K -- Uses --> N(FileManager / Specific (`@generators/*/file-manager.ts`)); # For rules
+        K -- Calls --> MB_Service(MemoryBankService `@memory-bank/memory-bank-service.ts`);
         L -- Uses --> O(LLMAgent `@core/llm/llm-agent.ts`);
-        M -- May Use --> O;
+        M -- May Use --> O; # Rules generation might use LLM
+        MB_Service -- Uses --> MB_Orchestrator(MemoryBankOrchestrator);
+        MB_Orchestrator -- Uses --> MB_Components(Memory Bank Components);
+        MB_Components -- Uses --> O; # Memory Bank uses LLM
+        MB_Components -- Uses --> T(FileOperations `@core/file-operations/file-operations.ts`);
         O -- Uses --> Q(LLMProviderRegistry `@core/llm/provider-registry.ts`);
         Q -- Uses --> H;
         Q -- Creates --> R[LLM Providers (Langchain) `@core/llm/llm-provider.ts`];
         R -- Calls --> S[External LLM APIs];
-        N -- Uses --> T(FileOperations `@core/file-operations/file-operations.ts`);
-        M -- Uses --> T;
+        N -- Uses --> T; # Rules file manager uses FileOperations
         T -- Interacts --> U[Filesystem];
     end
 
@@ -112,19 +116,21 @@ _Diagram showing the initialization, command handling, and generator execution f
   - `BaseGenerator`: Abstract class providing common structure (`name`, `generate`, `validate`, `executeGeneration`) and lifecycle (`initialize`, `validateDependencies`) for all generators. Inherits from `BaseService`.
   - `IGenerator`: Interface defining the contract for generator modules.
 - **`@generators` (Specific Generators):** Modules implementing `IGenerator` for specific tasks:
-  - `MemoryBankGenerator`: Generates core documentation (`ProjectOverview.md`, `DeveloperGuide.md`, `TechnicalArchitecture.md`). It has its own internal modular structure:
-    - `MemoryBankOrchestrator`: Coordinates the generation steps.
-    - `IProjectContextService`: Gathers project context.
-    - `IMemoryBankTemplateManager`: Loads memory bank specific templates (extends core `TemplateManager`).
-    - `IMemoryBankTemplateProcessor`: Processes templates with context.
-    - `IPromptBuilder`: Constructs prompts for the LLM.
-    - `IMemoryBankContentGenerator`: Generates content using `LLMAgent`.
-    - `IMemoryBankFileManager`: Manages memory bank file I/O via `FileOperations`.
-    - `IMemoryBankValidator`: Validates generated files.
-    - `IContentProcessor`: Post-processes LLM output.
-  - `RulesGenerator`: Generates coding standard rules based on project analysis and templates, now producing a single Markdown file. Includes sub-components like `IRulesFileManager`, `IRulesContentProcessor`, `IRulesPromptBuilder`. Uses `ProjectAnalyzer` and `LLMAgent`.
-  - `IRulesFileManager`: Manages saving the generated single Markdown rules file to `.roo/rules-code/rules.md`. The previous versioning and multi-file logic has been removed.
+  - `AiMagicGenerator`: The primary generator responsible for analyzing the project (`ProjectAnalyzer`), generating context-aware coding rules (using `RulesPromptBuilder`, `TemplateProcessor`, `LLMAgent`), and invoking the `MemoryBankService` to generate documentation.
+  - `RulesGenerator`: (Legacy) Generates coding standard rules based on project analysis and templates. Its core functionality is now integrated into `AiMagicGenerator`. Includes sub-components like `IRulesFileManager`, `IRulesContentProcessor`, `IRulesPromptBuilder`.
+  - `IRulesFileManager`: Manages saving the generated single Markdown rules file to `.roo/rules-code/rules.md`.
   - `SystemPromptsGenerator`, `RoomodesGenerator`, `VSCodeCopilotRulesGenerator`: Simpler generators creating specific configuration files, often using the core `TemplateManager`.
+- **`@memory-bank` (Memory Bank Service & Components):** Contains the logic refactored from the original `MemoryBankGenerator`.
+  - `MemoryBankService`: A dedicated service invoked by `AiMagicGenerator` to handle the generation of memory bank documentation (`ProjectOverview.md`, `DeveloperGuide.md`, `TechnicalArchitecture.md`). It orchestrates the process using the components below.
+  - `MemoryBankOrchestrator`: Coordinates the generation steps within the service.
+  - `IProjectContextService`: Gathers project context (used by `AiMagicGenerator` before calling the service).
+  - `IMemoryBankTemplateManager`: Loads memory bank specific templates.
+  - `IMemoryBankTemplateProcessor`: Processes templates with context.
+  - `IPromptBuilder`: Constructs prompts for the LLM.
+  - `IMemoryBankContentGenerator`: Generates content using `LLMAgent`.
+  - `IMemoryBankFileManager`: Manages memory bank file I/O via `FileOperations`.
+  - `IMemoryBankValidator`: Validates generated files.
+  - `IContentProcessor`: Post-processes LLM output.
 - **`@core/analysis` (Project Analysis):**
   - `ProjectAnalyzer`: Uses `LLMAgent` and `FileOperations` to analyze project structure, tech stack, and dependencies based on file content.
   - `ResponseParser`: Parses JSON responses from the LLM during analysis.
@@ -187,27 +193,28 @@ _Diagram showing the initialization, command handling, and generator execution f
 - **Result Pattern:** The `Result<T, E>` class (`@core/result/result.ts`) is used extensively for robust, explicit error handling, promoting predictable control flow over exception-based handling for expected failures (e.g., file not found, API errors).
 - **Modular Generators:** The `GeneratorOrchestrator` dynamically loads and executes `IGenerator` implementations based on CLI input, allowing for easy addition or removal of generators.
 
-### 5.3. Data Flow (Example: `generate memory-bank`)
+### 5.3. Data Flow (Example: `generate ai-magic`)
 
-1.  **User Input:** `roocode generate --generators memory-bank`
-2.  **CLI Parsing (`CliInterface`):** Command `generate`, options `{ generators: ['memory-bank'] }` identified.
+1.  **User Input:** `roocode generate ai-magic`
+2.  **CLI Parsing (`CliInterface`):** Command `generate`, options `{ generators: ['ai-magic'] }` identified (or similar handling for single generator).
 3.  **Application Routing (`ApplicationContainer`):** Routes to `executeGenerateCommand`.
 4.  **Orchestration (`GeneratorOrchestrator`):**
-    - Resolves `MemoryBankGenerator` using its registered token ('MemoryBankGenerator').
+    - Resolves `AiMagicGenerator` using its registered token ('AiMagicGenerator').
     - Loads `ProjectConfig` using `ProjectConfigService`.
-5.  **Memory Bank Generation (`MemoryBankGenerator` -> `MemoryBankOrchestrator`):**
-    - `MemoryBankGenerator` calls `ProjectContextService.gatherContext` (using `FileOperations`).
+5.  **AiMagicGenerator Execution:**
+    - Calls `ProjectAnalyzer.analyzeProject` (using `FileOperations`, potentially `LLMAgent`) to get `ProjectContext`.
+    - **Rules Generation:** Uses internal logic (e.g., `RulesPromptBuilder`, `TemplateProcessor`, `LLMAgent`) to generate rules content.
+    - Calls `IRulesFileManager.saveRulesFile` (using `FileOperations`) to write `.roo/rules-code/rules.md`.
+    - **Memory Bank Service Call:** Calls `MemoryBankService.generateMemoryBank(projectContext)`.
+6.  **MemoryBankService Execution:**
     - `MemoryBankOrchestrator` iterates through `MemoryBankFileType`s.
     - For each file type:
-      - Calls `IMemoryBankTemplateProcessor.loadAndProcessTemplate` (uses `IMemoryBankTemplateManager` which uses `FileOperations`).
+      - Calls `IMemoryBankTemplateProcessor.loadAndProcessTemplate`.
       - Calls `IMemoryBankContentGenerator.generateContent` (uses `IPromptBuilder`, `LLMAgent`).
-      - `LLMAgent` resolves the configured `ILLMProvider` via `LLMProviderRegistry`.
-      - `ILLMProvider` uses `langchain` client to call the external LLM API.
-      - LLM response is returned.
       - Calls `IMemoryBankFileManager.writeMemoryBankFile` (uses `FileOperations`) to save the generated `.md` file.
     - Calls `IMemoryBankFileManager.copyDirectoryRecursive` (uses `FileOperations`) to copy template files.
-6.  **Feedback (`ProgressIndicator`, `LoggerService`):** Updates displayed in the terminal.
-7.  **Completion (`ApplicationContainer`):** Receives `Result.ok` from the command execution, exits with code 0. If any step returns `Result.err`, the error is propagated up, logged, and the process exits with code 1.
+7.  **Feedback (`ProgressIndicator`, `LoggerService`):** Updates displayed in the terminal.
+8.  **Completion (`ApplicationContainer`):** Receives `Result.ok` from the command execution, exits with code 0. If any step returns `Result.err`, the error is propagated up, logged, and the process exits with code 1.
 
 ## 6. Key Technical Decisions
 

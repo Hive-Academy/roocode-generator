@@ -198,11 +198,13 @@ roocode generate [generator-name...]
 
 **Available Generator Identifiers:**
 
-- `rules`: (Details in other documentation)
+- `ai-magic`: Performs project analysis, generates coding standard rules inspired by project context, and generates memory bank documentation (Project Overview, Technical Architecture, Developer Guide) using the Memory Bank Service.
+- `rules`: Generates coding standard rules based on project context (legacy, functionality now part of `ai-magic`).
 - `system-prompts`: (Details in other documentation)
 - `roomodes`: (Details in other documentation)
 - `vscode-copilot-rules`: Generates VS Code Copilot rules and related configuration.
 
+Note: The `memory-bank` generator has been refactored into a service used by the `ai-magic` generator. Use `roocode generate ai-magic` to generate memory bank documents.
 **Examples:**
 
 Run all available generators:
@@ -223,10 +225,18 @@ Run the `rules` and `system-prompts` generators:
 roocode generate rules system-prompts
 ```
 
-### `roocode generate memory-bank`
+Run the `ai-magic` generator (includes memory bank generation):
 
-This command is the primary tool for generating the core memory bank documentation for your project. When executed, it automatically gathers context from your project's current files and child folders. This context is then passed to an LLM, which uses it to generate and populate the three standard memory bank documentation files: `ProjectOverview.md`, `TechnicalArchitecture.md`, and `DeveloperGuide.md`. The command also ensures that the standard memory bank template files are copied to the output directory, providing a complete set of documentation and templates for your project's memory bank.
+```bash
+roocode generate ai-magic
+```
 
+### ~~`roocode generate memory-bank`~~ (Deprecated)
+
+**Note:** This command is deprecated. The functionality for generating memory bank documentation (`ProjectOverview.md`, `TechnicalArchitecture.md`, `DeveloperGuide.md`) is now integrated into the `ai-magic` generator. Please use `roocode generate ai-magic` instead.
+
+_(Original description kept for historical reference)_
+~~This command was the primary tool for generating the core memory bank documentation for your project. When executed, it automatically gathered context from your project's current files and child folders. This context was then passed to an LLM, which used it to generate and populate the three standard memory bank documentation files: `ProjectOverview.md`, `TechnicalArchitecture.md`, and `DeveloperGuide.md`. The command also ensured that the standard memory bank template files were copied to the output directory, providing a complete set of documentation and templates for your project's memory bank.~~
 **Usage:**
 
 ```bash
