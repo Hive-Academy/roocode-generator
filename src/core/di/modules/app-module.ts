@@ -20,6 +20,11 @@ import { IGenerator } from '@core/generators/base-generator';
 import { RoomodesGenerator } from '@generators/roomodes-generator';
 import { SystemPromptsGenerator } from '@generators/system-prompts-generator';
 import { VSCodeCopilotRulesGenerator } from '@generators/vscode-copilot-rules-generator';
+import { AiMagicGenerator } from '@generators/ai-magic-generator';
+import { IProjectAnalyzer } from '@core/analysis/types';
+// Corrected import for MemoryBankService and added LLMAgent
+import { MemoryBankService } from '@/memory-bank/memory-bank-service';
+import { LLMAgent } from '@core/llm/llm-agent'; // Added LLMAgent import
 import { Injectable } from '@core/di/decorators'; // Import Injectable
 import { ProgressIndicator } from '@core/ui/progress-indicator';
 
@@ -77,6 +82,26 @@ export function registerAppModule(container: Container): void {
     );
   });
 
+  // Register AiMagicGenerator
+  container.registerFactory<IGenerator<any>>('IGenerator.AiMagic', () => {
+    const serviceContainer = container; // For super()
+    const logger = resolveDependency<ILogger>(container, 'ILogger');
+    const fileOperations = resolveDependency<IFileOperations>(container, 'IFileOperations');
+    const projectAnalyzer = resolveDependency<IProjectAnalyzer>(container, 'IProjectAnalyzer');
+    const llmAgent = resolveDependency<LLMAgent>(container, 'LLMAgent'); // Resolve LLMAgent
+    const memoryBankService = resolveDependency<MemoryBankService>(container, 'MemoryBankService'); // Use concrete class
+
+    // Pass dependencies in the correct constructor order
+    return new AiMagicGenerator(
+      serviceContainer, // For super(container)
+      logger,
+      fileOperations,
+      projectAnalyzer,
+      llmAgent, // Pass LLMAgent
+      memoryBankService
+    );
+  });
+
   // Register Generator Orchestrator
   container.registerFactory<IGeneratorOrchestrator>('IGeneratorOrchestrator', () => {
     const logger = resolveDependency<ILogger>(container, 'ILogger');
@@ -85,7 +110,8 @@ export function registerAppModule(container: Container): void {
       'IGenerator.SystemPrompts',
       'IGenerator.Roomodes',
       'IGenerator.VSCodeCopilotRules',
-      'MemoryBankGenerator',
+      // 'MemoryBankGenerator', // Removed old generator token
+      'IGenerator.AiMagic', // Added new generator token
     ];
 
     const generators: IGenerator<any>[] = [];

@@ -5,25 +5,11 @@ import { Result } from '../result/result'; // Use existing Result type
  */
 export interface IProjectAnalyzer {
   /**
-   * Analyzes the technology stack used in the project based on specified paths.
-   * @param paths - An array of file or directory paths to analyze.
-   * @returns A Result containing the TechStackAnalysis or an Error.
+   * Analyzes the overall project context, including tech stack, structure, and dependencies.
+   * @param paths - An array of file or directory paths to analyze (typically the project root).
+   * @returns A Promise resolving to a Result containing the comprehensive ProjectContext or an Error.
    */
-  analyzeTechStack(paths: string[]): Promise<Result<TechStackAnalysis, Error>>;
-
-  /**
-   * Analyzes the directory structure and key file locations of the project.
-   * @param paths - An array of file or directory paths to analyze.
-   * @returns A Promise resolving to a Result containing the ProjectStructure or an Error.
-   */
-  analyzeProjectStructure(paths: string[]): Promise<Result<ProjectStructure, Error>>; // Make return type Promise
-
-  /**
-   * Analyzes the project's dependencies, both external and internal.
-   * @param paths - An array of file or directory paths to analyze (e.g., package.json, source files).
-   * @returns A Result containing the DependencyGraph or an Error.
-   */
-  analyzeDependencies(paths: string[]): Promise<Result<DependencyGraph, Error>>;
+  analyzeProject(paths: string[]): Promise<Result<ProjectContext, Error>>;
 }
 
 /**

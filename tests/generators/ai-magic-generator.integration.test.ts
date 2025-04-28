@@ -25,11 +25,9 @@ const mockFileOps: IFileOperations = {
   // Add other methods if needed by the generator during testing
 } as any; // Using 'as any' for brevity, refine if necessary
 
-const mockProjectAnalyzer: IProjectAnalyzer = {
-  // analyzeProject is not part of the interface, removed.
-  analyzeTechStack: jest.fn(),
-  analyzeProjectStructure: jest.fn(),
-  analyzeDependencies: jest.fn(),
+// Update mock to match the new IProjectAnalyzer interface
+const mockProjectAnalyzer: jest.Mocked<IProjectAnalyzer> = {
+  analyzeProject: jest.fn(),
 };
 
 const mockLlmAgent: LLMAgent = {
@@ -93,16 +91,8 @@ describe('AiMagicGenerator Integration Tests', () => {
       mockMemoryBankService
     );
 
-    // Mock internal analyzeProject dependencies using the full mockProjectContext
-    (mockProjectAnalyzer.analyzeTechStack as jest.Mock).mockResolvedValue(
-      Result.ok(mockProjectContext.techStack)
-    );
-    (mockProjectAnalyzer.analyzeProjectStructure as jest.Mock).mockResolvedValue(
-      Result.ok(mockProjectContext.structure)
-    );
-    (mockProjectAnalyzer.analyzeDependencies as jest.Mock).mockResolvedValue(
-      Result.ok(mockProjectContext.dependencies)
-    );
+    // Mock the consolidated analyzeProject method
+    mockProjectAnalyzer.analyzeProject.mockResolvedValue(Result.ok(mockProjectContext));
   });
 
   it('should call MemoryBankService with project context on successful analysis', async () => {
@@ -132,9 +122,9 @@ describe('AiMagicGenerator Integration Tests', () => {
     // Assert
     expect(result.isOk()).toBe(true);
     expect(result.value).toBe(mockOutputPath);
-    expect(mockProjectAnalyzer.analyzeTechStack).toHaveBeenCalledWith(mockContextPaths);
-    expect(mockProjectAnalyzer.analyzeProjectStructure).toHaveBeenCalledWith(mockContextPaths);
-    expect(mockProjectAnalyzer.analyzeDependencies).toHaveBeenCalledWith(mockContextPaths);
+    // Check that the new analyzeProject method was called
+    expect(mockProjectAnalyzer.analyzeProject).toHaveBeenCalledTimes(1);
+    expect(mockProjectAnalyzer.analyzeProject).toHaveBeenCalledWith(mockContextPaths);
     expect(mockMemoryBankService.generateMemoryBank).toHaveBeenCalledTimes(1);
     // Deep equality check for the context passed to memory bank service
     expect(mockMemoryBankService.generateMemoryBank).toHaveBeenCalledWith(
@@ -160,21 +150,21 @@ describe('AiMagicGenerator Integration Tests', () => {
     };
     const analysisError = new Error('Analysis failed');
 
-    // Arrange: Mock one of the analysis steps to fail
-    (mockProjectAnalyzer.analyzeTechStack as jest.Mock).mockResolvedValue(
-      Result.err(analysisError)
-    );
+    // Arrange: Mock the consolidated analyzeProject to fail
+    mockProjectAnalyzer.analyzeProject.mockResolvedValue(Result.err(analysisError));
 
     // Act
     const result = await aiMagicGenerator.generate(mockConfig, mockContextPaths);
 
     // Assert
     expect(result.isErr()).toBe(true);
-    expect(result.error?.message).toContain('Project analysis failed');
+    // The error from analyzeProject should be propagated
+    expect(result.error).toBe(analysisError);
     expect(mockMemoryBankService.generateMemoryBank).not.toHaveBeenCalled();
+    // Logger might log the specific analysis error or a wrapper message depending on implementation
     expect(mockLogger.error).toHaveBeenCalledWith(
-      'AI Magic generation failed',
-      expect.any(Error) // Or expect.objectContaining({ message: 'Project analysis failed: Analysis failed' })
+      expect.stringContaining('Project analysis failed'), // Check if the logger message indicates analysis failure
+      analysisError
     );
   });
 
@@ -214,6 +204,8 @@ describe('AiMagicGenerator Integration Tests', () => {
       },
     };
 
+    // Arrange: Mock analyzeProject to succeed
+    mockProjectAnalyzer.analyzeProject.mockResolvedValue(Result.ok(mockProjectContext));
     // Arrange: Mock MemoryBankService to return error
     (mockMemoryBankService.generateMemoryBank as jest.Mock).mockResolvedValue(
       Result.err(memoryBankError)
@@ -247,7 +239,8 @@ describe('AiMagicGenerator Integration Tests', () => {
     // Assert
     expect(result.isErr()).toBe(true);
     expect(result.error?.message).toBe('No context path provided for analysis');
-    expect(mockProjectAnalyzer.analyzeTechStack).not.toHaveBeenCalled();
+    // analyzeProject should not be called if paths are empty
+    expect(mockProjectAnalyzer.analyzeProject).not.toHaveBeenCalled();
     expect(mockMemoryBankService.generateMemoryBank).not.toHaveBeenCalled();
   });
 });
