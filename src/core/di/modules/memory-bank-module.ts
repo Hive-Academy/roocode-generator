@@ -25,6 +25,7 @@ import { MemoryBankTemplateProcessor } from '@memory-bank/memory-bank-template-p
 import { MemoryBankValidator } from '@memory-bank/memory-bank-validator';
 import { ProjectContextService } from '@memory-bank/project-context-service';
 import { PromptBuilder } from '@memory-bank/prompt-builder';
+import { MemoryBankService } from '@memory-bank/memory-bank-service'; // Add import
 
 export function registerMemoryBankModule(container: Container): void {
   // Register MemoryBank specific services
@@ -125,7 +126,22 @@ export function registerMemoryBankModule(container: Container): void {
     return new MemoryBankOrchestrator(templateProcessor, contentGenerator, fileManager, logger);
   });
 
-  // Register MemoryBankGenerator
+  // Register MemoryBankService
+  container.registerFactory<MemoryBankService>('MemoryBankService', () => {
+    const orchestrator = resolveDependency<IMemoryBankOrchestrator>(
+      container,
+      'IMemoryBankOrchestrator'
+    );
+    assertIsDefined(
+      orchestrator,
+      'IMemoryBankOrchestrator dependency not found for MemoryBankService'
+    );
+    const logger = resolveDependency<ILogger>(container, 'ILogger');
+    assertIsDefined(logger, 'ILogger dependency not found for MemoryBankService');
+    return new MemoryBankService(orchestrator, logger);
+  });
+
+  // Register MemoryBankGenerator (Keep for backward compatibility)
   container.registerFactory<MemoryBankGenerator>('MemoryBankGenerator', () => {
     const validator = resolveDependency<IMemoryBankValidator>(container, 'IMemoryBankValidator');
     assertIsDefined(validator, 'IMemoryBankValidator dependency not found');

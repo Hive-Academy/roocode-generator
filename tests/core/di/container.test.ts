@@ -18,6 +18,9 @@ import { ServiceLifetime } from '@core/di/types'; // Import ServiceLifetime
 // import { IRulesFileManager } from '@generators/rules/interfaces';
 // import { IMemoryBankValidator } from '@memory-bank/interfaces';
 // import { IGeneratorOrchestrator } from '@core/application/interfaces';
+import { IGenerator } from '@core/generators/base-generator';
+import { AiMagicGenerator } from '@generators/ai-magic-generator';
+import { MemoryBankService } from '@memory-bank/memory-bank-service';
 
 // --- Mocks ---
 // Mock dependencies that might be problematic in a pure unit test environment
@@ -425,6 +428,35 @@ describe('Container', () => {
       expect((container as any).services.size).toBe(0);
       expect((container as any).singletons.size).toBe(0);
       expect((container as any).resolutionStack.length).toBe(0); // Verify resolution stack is cleared
+    });
+  });
+
+  describe('Application Service Resolution', () => {
+    // No need for beforeEach here as the main one clears and initializes
+
+    it('should resolve AiMagicGenerator correctly', () => {
+      // Attempt to resolve the generator using its registered token
+      const resolveResult = container.resolve<IGenerator<any>>('IGenerator.AiMagic');
+
+      // Assertions
+      expect(resolveResult.isOk()).toBe(true); // Check if resolution was successful
+      expect(resolveResult.value).toBeDefined(); // Check if a value was returned
+      // Since the factory returns IGenerator, we check the instance type if possible,
+      // but primarily rely on the resolution success.
+      // We expect the factory to return an instance based on AiMagicGenerator.
+      // A more robust check might involve inspecting properties if needed,
+      // but instanceof check against the concrete class is good.
+      expect(resolveResult.value).toBeInstanceOf(AiMagicGenerator);
+    });
+
+    it('should resolve MemoryBankService correctly', () => {
+      // Attempt to resolve the service using its registered token
+      const resolveResult = container.resolve<MemoryBankService>('MemoryBankService');
+
+      // Assertions
+      expect(resolveResult.isOk()).toBe(true); // Check if resolution was successful
+      expect(resolveResult.value).toBeDefined(); // Check if a value was returned
+      expect(resolveResult.value).toBeInstanceOf(MemoryBankService); // Check the instance type
     });
   });
 

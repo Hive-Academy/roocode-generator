@@ -3,13 +3,7 @@ import { IServiceContainer } from '@/core/di/interfaces';
 import { BaseGenerator } from '@/core/generators/base-generator';
 import { Result } from '@/core/result/result';
 import { ILogger } from '@/core/services/logger-service';
-import {
-  DependencyGraph,
-  IProjectAnalyzer,
-  ProjectContext,
-  ProjectStructure,
-  TechStackAnalysis,
-} from '@/core/analysis/types';
+import { IProjectAnalyzer, ProjectContext } from '@/core/analysis/types'; // Removed unused specific types
 import { IFileOperations } from '@/core/file-operations/interfaces';
 import { LLMAgent } from '@/core/llm/llm-agent';
 // Removed unused path import
@@ -100,21 +94,23 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
   }
 
   private async analyzeProject(paths: string[]): Promise<Result<ProjectContext, Error>> {
-    try {
-      const [techStack, structure, dependencies] = await Promise.all([
-        this.projectAnalyzer.analyzeTechStack(paths),
-        this.projectAnalyzer.analyzeProjectStructure(paths),
-        this.projectAnalyzer.analyzeDependencies(paths),
-      ]);
+    this.logger.debug(`Calling ProjectAnalyzer.analyzeProject for paths: ${paths.join(', ')}`);
+    // Directly call the consolidated analyzeProject method
+    const analysisResult = await this.projectAnalyzer.analyzeProject(paths);
 
-      return Result.ok({
-        techStack: techStack.value as TechStackAnalysis,
-        structure: structure.value as ProjectStructure,
-        dependencies: dependencies.value as DependencyGraph,
-      });
-    } catch (error: any) {
-      return Result.err(new Error(`Project analysis failed: ${error.message}`));
+    if (analysisResult.isErr()) {
+      this.logger.error('Project analysis failed within AiMagicGenerator', analysisResult.error);
+      return Result.err(analysisResult.error ?? new Error('Unknown project analysis error'));
     }
+
+    if (!analysisResult.value) {
+      const error = new Error('Project analysis returned undefined context');
+      this.logger.error(error.message);
+      return Result.err(error);
+    }
+
+    this.logger.debug('Project analysis successful.');
+    return Result.ok(analysisResult.value); // Return the complete ProjectContext
   }
 
   // Removed generateRulesContent and related private methods as this logic
