@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/unbound-method */
+ 
 // tests/generators/rules-generator.test.ts
 import { Result } from '../../src/core/result/result';
 import { DIError } from '../../src/core/di/errors';
