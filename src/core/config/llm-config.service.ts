@@ -103,7 +103,7 @@ export class LLMConfigService implements ILLMConfigService {
         {
           type: 'input',
           name: 'provider',
-          message: 'Enter the LLM provider name (e.g., openai, anthropic, google):',
+          message: 'Enter the LLM provider name (e.g., openai, anthropic, google-genai):',
           default: editableConfig.provider || 'openai', // Provide a common default
           validate: (input: string) =>
             input.trim().length > 0 || 'Provider name is required and cannot be empty.',
