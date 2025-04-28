@@ -118,9 +118,6 @@ export class ApplicationContainer {
     try {
       this.logger.info("Executing 'config' command.");
 
-      // Use the injected service instance
-      const llmConfigService = this.llmConfigService;
-
       const hasCliOptions = options.provider || options.apiKey || options.model;
       // Always start with default config, removing the load/check logic
       const baseConfig: LLMConfig = {
@@ -133,13 +130,13 @@ export class ApplicationContainer {
 
       if (hasCliOptions) {
         progress.start('Updating configuration with CLI options...');
-        const result = await this.handleCliConfigUpdate(llmConfigService, options, baseConfig);
+        const result = await this.handleCliConfigUpdate(this.llmConfigService, options, baseConfig);
         // Progress handled within handleCliConfigUpdate
         return result;
       } else {
         progress.start('Starting interactive configuration...');
-        const result = await llmConfigService.interactiveEditConfig(baseConfig);
-        // progress.stop(); // Stop progress after interactive session - Handled in interactiveEditConfig now
+        progress.stop(); // Stop spinner before interactive prompt
+        const result = await this.llmConfigService.interactiveEditConfig(baseConfig);
 
         if (result.isErr()) {
           const error = result.error ?? new Error('Unknown error during interactive configuration');
