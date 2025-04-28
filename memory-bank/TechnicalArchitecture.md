@@ -1,5 +1,9 @@
-Okay, here is the Technical Architecture document for the `roocode-generator` project, based on the provided context and following the standard template structure.
-
+---
+title: Technical Architecture
+version: 1.1.0
+lastUpdated: 2024-08-15 (Based on context, update if necessary)
+documentStatus: Final
+author: Software Architect AI
 ---
 
 # Technical Architecture: roocode-generator
@@ -118,7 +122,8 @@ _Diagram showing the initialization, command handling, and generator execution f
     - `IMemoryBankFileManager`: Manages memory bank file I/O via `FileOperations`.
     - `IMemoryBankValidator`: Validates generated files.
     - `IContentProcessor`: Post-processes LLM output.
-  - `RulesGenerator`: Generates coding standard rules based on project analysis and templates. Includes sub-components like `IRulesFileManager`, `IRulesContentProcessor`, `IRulesPromptBuilder`. Uses `ProjectAnalyzer` and `LLMAgent`.
+  - `RulesGenerator`: Generates coding standard rules based on project analysis and templates, now producing a single Markdown file. Includes sub-components like `IRulesFileManager`, `IRulesContentProcessor`, `IRulesPromptBuilder`. Uses `ProjectAnalyzer` and `LLMAgent`.
+  - `IRulesFileManager`: Manages saving the generated single Markdown rules file to `.roo/rules-code/rules.md`. The previous versioning and multi-file logic has been removed.
   - `SystemPromptsGenerator`, `RoomodesGenerator`, `VSCodeCopilotRulesGenerator`: Simpler generators creating specific configuration files, often using the core `TemplateManager`.
 - **`@core/analysis` (Project Analysis):**
   - `ProjectAnalyzer`: Uses `LLMAgent` and `FileOperations` to analyze project structure, tech stack, and dependencies based on file content.
