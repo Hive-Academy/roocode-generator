@@ -31,6 +31,7 @@ The new ai-magic generator will be created by copying the Rules Generator and th
 - Maintain backward compatibility by preserving existing Rules Generator and Memory Bank Generator.
 - Develop new tests for ai-magic generator and update memory bank tests as needed.
 - Update documentation to reflect new architecture and usage.
+- Enhance rules system prompts to generate a well-structured, well-written set of rules matching the style and content of `.roo/rules-code/rules.md`.
 
 ### Architectural Decisions
 
@@ -39,6 +40,7 @@ The new ai-magic generator will be created by copying the Rules Generator and th
 - Data flow: ai-magic -> project analysis -> memory bank service -> file generation.
 - Memory bank service focuses solely on generating files from project context.
 - Preserve existing interfaces and modular separation.
+- Rules prompts will be enhanced to produce output consistent with `.roo/rules-code/rules.md` standards.
 
 ### Component Diagram (Conceptual)
 
@@ -52,6 +54,7 @@ GeneratorOrchestrator
 AiMagicGenerator (new generator)
 |-- uses --> ProjectAnalyzer
 |-- calls --> MemoryBankService (refactored MemoryBankGenerator)
+|-- uses --> Enhanced Rules Prompt System
 |
 Generates output files
 
@@ -61,6 +64,7 @@ Generates output files
 - `MemoryBankService` exposes method `generateMemoryBank(projectContext: ProjectContext): Promise<Result<string, Error>>`.
 - `ProjectAnalyzer` provides `analyzeProject(paths: string[]): Promise<Result<ProjectContext, Error>>`.
 - Data passed between ai-magic and memory bank service is structured `ProjectContext`.
+- Rules prompt system will have defined templates and prompt builders to generate rules files matching `.roo/rules-code/rules.md`.
 
 ## 5. Implementation Subtasks with Progress Tracking
 
@@ -68,205 +72,72 @@ Generates output files
 
 **Status**: Completed
 
-**Description**: Copy `RulesGenerator` class and related files to create `AiMagicGenerator`. Update class name, file name, and references. Prepare for enhancements.
-
-**Files to Modify**:
-
-- Copy `src/generators/rules/rules-generator.ts` to `src/generators/ai-magic-generator.ts`
-- Update DI modules to register AiMagicGenerator
-
-**Implementation Details**:
-
-```typescript
-@Injectable()
-export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
-  // copied logic from RulesGenerator, to be enhanced
-}
-```
-
-**Testing Requirements**:
-
-- Create new unit tests for AiMagicGenerator.
-- Verify copied functionality works as expected.
-
-**Acceptance Criteria**:
-
-- [x] AiMagicGenerator created and registered.
-- [x] Tests for AiMagicGenerator pass.
-
-**Estimated effort**: 20 minutes
-
----
-
 ### 2. Refactor Memory Bank Generator into a Service
 
 **Status**: Completed
-
-**Description**: Refactor `MemoryBankGenerator` to expose a service interface callable by ai-magic. Adapt methods to accept structured project context.
-
-**Files to Modify**:
-
-- `src/memory-bank/memory-bank-generator.ts`
-- `src/memory-bank/memory-bank-orchestrator.ts`
-
-**Implementation Details**:
-
-```typescript
-@Injectable()
-export class MemoryBankService {
-  async generateMemoryBank(projectContext: ProjectContext): Promise<Result<string, Error>> {
-    // generation logic adapted from MemoryBankGenerator
-  }
-}
-```
-
-**Testing Requirements**:
-
-- Unit tests for MemoryBankService methods.
-- Integration tests verifying generation from project context.
-
-**Acceptance Criteria**:
-
-- [x] MemoryBankGenerator refactored to service interface.
-- [x] Methods accept structured project context.
-- [x] Tests updated and passing.
-
-**Estimated effort**: 20 minutes
-
----
 
 ### 3. Enhance AiMagicGenerator to Call Memory Bank Service
 
 **Status**: Completed
 
-**Description**: Modify ai-magic generator to perform project scanning and then call memory bank service to generate files.
-
-**Files to Modify**:
-
-- `src/generators/ai-magic-generator.ts`
-
-**Implementation Details**:
-
-```typescript
-const projectContext = await this.analyzeProject(paths);
-const result = await this.memoryBankService.generateMemoryBank(projectContext);
-```
-
-**Testing Requirements**:
-
-- Integration tests verifying ai-magic calls memory bank service.
-- End-to-end tests for generation workflow.
-
-**Acceptance Criteria**:
-
-- [x] ai-magic calls memory bank service correctly.
-- [x] Generation outputs consistent or improved.
-- [x] Tests pass.
-
-**Estimated effort**: 15 minutes
-
----
-
 ### 4. Update Dependency Injection and Configuration
 
 **Status**: Completed
-
-**Description**: Update DI container and modules to register ai-magic generator and memory bank service.
-
-**Files to Modify**:
-
-- `src/core/di/modules/*`
-
-**Implementation Details**:
-
-- Register AiMagicGenerator and MemoryBankService with appropriate scopes.
-
-**Testing Requirements**:
-
-- Verify DI registrations via unit tests or integration tests.
-
-**Acceptance Criteria**:
-
-- [x] DI registrations updated.
-- [x] No DI-related errors at runtime.
-
-**Estimated effort**: 10 minutes
-
----
 
 ### 5. Enhance ProjectAnalyzer Service
 
 **Status**: Completed
 
-**Description**: Analyze and enhance the `ProjectAnalyzer` service to improve project scanning and analysis capabilities. Leverage the existing generalized scan in `ProjectContextService` and extend support for additional tech stacks and programming languages. Improve accuracy and completeness of the `ProjectContext` data used by ai-magic and memory bank service.
+### 6. Enhance Rules Prompts for Structured, Well-Written Rules Generation
+
+**Status**: Completed
+
+**Description**: Enhance the rules system prompts used by the ai-magic generator to produce a well-structured, well-written set of rules. The output should match the style, clarity, and content quality of the existing `.roo/rules-code/rules.md` file.
 
 **Files to Modify**:
 
-- `src/core/analysis/project-analyzer.ts`
-- Possibly `src/memory-bank/project-context-service.ts`
+- Rules prompt templates and builders under `src/generators/rules/` or `src/generators/ai-magic/`
+- Possibly update `rules-prompt-builder.ts` or create new prompt builder for ai-magic
+- Update or add tests for prompt generation correctness and output formatting
 
 **Implementation Details**:
 
-- Review current scanning and analysis logic.
-- Identify gaps or limitations in tech stack detection and project context gathering.
-- Implement enhancements to support broader tech stacks and languages.
-- Update or add unit and integration tests for enhanced analysis.
+- Analyze `.roo/rules-code/rules.md` content and structure.
+- Define prompt templates that instruct the LLM to generate rules in the same style.
+- Implement prompt builder methods to assemble these prompts.
+- Integrate enhanced prompts into AiMagicGenerator generation flow.
+- Add tests to verify prompt correctness and output format.
 
 **Testing Requirements**:
 
-- Unit tests for enhanced ProjectAnalyzer methods.
-- Integration tests verifying improved project context accuracy.
+- Unit tests for prompt builder methods.
+- Integration tests verifying generated rules match expected structure.
+- Manual review of generated rules file for quality assurance.
 
 **Acceptance Criteria**:
 
-- [x] ProjectAnalyzer enhanced with improved scanning and analysis.
-- [x] Tests updated and passing.
-- [x] No regressions in existing functionality.
+- [ ] Rules prompts generate output consistent with `.roo/rules-code/rules.md`.
+- [ ] Tests cover prompt generation logic.
+- [ ] AiMagicGenerator uses enhanced prompts successfully.
 
 **Estimated effort**: 30 minutes
 
----
+**Deviations**:
 
-### 6. Update Documentation and Tests
+- Initial prompt implementation was too focused on replicating the example file content. Revised prompts based on feedback to generate context-specific rules _inspired_ by the example's structure and tone.
+- Corrected the placement of rules generation logic; it resides within `AiMagicGenerator`, not `MemoryBankService` as initially misinterpreted from comments.
+
+### 7. Update Documentation and Tests
 
 **Status**: Not Started
 
-**Description**: Update documentation files referencing generators and memory bank to reflect the new architecture and usage. Add or update tests for the new service interface and integration. Ensure documentation is clear on the new ai-magic generator and memory bank service interaction. Verify test coverage and documentation completeness.
-
-**Files to Modify**:
-
-- Documentation files referencing generators and memory bank.
-- Test files under `tests/generators/` and `tests/memory-bank/`
-
-**Implementation Details**:
-
-- Update README, DeveloperGuide, and other docs.
-- Add tests for new service interface and integration.
-
-**Testing Requirements**:
-
-- Documentation review.
-- Test coverage verification.
-- All tests passing.
-
-**Acceptance Criteria**:
-
-- [ ] Documentation updated.
-- [ ] Tests comprehensive and passing.
-
-**Estimated effort**: 15 minutes
-
----
-
 ## 6. Testing Strategy
 
-- Unit tests for AiMagicGenerator, MemoryBankService, and enhanced ProjectAnalyzer classes.
-- Integration tests for interaction between ai-magic, ProjectAnalyzer, and memory bank service.
+- Unit tests for AiMagicGenerator, MemoryBankService, enhanced ProjectAnalyzer, and rules prompt builders.
+- Integration tests for interaction between ai-magic, ProjectAnalyzer, memory bank service, and prompt system.
 - End-to-end tests for generation workflow.
 - Regression tests to ensure no breaking changes.
 - Performance tests to verify no degradation.
-
----
 
 ## Implementation Sequence
 
@@ -275,8 +146,9 @@ const result = await this.memoryBankService.generateMemoryBank(projectContext);
 3. Enhance AiMagicGenerator to call Memory Bank Service.
 4. Update dependency injection and configuration.
 5. Enhance ProjectAnalyzer service.
-6. Update documentation and tests.
+6. Enhance rules prompts for structured, well-written rules generation.
+7. Update documentation and tests.
 
 ---
 
-This plan ensures a modular, maintainable refactor with minimal disruption and comprehensive testing.
+This plan ensures a modular, maintainable refactor with minimal disruption and comprehensive testing, including improved rules generation quality.

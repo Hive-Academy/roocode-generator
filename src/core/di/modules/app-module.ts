@@ -27,6 +27,9 @@ import { MemoryBankService } from '@/memory-bank/memory-bank-service';
 import { LLMAgent } from '@core/llm/llm-agent'; // Added LLMAgent import
 import { Injectable } from '@core/di/decorators'; // Import Injectable
 import { ProgressIndicator } from '@core/ui/progress-indicator';
+// Import necessary interfaces for AiMagicGenerator dependencies
+import { IRulesPromptBuilder } from '@/generators/rules/interfaces';
+import { IContentProcessor } from '@/memory-bank/interfaces';
 
 // Stub for IProjectManager as it was in registrations.ts
 @Injectable()
@@ -90,15 +93,23 @@ export function registerAppModule(container: Container): void {
     const projectAnalyzer = resolveDependency<IProjectAnalyzer>(container, 'IProjectAnalyzer');
     const llmAgent = resolveDependency<LLMAgent>(container, 'LLMAgent'); // Resolve LLMAgent
     const memoryBankService = resolveDependency<MemoryBankService>(container, 'MemoryBankService'); // Use concrete class
+    // Resolve the new dependencies using specific interfaces
+    const rulesPromptBuilder = resolveDependency<IRulesPromptBuilder>(
+      container,
+      'IRulesPromptBuilder'
+    ); // Use specific interface
+    const contentProcessor = resolveDependency<IContentProcessor>(container, 'IContentProcessor'); // Use specific interface
 
-    // Pass dependencies in the correct constructor order
+    // Pass dependencies in the correct constructor order (now 8 arguments)
     return new AiMagicGenerator(
       serviceContainer, // For super(container)
       logger,
       fileOperations,
       projectAnalyzer,
       llmAgent, // Pass LLMAgent
-      memoryBankService
+      memoryBankService,
+      rulesPromptBuilder, // Pass RulesPromptBuilder
+      contentProcessor // Pass ContentProcessor
     );
   });
 
