@@ -5,12 +5,13 @@ import {
   IMemoryBankContentGenerator,
   IMemoryBankFileManager,
   MemoryBankFileType,
-  GenerationOptions,
+  // GenerationOptions, // Remove GenerationOptions
 } from '../../src/memory-bank/interfaces';
 import { ILogger } from '../../src/core/services/logger-service';
 import { Result } from '../../src/core/result/result';
 import { MemoryBankGenerationError } from '../../src/core/errors/memory-bank-errors';
 import { ProjectConfig } from '../../types/shared';
+import { ProjectContext } from '../../src/core/analysis/types'; // Import ProjectContext
 import path from 'path';
 
 describe('MemoryBankOrchestrator', () => {
@@ -27,11 +28,39 @@ describe('MemoryBankOrchestrator', () => {
     rootDir: '.roo',
     generators: ['memory-bank'],
     description: 'Test project description',
+    memoryBank: {
+      // Add memoryBank config for completeness in tests
+      outputDir: '/test/base/dir/memory-bank',
+      useTemplates: true,
+    },
   };
 
-  const testOptions: GenerationOptions = {
-    context: 'Test project context',
+  // Replace testOptions with mockProjectContext
+  const mockProjectContext: ProjectContext = {
+    techStack: {
+      languages: ['TypeScript'],
+      frameworks: ['Jest'],
+      buildTools: [],
+      testingFrameworks: [],
+      linters: [],
+      packageManager: 'npm',
+    },
+    structure: {
+      rootDir: '/test/base/dir',
+      sourceDir: 'src',
+      testDir: 'tests',
+      configFiles: [],
+      mainEntryPoints: [],
+      componentStructure: {},
+    },
+    dependencies: {
+      dependencies: {},
+      devDependencies: {},
+      peerDependencies: {},
+      internalDependencies: {},
+    },
   };
+  const mockStringContext = JSON.stringify(mockProjectContext, null, 2); // Pre-calculate serialized context
 
   beforeEach(() => {
     // Create mocks
@@ -76,13 +105,16 @@ describe('MemoryBankOrchestrator', () => {
   describe('orchestrateGeneration', () => {
     it('should successfully orchestrate the generation process', async () => {
       // Act
-      const result = await orchestrator.orchestrateGeneration(testOptions, testConfig);
+      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig);
 
       // Assert
       expect(result.isOk()).toBe(true);
 
       // Verify directory creation
-      expect(mockFileManager.createMemoryBankDirectory).toHaveBeenCalledWith(testConfig.baseDir);
+
+      expect(mockFileManager.createMemoryBankDirectory).toHaveBeenCalledWith(
+        testConfig.memoryBank?.outputDir
+      ); // Use configured output dir
 
       // Verify template processing for each file type
       Object.values(MemoryBankFileType).forEach((fileType) => {
@@ -99,7 +131,7 @@ describe('MemoryBankOrchestrator', () => {
       Object.values(MemoryBankFileType).forEach((fileType) => {
         expect(mockContentGenerator.generateContent).toHaveBeenCalledWith(
           fileType,
-          testOptions.context,
+          mockStringContext, // Expect serialized context string
           'Processed template'
         );
       });
@@ -107,10 +139,10 @@ describe('MemoryBankOrchestrator', () => {
       // Verify file writing for each file type
       Object.values(MemoryBankFileType).forEach((fileType) => {
         const expectedFilePath = path.join(
-          testConfig.baseDir,
-          'memory-bank',
+          testConfig.memoryBank!.outputDir, // Use configured output dir
           `${String(fileType)}.md`
         );
+
         expect(mockFileManager.writeMemoryBankFile).toHaveBeenCalledWith(
           expectedFilePath,
           'Generated content'
@@ -118,12 +150,14 @@ describe('MemoryBankOrchestrator', () => {
       });
 
       // Verify template directory copying
+
       expect(mockFileManager.copyDirectoryRecursive).toHaveBeenCalledWith(
-        path.join('templates', 'memory-bank', 'templates'),
-        path.join(testConfig.baseDir, 'memory-bank', 'templates')
+        path.join('templates', 'memory-bank', 'templates'), // Default source
+        path.join(testConfig.memoryBank!.outputDir, 'templates') // Destination in output dir
       );
 
       // Verify logging
+
       expect(mockLogger.info).toHaveBeenCalledWith('Memory bank generation completed successfully');
     });
 
@@ -133,7 +167,7 @@ describe('MemoryBankOrchestrator', () => {
       mockFileManager.createMemoryBankDirectory.mockResolvedValue(Result.err(dirError));
 
       // Act
-      const result = await orchestrator.orchestrateGeneration(testOptions, testConfig);
+      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig);
 
       // Assert
       expect(result.isErr()).toBe(true);
@@ -145,8 +179,11 @@ describe('MemoryBankOrchestrator', () => {
       expect(genError.cause).toBe(dirError);
 
       // Verify no further processing occurred
+
       expect(mockTemplateProcessor.loadAndProcessTemplate).not.toHaveBeenCalled();
+
       expect(mockContentGenerator.generateContent).not.toHaveBeenCalled();
+
       expect(mockFileManager.writeMemoryBankFile).not.toHaveBeenCalled();
     });
 
@@ -161,12 +198,13 @@ describe('MemoryBankOrchestrator', () => {
       });
 
       // Act
-      const result = await orchestrator.orchestrateGeneration(testOptions, testConfig);
+      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig);
 
       // Assert
       expect(result.isOk()).toBe(true);
 
       // Verify error was logged
+
       expect(mockLogger.error).toHaveBeenCalledWith(
         expect.stringContaining(
           `Failed to process template for ${MemoryBankFileType.ProjectOverview}`
@@ -175,14 +213,16 @@ describe('MemoryBankOrchestrator', () => {
       );
 
       // Verify other file types were still processed
+
       expect(mockContentGenerator.generateContent).toHaveBeenCalledTimes(
         Object.values(MemoryBankFileType).length - 1
       );
 
       // Verify ProjectOverview was skipped
+
       expect(mockContentGenerator.generateContent).not.toHaveBeenCalledWith(
         MemoryBankFileType.ProjectOverview,
-        expect.any(String),
+        expect.any(String), // Context is still string here, but this call shouldn't happen
         expect.any(String)
       );
     });
@@ -198,12 +238,13 @@ describe('MemoryBankOrchestrator', () => {
       });
 
       // Act
-      const result = await orchestrator.orchestrateGeneration(testOptions, testConfig);
+      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig);
 
       // Assert
       expect(result.isOk()).toBe(true);
 
       // Verify error was logged
+
       expect(mockLogger.error).toHaveBeenCalledWith(
         expect.stringContaining(
           `Failed to generate content for ${MemoryBankFileType.TechnicalArchitecture}`
@@ -214,8 +255,7 @@ describe('MemoryBankOrchestrator', () => {
       // Verify TechnicalArchitecture file was not written
       Object.values(MemoryBankFileType).forEach((fileType) => {
         const expectedFilePath = path.join(
-          testConfig.baseDir,
-          'memory-bank',
+          testConfig.memoryBank!.outputDir, // Use configured output dir
           `${String(fileType)}.md`
         );
         if (fileType === MemoryBankFileType.TechnicalArchitecture) {
@@ -243,18 +283,20 @@ describe('MemoryBankOrchestrator', () => {
       });
 
       // Act
-      const result = await orchestrator.orchestrateGeneration(testOptions, testConfig);
+      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig);
 
       // Assert
       expect(result.isOk()).toBe(true);
 
       // Verify error was logged
+
       expect(mockLogger.error).toHaveBeenCalledWith(
         expect.stringContaining(`Failed to write ${MemoryBankFileType.DeveloperGuide} to file`),
         writeError
       );
 
       // Verify other files were still written
+
       expect(mockFileManager.writeMemoryBankFile).toHaveBeenCalledTimes(
         Object.values(MemoryBankFileType).length
       );
@@ -266,18 +308,20 @@ describe('MemoryBankOrchestrator', () => {
       mockFileManager.copyDirectoryRecursive.mockResolvedValue(Result.err(copyError));
 
       // Act
-      const result = await orchestrator.orchestrateGeneration(testOptions, testConfig);
+      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig);
 
       // Assert
       expect(result.isOk()).toBe(true);
 
       // Verify error was logged
+
       expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to copy templates directory'), // Updated message
-        expect.any(MemoryBankGenerationError) // Updated error type check
+        expect.stringContaining('Failed to copy templates directory'),
+        expect.any(MemoryBankGenerationError)
       );
 
       // Verify generation was still marked as successful
+
       expect(mockLogger.info).toHaveBeenCalledWith('Memory bank generation completed successfully');
     });
 
@@ -289,7 +333,7 @@ describe('MemoryBankOrchestrator', () => {
       });
 
       // Act
-      const result = await orchestrator.orchestrateGeneration(testOptions, testConfig);
+      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig);
 
       // Assert
       expect(result.isErr()).toBe(true);

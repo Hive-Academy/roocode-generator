@@ -66,7 +66,7 @@ Generates output files
 
 ### 1. Create AiMagicGenerator by Copying RulesGenerator
 
-**Status**: Not Started
+**Status**: In Progress
 
 **Description**: Copy `RulesGenerator` class and related files to create `AiMagicGenerator`. Update class name, file name, and references. Prepare for enhancements.
 
@@ -100,7 +100,7 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
 
 ### 2. Refactor Memory Bank Generator into a Service
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Refactor `MemoryBankGenerator` to expose a service interface callable by ai-magic. Adapt methods to accept structured project context.
 
@@ -137,7 +137,7 @@ export class MemoryBankService {
 
 ### 3. Enhance AiMagicGenerator to Call Memory Bank Service
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Modify ai-magic generator to perform project scanning and then call memory bank service to generate files.
 
