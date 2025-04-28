@@ -10,6 +10,34 @@ Core features include interactive CLI prompts, generation of standardized config
 
 For more detailed information, refer to the [Project Overview](memory-bank/ProjectOverview.md).
 
+## How it Works
+
+This section details how the command-line interface interacts with the core application logic.
+
+1.  **CLI Parsing (`src/core/cli/cli-interface.ts`)**:
+
+    - The `CliInterface` class uses the `commander` library to define the available commands (`generate`, `config`) and their options.
+    - When the CLI is executed, `commander` parses the command-line arguments (`process.argv`).
+    - Action callbacks associated with each command capture the parsed command name and options, storing them in the `parsedArgs` property of the `CliInterface` instance.
+
+2.  **Application Execution and Command Routing (`src/core/application/application-container.ts`)**:
+
+    - The `ApplicationContainer` serves as the main entry point for the application's runtime logic.
+    - During its `run` sequence, it retrieves the parsed command and options from the `CliInterface` instance.
+    - The `executeCommand` method within `ApplicationContainer` acts as a router, using a `switch` statement based on the parsed command name.
+    - This routing directs execution to specific methods responsible for handling each command, such as `executeGenerateCommand` or `executeConfigCommand`.
+
+3.  **Generator Execution (`src/core/application/generator-orchestrator.ts`)**:
+    - The `GeneratorOrchestrator` is responsible for managing and executing the various code generators available in the application.
+    - When the `generate` command is routed to the `executeGenerateCommand` method in `ApplicationContainer`, this method delegates the task of running the selected generators to the `GeneratorOrchestrator`.
+    - The `GeneratorOrchestrator` identifies the requested generators and executes their respective generation logic.
+
+In summary:
+
+- `cli-interface.ts` handles input parsing.
+- `application-container.ts` orchestrates the overall application flow and routes commands.
+- `generator-orchestrator.ts` executes the code generation tasks when triggered by the `generate` command via the `application-container.ts`.
+
 ## Building the Project
 
 To build and run the `roocode-generator` project locally, follow these steps:

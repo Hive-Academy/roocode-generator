@@ -41,20 +41,6 @@ export class CliInterface implements ICliInterface {
       .option('-t, --template <template>', 'Specify the template to use (if applicable)')
       .option('-o, --output <output>', 'Specify the output directory (if applicable)');
 
-    // Remove memory-bank subcommand and adjust generate command
-    // to accept --generators memory-bank
-    // generateCommand
-    //   .command('memory-bank')
-    //   .description(
-    //     'Generate all memory bank files (ProjectOverview, TechnicalArchitecture, DeveloperGuide)'
-    //   )
-    //   .option('-c, --context <paths...>', 'Specify context paths')
-    //   .option('-o, --output <path>', 'Specify output directory')
-    //   .action((options: Record<string, any>) => {
-    //     this.parsedArgs.command = 'memory-bank-suite';
-    //     this.parsedArgs.options = options;
-    //   });
-
     // Existing generate command action handler for other generators
     generateCommand.action((options: Record<string, any>) => {
       this.parsedArgs.command = 'generate';
