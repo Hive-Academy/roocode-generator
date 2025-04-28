@@ -8,6 +8,8 @@ import { LLMAgent } from '@/core/llm/llm-agent';
 import { Result } from '@/core/result/result';
 import { IServiceContainer } from '@/core/di/interfaces';
 import { ProjectConfig } from '../../types/shared'; // Corrected import path
+import { IRulesPromptBuilder } from '@/generators/rules/interfaces'; // Import for mock
+import { IContentProcessor } from '@/memory-bank/interfaces'; // Import for mock
 
 // Mock dependencies
 const mockLogger: ILogger = {
@@ -46,6 +48,18 @@ const mockContainer: IServiceContainer = {
   registerFactory: jest.fn(),
   resolve: jest.fn(),
   clear: jest.fn(),
+};
+
+// Mock for RulesPromptBuilder
+const mockRulesPromptBuilder: jest.Mocked<IRulesPromptBuilder> = {
+  buildSystemPrompt: jest.fn(),
+  buildPrompt: jest.fn(),
+};
+
+// Mock for ContentProcessor
+const mockContentProcessor: jest.Mocked<IContentProcessor> = {
+  stripMarkdownCodeBlock: jest.fn(),
+  processTemplate: jest.fn(), // Add missing mock method
 };
 
 describe('AiMagicGenerator Integration Tests', () => {
@@ -87,15 +101,17 @@ describe('AiMagicGenerator Integration Tests', () => {
       mockLogger,
       mockFileOps,
       mockProjectAnalyzer,
-      mockLlmAgent, // LLMAgent might not be directly used anymore, but kept for constructor signature
-      mockMemoryBankService
+      mockLlmAgent, // LLMAgent is used for rules generation now
+      mockMemoryBankService,
+      mockRulesPromptBuilder, // Add new mock
+      mockContentProcessor // Add new mock
     );
 
     // Mock the consolidated analyzeProject method
     mockProjectAnalyzer.analyzeProject.mockResolvedValue(Result.ok(mockProjectContext));
   });
 
-  it('should call MemoryBankService with project context on successful analysis', async () => {
+  it('should call MemoryBankService and generate rules file on successful analysis', async () => {
     const mockContextPaths = ['/path/to/project'];
     // Corrected mockConfig to satisfy ProjectConfig interface
     const mockConfig: ProjectConfig = {
@@ -105,7 +121,10 @@ describe('AiMagicGenerator Integration Tests', () => {
       generators: ['ai-magic'],
     };
     // mockProjectContext is now defined at the describe level
-    const mockOutputPath = 'memory-bank/output.md';
+    const mockMemoryBankOutputPath = 'memory-bank/output.md';
+    const mockRulesOutputPath = '.roo/rules-code/generated-rules.md';
+    const mockGeneratedRulesContent = '# Generated Rules\n\n- Rule 1';
+    const mockStrippedRulesContent = '# Generated Rules\n\n- Rule 1'; // Assume stripping doesn't change it here
 
     // Arrange: Mock analyzeProject to return success
     // Note: analyzeProject is private, but its underlying calls are mocked above.
@@ -113,15 +132,29 @@ describe('AiMagicGenerator Integration Tests', () => {
 
     // Arrange: Mock MemoryBankService to return success
     (mockMemoryBankService.generateMemoryBank as jest.Mock).mockResolvedValue(
-      Result.ok(mockOutputPath)
+      Result.ok(mockMemoryBankOutputPath)
     );
+    // Arrange: Mock Rules generation steps to succeed
+    mockRulesPromptBuilder.buildSystemPrompt.mockReturnValue(Result.ok('SYSTEM_PROMPT'));
+    mockRulesPromptBuilder.buildPrompt.mockReturnValue(Result.ok('USER_PROMPT'));
+    (mockLlmAgent.getCompletion as jest.Mock).mockResolvedValue(
+      Result.ok(mockGeneratedRulesContent)
+    );
+    mockContentProcessor.stripMarkdownCodeBlock.mockReturnValue(
+      Result.ok(mockStrippedRulesContent)
+    );
+    (mockFileOps.writeFile as jest.Mock).mockResolvedValue(Result.ok(undefined)); // Mock writeFile success
 
     // Act
     const result = await aiMagicGenerator.generate(mockConfig, mockContextPaths);
 
     // Assert
     expect(result.isOk()).toBe(true);
-    expect(result.value).toBe(mockOutputPath);
+    // Assert: Check combined success message
+    expect(result.value).toContain(
+      `Memory Bank generated successfully. ${mockMemoryBankOutputPath}`
+    );
+    expect(result.value).toContain(`Rules file generated successfully at ${mockRulesOutputPath}`);
     // Check that the new analyzeProject method was called
     expect(mockProjectAnalyzer.analyzeProject).toHaveBeenCalledTimes(1);
     expect(mockProjectAnalyzer.analyzeProject).toHaveBeenCalledWith(mockContextPaths);
@@ -130,12 +163,31 @@ describe('AiMagicGenerator Integration Tests', () => {
     expect(mockMemoryBankService.generateMemoryBank).toHaveBeenCalledWith(
       expect.objectContaining(mockProjectContext)
     );
+    // Assert: Check rules generation calls
+    expect(mockRulesPromptBuilder.buildSystemPrompt).toHaveBeenCalledWith('code');
+    expect(mockRulesPromptBuilder.buildPrompt).toHaveBeenCalledWith(
+      expect.any(String), // instruction
+      expect.any(String), // context string
+      '' // template
+    );
+    expect(mockLlmAgent.getCompletion).toHaveBeenCalledWith('SYSTEM_PROMPT', 'USER_PROMPT');
+    expect(mockContentProcessor.stripMarkdownCodeBlock).toHaveBeenCalledWith(
+      mockGeneratedRulesContent
+    );
+    expect(mockFileOps.writeFile).toHaveBeenCalledWith(
+      mockRulesOutputPath,
+      mockStrippedRulesContent
+    );
+
+    // Assert: Check logger calls
     expect(mockLogger.info).toHaveBeenCalledWith('Starting AI Magic generation process...');
+    expect(mockLogger.info).toHaveBeenCalledWith('Starting Memory Bank Service generation...');
+    expect(mockLogger.info).toHaveBeenCalledWith('Starting Rules file generation...');
     expect(mockLogger.info).toHaveBeenCalledWith(
-      'Calling Memory Bank Service to generate files...'
+      `Memory Bank Service completed successfully. ${mockMemoryBankOutputPath}`
     );
     expect(mockLogger.info).toHaveBeenCalledWith(
-      `Memory Bank Service completed successfully. Output path: ${mockOutputPath}`
+      `Rules file generated successfully at ${mockRulesOutputPath}`
     );
   });
 
@@ -243,4 +295,46 @@ describe('AiMagicGenerator Integration Tests', () => {
     expect(mockProjectAnalyzer.analyzeProject).not.toHaveBeenCalled();
     expect(mockMemoryBankService.generateMemoryBank).not.toHaveBeenCalled();
   });
-});
+
+  it('should return error if rules generation fails but memory bank succeeds', async () => {
+    const mockContextPaths = ['/path/to/project'];
+    const mockConfig: ProjectConfig = {
+      name: 'test-project',
+      baseDir: '/path/to/project',
+      rootDir: '/path/to/project/dist',
+      generators: ['ai-magic'],
+    };
+    const mockMemoryBankOutputPath = 'memory-bank/output.md';
+    const rulesGenError = new Error('LLM failed for rules');
+
+    // Arrange: Mock analysis to succeed (Ensure mockProjectContext is accessible)
+    mockProjectAnalyzer.analyzeProject.mockResolvedValue(Result.ok(mockProjectContext));
+    // Arrange: Mock MemoryBankService to succeed
+    (mockMemoryBankService.generateMemoryBank as jest.Mock).mockResolvedValue(
+      Result.ok(mockMemoryBankOutputPath)
+    );
+    // Arrange: Mock Rules generation steps to fail at LLM call
+    mockRulesPromptBuilder.buildSystemPrompt.mockReturnValue(Result.ok('SYSTEM_PROMPT'));
+    mockRulesPromptBuilder.buildPrompt.mockReturnValue(Result.ok('USER_PROMPT'));
+    (mockLlmAgent.getCompletion as jest.Mock).mockResolvedValue(Result.err(rulesGenError));
+
+    // Act
+    const result = await aiMagicGenerator.generate(mockConfig, mockContextPaths); // Use the instance variable
+
+    // Assert
+    expect(result.isErr()).toBe(true);
+    expect(result.error?.message).toContain('Rules file generation failed');
+    expect(result.error?.message).toContain(rulesGenError.message);
+    expect(mockMemoryBankService.generateMemoryBank).toHaveBeenCalledTimes(1); // Memory bank should still be called
+    expect(mockLlmAgent.getCompletion).toHaveBeenCalledTimes(1); // LLM for rules was called
+    expect(mockFileOps.writeFile).not.toHaveBeenCalled(); // Rules file shouldn't be written
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.stringContaining('Rules file generation failed'),
+      expect.any(Error) // The wrapped error
+    );
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.stringContaining('AI Magic generation completed with errors'), // Overall error
+      expect.any(Error)
+    );
+  });
+}); // Move the closing bracket here to include the new test case
