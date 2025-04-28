@@ -1,15 +1,8 @@
-import { Result } from '../../core/result/result';
-import { ProjectConfig } from '../../../types/shared';
+import { Result } from '@core/result/result';
+import { ProjectConfig } from '../../../types/shared'; // Corrected relative path
+import { ProjectContext } from '@core/analysis/types'; // Import the structured context type
 
-/**
- * Options for memory bank generation
- */
-export interface GenerationOptions {
-  /**
-   * Project context information
-   */
-  context?: string;
-}
+// Remove GenerationOptions as it's no longer needed for this interface
 
 /**
  * Interface for MemoryBankOrchestrator
@@ -19,12 +12,12 @@ export interface IMemoryBankOrchestrator {
   /**
    * Orchestrates the generation of memory bank files
    *
-   * @param options - Generation options including project context
+   * @param projectContext - Structured project context data
    * @param config - Project configuration
    * @returns Result indicating success or failure
    */
   orchestrateGeneration(
-    options: GenerationOptions,
+    projectContext: ProjectContext,
     config: ProjectConfig
   ): Promise<Result<void, Error>>;
 }

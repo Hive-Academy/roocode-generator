@@ -1167,9 +1167,9 @@ ONLY when ALL incremental tasks are complete:
 
 ONLY after receiving approval from Code Review:
 
-```
 <attempt_completion>
 <result>
+
 # Implementation Complete
 
 The implementation of [feature name] is now complete and has passed code review.
@@ -1189,6 +1189,7 @@ The implementation of [feature name] is now complete and has passed code review.
 ## Quality Verification
 
 Code Review has verified:
+
 - Implementation meets all requirements
 - Code quality meets standards
 - All tests pass
@@ -1201,12 +1202,12 @@ Code Review has verified:
 - [Architecture insights to preserve]
 
 I've completed the full implementation process as requested. The implementation is now ready for:
+
 1. Creating the completion report
 2. Updating memory bank files
 3. Delivering the completed work to the user
-</result>
-</attempt_completion>
-```
+   </result>
+   </attempt_completion>
 
 ## VERIFICATION CHECKLIST
 

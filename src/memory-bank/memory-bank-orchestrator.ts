@@ -3,13 +3,14 @@ import { Injectable, Inject } from '../core/di/decorators';
 import { Result } from '../core/result/result';
 import { ILogger } from '../core/services/logger-service';
 import { ProjectConfig } from '../../types/shared';
+import { ProjectContext } from '@core/analysis/types'; // Import ProjectContext
 import {
   IMemoryBankOrchestrator,
   IMemoryBankTemplateProcessor,
   IMemoryBankContentGenerator,
   IMemoryBankFileManager,
   MemoryBankFileType,
-  GenerationOptions,
+  // GenerationOptions, // Remove GenerationOptions import
 } from './interfaces';
 import { MemoryBankGenerationError } from '../core/errors/memory-bank-errors';
 
@@ -60,15 +61,16 @@ export class MemoryBankOrchestrator implements IMemoryBankOrchestrator {
   /**
    * Orchestrates the generation of memory bank files
    *
-   * @param options - Generation options including project context
+   * @param projectContext - Structured project context data
    * @param config - Project configuration
    * @returns Result indicating success or failure
    */
   async orchestrateGeneration(
-    options: GenerationOptions,
+    projectContext: ProjectContext, // Update signature to use ProjectContext
     config: ProjectConfig
   ): Promise<Result<void, Error>> {
-    const projectContext = options.context || '';
+    // Serialize the structured context into a string for the content generator
+    const stringContext = JSON.stringify(projectContext, null, 2);
     const errors: { fileType: string; error: Error; phase: string }[] = [];
 
     try {
@@ -148,7 +150,7 @@ export class MemoryBankOrchestrator implements IMemoryBankOrchestrator {
 
         const contentResult = await this.contentGenerator.generateContent(
           fileType,
-          projectContext,
+          stringContext, // Pass the serialized string context
           templateResult.value
         );
 

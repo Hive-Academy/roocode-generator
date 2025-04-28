@@ -1051,9 +1051,9 @@ After completing your review, ALWAYS return to the Architect (never to Boomerang
 
 Use this format:
 
-```
 <attempt_completion>
 <result>
+
 # Code Review: [Feature Name]
 
 ## Review Status
@@ -1065,9 +1065,11 @@ Status: [APPROVED / APPROVED WITH RESERVATIONS / NEEDS CHANGES]
 [Summary of the most important findings]
 
 ### Strengths
+
 - [Key strengths identified]
 
 ### Issues
+
 - Critical: [List any critical issues]
 - Major: [List any major issues]
 - Minor: [List any minor issues]
@@ -1088,7 +1090,6 @@ The complete review report is detailed below.
 
 </result>
 </attempt_completion>
-```
 
 ## VERIFICATION CHECKLISTS
 

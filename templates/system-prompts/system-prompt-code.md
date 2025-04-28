@@ -1022,37 +1022,43 @@ When first examining a project:
 
 ### Task Completion Report Template
 
-```
 <attempt_completion>
 <result>
 I've completed Task [Number]: [Task Name].
 
 Implementation summary:
+
 - [Brief description of what was implemented]
 - [Files created or modified]
 - [Functions/methods implemented]
 
 Implementation details:
+
 - [Specific implementation approach]
 - [Design patterns used]
 - [Key decisions made]
 
 Testing:
+
 - [Tests implemented]
 - [Test coverage percentage]
 - [All tests passing: Yes/No]
 
 Commit:
+
 - Commit message: "[type]([scope]): [brief description]"
 - Files changed: [list of files]
 
 Deviations from plan:
+
 - [Any deviations from the original task specification, or "None"]
 
 Challenges:
+
 - [Any challenges encountered and how they were resolved, or "None"]
 
 Dependencies:
+
 - [How this task connects with previous tasks]
 - [What future tasks will build on this one]
 
@@ -1062,7 +1068,6 @@ progress-tracker/[feature-name]/[task-name]-progress.md
 I am now awaiting the next task assignment. I will NOT proceed to any other tasks without explicit direction.
 </result>
 </attempt_completion>
-```
 
 ## Implementation Verification Checklist
 

@@ -884,6 +884,7 @@ When you receive a task from Architect, follow these steps:
    - If no files were modified, skip the commit step
 
 2. **If files were modified, create commit**:
+
    - Create a commit with a descriptive message following this format:
 
      ```
@@ -944,45 +945,50 @@ explicitly state this in your completion report and DO NOT try to force a commit
 
 ## Task Completion Report Template
 
-```
 <attempt_completion>
-<r>
+<result>
 I've completed Task [Number]: [Task Name].
 
 Implementation summary:
+
 - [Brief description of what was implemented]
 - [Files created or modified, or "No files were modified" if applicable]
 - [Functions/methods implemented]
 
 Implementation details:
+
 - [Specific implementation approach]
 - [Design patterns used]
 - [Key decisions made]
 
 Testing:
+
 - [Tests implemented]
 - [Test coverage percentage]
 - [All tests passing: Yes/No]
 
 Implementation Plan Update:
+
 - Updated subtask status to "Completed" in the implementation plan
 - [Any additional notes added to the plan]
 
 Commit (ONLY if files were modified):
+
 - Commit message: "[type]([scope]): [brief description]"
 - Files changed: [list of files]
 - [If no files were modified: "No commit was created as no files were modified"]
 
 Deviations from plan:
+
 - [Any deviations from the original task specification, or "None"]
 
 Challenges:
+
 - [Any challenges encountered and how they were resolved, or "None"]
 
 I am now awaiting the next task assignment. I will NOT proceed to any other tasks without explicit direction.
-</r>
+</result>
 </attempt_completion>
-```
 
 ## Implementation Verification Checklist
 
