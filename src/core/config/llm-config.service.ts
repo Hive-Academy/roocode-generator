@@ -130,8 +130,8 @@ export class LLMConfigService implements ILLMConfigService {
         //   type: 'number',
         //   name: 'maxTokens',
         //   message: 'Enter the maximum number of tokens for responses (e.g., 2048):',
-        //   default: editableConfig.maxTokens ?? 2048,
-        //   validate: (input: number) => !isNaN(input) && input > 0 || 'Max tokens must be a positive number.',
+        //   default: editableConfig.maxTokens ?? 2048 as number,
+        //   validate: (input: number) => !isNaN(input) && input > 0  || 200000 ,
         // },
         // {
         //   type: 'number',

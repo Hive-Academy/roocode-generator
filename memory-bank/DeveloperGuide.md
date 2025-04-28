@@ -2,7 +2,7 @@ Okay, here is the comprehensive Developer Guide for the `roocode-generator` proj
 
 ---
 
-```markdown
+````markdown
 ---
 title: Developer Guide
 version: 1.1.0
@@ -87,69 +87,80 @@ This project utilizes the following tools and technologies:
 ## 2. Project Structure
 
 The project follows a structured approach, separating source code, build output, tests, and configuration.
+````
 
-```
 roocode-generator/
-├── bin/                      # Compiled executable scripts (entry point: roocode-generator.js)
-├── dist/                     # Compiled JavaScript output from TypeScript (`outDir` in tsconfig.json)
-├── src/                      # Main TypeScript source code (`rootDir` in tsconfig.json)
-│   ├── core/                 # Core framework components (DI, errors, services, etc.)
-│   │   ├── application/      # Application orchestration (ApplicationContainer, GeneratorOrchestrator)
-│   │   ├── analysis/         # Project analysis logic (ProjectAnalyzer, ResponseParser, types.ts)
-│   │   ├── cli/              # CLI interface implementation (CliInterface)
-│   │   ├── config/           # Configuration loading/saving (LLMConfigService, ProjectConfigService)
-│   │   ├── di/               # Dependency Injection (Container, decorators, modules, registrations)
-│   │   ├── errors/           # Custom error classes (RooCodeError, FileOperationError, memory-bank-errors.ts, etc.)
-│   │   ├── file-operations/  # File system abstractions (FileOperations, interfaces.ts)
-│   │   ├── generators/       # Base generator classes/interfaces (BaseGenerator, IGenerator)
-│   │   ├── llm/              # LLM interaction (LLMAgent, providers, provider-registry)
-│   │   ├── result/           # Result type definition (Result class)
-│   │   ├── services/         # Common services (LoggerService, BaseService)
-│   │   ├── template-manager/ # Generic template management (TemplateManager, Template)
-│   │   ├── templating/       # Rules-specific template processing (RulesTemplateManager, TemplateProcessor)
-│   │   ├── types/            # Core shared type definitions (shared.ts, common.ts) - Used by many core parts
-│   │   └── ui/               # UI elements (ProgressIndicator - Ora wrapper)
-│   ├── generators/           # Specific generator implementations
-│   │   ├── rules/            # Rules generator specific files (RulesGenerator, RulesFileManager, etc.)
-│   │   ├── roomodes-generator.ts
-│   │   ├── system-prompts-generator.ts
-│   │   └── vscode-copilot-rules-generator.ts
-│   ├── memory-bank/          # Memory Bank generator specific files (MemoryBankGenerator, orchestrator, services, etc.)
-│   └── types/                # Top-level shared types (shared.ts - LLMConfig, ProjectConfig)
-├── templates/                # Static template files used by generators
-│   ├── guide/                # Fallback templates for memory bank
-│   ├── memory-bank/
-│   │   └── templates/        # Task management templates (e.g., task-description-template.md)
-│   ├── rules/                # Mode-specific rule templates (e.g., architect/base.md)
-│   └── system-prompts/       # System prompt templates for modes
-├── tests/                    # Unit and integration tests (`testMatch` in jest.config.js)
-│   └── ...                   # Subdirectories mirroring src structure (planned co-location)
-├── .env.example              # Example environment variables file
-├── .git/                     # Git directory
-├── .gitignore                # Files/directories ignored by Git (should include dist/, node_modules/, .env, coverage/)
-├── .husky/                   # Husky Git hooks configuration
-├── .roo/                     # RooCode specific configuration/rules (generated output)
-│   ├── rules/                # Generated rules files per mode/version
-│   ├── rules-backup/         # Backups of rules files
-│   └── rules-versions.json   # Version history tracking for rules
-├── commitlint.config.js      # Commitlint configuration (Conventional Commits)
-├── eslint.config.mjs         # ESLint configuration (Flat Config format)
-├── jest.config.js            # Jest test runner configuration
-├── LICENSE                   # Project license file (MIT)
-├── llm.config.json           # LLM configuration file (managed by `config` command)
-├── package-lock.json         # Exact dependency versions (indicates npm usage)
-├── package.json              # Project metadata, dependencies, scripts
-├── README.md                 # Project overview and basic usage
-├── roocode-config.json       # RooCode project configuration (used by generators)
-├── SECURITY.md               # Security policy (standard template)
-├── tsconfig.json             # TypeScript compiler configuration
-└── memory-bank/              # Default output directory for generated Memory Bank documentation
-    ├── DeveloperGuide.md     # This file (generated)
-    ├── ProjectOverview.md    # Generated project overview
-    └── TechnicalArchitecture.md # Generated architecture document
-```
+├── bin/ # Compiled executable scripts (entry point: roocode-generator.js)
+├── dist/ # Compiled JavaScript output from TypeScript (`outDir` in tsconfig.json)
+├── src/ # Main TypeScript source code (`rootDir` in tsconfig.json)
+│ ├── core/ # Core framework components (DI, errors, services, etc.)
+│ │ ├── application/ # Application orchestration (ApplicationContainer, GeneratorOrchestrator)
+│ │ ├── analysis/ # Project analysis logic (ProjectAnalyzer, ResponseParser, types.ts)
+│ │ ├── cli/ # CLI interface implementation (CliInterface)
+│ │ ├── config/ # Configuration loading/saving (LLMConfigService, ProjectConfigService)
+│ │ ├── di/ # Dependency Injection (Container, decorators, modules, registrations)
+│ │ ├── errors/ # Custom error classes (RooCodeError, FileOperationError, memory-bank-errors.ts, etc.)
+│ │ ├── file-operations/ # File system abstractions (FileOperations, interfaces.ts)
+│ │ ├── generators/ # Base generator classes/interfaces (BaseGenerator, IGenerator)
+│ │ ├── llm/ # LLM interaction (LLMAgent, providers, provider-registry)
+│ │ ├── result/ # Result type definition (Result class)
+│ │ ├── services/ # Common services (LoggerService, BaseService)
+│ │ ├── template-manager/ # Generic template management (TemplateManager, Template)
+│ │ ├── templating/ # Rules-specific template processing (RulesTemplateManager, TemplateProcessor)
+│ │ ├── types/ # Core shared type definitions (shared.ts, common.ts) - Used by many core parts
+│ │ └── ui/ # UI elements (ProgressIndicator - Ora wrapper)
+│ ├── generators/ # Specific generator implementations
+│ │ ├── rules/ # Rules generator specific files (RulesGenerator, RulesFileManager, etc.)
+│ │ ├── roomodes-generator.ts
+│ │ ├── system-prompts-generator.ts
+│ │ └── vscode-copilot-rules-generator.ts
+│ ├── memory-bank/ # Memory Bank generator specific files (MemoryBankGenerator, orchestrator, services, etc.)
+│ └── types/ # Top-level shared types (shared.ts - LLMConfig, ProjectConfig)
+├── templates/ # Static template files used by generators
+│ ├── guide/ # Fallback templates for memory bank
+│ ├── memory-bank/
+│ │ └── templates/ # Task management templates (e.g., task-description-template.md)
+│ ├── rules/ # Mode-specific rule templates (e.g., architect/base.md)
+│ └── system-prompts/ # System prompt templates for modes
+├── tests/ # Unit and integration tests (`testMatch` in jest.config.js)
+│ └── ... # Subdirectories mirroring src structure (planned co-location)
+├── .env.example # Example environment variables file
+├── .git/ # Git directory
+├── .gitignore # Files/directories ignored by Git (should include dist/, node_modules/, .env, coverage/)
+├── .husky/ # Husky Git hooks configuration
+├── .roo/ # RooCode specific configuration/rules (generated output)
+│ ├── rules/ # Generated rules files per mode/version
+│ ├── rules-backup/ # Backups of rules files
+│ └── rules-versions.json # Version history tracking for rules
+├── commitlint.config.js # Commitlint configuration (Conventional Commits)
+├── eslint.config.mjs # ESLint configuration (Flat Config format)
+├── jest.config.js # Jest test runner configuration
+├── LICENSE # Project license file (MIT)
+├── llm.config.json # LLM configuration file (managed by `config` command)
+├── package-lock.json # Exact dependency versions (indicates npm usage)
+├── package.json # Project metadata, dependencies, scripts
+├── README.md # Project overview and basic usage
+├── roocode-config.json # RooCode project configuration (used by generators)
+├── SECURITY.md # Security policy (standard template)
+├── tsconfig.json # TypeScript compiler configuration
+└── memory-bank/ # Default output directory for generated Memory Bank documentation
+├── DeveloperGuide.md # This file (generated)
+├── ProjectOverview.md # Generated project overview
+└── TechnicalArchitecture.md # Generated architecture document
+
+````
 
 Refer to [[TechnicalArchitecture#Core-Components]] for detailed component information about the **Modular CLI with LLM Integration** architecture.
+
+### 2.1. Command Execution Flow
+
+Understanding the basic flow of command execution is helpful for adding new commands or modifying existing ones:
+
+1.  **Parsing (`CliInterface`):** The `src/core/cli/cli-interface.ts` uses `commander` to parse command-line arguments (`process.argv`) and options.
+2.  **Routing (`ApplicationContainer`):** The `src/core/application/application-container.ts` retrieves the parsed command and uses its `executeCommand` method (typically a `switch` statement) to route to the appropriate handler method (e.g., `executeGenerateCommand`).
+3.  **Orchestration (`GeneratorOrchestrator`):** For the `generate` command, the handler delegates to `src/core/application/generator-orchestrator.ts`, which identifies and runs the specific `IGenerator` implementations.
+
+For a more detailed step-by-step breakdown and diagram, see the **System Design** section in [[TechnicalArchitecture#System-Design]].
 
 ## 3. Development Workflow
 
@@ -257,24 +268,26 @@ To enhance organization and maintainability, the project's custom Dependency Inj
 
 **Example Structure:**
 
-```
+````
+
 src/
 └── core/
-    └── di/
-        ├── container.ts       # Main Container class
-        ├── decorators.ts      # @Injectable, @Inject decorators
-        ├── errors.ts          # DI-specific errors
-        ├── index.ts           # Barrel file for DI exports
-        ├── interfaces.ts      # IServiceContainer interface
-        ├── types.ts           # Core DI types (ServiceLifetime, etc.)
-        ├── modules/           # <-- DI Registration Modules
-        │   ├── app-module.ts
-        │   ├── core-module.ts
-        │   ├── llm-module.ts
-        │   ├── memory-bank-module.ts
-        │   └── rules-module.ts
-        └── registrations.ts   # Central registration function (imports & calls modules)
-```
+└── di/
+├── container.ts # Main Container class
+├── decorators.ts # @Injectable, @Inject decorators
+├── errors.ts # DI-specific errors
+├── index.ts # Barrel file for DI exports
+├── interfaces.ts # IServiceContainer interface
+├── types.ts # Core DI types (ServiceLifetime, etc.)
+├── modules/ # <-- DI Registration Modules
+│ ├── app-module.ts
+│ ├── core-module.ts
+│ ├── llm-module.ts
+│ ├── memory-bank-module.ts
+│ └── rules-module.ts
+└── registrations.ts # Central registration function (imports & calls modules)
+
+````
 
 **Adding New Dependencies:**
 
@@ -332,7 +345,8 @@ Standard npm scripts are configured in `package.json` for common development tas
 - **Build the project:** Compiles TypeScript to JavaScript in `dist/` and copies templates.
   ```bash
   npm run build
-  ```
+````
+
 - **Run type checking:** Verifies TypeScript types without emitting JS files.
   ```bash
   npm run type-check
@@ -518,7 +532,9 @@ const readyContent = processedRulesResult.value!;
 
 // 4. Save Rules (using IRulesFileManager)
 //    - Handles versioning and history automatically
-const generatedRules: GeneratedRules = { /* ... */ };
+const generatedRules: GeneratedRules = {
+  /* ... */
+};
 const saveResult = await this.fileManager.saveRules(generatedRules);
 if (saveResult.isErr()) return saveResult;
 
@@ -530,7 +546,7 @@ return Result.ok(saveResult.value!); // Return path or success message
 - **`Result` Type:** All core operations (`analyzeProject`, `processTemplate`, `getCompletion`, `saveRules`, `loadRules`, etc.) return a `Result<T, Error>`. Always check `isOk()`/`isErr()`.
 - **Logging:** Use the injected `ILogger` to log errors with context (mode, file path, operation name) and the underlying error object.
 - **Propagation:** Return `Result.err(error)` to propagate errors up the call stack. Handle errors at appropriate levels (e.g., in `ApplicationContainer` or command handlers).
-- **Fallback:** The `RulesGenerator` *may* include fallback logic to use static templates if LLM generation fails (check implementation).
+- **Fallback:** The `RulesGenerator` _may_ include fallback logic to use static templates if LLM generation fails (check implementation).
 
 ### 7.4. Best Practices
 
@@ -607,5 +623,7 @@ See [[TechnicalArchitecture#Infrastructure]] for more details.
 - **Production (npm Registry / User's Machine):** The published package installed via `npm install -g roocode-generator` or used via `npx`. Users run it in their own environments, manage their own `.env` files, and use `roocode config` to manage their LLM settings (`llm.config.json`).
 
 Environment-specific configurations (like different API endpoints if applicable, feature flags) are primarily managed through environment variables (`dotenv`) and the user-managed `llm.config.json`.
+
+```
 
 ```

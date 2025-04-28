@@ -124,8 +124,8 @@ export class ApplicationContainer {
         provider: '',
         apiKey: '',
         model: '',
-        maxTokens: 2048, // Default value
-        temperature: 0.7, // Default value
+        maxTokens: 80000, // Default value
+        temperature: 0.1, // Default value
       };
 
       if (hasCliOptions) {

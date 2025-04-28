@@ -9,4 +9,4 @@ moduleAlias.addAlias('@types', path.join(__dirname, '../dist/src/types'));
 
 require('module-alias/register');
 
-require('../dist/bin/roocode-generator.js');
+require(path.join(__dirname, '../dist/bin/roocode-generator.js'));
