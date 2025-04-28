@@ -106,11 +106,12 @@ roocode-generator/
 │ │ ├── types/ # Core shared type definitions (shared.ts, common.ts) - Used by many core parts
 │ │ └── ui/ # UI elements (ProgressIndicator - Ora wrapper)
 │ ├── generators/ # Specific generator implementations
-│ │ ├── rules/ # Rules generator specific files (RulesGenerator, RulesFileManager, etc.)
+│ │ ├── rules/ # Legacy Rules generator specific files (RulesGenerator, RulesFileManager, etc.)
 │ │ ├── roomodes-generator.ts
 │ │ ├── system-prompts-generator.ts
-│ │ └── vscode-copilot-rules-generator.ts
-│ ├── memory-bank/ # Memory Bank generator specific files (MemoryBankGenerator, orchestrator, services, etc.)
+│ │ ├── vscode-copilot-rules-generator.ts
+│ │ └── ai-magic-generator.ts # New combined generator
+│ ├── memory-bank/ # Memory Bank *service* specific files (MemoryBankService, orchestrator, etc.)
 │ └── types/ # Top-level shared types (shared.ts - LLMConfig, ProjectConfig)
 ├── templates/ # Static template files used by generators
 │ ├── guide/ # Fallback templates for memory bank
@@ -294,12 +295,13 @@ This project utilizes **Trunk-Based Development** with short-lived feature branc
     300 |
     301 | - **Testing Approach**: The project uses **Jest** (`^29.7.0`) as the primary testing framework, configured with `ts-jest` (`^29.3.2`) for seamless TypeScript support (`jest.config.js`). Unit and integration tests are expected to be located in the `tests/` directory, following the naming convention `*.test.ts`. _(Note: While co-location of tests (`src/component/component.test.ts`) is a common practice, the current configuration specifies `tests/**/*.test.ts`. Follow the existing structure unless a migration is planned)._
     302 | - **Coverage Goals**: The project enforces a minimum global coverage threshold of **80%** for branches, functions, lines, and statements, as configured in `jest.config.js` (`coverageThreshold`). Strive to maintain or increase coverage with new contributions.
-    303 | - **Memory Bank Testing Patterns**: The Memory Bank generator follows specific testing patterns:
-    304 | - **Component Testing**: Each major component (`MemoryBankGenerator`, `MemoryBankOrchestrator`, `MemoryBankTemplateProcessor`, etc.) has dedicated unit tests.
-    305 | - **Mock Dependencies**: Use Jest mocks (`jest.fn()`, `jest.mock()`) extensively for dependencies (LLM, File Operations, Logger, etc.) to isolate components during unit testing.
-    306 | - **Error Handling Tests**: Verify that specific `MemoryBankError` types are thrown/returned correctly using `Result.err()` and that errors are logged appropriately.
-    307 | - **Success Path Tests**: Ensure the happy path works as expected, returning `Result.ok()`.
-    308 | - **Integration Testing**: Test interactions between components (e.g., Generator -> Orchestrator -> FileManager). May use real implementations for some services (like FileOperations if testing actual file output) while mocking others (like LLMAgent).
+
+- **Memory Bank Service Testing Patterns**: The Memory Bank service (`src/memory-bank/`) follows specific testing patterns:
+  - **Service/Component Testing**: Each major component (`MemoryBankService`, `MemoryBankOrchestrator`, `MemoryBankTemplateProcessor`, etc.) has dedicated unit tests.
+  - **Mock Dependencies**: Use Jest mocks (`jest.fn()`, `jest.mock()`) extensively for dependencies (LLM, File Operations, Logger, etc.) to isolate service components during unit testing.
+  - **Error Handling Tests**: Verify that specific `MemoryBankError` types are returned correctly via `Result.err()` and that errors are logged appropriately.
+  - **Success Path Tests**: Ensure the happy path works as expected, returning `Result.ok()`.
+  - **Integration Testing**: Test interactions between the `AiMagicGenerator` and the `MemoryBankService`, as well as internal service component interactions (e.g., Service -> Orchestrator -> FileManager). May use real implementations for some services (like FileOperations if testing actual file output) while mocking others (like LLMAgent).
     309 | - **Validation**:
     310 | - **Static Analysis**: Run `npm run lint` to check for code style and potential errors based on `eslint.config.mjs`. Fix all reported issues.
     311 | - **Type Checking**: Run `npm run type-check` (uses `tsc --noEmit`) to ensure type safety based on `tsconfig.json`. Resolve all TypeScript errors.

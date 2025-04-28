@@ -36,12 +36,13 @@ The primary purpose of `roocode-generator` is to simplify and standardize the ad
 ## 4. Core Features & Functionality
 
 - **Interactive CLI:** User-friendly command-line interface built with `commander` for parsing arguments and `inquirer` for interactive prompts. Provides commands like `generate` and `config`.
-- **Modular Generator Architecture:** The system utilizes a core `GeneratorOrchestrator` to manage and execute different `IGenerator` implementations. Key generators identified:
-  - `MemoryBankGenerator`: Generates core documentation (`ProjectOverview.md`, `TechnicalArchitecture.md`, `DeveloperGuide.md`) using LLM based on project context.
-  - `RulesGenerator`: Generates project-specific coding standards and rules, potentially using LLM analysis.
+- **Modular Generator Architecture:** The system utilizes a core `GeneratorOrchestrator` to manage and execute different `IGenerator` implementations. Key generators/services identified:
+  - `MemoryBankService`: (Refactored from MemoryBankGenerator) A service responsible for generating core documentation (`ProjectOverview.md`, `TechnicalArchitecture.md`, `DeveloperGuide.md`) using LLM based on provided project context. It is primarily invoked by the `AiMagicGenerator`.
+  - `RulesGenerator`: Generates project-specific coding standards and rules (legacy, core functionality now integrated into `AiMagicGenerator`).
   - `SystemPromptsGenerator`: Creates system prompt files for different RooCode modes.
   - `RoomodesGenerator`: Generates the `.roomodes` file defining available workflow modes.
   - `VSCodeCopilotRulesGenerator`: Configures VS Code settings for GitHub Copilot integration and rules.
+  - `AiMagicGenerator`: A comprehensive generator that performs project analysis (using `ProjectAnalyzer`), generates context-aware coding rules, and invokes the `MemoryBankService` to produce memory bank documentation.
 - **LLM Integration (Langchain):** Abstracted interaction with multiple LLM providers (OpenAI, Google GenAI, Anthropic) using the `langchain` library. Managed via `LLMConfigService` and `LLMProviderRegistry`. Configuration stored in `llm.config.json`.
 - **Project Context Analysis:** The `ProjectAnalyzer` service analyzes the target project's tech stack, directory structure, and dependencies to provide context for LLM-driven generation.
 - **Template System:** Uses a `TemplateManager` and `TemplateProcessor` for loading, merging (base + custom), and processing template files (primarily Markdown) used in generation. Includes a specialized `RulesTemplateManager` for rule generation.
@@ -71,9 +72,8 @@ The primary purpose of `roocode-generator` is to simplify and standardize the ad
 
 - **`src/`**: Main source code.
   - **`core/`**: Foundational modules (DI, application, config, errors, file-operations, llm, result, services, templating, ui, analysis, types).
-  - **`generators/`**: Specific generator implementations (e.g., `rules/`, `roomodes-generator.ts`).
-  - **`memory-bank/`**: Logic specific to the MemoryBank feature.
-  - **`commands/`**: (Implied by structure, likely contains command handlers like `generate-memory-bank.command.ts`).
+  - **`generators/`**: Specific generator implementations (e.g., `rules/`, `roomodes-generator.ts`, `ai-magic-generator.ts`).
+  - **`memory-bank/`**: Contains the `MemoryBankService` and related logic for generating memory bank documentation.
   - **`cli/`**: Core CLI setup (`cli-interface.ts`).
 - **`bin/`**: Executable script entry point.
 - **`templates/`**: Source templates for generation.
