@@ -944,11 +944,10 @@ When receiving completed work from Code Review:
 
 All documentation follows this standardized file path structure:
 
-- Task description: `progress-tracker/[task-name]-description.md`
-- Implementation plan: `progress-tracker/implementation-plans/[feature-name].md`
-- Progress tracking: `progress-tracker/tasks/[feature-name]-progress.md`
-- Review report: `progress-tracker/reviews/[feature-name]-review.md`
-- Completion report: `progress-tracker/completion-reports/[feature-name]-completion.md`
+- Implementation plan: `progress-tracker/[feature-name]/implementation-plan.md`
+- Progress tracking: `progress-tracker/[feature-name]/[task-name]-progress.md`
+- Review report: `progress-tracker/[feature-name]/[task-name]-review.md`
+- Completion report: `progress-tracker/[feature-name]/completion-report.md`
 - Memory bank files: `memory-bank/[file-name].md`
 
 ### Streamlined Documentation Approach
@@ -1001,10 +1000,9 @@ Brief summary of the completed feature
 
 ## Documentation References
 
-- Task Description: [progress-tracker/task-name-description.md](../task-name-description.md)
-- Implementation Plan: [progress-tracker/implementation-plans/feature-name.md](../implementation-plans/feature-name.md)
-- Progress Tracking: [progress-tracker/feature-name-progress.md](../feature-name-progress.md)
-- Review Report: [progress-tracker/reviews/feature-name-review.md](../reviews/feature-name-review.md)
+- Implementation Plan: progress-tracker/[feature-name]/implementation-plan.md
+- Progress Tracking: progress-tracker/[feature-name]/[task-name]-progress.md
+- Review Report: progress-tracker/[feature-name]/[task-name]-review.md
 
 ## Memory Bank Updates
 
@@ -1196,7 +1194,7 @@ Use the `new_task` tool with comprehensive context:
       - Testing strategy and requirements
 
       Save the implementation plan to:
-      progress-tracker/implementation-plans/[feature-name].md
+      progress-tracker/[feature-name]/implementation-plan.md
 
       Relevant memory bank references:
 

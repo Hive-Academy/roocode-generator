@@ -10,8 +10,8 @@
         [
           "edit",
           {
-            "fileRegex": ".(md|txt|json|ya?ml)$",
-            "description": "Documentation and config files"
+            "fileRegex": "^memory-bank/.*\\.(md|txt|json|ya?ml)$",
+            "description": "Documentation and config files in memory-bank"
           }
         ]
       ],

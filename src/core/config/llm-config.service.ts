@@ -1,5 +1,4 @@
 import type { DistinctQuestion } from 'inquirer';
-import { createPromptModule } from 'inquirer';
 import { LLMConfig } from '../../../types/shared';
 import { Inject, Injectable } from '../di/decorators';
 import { IFileOperations } from '../file-operations/interfaces';
@@ -17,7 +16,8 @@ export class LLMConfigService implements ILLMConfigService {
   constructor(
     @Inject('IFileOperations') private readonly fileOps: IFileOperations,
     @Inject('ILogger') private readonly logger: ILogger,
-    @Inject('Inquirer') private readonly inquirer: ReturnType<typeof createPromptModule>
+    @Inject('Inquirer')
+    private readonly inquirer: ReturnType<typeof import('inquirer').createPromptModule>
   ) {}
 
   /**

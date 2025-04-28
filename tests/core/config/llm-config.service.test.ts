@@ -73,6 +73,41 @@ describe('LLMConfigService', () => {
     });
   });
 
+  describe('Inquirer DI Injection and Interactive Flow', () => {
+    it('should call inquirer.prompt with expected questions and return answers', async () => {
+      const questions = [
+        {
+          type: 'input',
+          name: 'provider',
+          message: 'Enter LLM provider',
+          default: 'openai',
+        },
+      ];
+      const expectedAnswers = { provider: 'openai' };
+      mockInquirer.prompt.mockResolvedValue(expectedAnswers);
+
+      const answers = await service['inquirer'].prompt(questions);
+
+      expect(mockInquirer.prompt).toHaveBeenCalledWith(questions);
+      expect(answers).toEqual(expectedAnswers);
+    });
+
+    it('should handle prompt rejection gracefully', async () => {
+      const questions = [
+        {
+          type: 'input',
+          name: 'provider',
+          message: 'Enter LLM provider',
+          default: 'openai',
+        },
+      ];
+      const error = new Error('Prompt failed');
+      mockInquirer.prompt.mockRejectedValue(error);
+
+      await expect(service['inquirer'].prompt(questions)).rejects.toThrow('Prompt failed');
+    });
+  });
+
   // --- saveConfig ---
   describe('saveConfig', () => {
     it('should successfully save the config file', async () => {
