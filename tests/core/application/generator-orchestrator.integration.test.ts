@@ -1,16 +1,16 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import 'reflect-metadata'; // Required for DI
 // Removed unused import ApplicationContainer
-import { GeneratorOrchestrator } from '@/core/application/generator-orchestrator';
-import { IGeneratorOrchestrator } from '@/core/application/interfaces';
-import { ProjectConfigService } from '@/core/config/project-config.service';
+import { GeneratorOrchestrator } from '@core/application/generator-orchestrator';
+import { IGeneratorOrchestrator } from '@core/application/interfaces';
+import { ProjectConfigService } from '@core/config/project-config.service';
 // Removed unused import IProjectConfigService
-import { ILogger } from '@/core/services/logger-service';
+import { ILogger } from '@core/services/logger-service';
 
 // Removed unused import ApplicationContainer
-import { IGenerator } from '@/core/generators/base-generator';
-import { Result } from '@/core/result/result';
-import { IFileOperations } from '@/core/file-operations/interfaces'; // Import IFileOperations
+import { IGenerator } from '@core/generators/base-generator';
+import { Result } from '@core/result/result';
+import { IFileOperations } from '@core/file-operations/interfaces'; // Import IFileOperations
 import { ProjectConfig } from '../../../types/shared'; // Keep this for type definition
 
 // Define the default config matching the service's private property

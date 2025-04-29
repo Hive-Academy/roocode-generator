@@ -1,4 +1,4 @@
-import { RulesPromptBuilder } from '@/generators/rules/rules-prompt-builder';
+import { RulesPromptBuilder } from '@generators/rules/rules-prompt-builder';
 // Removed unused Result import
 
 describe('RulesPromptBuilder', () => {

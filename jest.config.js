@@ -21,7 +21,7 @@ module.exports = {
     '^@generators/(.*)$': '<rootDir>/src/generators/$1',
     '^@memory-bank/(.*)$': '<rootDir>/src/memory-bank/$1',
     '^@commands/(.*)$': '<rootDir>/src/commands/$1', // Added mapping for commands
-    '^@/(.*)$': '<rootDir>/src/$1',
+    '^@(.*)$': '<rootDir>/src/$1',
   },
   // Update transformIgnorePatterns: Only ignore node_modules *except* the ones we need to transform
   // This pattern ensures that only the specified modules are *not* ignored.
