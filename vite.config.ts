@@ -55,6 +55,10 @@ export default defineConfig({
         'http',
         'https',
         'zlib',
+        '@langchain/anthropic',
+        '@langchain/google-genai',
+        '@langchain/openai',
+        'ora',
         // Add any other Node built-ins used if necessary
       ],
       output: {
@@ -88,6 +92,9 @@ export default defineConfig({
       'zlib',
       'ora', // Exclude ora from optimization to prevent interop issues
       'inquirer', // Exclude inquirer from optimization to prevent interop issues
+      '@langchain/anthropic', // Exclude langchain packages to prevent ESM/CJS interop issues
+      '@langchain/google-genai',
+      '@langchain/openai',
     ],
     // Ensure proper interop between ESM and CommonJS modules
     esbuildOptions: {
