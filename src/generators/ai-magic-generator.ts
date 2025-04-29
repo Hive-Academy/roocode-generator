@@ -1,16 +1,16 @@
 import path from 'path'; // Added path import
-import { Inject, Injectable } from '@/core/di/decorators';
-import { IServiceContainer } from '@/core/di/interfaces';
-import { BaseGenerator } from '@/core/generators/base-generator';
-import { Result } from '@/core/result/result';
-import { ILogger } from '@/core/services/logger-service';
-import { IProjectAnalyzer, ProjectContext } from '@/core/analysis/types';
-import { IFileOperations } from '@/core/file-operations/interfaces';
-import { LLMAgent } from '@/core/llm/llm-agent';
+import { Inject, Injectable } from '@core/di/decorators';
+import { IServiceContainer } from '@core/di/interfaces';
+import { BaseGenerator } from '@core/generators/base-generator';
+import { Result } from '@core/result/result';
+import { ILogger } from '@core/services/logger-service';
+import { IProjectAnalyzer, ProjectContext } from '@core/analysis/types';
+import { IFileOperations } from '@core/file-operations/interfaces';
+import { LLMAgent } from '@core/llm/llm-agent';
 import { ProjectConfig } from '../../types/shared';
-import { MemoryBankService } from '@/memory-bank/memory-bank-service';
-import { IRulesPromptBuilder } from '@/generators/rules/interfaces'; // Added RulesPromptBuilder interface import
-import { IContentProcessor } from '@/memory-bank/interfaces'; // Import IContentProcessor
+import { MemoryBankService } from '@memory-bank/memory-bank-service';
+import { IRulesPromptBuilder } from '@generators/rules/interfaces'; // Added RulesPromptBuilder interface import
+import { IContentProcessor } from '@memory-bank/interfaces'; // Import IContentProcessor
 
 @Injectable()
 export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {

@@ -144,7 +144,7 @@ main().catch((error) => {
 
 ### 2. Update `vite.config.ts` build entry
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Change the `build.lib.entry` path from `src/core/cli/cli-interface.ts` to `src/core/cli/cli-main.ts` in `vite.config.ts`. Ensure no other build config changes.
 
