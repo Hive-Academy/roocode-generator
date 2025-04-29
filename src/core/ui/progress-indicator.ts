@@ -1,5 +1,8 @@
 import { Injectable } from '../di/decorators';
-import ora, { Ora } from 'ora';
+import * as oraImport from 'ora';
+// Handle both ESM and CJS formats
+const ora = oraImport.default || oraImport;
+import type { Ora } from 'ora';
 
 @Injectable()
 export class ProgressIndicator {

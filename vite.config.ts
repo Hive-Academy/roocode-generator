@@ -71,7 +71,7 @@ export default defineConfig({
   },
   // Optimize dependency scanning for Node.js environment
   optimizeDeps: {
-    // Prevent Vite from trying to optimize Node.js built-ins
+    // Prevent Vite from trying to optimize Node.js built-ins and CLI dependencies
     exclude: [
       'fs',
       'path',
@@ -86,8 +86,13 @@ export default defineConfig({
       'http',
       'https',
       'zlib',
-      // Add dependencies managed by nodeExternals if needed, though usually not required
+      'ora', // Exclude ora from optimization to prevent interop issues
     ],
+    // Ensure proper interop between ESM and CommonJS modules
+    esbuildOptions: {
+      mainFields: ['module', 'main'],
+      format: 'cjs',
+    },
   },
   // Ensure Vite handles Node.js environment specifics correctly
   ssr: {
