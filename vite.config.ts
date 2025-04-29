@@ -87,6 +87,7 @@ export default defineConfig({
       'https',
       'zlib',
       'ora', // Exclude ora from optimization to prevent interop issues
+      'inquirer', // Exclude inquirer from optimization to prevent interop issues
     ],
     // Ensure proper interop between ESM and CommonJS modules
     esbuildOptions: {

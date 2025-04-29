@@ -3,7 +3,8 @@ import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Injectable, Inject } from '../di/decorators';
-import { createPromptModule, Question } from 'inquirer';
+import type { Question } from 'inquirer';
+import type { createPromptModule as CreatePromptModule } from 'inquirer';
 
 export interface ParsedArgs {
   command: string | null;
@@ -16,7 +17,7 @@ export class CliInterface implements ICliInterface {
   private parsedArgs: ParsedArgs = { command: null, options: {} };
 
   constructor(
-    @Inject('Inquirer') private readonly inquirer: ReturnType<typeof createPromptModule>
+    @Inject('Inquirer') private readonly inquirer: ReturnType<typeof CreatePromptModule>
   ) {
     this.program = new Command();
     this.setupCommands();
