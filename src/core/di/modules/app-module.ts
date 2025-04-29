@@ -117,7 +117,7 @@ export function registerAppModule(container: Container): void {
   container.registerFactory<IGeneratorOrchestrator>('IGeneratorOrchestrator', () => {
     const logger = resolveDependency<ILogger>(container, 'ILogger');
     const generatorTokens = [
-      'IGenerator.Rules', // Assumes registered in rules-module
+      // 'IGenerator.Rules', // Removed deprecated RulesGenerator token
       'IGenerator.SystemPrompts',
       'IGenerator.Roomodes',
       'IGenerator.VSCodeCopilotRules',
