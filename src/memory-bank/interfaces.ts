@@ -3,27 +3,17 @@ import { IMemoryBankTemplateManager } from './interfaces/template-manager.interf
 import { IMemoryBankTemplateProcessor } from './interfaces/template-processor.interface';
 import { IMemoryBankContentGenerator } from './interfaces/content-generator.interface';
 import { IMemoryBankOrchestrator } from './interfaces/orchestrator.interface';
+import { MemoryBankFileType, TemplateType } from './memory-bank-enums';
 
 export {
   IMemoryBankTemplateManager,
   IMemoryBankTemplateProcessor,
   IMemoryBankContentGenerator,
   IMemoryBankOrchestrator,
+  MemoryBankFileType,
+  TemplateType,
 };
 export type MessageContent = string;
-
-export enum MemoryBankFileType {
-  ProjectOverview = 'ProjectOverview',
-  TechnicalArchitecture = 'TechnicalArchitecture',
-  DeveloperGuide = 'DeveloperGuide',
-}
-
-export enum TemplateType {
-  CompletionReport = 'completion-report',
-  ImplementationPlan = 'implementation-plan',
-  ModeAcknowledgment = 'mode-acknowledgment',
-  TaskDescription = 'task-description',
-}
 
 export interface MemoryBankConfig {
   requiredFiles: MemoryBankFileType[];

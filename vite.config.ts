@@ -30,7 +30,7 @@ export default defineConfig({
     outDir: 'dist',
     lib: {
       // Entry point for the library/CLI build
-      entry: path.resolve(__dirname, 'src/core/cli/cli-interface.ts'),
+      entry: path.resolve(__dirname, 'src/core/cli/cli-main.ts'),
       // Name for the library (used in UMD/IIFE builds, less relevant for CJS/ES)
       name: 'RooCodeGenerator',
       // Output file names (without extension)

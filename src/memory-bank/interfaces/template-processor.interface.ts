@@ -1,5 +1,5 @@
 import { Result } from '../../core/result/result';
-import { MemoryBankFileType } from '../interfaces';
+import { MemoryBankFileType } from '../memory-bank-enums';
 
 /**
  * Interface for MemoryBankTemplateProcessor
