@@ -1,59 +1,49 @@
 import type { ProjectConfig } from '../../../types/shared';
-import { Inject, Injectable } from '../di/decorators';
-import { IFileOperations } from '../file-operations/interfaces';
-import { Result } from '../result/result';
+import { Inject, Injectable } from '@core/di/decorators';
+import { IFileOperations } from '@core/file-operations/interfaces';
+import { Result } from '@core/result/result';
+import { ILogger } from '@core/services/logger-service'; // Added import
 
 /**
  * Service for managing project configuration.
- * Handles loading and saving project config from/to roocode-config.json.
- * Interactive editing is removed as it is now handled by LLMConfigService.
+ * Always returns an in-memory default configuration.
+ * File system operations for loading have been removed.
  */
 @Injectable()
 export class ProjectConfigService {
-  constructor(@Inject('IFileOperations') private readonly fileOps: IFileOperations) {}
+  // Injected LoggerService
+  constructor(
+    @Inject('IFileOperations') private readonly fileOps: IFileOperations,
+    @Inject('ILogger') private readonly logger: ILogger // Added logger dependency
+  ) {}
+
+  // Default configuration object stored in memory
+  private readonly defaultConfig: ProjectConfig = {
+    name: 'default-project',
+    baseDir: '.',
+    rootDir: '.roo',
+    generators: [],
+    description: 'Default project configuration.',
+  };
 
   /**
-   * Loads the project configuration from file.
-   * @returns Result wrapping ProjectConfig or error
+   * Loads the project configuration. Always returns the in-memory default config.
+   * @returns Result wrapping the default ProjectConfig or an error (though errors are unlikely now).
    */
-  async loadConfig(): Promise<Result<ProjectConfig, Error>> {
-    const defaultConfig: ProjectConfig = {
-      name: 'default-project', // Provide a default name
-      baseDir: '.',
-      rootDir: '.roo',
-      generators: [], // Default to no generators
-      description: 'Default project configuration.',
-    };
-
+  loadConfig(): Result<ProjectConfig, Error> {
+    // Removed async and updated return type
     try {
-      const configPath = `${process.cwd()}/roocode-config.json`;
-      const readResult = await this.fileOps.readFile(configPath);
-
-      // If file doesn't exist or can't be read, return default config
-      if (readResult.isErr()) {
-        return Result.ok(defaultConfig);
-      }
-
-      // File read successfully, proceed with parsing
-      try {
-        const parsedConfig = JSON.parse(readResult.value!) as ProjectConfig;
-
-        // Validate parsed config
-        const validationError = this.validateConfig(parsedConfig);
-        if (validationError) {
-          return Result.err(new Error(`Invalid config: ${validationError}`));
-        }
-
-        return Result.ok(parsedConfig);
-      } catch (parseError) {
-        return Result.err(
-          new Error(
-            `Failed to parse config: ${parseError instanceof Error ? parseError.message : String(parseError)}`
-          )
-        );
-      }
+      // Log that the default config is being used
+      this.logger.info('Using in-memory default roocode-config.json configuration.');
+      // Always return the default configuration object
+      return Result.ok(this.defaultConfig);
     } catch (error) {
-      return Result.err(error instanceof Error ? error : new Error('Failed to load config'));
+      // Basic error handling in case something unexpected happens
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Unexpected error loading default config: ${errorMessage}`);
+      return Result.err(
+        error instanceof Error ? error : new Error('Failed to load default config')
+      );
     }
   }
 
