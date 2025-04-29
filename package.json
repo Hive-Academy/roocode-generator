@@ -14,7 +14,7 @@
   ],
   "scripts": {
     "start": "node bin/roocode-generator.js",
-    "build": "tsc && copyfiles -u 1 templates/**/* dist/templates",
+    "build": "vite build",
     "type-check": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -25,7 +25,7 @@
     "format:write": "prettier --write \"src/**/*.{ts,js,mjs,json,md}\"",
     "style": "npm run format:write && npm run lint:fix",
     "prepare": "husky install",
-    "dev": "npm run build && node dist/bin/roocode-generator.js generate --generators vscode-copilot-rules memory-bank",
+    "dev": "vite",
     "cleanup:format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "cleanup:lint": "eslint --fix \"src/**/*.{ts,tsx}\"",
     "cleanup:types": "tsc --noEmit",
