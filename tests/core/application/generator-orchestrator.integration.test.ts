@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import 'reflect-metadata'; // Required for DI
-import { ServiceContainer } from '@/core/di/container'; // Use project's DI container
+// Removed unused import ApplicationContainer
 import { GeneratorOrchestrator } from '@/core/application/generator-orchestrator';
 import { IGeneratorOrchestrator } from '@/core/application/interfaces';
 import { ProjectConfigService } from '@/core/config/project-config.service';
-import { IProjectConfigService } from '@/core/config/interfaces';
+// Removed unused import IProjectConfigService
 import { ILogger } from '@/core/services/logger-service';
+
+// Removed unused import ApplicationContainer
 import { IGenerator } from '@/core/generators/base-generator';
 import { Result } from '@/core/result/result';
 import { IFileOperations } from '@/core/file-operations/interfaces'; // Import IFileOperations
@@ -60,35 +62,12 @@ describe('GeneratorOrchestrator Integration Test', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Setup DI container for the test
-    ServiceContainer.reset(); // Use project's container
+    // Manually instantiate ProjectConfigService with mocks
+    projectConfigServiceInstance = new ProjectConfigService(mockFileOps, mockLogger);
 
-    // Register mocks and real services
-    ServiceContainer.registerSingleton<ILogger>('ILogger', () => mockLogger);
-    ServiceContainer.registerSingleton<IFileOperations>('IFileOperations', () => mockFileOps);
-
-    // Resolve dependencies needed by ProjectConfigService first
-    const resolvedFileOps = ServiceContainer.resolve<IFileOperations>('IFileOperations');
-    const resolvedLogger = ServiceContainer.resolve<ILogger>('ILogger');
-
-    // Register the real ProjectConfigService, injecting resolved mocks
-    ServiceContainer.registerSingleton<IProjectConfigService>(
-      'IProjectConfigService',
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      () => new ProjectConfigService(resolvedFileOps, resolvedLogger)
-    );
-
-    // Get the instance for spying later
-    projectConfigServiceInstance =
-      ServiceContainer.resolve<ProjectConfigService>('IProjectConfigService');
-
-    // Instantiate GeneratorOrchestrator manually with resolved dependencies and mocks
+    // Instantiate GeneratorOrchestrator with mocks and the ProjectConfigService instance
     const generators = [mockGenerator1, mockGenerator2];
-    orchestrator = new GeneratorOrchestrator(
-      generators,
-      projectConfigServiceInstance, // Pass the resolved instance
-      ServiceContainer.resolve<ILogger>('ILogger') as ILogger // Type assertion
-    );
+    orchestrator = new GeneratorOrchestrator(generators, projectConfigServiceInstance, mockLogger);
   });
 
   it('should load default config from ProjectConfigService and execute generators', async () => {
@@ -110,7 +89,6 @@ describe('GeneratorOrchestrator Integration Test', () => {
     expect(mockLogger.info).toHaveBeenCalledWith(`Executing generator: ${selectedGenerators[0]}`);
     expect(mockLogger.info).toHaveBeenCalledWith('All selected generators executed successfully.');
 
-    // 3. Verify the selected generator was called with the default config
     // 3. Verify the selected generator was called with the default config
     expect(mockGenerator1.generate).toHaveBeenCalledTimes(1);
     expect(mockGenerator1.generate).toHaveBeenCalledWith(

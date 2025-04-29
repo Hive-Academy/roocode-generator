@@ -1,5 +1,5 @@
 import path from 'path'; // Added path import
-import { Inject, Injectable } from '@/core/di';
+import { Inject, Injectable } from '@/core/di/decorators';
 import { IServiceContainer } from '@/core/di/interfaces';
 import { BaseGenerator } from '@/core/generators/base-generator';
 import { Result } from '@/core/result/result';

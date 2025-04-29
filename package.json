@@ -13,7 +13,7 @@
     "README.md"
   ],
   "scripts": {
-    "start": "cross-env NODE_PATH=dist/src node bin/roocode-generator.js",
+    "start": "node bin/roocode-generator.js",
     "build": "tsc && copyfiles -u 1 templates/**/* dist/templates",
     "type-check": "tsc --noEmit",
     "test": "jest",

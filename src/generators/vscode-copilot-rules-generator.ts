@@ -74,7 +74,7 @@ export class VSCodeCopilotRulesGenerator
    */
   async validate(): Promise<Result<void, Error>> {
     this.logger.debug('Validating VSCodeCopilotRulesGenerator...');
-    const configResult = await this.projectConfigService.loadConfig();
+    const configResult = await Promise.resolve(this.projectConfigService.loadConfig());
     if (configResult.isErr()) {
       // Added check for error existence before accessing message
       const errorMessage = configResult.error?.message ?? 'Unknown error';
@@ -92,7 +92,7 @@ export class VSCodeCopilotRulesGenerator
   protected async executeGeneration(): Promise<Result<string, Error>> {
     this.logger.info('Executing VSCode Copilot Rules generation...');
 
-    const configResult = await this.projectConfigService.loadConfig();
+    const configResult = await Promise.resolve(this.projectConfigService.loadConfig());
     if (configResult.isErr()) {
       const errorMessage = configResult.error?.message ?? 'Unknown error';
       return Result.err(
