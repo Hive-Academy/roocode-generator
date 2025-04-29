@@ -224,7 +224,9 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       fileName.includes('.spec.') ||
       fileName.endsWith('.d.ts') ||
       fileName.endsWith('.map') ||
-      fileName.endsWith('.lock') // e.g., package-lock.json, yarn.lock, Cargo.lock
+      fileName === 'package-lock.json' || // Explicitly skip lock files
+      fileName === 'yarn.lock' ||
+      fileName.endsWith('.lock') // e.g., Cargo.lock
     ) {
       this.logger.debug(`Skipping test/generated/lock file: ${fileName}`);
       return false;

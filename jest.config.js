@@ -47,7 +47,6 @@ module.exports = {
     '<rootDir>/tests/memory-bank/memory-bank-content-generator.test.ts',
     '<rootDir>/tests/memory-bank/memory-bank-orchestrator.test.ts',
     '<rootDir>/tests/core/services/base-service.test.ts',
-    '<rootDir>/tests/core/analysis/project-analyzer.test.ts', // Re-ignored due to persistent ESM issues
     '<rootDir>/tests/core/templating/rules-template-manager.test.ts',
     '<rootDir>/tests/core/analysis/project-analyzer.directory.test.ts',
   ],
