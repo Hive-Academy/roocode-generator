@@ -1,16 +1,16 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import path from 'path'; // Add missing import
-import { AiMagicGenerator } from '@/generators/ai-magic-generator';
-import { MemoryBankService } from '@/memory-bank/memory-bank-service';
-import { IProjectAnalyzer, ProjectContext } from '@/core/analysis/types';
-import { ILogger } from '@/core/services/logger-service';
-import { IFileOperations } from '@/core/file-operations/interfaces';
-import { LLMAgent } from '@/core/llm/llm-agent';
-import { Result } from '@/core/result/result';
-import { IServiceContainer } from '@/core/di/interfaces';
+import { AiMagicGenerator } from '@generators/ai-magic-generator';
+import { MemoryBankService } from '@memory-bank/memory-bank-service';
+import { IProjectAnalyzer, ProjectContext } from '@core/analysis/types';
+import { ILogger } from '@core/services/logger-service';
+import { IFileOperations } from '@core/file-operations/interfaces';
+import { LLMAgent } from '@core/llm/llm-agent';
+import { Result } from '@core/result/result';
+import { IServiceContainer } from '@core/di/interfaces';
 import { ProjectConfig } from '../../types/shared'; // Corrected import path
-import { IRulesPromptBuilder } from '@/generators/rules/interfaces'; // Import for mock
-import { IContentProcessor } from '@/memory-bank/interfaces'; // Import for mock
+import { IRulesPromptBuilder } from '@generators/rules/interfaces'; // Import for mock
+import { IContentProcessor } from '@memory-bank/interfaces'; // Import for mock
 
 // Mock dependencies
 const mockLogger: ILogger = {
