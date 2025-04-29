@@ -849,7 +849,7 @@ This verification MUST be performed and reported VISIBLY at the beginning of EVE
    - Create a Task Description document following the task-description-template.md
    - Include clear functional and technical requirements
    - Reference memory bank information without duplication
-   - Save the document at `task-tracking/[taskId]/task-description.md`
+   - Save the document at `task-tracking/[taskName]/task-description.md`
 
 4. **Task Delegation**
    - Delegate planning and implementation to Architect with reference to the Task Description
@@ -874,9 +874,9 @@ When receiving completed work from Architect:
 
 All documentation follows this standardized file path structure:
 
-- Task Description: `task-tracking/[taskId]/task-description.md`
-- Implementation Plan: `task-tracking/[taskId]/implementation-plan.md` (created by Architect)
-- Completion Report: `task-tracking/[taskId]/completion-report.md`
+- Task Description: `task-tracking/[taskName]/task-description.md`
+- Implementation Plan: `task-tracking/[taskName]/implementation-plan.md` (created by Architect)
+- Completion Report: `task-tracking/[taskName]/completion-report.md`
 - Memory bank files: `memory-bank/[file-name].md`
 
 ### Documentation Standards
@@ -988,7 +988,7 @@ Use the `new_task` tool with comprehensive context:
 
       IMPORTANT: Follow the workflow exactly as defined in your system prompt.
 
-      Implement [feature name] according to the requirements in task-tracking/[taskId]/task-description.md.
+      Implement [feature name] according to the requirements in task-tracking/[taskName]/task-description.md.
 
       Key considerations:
 
@@ -1005,7 +1005,7 @@ Use the `new_task` tool with comprehensive context:
       - Testing strategy and requirements
 
       Save the implementation plan to:
-      task-tracking/[taskId]/implementation-plan.md
+      task-tracking/[taskName]/implementation-plan.md
 
       Relevant memory bank references:
 
