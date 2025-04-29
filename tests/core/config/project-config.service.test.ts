@@ -3,13 +3,16 @@ import { ProjectConfigService } from '../../../src/core/config/project-config.se
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
 import { Result } from '../../../src/core/result/result';
 import type { ProjectConfig } from '../../../types/shared';
+import { ILogger } from '@core/services/logger-service'; // Added missing import
 
 describe('ProjectConfigService', () => {
   let service: ProjectConfigService;
   let mockFileOps: jest.Mocked<IFileOperations>;
+  let mockLogger: jest.Mocked<ILogger>; // Added missing declaration
   let configPath: string;
 
-  const defaultConfig: ProjectConfig = {
+  // Renamed to expectedDefaultConfig for clarity in tests
+  const expectedDefaultConfig: ProjectConfig = {
     name: 'default-project',
     baseDir: '.',
     rootDir: '.roo',
@@ -20,7 +23,7 @@ describe('ProjectConfigService', () => {
   beforeEach(() => {
     jest.resetAllMocks();
 
-    // Set the config path to match what the service will use
+    // Set the config path (though not used by loadConfig anymore)
     configPath = `${process.cwd()}/roocode-config.json`;
 
     mockFileOps = {
@@ -35,77 +38,56 @@ describe('ProjectConfigService', () => {
       copyDirectoryRecursive: jest.fn().mockResolvedValue(Result.ok(undefined)),
     };
 
-    service = new ProjectConfigService(mockFileOps);
+    // Mock the logger - Corrected initialization
+    mockLogger = {
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+    };
+
+    // Instantiate service with mocked dependencies - Corrected instantiation
+    service = new ProjectConfigService(mockFileOps, mockLogger);
   });
 
   describe('loadConfig', () => {
-    it('should load config from file when it exists', async () => {
-      const testConfig: ProjectConfig = {
-        name: 'test-project',
-        baseDir: './src',
-        rootDir: '.roo',
-        generators: ['memory-bank', 'rules'],
-        description: 'Test project configuration',
-      };
-
-      mockFileOps.readFile.mockResolvedValue(Result.ok(JSON.stringify(testConfig)));
-
-      const result = await service.loadConfig();
+    it('should always return the in-memory default config', () => {
+      const result = service.loadConfig();
 
       expect(result.isOk()).toBe(true);
-      expect(result.value).toEqual(testConfig);
-      expect(mockFileOps.readFile).toHaveBeenCalledWith(configPath);
+      // Compare with the expected structure defined above - Corrected variable name
+      expect(result.value).toEqual(expectedDefaultConfig);
     });
 
-    it('should return default config when file does not exist', async () => {
-      mockFileOps.readFile.mockResolvedValue(Result.err(new Error('File not found')));
+    it('should log an info message when returning the default config', () => {
+      service.loadConfig();
 
-      const result = await service.loadConfig();
-
-      expect(result.isOk()).toBe(true);
-      expect(result.value).toEqual(
-        expect.objectContaining({
-          name: 'default-project',
-          baseDir: '.',
-          rootDir: '.roo',
-        })
+      expect(mockLogger.info).toHaveBeenCalledTimes(1);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Using in-memory default roocode-config.json configuration.'
       );
-      expect(mockFileOps.readFile).toHaveBeenCalledWith(configPath);
     });
 
-    it('should return error when file exists but contains invalid JSON', async () => {
-      mockFileOps.readFile.mockResolvedValue(Result.ok('invalid json'));
+    it('should not attempt any file system read operations', () => {
+      service.loadConfig();
 
-      const result = await service.loadConfig();
-
-      expect(result.isErr()).toBe(true);
-      expect(result.error).toBeInstanceOf(Error);
-      expect(result.error?.message).toContain('Failed to parse config');
+      expect(mockFileOps.readFile).not.toHaveBeenCalled();
+      expect(mockFileOps.exists).not.toHaveBeenCalled(); // Ensure no existence checks either
     });
 
-    it('should return error when config validation fails', async () => {
-      const invalidConfig = {
-        // Missing required fields
-        name: 'test-project',
-      };
-
-      mockFileOps.readFile.mockResolvedValue(Result.ok(JSON.stringify(invalidConfig)));
-
-      const result = await service.loadConfig();
-
-      expect(result.isErr()).toBe(true);
-      expect(result.error?.message).toContain('Invalid config');
-    });
-
-    it('should handle unexpected errors during loading', async () => {
-      mockFileOps.readFile.mockImplementation(() => {
-        throw new Error('Unexpected error');
+    it('should return an error if an unexpected issue occurs (e.g., logger fails)', () => {
+      const unexpectedError = new Error('Logger failed');
+      mockLogger.info.mockImplementation(() => {
+        throw unexpectedError;
       });
 
-      const result = await service.loadConfig();
+      const result = service.loadConfig();
 
       expect(result.isErr()).toBe(true);
-      expect(result.error?.message).toContain('Unexpected error');
+      expect(result.error).toBe(unexpectedError);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        `Unexpected error loading default config: ${unexpectedError.message}`
+      );
     });
   });
 
@@ -194,7 +176,7 @@ describe('ProjectConfigService', () => {
     });
 
     it('should return error when file write fails', async () => {
-      const config: ProjectConfig = defaultConfig;
+      const config: ProjectConfig = expectedDefaultConfig; // Use correct variable
       const writeError = new Error('Write failed');
 
       mockFileOps.writeFile.mockResolvedValue(Result.err(writeError));
@@ -206,7 +188,7 @@ describe('ProjectConfigService', () => {
     });
 
     it('should handle unexpected errors during saving', async () => {
-      const config: ProjectConfig = defaultConfig;
+      const config: ProjectConfig = expectedDefaultConfig; // Use correct variable
 
       mockFileOps.writeFile.mockImplementation(() => {
         throw new Error('Unexpected error');

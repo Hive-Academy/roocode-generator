@@ -1085,7 +1085,7 @@ I've updated the implementation plan with detailed review findings, including:
 - Overall assessment and recommendations
 - Memory bank update suggestions
 
-The updated implementation plan can be found at: task-tracking/[taskId]/implementation-plan.md
+The updated implementation plan can be found at: task-tracking/[taskName]/implementation-plan.md
 
 ## Memory Bank Update Suggestions
 
