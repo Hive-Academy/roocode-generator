@@ -27,7 +27,7 @@ See [[ProjectOverview]] for high-level project goals and features.
 
 The application follows a **Modular CLI Architecture with LLM Integration**. The core flow is as follows:
 
-1.  **Initialization:** The CLI entry point (`bin/roocode-generator.js`) sets up module aliasing (`module-alias`), environment variables (`dotenv`), and Reflect Metadata (`reflect-metadata`) for decorators. It then initializes a custom Dependency Injection (DI) container (`@core/di/container.ts`).
+1.  **Initialization:** The CLI entry point (`bin/roocode-generator.js`) launches the bundled application located at `dist/roocode-generator.js`. This bundled file's execution begins in `src/core/cli/cli-main.ts`, which sets up module aliasing (`module-alias`), environment variables (`dotenv`), and Reflect Metadata (`reflect-metadata`) for decorators. It then initializes a custom Dependency Injection (DI) container (`@core/di/container.ts`).
 2.  **DI Registration:** Services are registered in a modular fashion using registration functions (e.g., `registerCoreModule`, `registerLlmModule`, etc. defined in `@core/di/modules/*`) invoked by a central `registerServices` function (`@core/di/registrations.ts`).
 3.  **Application Bootstrap:** The main `ApplicationContainer` (`@core/application/application-container.ts`) is resolved from the DI container.
 4.  **Command Parsing (`CliInterface`):** The `ApplicationContainer` resolves the `CliInterface` (`@core/cli/cli-interface.ts`). The `CliInterface` uses the `commander` library to define commands (`generate`, `config`, etc.) and parse `process.argv`. Action callbacks capture the parsed command name and options into the `CliInterface` instance's `parsedArgs`.
@@ -104,6 +104,7 @@ _Diagram showing the initialization, command handling, and generator execution f
   - `IProjectManager` (Stub): Placeholder for potential future project-level state management.
   - `interfaces.ts`: Defines core application service contracts (`IGeneratorOrchestrator`, `IProjectManager`, `ICliInterface`).
 - **`@core/cli` (Command Line Interface):**
+  - `cli-main.ts`: The primary bootstrap file for the bundled CLI. It is the execution entry point after the `bin/roocode-generator.js` launcher script requires the bundled file. It is responsible for setting up the environment, initializing the DI container, and starting the CLI command parsing and execution flow. The Vite build is configured to use this file as the main entry point (`vite.config.ts:build.lib.entry`).
   - `CliInterface`: Handles command-line argument parsing (`commander`), interactive prompts (`inquirer`), and basic console output formatting (`chalk`).
 - **`@core/config` (Configuration Management):**
   - `LLMConfigService`: Manages loading, saving, validation, and interactive editing of LLM settings (`llm.config.json`).
@@ -227,6 +228,7 @@ _Diagram showing the initialization, command handling, and generator execution f
 - **Automated Release (`semantic-release`):** Standardizes versioning, changelog generation, and npm publishing based on Conventional Commits, reducing manual release effort and ensuring consistency.
 - **Code Quality Tooling (`eslint`, `prettier`, `commitlint`, `husky`):** Enforces consistent code style, formatting, and commit message standards automatically via Git hooks, improving code quality and maintainability across the team.
 - **Module Aliasing (`module-alias`, `tsconfig.json` paths):** Simplifies internal imports (e.g., `@core`, `@generators`) and maps them to the compiled `dist` directory at runtime, improving readability.
+- **Handling Module Compatibility (ESM/CJS Interop with Vite):** Addressed runtime compatibility issues with certain dependencies (e.g., `ora`, `inquirer`, `langchain`) when bundled with Vite for a Node.js environment. This involved adjusting import statements in source files and configuring Vite's `optimizeDeps.exclude` and Rollup's `external` options to ensure correct handling of module formats during the build process.
 
 ## 7. Development Guidelines
 
