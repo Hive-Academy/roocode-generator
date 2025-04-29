@@ -284,3 +284,19 @@ For more technical details on the generator components, refer to the [Technical 
    - Run lint, format, and tests
    - Publish to npm (if NPM_TOKEN is set)
    - Create a GitHub Release with notes
+
+<!-- Vite Integration Update -->
+
+**Overview:**  
+Our project now leverages Vite for TypeScript bundling and building. This integration provides faster build times using esbuild, improved Hot Module Replacement (HMR), and enhanced CI/CD workflows for streamlined npm package publishing.
+
+**Highlights:**
+
+- **Faster Builds:** Rapid TypeScript transpilation with Vite's esbuild.
+- **Real-Time Type Checking:** Integrated `vite-plugin-checker` for immediate error feedback.
+- **Simplified Module Resolution:** Native aliasing via Vite configuration, replacing older methods.
+- **Enhanced CI/CD:** Updated CI pipelines now incorporate `vite build` alongside type-checking (`tsc --noEmit`).
+
+For detailed configuration and implementation steps, please refer to the [Vite Integration Report](task-tracking/vite-integration-report/task-description.md).
+
+<!-- End Vite Integration Update -->
