@@ -15,3 +15,4 @@ coverage/
 /RooCode-Common-Code-Practices.md
 /.vscode/mcp.json
 /.eslintcache
+/test-output

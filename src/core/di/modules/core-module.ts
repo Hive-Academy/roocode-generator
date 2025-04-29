@@ -50,8 +50,10 @@ export function registerCoreModule(container: Container): void {
 
   container.registerFactory<IProjectConfigService>('IProjectConfigService', () => {
     const fileOps = resolveDependency<IFileOperations>(container, 'IFileOperations');
+    const logger = resolveDependency<ILogger>(container, 'ILogger');
     assertIsDefined(fileOps, 'IFileOperations dependency not found');
-    return new ProjectConfigService(fileOps);
+    assertIsDefined(logger, 'ILogger dependency not found');
+    return new ProjectConfigService(fileOps, logger);
   });
 
   container.registerFactory<ILLMConfigService>('ILLMConfigService', () => {
