@@ -2,14 +2,13 @@ import { Result } from '../core/result/result';
 import { IMemoryBankTemplateManager } from './interfaces/template-manager.interface';
 import { IMemoryBankTemplateProcessor } from './interfaces/template-processor.interface';
 import { IMemoryBankContentGenerator } from './interfaces/content-generator.interface';
-import { IMemoryBankOrchestrator, GenerationOptions } from './interfaces/orchestrator.interface';
+import { IMemoryBankOrchestrator } from './interfaces/orchestrator.interface';
 
 export {
   IMemoryBankTemplateManager,
   IMemoryBankTemplateProcessor,
   IMemoryBankContentGenerator,
   IMemoryBankOrchestrator,
-  GenerationOptions,
 };
 export type MessageContent = string;
 

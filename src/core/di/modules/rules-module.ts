@@ -1,20 +1,16 @@
 import { Container } from '@core/di/container';
 import { resolveDependency } from '@core/di/utils'; // Import helpers from utils
-import { IGenerator } from '@core/generators/base-generator';
-import { RulesGenerator } from '@generators/rules/rules-generator';
+// Removed import for deprecated RulesGenerator
 import {
   IRulesContentProcessor,
   IRulesFileManager,
   IRulesPromptBuilder,
-  RulesConfig,
 } from '@generators/rules/interfaces';
 import { RulesContentProcessor } from '@generators/rules/rules-content-processor';
 import { RulesPromptBuilder } from '@generators/rules/rules-prompt-builder';
 import { RulesFileManager } from '@generators/rules/rules-file-manager';
 import { ILogger } from '@core/services/logger-service';
 import { IFileOperations } from '@core/file-operations/interfaces';
-import { IProjectAnalyzer } from '@core/analysis/types';
-import { LLMAgent } from '@core/llm/llm-agent';
 
 export function registerRulesModule(container: Container): void {
   // Register Rules specific services
@@ -34,27 +30,5 @@ export function registerRulesModule(container: Container): void {
     return new RulesContentProcessor();
   });
 
-  // Register RulesGenerator
-  container.registerFactory<IGenerator<RulesConfig>>('IGenerator.Rules', () => {
-    const serviceContainer = container; // The container instance itself
-    const logger = resolveDependency<ILogger>(container, 'ILogger');
-    const fileOps = resolveDependency<IFileOperations>(container, 'IFileOperations');
-    const projectAnalyzer = resolveDependency<IProjectAnalyzer>(container, 'IProjectAnalyzer');
-    const llmAgent = resolveDependency<LLMAgent>(container, 'LLMAgent');
-    const contentProcessor = resolveDependency<IRulesContentProcessor>(
-      container,
-      'IRulesContentProcessor'
-    );
-    const rulesFileManager = resolveDependency<IRulesFileManager>(container, 'IRulesFileManager'); // Added this line
-
-    return new RulesGenerator(
-      serviceContainer,
-      logger,
-      fileOps,
-      projectAnalyzer,
-      llmAgent,
-      contentProcessor,
-      rulesFileManager // Added this argument
-    );
-  });
+  // Removed registration for deprecated RulesGenerator
 }

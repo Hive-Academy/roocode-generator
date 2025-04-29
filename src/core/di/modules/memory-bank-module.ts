@@ -18,7 +18,7 @@ import {
 } from '@memory-bank/interfaces';
 import { MemoryBankContentGenerator } from '@memory-bank/memory-bank-content-generator';
 import { MemoryBankFileManager } from '@memory-bank/memory-bank-file-manager';
-import { MemoryBankGenerator } from '@memory-bank/memory-bank-generator';
+// Removed import for deprecated MemoryBankGenerator
 import { MemoryBankOrchestrator } from '@memory-bank/memory-bank-orchestrator';
 import { MemoryBankTemplateManager } from '@memory-bank/memory-bank-template-manager';
 import { MemoryBankTemplateProcessor } from '@memory-bank/memory-bank-template-processor';
@@ -141,35 +141,5 @@ export function registerMemoryBankModule(container: Container): void {
     return new MemoryBankService(orchestrator, logger);
   });
 
-  // Register MemoryBankGenerator (Keep for backward compatibility)
-  container.registerFactory<MemoryBankGenerator>('MemoryBankGenerator', () => {
-    const validator = resolveDependency<IMemoryBankValidator>(container, 'IMemoryBankValidator');
-    assertIsDefined(validator, 'IMemoryBankValidator dependency not found');
-    const orchestrator = resolveDependency<IMemoryBankOrchestrator>(
-      container,
-      'IMemoryBankOrchestrator'
-    );
-    assertIsDefined(orchestrator, 'IMemoryBankOrchestrator dependency not found');
-    const logger = resolveDependency<ILogger>(container, 'ILogger');
-    assertIsDefined(logger, 'ILogger dependency not found');
-    const projectConfigService = resolveDependency<IProjectConfigService>(
-      container,
-      'IProjectConfigService'
-    );
-    assertIsDefined(projectConfigService, 'IProjectConfigService dependency not found');
-    const projectContextService = resolveDependency<IProjectContextService>(
-      container,
-      'IProjectContextService'
-    );
-    assertIsDefined(projectContextService, 'IProjectContextService dependency not found');
-
-    return new MemoryBankGenerator(
-      container,
-      validator,
-      orchestrator,
-      logger,
-      projectConfigService,
-      projectContextService
-    );
-  });
+  // Removed registration for deprecated MemoryBankGenerator
 }
