@@ -245,9 +245,13 @@ describe('ProjectAnalyzer', () => {
       // Verify file collection (indirectly via LLM input)
       expect(mockLLMAgent.getCompletion).toHaveBeenCalledTimes(1);
       const llmInput = mockLLMAgent.getCompletion.mock.calls[0][1];
-      expect(llmInput).toContain('File: src/index.ts\nconsole.log("hello");');
-      expect(llmInput).toContain('File: package.json\n{ "name": "test-project" }');
-      expect(llmInput).toContain('File: README.md\n# Test Project');
+      // Check for platform-specific path and content separately
+      expect(llmInput).toContain(`File: ${path.join('src', 'index.ts')}`);
+      expect(llmInput).toContain('console.log("hello");');
+      expect(llmInput).toContain(`File: package.json`);
+      expect(llmInput).toContain('{ "name": "test-project" }');
+      expect(llmInput).toContain(`File: README.md`);
+      expect(llmInput).toContain('# Test Project');
       expect(llmInput).not.toContain('node_modules');
       expect(llmInput).not.toContain('.git');
       expect(llmInput).not.toContain('index.test.ts'); // Filtered by shouldAnalyzeFile
@@ -351,10 +355,8 @@ describe('ProjectAnalyzer', () => {
       // The error is caught inside collectProjectFiles which returns [], leading to "No analyzable files" error
       expect(result.isErr()).toBe(true);
       expect(result.error?.message).toBe('No analyzable files found for analysis');
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Error collecting project files'),
-        expect.any(Error)
-      );
+      // Check the debug log from scanDir when readDir fails
+      expect(mockLogger.debug).toHaveBeenCalledWith(`Failed to read directory: ${mockRootPath}`);
       expect(mockProgressIndicator.fail).toHaveBeenCalledWith(
         'No analyzable files found in the project'
       );
