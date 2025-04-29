@@ -626,3 +626,15 @@ This project utilizes **Trunk-Based Development** with short-lived feature branc
     646 |
     647 |
     648 |
+
+<!-- Vite Integration Update -->
+
+As part of our ongoing efforts to streamline development and enhance our CI/CD pipeline, we have integrated Vite into our project for efficient TypeScript bundling and building. Key updates include:
+
+- **Faster Builds:** Utilization of Vite’s esbuild for rapid TypeScript transpilation, significantly reducing build times.
+- **Real-Time Type Checking:** Incorporation of `vite-plugin-checker` for immediate TypeScript error feedback directly in the browser during development.
+- **Simplified Configuration:** Adoption of Vite’s native module aliasing in `vite.config.ts`, replacing older methods like `module-alias`.
+- **CI/CD Enhancements:** Updated CI pipeline processes now include running `vite build` and `tsc --noEmit` to ensure robust build validation before npm package publishing.
+- **Improved Developer Experience:** Enhanced support for Hot Module Replacement (HMR) resulting in a smoother development workflow and faster iteration cycles.
+
+_For further details, please refer to the [Vite Official Documentation](https://vite.dev/guide/features) and related resources._

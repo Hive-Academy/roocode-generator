@@ -93,7 +93,6 @@
     "dotenv": "^16.5.0",
     "inquirer": "^12.5.2",
     "langchain": "^0.3.21",
-    "module-alias": "^2.2.3",
     "ora": "^8.2.0",
     "reflect-metadata": "^0.2.2"
   }
