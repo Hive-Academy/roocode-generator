@@ -128,7 +128,7 @@ The core strategy is **Dependency Inversion via New Service**. We will introduce
 
 ### Subtask 3: Register `ModelListerService` in DI Container
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Register the new service and its interface with the DI container.
 
@@ -147,8 +147,8 @@ The core strategy is **Dependency Inversion via New Service**. We will introduce
 
 **Acceptance Criteria**:
 
-- [ ] `IModelListerService` is registered as a singleton in `llm-module.ts`.
-- [ ] The registration maps the interface token to the `ModelListerService` class.
+- [x] `IModelListerService` is registered in `llm-module.ts`.
+- [x] The registration maps the interface token to the `ModelListerService` class.
 
 **Estimated effort**: 5 minutes
 
