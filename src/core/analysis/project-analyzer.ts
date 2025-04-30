@@ -2,7 +2,7 @@ import { Injectable, Inject } from '../di/decorators';
 import { IFileOperations } from '../file-operations/interfaces';
 import { ILogger } from '../services/logger-service';
 import { Result } from '../result/result';
-import { IProjectAnalyzer, ProjectContext } from './types'; // Ensure specific types are removed if unused
+import { IProjectAnalyzer, ProjectContext } from './types';
 import { LLMAgent } from '../llm/llm-agent';
 import { LLMProviderError } from '../llm/llm-provider-errors';
 import { ResponseParser } from './response-parser';
@@ -11,8 +11,10 @@ import {
   SKIP_DIRECTORIES,
   ANALYZABLE_EXTENSIONS,
   ANALYZABLE_FILENAMES,
-} from './constants'; // Import constants
+} from './constants';
 import { ProgressIndicator } from '../ui/progress-indicator';
+import { IFileContentCollector, FileMetadata } from './interfaces';
+import { IFilePrioritizer } from './interfaces';
 import path from 'path';
 
 @Injectable()
@@ -22,10 +24,13 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
     @Inject('ILogger') private readonly logger: ILogger,
     @Inject('LLMAgent') private readonly llmAgent: LLMAgent,
     @Inject('ResponseParser') private readonly responseParser: ResponseParser,
-    @Inject('ProgressIndicator') private readonly progress: ProgressIndicator
+    @Inject('ProgressIndicator') private readonly progress: ProgressIndicator,
+    @Inject('IFileContentCollector') private readonly contentCollector: IFileContentCollector,
+    @Inject('IFilePrioritizer') private readonly filePrioritizer: IFilePrioritizer
   ) {
     this.logger.debug('ProjectAnalyzer initialized');
   }
+
   /**
    * Analyzes the overall project context based on the collected files.
    * @param paths - An array containing the root path(s) of the project to analyze.
@@ -39,53 +44,72 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
 
     try {
       this.progress.start('Collecting project files for analysis...');
-      const files = await this.collectProjectFiles(rootPath);
-      if (files.length === 0) {
-        this.progress.fail('No analyzable files found in the project');
-        return Result.err(new Error('No analyzable files found for analysis'));
+
+      // Calculate available tokens for file content
+      const maxTokens =
+        (await this.llmAgent.getModelContextWindow()) - (await this.getPromptOverheadTokens());
+
+      // Collect all analyzable files
+      const allFiles = await this.collectAnalyzableFiles(rootPath);
+      if (allFiles.isErr()) {
+        const error = allFiles.error || new Error('Unknown error collecting files');
+        return Result.err(error);
       }
-      this.progress.update(`Collected ${files.length} files. Analyzing project context...`);
 
-      // Consolidated prompt for comprehensive analysis
-      const systemPrompt = `Analyze the provided project files to determine its overall context.
-        Return a single JSON object containing the tech stack, project structure, and dependencies.
-        The JSON object must strictly adhere to the following structure:
-        {
-          "techStack": {
-            "languages": string[], // e.g., ["TypeScript", "JavaScript", "Python"]
-            "frameworks": string[], // e.g., ["React", "Express", "FastAPI"]
-            "buildTools": string[], // e.g., ["Webpack", "tsc", "pip"]
-            "testingFrameworks": string[], // e.g., ["Jest", "pytest"]
-            "linters": string[], // e.g., ["ESLint", "Prettier", "Flake8"]
-            "packageManager": string // e.g., "npm", "yarn", "pip", "maven", "gradle", "cargo"
-          },
-          "structure": {
-            "rootDir": string, // The absolute root path provided
-            "sourceDir": string, // Relative path(s) from rootDir to main source code (e.g., "src", "app")
-            "testDir": string, // Relative path(s) from rootDir to main test code (e.g., "tests", "spec")
-            "configFiles": string[], // Relative paths from rootDir to key config files (e.g., "tsconfig.json", "pyproject.toml")
-            "mainEntryPoints": string[], // Relative paths from rootDir to main application entry points (e.g., "src/index.ts", "app/main.py")
-            "componentStructure": Record<string, string[]> // Optional: Map of component types/locations if identifiable (e.g., { "ui": ["src/components/ui/Button.tsx"] })
-          },
-          "dependencies": {
-            "dependencies": Record<string, string>, // { "react": "^18.0.0" }
-            "devDependencies": Record<string, string>, // { "jest": "^29.0.0" }
-            "peerDependencies": Record<string, string>, // { "react": ">=17.0.0" }
-            "internalDependencies": Record<string, string[]> // Optional: Map of internal modules to their dependencies { "src/utils/helper.ts": ["src/core/types.ts"] }
-          }
-        }
-        Important:
-        - Analyze based *only* on the provided file contents.
-        - Infer fields like 'sourceDir', 'testDir', 'mainEntryPoints' based on common conventions and file contents.
-        - If a field cannot be determined (e.g., no clear package manager), return an empty array [] or empty object {} or null as appropriate for the type.
-        - Return ONLY the JSON object without any surrounding text, explanations, markdown formatting, or code fences.`;
+      if (!allFiles.value || allFiles.value.length === 0) {
+        return Result.err(new Error('No analyzable files found'));
+      }
 
-      const filePrompt = files.join('\n\n---\n\n');
-      const filePromptTokenCount = filePrompt.split(/\s+/).length;
-      const systemPromptTokenCount = systemPrompt.split(/\s+/).length;
-      this.logger.debug(`Temporary Logging: File prompt token count: ${filePromptTokenCount}`);
-      this.logger.debug(`Temporary Logging: System prompt token count: ${systemPromptTokenCount}`);
-      let result: Result<string, Error> = Result.err(new Error('Initial error before LLM call')); // Initialize result
+      // Convert file paths to FileMetadata
+      const fileMetadata: FileMetadata[] = allFiles.value.map((filePath) => ({
+        path: filePath,
+        size: 0, // Initial size, will be updated by collector
+      }));
+
+      // Prioritize files
+      const prioritizedFiles = this.filePrioritizer.prioritizeFiles(fileMetadata, rootPath);
+
+      // Collect content using the new collector
+      const contentResult = await this.contentCollector.collectContent(
+        prioritizedFiles.map((file) => file.path),
+        rootPath,
+        maxTokens
+      );
+
+      if (contentResult.isErr()) {
+        this.progress.fail('Failed to collect file contents');
+        const error = contentResult.error || new Error('Unknown error collecting content');
+        return Result.err(error);
+      }
+
+      if (!contentResult.value) {
+        this.progress.fail('No content result returned from collector');
+        return Result.err(new Error('No content result returned from collector'));
+      }
+
+      const { content, metadata } = contentResult.value;
+
+      // Check if any content was collected
+      if (!content || content.length === 0) {
+        this.progress.fail('No analyzable files found or collected within token limit');
+        return Result.err(new Error('No analyzable files found or collected within token limit'));
+      }
+
+      this.logger.debug(`Collected ${metadata.length} files with metadata`);
+
+      const systemPrompt = this.buildSystemPrompt();
+      const filePrompt = content;
+      const filePromptTokenCount = await this.llmAgent.countTokens(filePrompt);
+      const systemPromptTokenCount = await this.llmAgent.countTokens(systemPrompt);
+
+      this.progress.update(
+        `Collected file content (${filePromptTokenCount} tokens). Analyzing project context...`
+      );
+
+      this.logger.debug(`File prompt token count: ${filePromptTokenCount}`);
+      this.logger.debug(`System prompt token count: ${systemPromptTokenCount}`);
+
+      let result: Result<string, Error> = Result.err(new Error('Initial error before LLM call'));
       const maxRetries = 3;
       let currentAttempt = 0;
 
@@ -95,36 +119,34 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         result = await this.llmAgent.getCompletion(systemPrompt, filePrompt);
 
         if (result.isOk()) {
-          break; // Success, exit retry loop
+          break;
         }
 
         if (result.isErr()) {
-          const error = result.error; // Access error from the current result
+          const error = result.error;
           if (error instanceof LLMProviderError && error.code === 'INVALID_RESPONSE_FORMAT') {
             this.logger.warn(
               `LLM returned invalid response format on attempt ${currentAttempt}. Retrying...`
             );
             if (currentAttempt < maxRetries) {
-              const delay = Math.pow(2, currentAttempt) * 100; // Exponential backoff (100ms, 200ms, 400ms)
+              const delay = Math.pow(2, currentAttempt) * 100;
               await new Promise((resolve) => setTimeout(resolve, delay));
             } else {
-              // Max retries reached for invalid response format
               this.logger.error(
                 `LLM call failed after ${maxRetries} attempts due to invalid response format.`
               );
-              break; // Exit retry loop after max retries
+              break;
             }
           } else {
-            // Not an invalid response format error
+            const errorMessage = error instanceof Error ? error.message : String(error);
             this.logger.error(
-              `LLM call failed on attempt ${currentAttempt} with unexpected error: ${error?.message}`
+              `LLM call failed on attempt ${currentAttempt} with unexpected error: ${errorMessage}`
             );
-            break; // Exit retry loop for other errors
+            break;
           }
         }
       }
 
-      // Check the final result after the loop
       if (result.isErr()) {
         this.progress.fail('Project context analysis failed after multiple LLM attempts');
         return Result.err(result.error as Error);
@@ -136,10 +158,9 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       if (parsedResult.isErr()) {
         this.progress.fail('Failed to parse analysis results from LLM');
         this.logger.error(`Failed to parse LLM response: ${result.value}`, parsedResult.error);
-        return parsedResult; // Return the error Result
+        return parsedResult;
       }
 
-      // Add check for undefined value after isOk() check
       if (!parsedResult.value) {
         this.progress.fail('Parsed analysis result value is undefined');
         this.logger.error(
@@ -148,8 +169,6 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         return Result.err(new Error('Parsed analysis result value is undefined'));
       }
 
-      // Ensure rootDir is correctly set from the input path
-      // Also handle cases where LLM might return null/undefined for nested objects
       const techStack = parsedResult.value.techStack ?? {
         languages: [],
         frameworks: [],
@@ -177,7 +196,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         techStack,
         structure: {
           ...structure,
-          rootDir: rootPath, // Override rootDir with the actual input path
+          rootDir: rootPath,
         },
         dependencies,
       };
@@ -185,31 +204,17 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       this.progress.succeed('Project context analysis completed successfully');
       return Result.ok(finalContext);
     } catch (error) {
-      // Keep 'any' removed
       this.progress.fail('Project context analysis failed');
-      // Safer error handling for logging
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorCause = error instanceof Error ? error : undefined; // Keep this check
+      const errorCause = error instanceof Error ? error : undefined;
       this.logger.error(`Project context analysis failed: ${errorMessage}`, errorCause);
       return Result.err(new Error(`Project context analysis failed: ${errorMessage}`));
     }
   }
 
-  private async isDirectory(filePath: string): Promise<Result<boolean, Error>> {
-    const result = await this.fileOps.isDirectory(filePath);
-    if (result.isErr()) {
-      this.logger.warn(`Error checking if path is directory: ${filePath} - ${result.error}`);
-      return Result.err(result.error as Error);
-    }
-    return Result.ok(result.value as boolean);
-  }
-
-  private async collectProjectFiles(rootDir: string): Promise<string[]> {
+  private async collectAnalyzableFiles(rootDir: string): Promise<Result<string[], Error>> {
     try {
-      const files: string[] = [];
-      // Use the more comprehensive SKIP_DIRECTORIES set
-      // const excludedDirs = new Set<string>(['node_modules', 'dist', '.git', 'coverage']); // Old version
-
+      const allFiles: string[] = [];
       const scanDir = async (dirPath: string): Promise<void> => {
         const result = await this.fileOps.readDir(dirPath);
         if (!result.isOk() || !result.value) {
@@ -222,13 +227,11 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
           const itemName: string = typeof item === 'string' ? item : item.name;
           const fullPath: string = path.join(dirPath, itemName);
 
-          // Use the imported SKIP_DIRECTORIES set
           if (SKIP_DIRECTORIES.has(itemName)) {
             this.logger.debug(`Skipping excluded directory: ${itemName}`);
             continue;
           }
 
-          // Skip hidden files/directories (starting with '.')
           if (itemName.startsWith('.')) {
             this.logger.debug(`Skipping hidden item: ${itemName}`);
             continue;
@@ -242,11 +245,8 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
 
           if (isDirResult.value) {
             await scanDir(fullPath);
-          } else if (this.shouldAnalyzeFile(itemName)) {
-            const contentResult = await this.fileOps.readFile(fullPath);
-            if (contentResult.isOk() && typeof contentResult.value === 'string') {
-              files.push(`File: ${path.relative(rootDir, fullPath)}\n${contentResult.value}`);
-            }
+          } else if (this.shouldAnalyzeFile(fullPath)) {
+            allFiles.push(fullPath);
           }
         }
       };
@@ -254,57 +254,117 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       const startTime = Date.now();
       await scanDir(rootDir);
       const elapsedTime = Date.now() - startTime;
-      this.logger.debug(`File collection completed in ${elapsedTime} ms.`);
-      return files;
-    } catch (error: any) {
-      this.logger.error(`Error collecting project files: ${error}`);
-      return [];
+      this.logger.debug(
+        `File path collection completed in ${elapsedTime} ms. Found ${allFiles.length} analyzable files.`
+      );
+
+      return Result.ok(allFiles);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error collecting analyzable files: ${errorMessage}`);
+      return Result.err(new Error(`Error collecting analyzable files: ${errorMessage}`));
     }
+  }
+
+  private async isDirectory(filePath: string): Promise<Result<boolean, Error>> {
+    const result = await this.fileOps.isDirectory(filePath);
+    if (result.isErr()) {
+      this.logger.warn(`Error checking if path is directory: ${filePath} - ${result.error}`);
+      return Result.err(result.error as Error);
+    }
+    return Result.ok(result.value as boolean);
   }
 
   private shouldAnalyzeFile(filePath: string): boolean {
     const fileName = path.basename(filePath);
     const ext = path.extname(fileName).toLowerCase();
 
-    // 1. Skip specific test/generated files
     if (
       fileName.includes('.test.') ||
       fileName.includes('.spec.') ||
       fileName.endsWith('.d.ts') ||
       fileName.endsWith('.map') ||
-      fileName === 'package-lock.json' || // Explicitly skip lock files
+      fileName === 'package-lock.json' ||
       fileName === 'yarn.lock' ||
-      fileName.endsWith('.lock') // e.g., Cargo.lock
+      fileName.endsWith('.lock')
     ) {
       this.logger.debug(`Skipping test/generated/lock file: ${fileName}`);
       return false;
     }
 
-    // 2. Skip binary files based on extension (using imported constant)
     if (BINARY_EXTENSIONS.has(ext)) {
       this.logger.debug(`Skipping binary file: ${fileName}`);
       return false;
     }
 
-    // 3. Check against known analyzable filenames (using imported constant)
     if (ANALYZABLE_FILENAMES.has(fileName)) {
       this.logger.debug(`Including known filename: ${fileName}`);
       return true;
     }
 
-    // 4. Check against known analyzable extensions (using imported constant)
     if (ANALYZABLE_EXTENSIONS.has(ext)) {
       this.logger.debug(`Including file with known extension: ${fileName}`);
       return true;
     }
 
-    // 5. Fallback for files without extensions but potentially analyzable (using imported constant)
     if (!ext && ANALYZABLE_FILENAMES.has(fileName)) {
       this.logger.debug(`Including known filename without extension: ${fileName}`);
       return true;
     }
 
     this.logger.debug(`Skipping file by default: ${fileName}`);
-    return false; // Default to false if none of the above conditions match
+    return false;
+  }
+
+  private buildSystemPrompt(): string {
+    return `Analyze the provided project files to determine its overall context.
+        Return a single JSON object containing the tech stack, project structure, and dependencies.
+        The JSON object must strictly adhere to the following structure:
+        {
+          "techStack": {
+            "languages": string[], // e.g., ["TypeScript", "JavaScript", "Python"]
+            "frameworks": string[], // e.g., ["React", "Express", "FastAPI"]
+            "buildTools": string[], // e.g., ["Webpack", "tsc", "pip"]
+            "testingFrameworks": string[], // e.g., ["Jest", "pytest"]
+            "linters": string[], // e.g., ["ESLint", "Prettier", "Flake8"]
+            "packageManager": string // e.g., "npm", "yarn", "pip", "maven", "gradle", "cargo"
+          },
+          "structure": {
+            "rootDir": string, // The absolute root path provided
+            "sourceDir": string, // Relative path(s) from rootDir to main source code (e.g., "src", "app")
+            "testDir": string, // Relative path(s) from rootDir to main test code (e.g., "tests", "spec")
+            "configFiles": string[], // Relative paths from rootDir to key config files (e.g., "tsconfig.json", "pyproject.toml")
+            "mainEntryPoints": string[], // Relative paths from rootDir to main application entry points (e.g., "src/index.ts", "app/main.py")
+            "componentStructure": Record<string, string[]> // Optional: Map of component types/locations if identifiable
+          },
+          "dependencies": {
+            "dependencies": Record<string, string>, // { "react": "^18.0.0" }
+            "devDependencies": Record<string, string>, // { "jest": "^29.0.0" }
+            "peerDependencies": Record<string, string>, // { "react": ">=17.0.0" }
+            "internalDependencies": Record<string, string[]> // Optional: Map of internal modules to their dependencies
+          }
+        }
+        Important:
+        - Analyze based *only* on the provided file contents.
+        - Infer fields like 'sourceDir', 'testDir', 'mainEntryPoints' based on common conventions and file contents.
+        - If a field cannot be determined (e.g., no clear package manager), return an empty array [] or empty object {} or null as appropriate for the type.
+        - Return ONLY the JSON object without any surrounding text, explanations, markdown formatting, or code fences.
+
+        Provided file contents:
+        [FILE CONTENTS GO HERE]`;
+  }
+
+  private async getPromptOverheadTokens(): Promise<number> {
+    const basePromptTemplate = this.buildSystemPrompt();
+    const providerResult = await this.llmAgent.getProvider();
+    if (providerResult.isErr() || !providerResult.value) {
+      this.logger.warn(
+        'LLM Provider or countTokens method not available for prompt overhead token estimation. Returning 0.'
+      );
+      return 0;
+    }
+    return providerResult.value.countTokens(
+      basePromptTemplate.replace('[FILE CONTENTS GO HERE]', '')
+    );
   }
 }

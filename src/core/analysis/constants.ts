@@ -173,3 +173,104 @@ export const ANALYZABLE_FILENAMES = new Set([
   'go.sum',
   // Add more as needed
 ]);
+
+/**
+ * Priority levels for file analysis (1 = highest, 5 = lowest)
+ * Used to determine the order of file processing and ensure critical files
+ * are analyzed within token limits.
+ */
+export type PriorityLevel = 1 | 2 | 3 | 4 | 5;
+
+// File priority patterns for analysis ordering
+export const FILE_PRIORITY_PATTERNS: Record<number, Set<string>> = {
+  1: new Set([
+    // Highest priority - Package management and core config files
+    'package.json',
+    'package-lock.json',
+    'yarn.lock',
+    'pnpm-lock.yaml',
+    'requirements.txt',
+    'Pipfile',
+    'Pipfile.lock',
+    'Gemfile',
+    'Gemfile.lock',
+    'composer.json',
+    'composer.lock',
+    'tsconfig.json',
+    'tsconfig.*.json',
+    'jsconfig.json',
+    'webpack.config.*',
+    'vite.config.*',
+    'rollup.config.*',
+    'next.config.*',
+    'nuxt.config.*',
+    'angular.json',
+    'main.*',
+    'index.*',
+  ]),
+  2: new Set([
+    // High priority - Configuration files
+    '.eslintrc*',
+    '.prettierrc*',
+    '.babelrc*',
+    'jest.config.*',
+    'cypress.config.*',
+    'vitest.config.*',
+    'postcss.config.*',
+    'tailwind.config.*',
+    'docker-compose.*',
+    'Dockerfile',
+    '.dockerignore',
+  ]),
+  3: new Set(
+    [
+      // Medium priority - Source code files (excluding test files)
+      '.ts',
+      '.js',
+      '.jsx',
+      '.tsx',
+      '.mjs',
+      '.cjs',
+      '.py',
+      '.rb',
+      '.php',
+      '.java',
+      '.go',
+      '.rs',
+      '.cs',
+      '.cpp',
+      '.c',
+      '.h',
+      '.hpp',
+      'd.ts',
+    ].filter((ext) => !ext.includes('test') && !ext.includes('spec'))
+  ),
+  4: new Set([
+    // Lower priority - Test files and large generated files
+    '.test.*',
+    '.spec.*',
+    '*test.*',
+    '*spec.*',
+    '__tests__/*',
+    'test/*',
+    'tests/*',
+    '.min.js',
+    '.bundle.js',
+    '.generated.*',
+    'dist/*',
+    'build/*',
+  ]),
+  5: new Set([
+    // Lowest priority - Documentation and auxiliary files
+    '.md',
+    '.mdx',
+    '.txt',
+    '.rst',
+    'README*',
+    'CHANGELOG*',
+    'LICENSE*',
+    'CONTRIBUTING*',
+    '.gitignore',
+    '.npmignore',
+  ]),
+};
