@@ -122,11 +122,26 @@ export class OpenRouterProvider extends BaseLLMProvider {
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://github.com/roocode-generator',
+          'X-Title': 'RooCode Generator',
         },
       });
 
       if (!response.ok) {
-        throw new Error(`OpenRouter API error: ${response.statusText}`);
+        const errorData = (await response.json().catch(() => ({ error: response.statusText }))) as {
+          error?: string;
+        };
+        const errorDetails: Record<string, unknown> = {
+          statusCode: response.status,
+          statusText: response.statusText,
+          error: errorData.error,
+        };
+        throw new LLMProviderError(
+          `OpenRouter API error: ${errorData.error || response.statusText}`,
+          `HTTP_${response.status}`,
+          this.name,
+          errorDetails
+        );
       }
 
       const data = (await response.json()) as { data: OpenRouterModel[] };

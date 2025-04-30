@@ -74,4 +74,34 @@ export class LLMProviderRegistry {
       );
     }
   }
+
+  /**
+   * Gets the factory function for a specific provider without loading config or instantiating.
+   * Used for temporary provider creation during configuration.
+   * @param providerName Name of the provider to get factory for
+   * @returns Result with provider factory or error
+   */
+  public getProviderFactory(providerName: string): Result<LLMProviderFactory, Error> {
+    try {
+      const factory = this.providerFactories.get(providerName.toLowerCase());
+      if (!factory) {
+        return Result.err(
+          new Error(
+            `LLM provider '${providerName}' not found. Available providers: ${Array.from(
+              this.providerFactories.keys()
+            ).join(', ')}`
+          )
+        );
+      }
+      return Result.ok(factory);
+    } catch (error) {
+      return Result.err(
+        new Error(
+          `Failed to get provider factory: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        )
+      );
+    }
+  }
 }

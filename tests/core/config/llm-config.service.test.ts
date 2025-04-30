@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Question } from 'inquirer';
 import 'reflect-metadata';
+import './llm-config.service.interactive-edit.test'; // Import the new test file
 import { LLMConfigService } from '../../../src/core/config/llm-config.service';
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
 import { ILLMProviderRegistry } from '../../../src/core/llm/interfaces';
@@ -9,7 +10,6 @@ import { ILogger } from '../../../src/core/services/logger-service';
 import { LLMConfig } from '../../../types/shared';
 
 describe('LLMConfigService', () => {
-  let llmConfigService: LLMConfigService;
   let mockFileOps: jest.Mocked<IFileOperations>;
   let mockLogger: jest.Mocked<ILogger>;
   let mockInquirer: jest.Mock;
@@ -40,146 +40,11 @@ describe('LLMConfigService', () => {
 
     mockProviderRegistry = {
       getProvider: jest.fn(),
+      getProviderFactory: jest.fn(),
     };
-
-    // Create service instance
-    llmConfigService = new LLMConfigService(
-      mockFileOps,
-      mockLogger,
-      mockInquirer as any,
-      mockProviderRegistry
-    );
   });
 
-  describe('interactiveEditConfig', () => {
-    const defaultConfig: LLMConfig = {
-      provider: '',
-      apiKey: '',
-      model: '',
-      temperature: 0.1,
-      maxTokens: 2048,
-    };
-
-    it('should handle successful interactive configuration', async () => {
-      // Mock user responses
-      mockInquirer
-        .mockResolvedValueOnce({ provider: 'openai' })
-        .mockResolvedValueOnce({ apiKey: 'test-api-key' })
-        .mockResolvedValueOnce({ model: 'gpt-4' })
-        .mockResolvedValueOnce({ temperature: 0.1 });
-
-      // Mock provider registry
-      mockProviderRegistry.getProvider.mockResolvedValue(
-        Result.ok({
-          name: 'openai',
-          listModels: jest.fn().mockImplementation(() => Result.ok(['gpt-4', 'gpt-3.5-turbo'])),
-          getCompletion: jest.fn(),
-        })
-      );
-
-      // Mock file operations
-      mockFileOps.writeFile.mockResolvedValue(Result.ok(undefined));
-
-      // Execute test
-      const result = await llmConfigService.interactiveEditConfig(defaultConfig);
-
-      // Verify success
-      expect(result.isOk()).toBe(true);
-      expect(mockFileOps.writeFile).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.stringContaining('openai')
-      );
-      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('saved successfully'));
-    });
-
-    it('should handle model listing failure gracefully', async () => {
-      // Mock user responses
-      mockInquirer
-        .mockResolvedValueOnce({ provider: 'openai' })
-        .mockResolvedValueOnce({ apiKey: 'test-api-key' })
-        .mockResolvedValueOnce({ model: 'gpt-4' })
-        .mockResolvedValueOnce({ temperature: 0.1 });
-
-      // Mock provider registry failure
-      mockProviderRegistry.getProvider.mockRejectedValue(new Error('API error'));
-
-      // Mock file operations
-      mockFileOps.writeFile.mockResolvedValue(Result.ok(undefined));
-
-      // Execute test
-      const result = await llmConfigService.interactiveEditConfig(defaultConfig);
-
-      // Verify graceful handling
-      expect(result.isOk()).toBe(true);
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Could not fetch models list')
-      );
-    });
-
-    it('should validate user input', async () => {
-      // Mock invalid API key followed by valid one
-      mockInquirer
-        .mockResolvedValueOnce({ provider: 'openai' })
-        .mockImplementationOnce(async (options) => {
-          await Promise.resolve(); // Ensure async behavior
-          const input = 'invalid@key';
-          const isValid = options.validate(input);
-          expect(isValid).toBe('Invalid API key format');
-          return { apiKey: 'valid-key' };
-        })
-        .mockResolvedValueOnce({ model: 'gpt-4' })
-        .mockResolvedValueOnce({ temperature: 0.1 });
-
-      // Mock provider registry
-      const mockProvider = {
-        name: 'openai',
-        getCompletion: jest.fn().mockImplementation(async () => {
-          await Promise.resolve();
-          return Result.ok('mocked response');
-        }),
-      };
-      mockProviderRegistry.getProvider.mockResolvedValue(Result.ok(mockProvider));
-
-      // Mock file operations
-      mockFileOps.writeFile.mockResolvedValue(Result.ok(undefined));
-
-      // Execute test
-      const result = await llmConfigService.interactiveEditConfig(defaultConfig);
-
-      // Verify validation worked
-      expect(result.isOk()).toBe(true);
-    });
-
-    it('should handle save errors', async () => {
-      // Mock user responses
-      mockInquirer
-        .mockResolvedValueOnce({ provider: 'openai' })
-        .mockResolvedValueOnce({ apiKey: 'test-api-key' })
-        .mockResolvedValueOnce({ model: 'gpt-4' })
-        .mockResolvedValueOnce({ temperature: 0.1 });
-
-      // Mock provider registry
-      mockProviderRegistry.getProvider.mockResolvedValue(
-        Result.ok({
-          name: 'openai',
-          getCompletion: jest.fn().mockImplementation(async () => {
-            await Promise.resolve();
-            return Result.ok('mocked response');
-          }),
-        })
-      );
-
-      // Mock file operations failure
-      mockFileOps.writeFile.mockResolvedValue(Result.err(new Error('Write failed')));
-
-      // Execute test
-      const result = await llmConfigService.interactiveEditConfig(defaultConfig);
-
-      // Verify error handling
-      expect(result.isErr()).toBe(true);
-      expect(result.error?.message).toContain('Failed to save config');
-    });
-  });
+  // interactiveEditConfig tests have been moved to a separate file
 
   let service: LLMConfigService;
   const configPath = `${process.cwd()}/llm.config.json`;
@@ -485,6 +350,8 @@ describe('LLMConfigService', () => {
         listModels: jest.fn().mockResolvedValue(Result.ok(mockModels)),
         getCompletion: jest.fn(),
       };
+      const mockProviderFactory = jest.fn().mockReturnValue(Result.ok(mockProvider));
+
       // Mock inquirer responses: provider, apiKey, model selection, temperature
       mockInquirer
         .mockResolvedValueOnce({ provider: 'openai' })
@@ -492,16 +359,20 @@ describe('LLMConfigService', () => {
         .mockResolvedValueOnce({ model: 'model-b' }) // User selects model-b
         .mockResolvedValueOnce({ temperature: 0.5 });
 
-      mockProviderRegistry.getProvider.mockResolvedValue(Result.ok(mockProvider));
+      mockProviderRegistry.getProviderFactory.mockReturnValue(Result.ok(mockProviderFactory));
       mockFileOps.writeFile.mockResolvedValue(Result.ok(undefined));
 
-      await service.interactiveEditConfig(baseConfig);
+      const result = await service.interactiveEditConfig(baseConfig);
 
-      // Expect inquirer to be called 4 times: provider, apiKey, model (list), temperature
+      expect(result.isOk()).toBe(true);
       expect(mockInquirer).toHaveBeenCalledTimes(4);
-      // Verify listModels was called
+      expect(mockProviderRegistry.getProviderFactory).toHaveBeenCalledWith('openai');
       expect(mockProvider.listModels).toHaveBeenCalled();
-      // Verify the model prompt was a list type with the fetched models
+      expect(mockFileOps.writeFile).toHaveBeenCalledWith(
+        configPath,
+        expect.stringContaining('"model": "model-b"')
+      );
+
       const modelPrompt = mockInquirer.mock.calls.find(
         (call) => call[0][0].name === 'model'
       )?.[0][0];
@@ -509,9 +380,43 @@ describe('LLMConfigService', () => {
       expect(modelPrompt.type).toBe('list');
       expect(modelPrompt.choices).toEqual(mockModels);
 
-      // Verify the saved config includes the selected model
       const savedConfig = JSON.parse(mockFileOps.writeFile.mock.calls[0][1]);
       expect(savedConfig.model).toBe('model-b');
+      expect(savedConfig.provider).toBe('openai');
+    });
+
+    it('should handle different provider selection from default', async () => {
+      const defaultProvider = 'openai';
+      const selectedProvider = 'anthropic';
+      const mockModels = ['claude-1', 'claude-2'];
+      const mockProvider = {
+        name: selectedProvider,
+        listModels: jest.fn().mockResolvedValue(Result.ok(mockModels)),
+        getCompletion: jest.fn(),
+      };
+      const mockProviderFactory = jest.fn().mockReturnValue(Result.ok(mockProvider));
+
+      mockInquirer
+        .mockResolvedValueOnce({ provider: selectedProvider })
+        .mockResolvedValueOnce({ apiKey: 'test-key' })
+        .mockResolvedValueOnce({ model: 'claude-2' })
+        .mockResolvedValueOnce({ temperature: 0.7 });
+
+      mockProviderRegistry.getProviderFactory.mockReturnValue(Result.ok(mockProviderFactory));
+      mockFileOps.writeFile.mockResolvedValue(Result.ok(undefined));
+
+      const result = await service.interactiveEditConfig({
+        ...baseConfig,
+        provider: defaultProvider,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(mockProviderRegistry.getProviderFactory).toHaveBeenCalledWith(selectedProvider);
+      expect(mockProvider.listModels).toHaveBeenCalled();
+
+      const savedConfig = JSON.parse(mockFileOps.writeFile.mock.calls[0][1]);
+      expect(savedConfig.provider).toBe(selectedProvider);
+      expect(savedConfig.model).toBe('claude-2');
     });
 
     it('should fallback to manual model input if listModels fails', async () => {

@@ -3,30 +3,29 @@
 import { createPromptModule } from 'inquirer';
 
 import { Container } from '@core/di/container';
-import { resolveDependency, assertIsDefined } from '@core/di/utils'; // Import helpers from new utils file
+import { assertIsDefined, resolveDependency } from '@core/di/utils'; // Import helpers from new utils file
 
-import { ILogger, LoggerService } from '@core/services/logger-service';
-import { IFileOperations } from '@core/file-operations/interfaces';
 import { FileOperations } from '@core/file-operations/file-operations';
+import { IFileOperations } from '@core/file-operations/interfaces';
+import { ILogger, LoggerService } from '@core/services/logger-service';
 
 import { ITemplateManager } from '@core/template-manager/interfaces';
 import { TemplateManager } from '@core/template-manager/template-manager';
 
-import { IProjectConfigService, ILLMConfigService } from '@core/config/interfaces';
+import { IProjectConfigService } from '@core/config/interfaces';
 import { ProjectConfigService } from '@core/config/project-config.service';
-import { LLMConfigService } from '@core/config/llm-config.service';
 
 import { ProgressIndicator } from '@core/ui/progress-indicator';
 
+import { ProjectAnalyzer } from '@core/analysis/project-analyzer';
 import { ResponseParser } from '@core/analysis/response-parser';
 import { IProjectAnalyzer } from '@core/analysis/types';
-import { ProjectAnalyzer } from '@core/analysis/project-analyzer';
 
 import { LLMAgent } from '@core/llm/llm-agent';
 
-import { IRulesTemplateManager } from 'src/types/rules-template-types'; // Corrected path
 import { RulesTemplateManager } from '@core/templating/rules-template-manager';
 import { TemplateProcessor } from '@core/templating/template-processor';
+import { IRulesTemplateManager } from 'src/types/rules-template-types'; // Corrected path
 
 // assertIsDefined moved to src/core/di/utils.ts
 export function registerCoreModule(container: Container): void {
@@ -54,20 +53,6 @@ export function registerCoreModule(container: Container): void {
     assertIsDefined(fileOps, 'IFileOperations dependency not found');
     assertIsDefined(logger, 'ILogger dependency not found');
     return new ProjectConfigService(fileOps, logger);
-  });
-
-  container.registerFactory<ILLMConfigService>('ILLMConfigService', () => {
-    const fileOps = resolveDependency<IFileOperations>(container, 'IFileOperations');
-    const logger = resolveDependency<ILogger>(container, 'ILogger');
-    const inquirer = resolveDependency<ReturnType<typeof createPromptModule>>(
-      container,
-      'Inquirer'
-    );
-    assertIsDefined(fileOps, 'IFileOperations dependency not found');
-    assertIsDefined(logger, 'ILogger dependency not found');
-    assertIsDefined(inquirer, 'Inquirer dependency not found');
-
-    return new LLMConfigService(fileOps, logger, inquirer);
   });
 
   container.registerFactory<ProgressIndicator>('ProgressIndicator', () => {
