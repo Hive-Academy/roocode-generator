@@ -4,6 +4,7 @@ import { ILogger } from '../services/logger-service';
 import { Result } from '../result/result';
 import { IProjectAnalyzer, ProjectContext } from './types'; // Ensure specific types are removed if unused
 import { LLMAgent } from '../llm/llm-agent';
+import { LLMProviderError } from '../llm/llm-provider-errors';
 import { ResponseParser } from './response-parser';
 import {
   BINARY_EXTENSIONS,
@@ -79,9 +80,53 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         - If a field cannot be determined (e.g., no clear package manager), return an empty array [] or empty object {} or null as appropriate for the type.
         - Return ONLY the JSON object without any surrounding text, explanations, markdown formatting, or code fences.`;
 
-      const result = await this.llmAgent.getCompletion(systemPrompt, files.join('\n\n---\n\n')); // Use separator for clarity
+      const filePrompt = files.join('\n\n---\n\n');
+      const filePromptTokenCount = filePrompt.split(/\s+/).length;
+      const systemPromptTokenCount = systemPrompt.split(/\s+/).length;
+      this.logger.debug(`Temporary Logging: File prompt token count: ${filePromptTokenCount}`);
+      this.logger.debug(`Temporary Logging: System prompt token count: ${systemPromptTokenCount}`);
+      let result: Result<string, Error> = Result.err(new Error('Initial error before LLM call')); // Initialize result
+      const maxRetries = 3;
+      let currentAttempt = 0;
+
+      while (currentAttempt < maxRetries) {
+        currentAttempt++;
+        this.logger.debug(`Attempt ${currentAttempt} of ${maxRetries} for LLM completion.`);
+        result = await this.llmAgent.getCompletion(systemPrompt, filePrompt);
+
+        if (result.isOk()) {
+          break; // Success, exit retry loop
+        }
+
+        if (result.isErr()) {
+          const error = result.error; // Access error from the current result
+          if (error instanceof LLMProviderError && error.code === 'INVALID_RESPONSE_FORMAT') {
+            this.logger.warn(
+              `LLM returned invalid response format on attempt ${currentAttempt}. Retrying...`
+            );
+            if (currentAttempt < maxRetries) {
+              const delay = Math.pow(2, currentAttempt) * 100; // Exponential backoff (100ms, 200ms, 400ms)
+              await new Promise((resolve) => setTimeout(resolve, delay));
+            } else {
+              // Max retries reached for invalid response format
+              this.logger.error(
+                `LLM call failed after ${maxRetries} attempts due to invalid response format.`
+              );
+              break; // Exit retry loop after max retries
+            }
+          } else {
+            // Not an invalid response format error
+            this.logger.error(
+              `LLM call failed on attempt ${currentAttempt} with unexpected error: ${error?.message}`
+            );
+            break; // Exit retry loop for other errors
+          }
+        }
+      }
+
+      // Check the final result after the loop
       if (result.isErr()) {
-        this.progress.fail('Project context analysis failed during LLM call');
+        this.progress.fail('Project context analysis failed after multiple LLM attempts');
         return Result.err(result.error as Error);
       }
 
@@ -206,7 +251,10 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         }
       };
 
+      const startTime = Date.now();
       await scanDir(rootDir);
+      const elapsedTime = Date.now() - startTime;
+      this.logger.debug(`File collection completed in ${elapsedTime} ms.`);
       return files;
     } catch (error: any) {
       this.logger.error(`Error collecting project files: ${error}`);
