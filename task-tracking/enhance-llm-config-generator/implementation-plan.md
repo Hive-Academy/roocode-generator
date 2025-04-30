@@ -144,7 +144,11 @@ This plan details the enhancement of the LLM configuration generator for a highl
 
 ### 4. Expand and Update Tests
 
-**Status**: Not Started
+**Status**: Completed
+
+**Deviations**:
+
+- Focused test expansion primarily on `tests/core/config/llm-config.service.test.ts` as existing tests for `cli-interface.ts` and `open-router-provider.test.ts` were deemed sufficient for the changes made in previous subtasks.
 
 **Description**: Add comprehensive unit and integration tests covering the enhanced config flow and OpenRouterProvider.
 
