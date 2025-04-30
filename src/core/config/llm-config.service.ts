@@ -95,100 +95,38 @@ export class LLMConfigService implements ILLMConfigService {
    * @param config LLMConfig to edit
    * @returns Result indicating success or failure
    */
-  async interactiveEditConfig(_config: LLMConfig): Promise<Result<void, Error>> {
+  /**
+   * Interactively edits the LLM configuration through a series of prompts
+   * @param _config Optional existing config (unused, kept for backward compatibility)
+   * @returns Result indicating success or failure
+   */
+  async interactiveEditConfig(_config?: LLMConfig): Promise<Result<void, Error>> {
     try {
-      // Initial provider selection
-      const providerAnswer = await this.inquirer({
-        type: 'list',
-        name: 'provider',
-        message: 'Select your LLM provider:',
-        choices: [
-          { name: 'OpenAI - GPT-3.5/4', value: 'openai', short: 'OpenAI' },
-          { name: 'Anthropic - Claude', value: 'anthropic', short: 'Anthropic' },
-          { name: 'Google - Gemini', value: 'google-genai', short: 'Google' },
-          { name: 'OpenRouter - Multi-provider access', value: 'openrouter', short: 'OpenRouter' },
-          { name: 'Other provider', value: 'other', short: 'Other' },
-        ],
-        validate: (input: string) => !!input || 'Provider selection is required',
-      });
+      // Get provider and API key
+      const providerName = await this.promptForProvider();
+      const apiKey = await this.promptForApiKey(providerName);
 
-      // API key input with validation
-      const apiKeyAnswer = await this.inquirer({
-        type: 'password',
-        name: 'apiKey',
-        message: `Enter API key for ${providerAnswer.provider}:\n  (Will be stored in llm.config.json)`,
-        validate: (input: string) => {
-          if (!input) return 'API key is required';
-          if (!/^[a-zA-Z0-9_.-]+$/.test(input)) return 'Invalid API key format';
-          return true;
-        },
-      });
-
-      // Try to list models if provider supports it
-      let modelName = '';
-      try {
-        // Get default provider from registry
-        const providerResult = await this.providerRegistry.getProvider();
-        if (providerResult.isOk() && providerResult.value) {
-          const provider = providerResult.value;
-          // Only show models if provider matches selection and supports listing
-          if (
-            provider.name === providerAnswer.provider &&
-            typeof provider.listModels === 'function'
-          ) {
-            const modelsResult = await provider.listModels();
-            if (modelsResult.isOk() && modelsResult.value && modelsResult.value.length > 0) {
-              const modelAnswer = await this.inquirer({
-                type: 'list',
-                name: 'model',
-                message: 'Select model:',
-                choices: modelsResult.value,
-                pageSize: 10,
-              });
-              modelName = modelAnswer.model;
-            }
-          }
-        }
-      } catch (error) {
-        this.logger.warn(
-          `Could not fetch models list: ${error instanceof Error ? error.message : String(error)}`
-        );
-      }
-
-      // Fallback to manual model input if no models were listed
+      // Try to list models or fallback to manual input
+      let modelName = await this.listAndSelectModel(providerName, apiKey);
       if (!modelName) {
-        const modelAnswer = await this.inquirer({
-          type: 'input',
-          name: 'model',
-          message: `Enter model name for ${providerAnswer.provider}:\n  (Check provider documentation for available models)`,
-          validate: (input: string) => !!input || 'Model name is required',
-        });
-        modelName = modelAnswer.model;
+        modelName = await this.promptForModelName(providerName);
       }
 
-      // Temperature configuration
-      const tempAnswer = await this.inquirer({
-        type: 'number',
-        name: 'temperature',
-        message:
-          'Set temperature for response creativity (0-2):\n  0: focused/deterministic\n  1: balanced\n  2: more creative',
-        default: 0.1,
-        validate: (input: number) =>
-          (input >= 0 && input <= 2) || 'Temperature must be between 0 and 2',
-      });
+      // Get advanced configuration
+      const advancedConfig = await this.promptForAdvancedConfig();
 
       // Create and save final config
       const updatedConfig: LLMConfig = {
-        provider: providerAnswer.provider,
-        apiKey: apiKeyAnswer.apiKey,
+        provider: providerName,
+        apiKey: apiKey,
         model: modelName,
-        temperature: tempAnswer.temperature,
-        maxTokens: 2048,
+        temperature: advancedConfig.temperature,
+        maxTokens: advancedConfig.maxTokens,
       };
 
       const saveResult = await this.saveConfig(updatedConfig);
       if (saveResult.isErr()) {
-        return Result.err(saveResult.error ?? new Error('Failed to save config'));
+        return Result.err(saveResult.error ?? new Error('Failed to save LLM configuration'));
       }
 
       this.logger.info(`LLM configuration saved successfully to ${this.configPath}`);
@@ -197,8 +135,160 @@ export class LLMConfigService implements ILLMConfigService {
       );
       return Result.ok(undefined);
     } catch (error) {
-      this.logger.error('Configuration failed', error as Error);
-      return Result.err(new Error('Interactive configuration failed'));
+      this.logger.error('LLM configuration failed', error as Error);
+      return Result.err(
+        new Error(`Interactive LLM configuration failed: ${(error as Error).message}`)
+      );
     }
+  }
+
+  /**
+   * Prompts for provider selection from available options
+   * @returns Selected provider name
+   */
+  private async promptForProvider(): Promise<string> {
+    const providerChoices = [
+      { name: 'OpenAI - GPT-3.5/4', value: 'openai', short: 'OpenAI' },
+      { name: 'Anthropic - Claude', value: 'anthropic', short: 'Anthropic' },
+      { name: 'Google - Gemini', value: 'google-genai', short: 'Google' },
+      { name: 'OpenRouter - Multi-provider access', value: 'openrouter', short: 'OpenRouter' },
+      { name: 'Other provider', value: 'other', short: 'Other' },
+    ];
+
+    const answer = await this.inquirer({
+      type: 'list',
+      name: 'provider',
+      message: 'Select your LLM provider:',
+      choices: providerChoices,
+      validate: (input: string) => !!input || 'Provider selection is required',
+    });
+
+    return answer.provider as string;
+  }
+
+  /**
+   * Prompts for and validates API key
+   * @param providerName Selected provider name
+   * @returns Validated API key
+   */
+  private async promptForApiKey(providerName: string): Promise<string> {
+    const answer = await this.inquirer({
+      type: 'password',
+      name: 'apiKey',
+      message: `Enter API key for ${providerName}:\n  (Will be stored in llm.config.json)`,
+      validate: (input: string) => {
+        if (!input) return 'API key is required';
+        // Updated regex to allow for a wider range of valid API key formats
+        if (!/^[a-zA-Z0-9_\-.]+$/.test(input)) return 'Invalid API key format';
+        return true;
+      },
+    });
+
+    return answer.apiKey as string;
+  }
+
+  /**
+   * Prompts for manual model name input
+   * @param providerName Provider to get model for
+   * @returns Entered model name
+   */
+  private async promptForModelName(providerName: string): Promise<string> {
+    const answer = await this.inquirer({
+      type: 'input',
+      name: 'model',
+      message: `Enter model name for ${providerName}:\n  (Check provider documentation for available models)`,
+      validate: (input: string) => !!input || 'Model name is required',
+    });
+
+    return answer.model as string;
+  }
+
+  /**
+   * Attempts to list available models using a temporary provider instance
+   * @param providerName Provider to get models for
+   * @param apiKey API key for authentication
+   * @returns Selected model name or empty string if listing failed
+   */
+  private async listAndSelectModel(providerName: string, apiKey: string): Promise<string> {
+    try {
+      const factoryResult = this.providerRegistry.getProviderFactory(providerName);
+      if (!factoryResult.isOk() || !factoryResult.value) {
+        this.logger.warn(`Provider factory not found for ${providerName}`);
+        return '';
+      }
+
+      const tempConfig: LLMConfig = {
+        provider: providerName,
+        apiKey: apiKey,
+        model: 'temporary',
+        temperature: 1,
+        maxTokens: 2048,
+      };
+
+      const providerResult = factoryResult.value(tempConfig);
+      if (!providerResult.isOk() || !providerResult.value) {
+        this.logger.warn(`Failed to create provider instance for ${providerName}`);
+        return '';
+      }
+
+      const provider = providerResult.value;
+      if (typeof provider.listModels !== 'function') {
+        this.logger.warn(`Provider ${providerName} does not support listing models`);
+        return '';
+      }
+
+      const modelsResult = await provider.listModels();
+      if (!modelsResult.isOk() || !modelsResult.value || modelsResult.value.length === 0) {
+        this.logger.warn(`No models available for ${providerName}`);
+        return '';
+      }
+
+      const answer = await this.inquirer({
+        type: 'list',
+        name: 'model',
+        message: 'Select model:',
+        choices: modelsResult.value,
+        pageSize: 10,
+      });
+
+      return answer.model as string;
+    } catch (error) {
+      this.logger.warn(
+        `Could not fetch available models: ${error instanceof Error ? error.message : String(error)}`
+      );
+      return '';
+    }
+  }
+
+  /**
+   * Prompts for advanced configuration options
+   * @returns Advanced configuration values
+   */
+  private async promptForAdvancedConfig(): Promise<{ temperature: number; maxTokens: number }> {
+    const answer = await this.inquirer([
+      {
+        type: 'number',
+        name: 'temperature',
+        message:
+          'Set temperature for response creativity (0-2):\n  0: focused/deterministic\n  1: balanced\n  2: more creative',
+        default: 0.1,
+        validate: (input: number) =>
+          (input >= 0 && input <= 2) || 'Temperature must be between 0 and 2',
+      },
+      {
+        type: 'number',
+        name: 'maxTokens',
+        message: 'Set maximum tokens per response (1000-8192):',
+        default: 2048,
+        validate: (input: number) =>
+          (input >= 1000 && input <= 8192) || 'Maximum tokens must be between 1000 and 8192',
+      },
+    ]);
+
+    // Note: maxTokens is configurable here, but actual token limits may vary by provider and model
+    return {
+      temperature: answer.temperature as number,
+      maxTokens: answer.maxTokens as number,
+    };
   }
 }

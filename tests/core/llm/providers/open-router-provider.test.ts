@@ -126,13 +126,55 @@ describe('OpenRouterProvider', () => {
     it('should handle API errors when listing models', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: false,
+        status: 503,
         statusText: 'Service Unavailable',
+        json: () => Promise.resolve({ error: 'Service is temporarily unavailable' }),
       });
 
       const result = await provider.listModels();
 
       expect(result.isErr()).toBe(true);
       expect(result.error).toBeInstanceOf(LLMProviderError);
+      expect(result.error?.message).toContain(
+        'OpenRouter API error: Service is temporarily unavailable'
+      );
+      expect(result.error?.code).toBe('HTTP_503');
+      expect(result.error?.provider).toBe('openrouter');
+      expect(result.error?.details).toEqual(
+        expect.objectContaining({
+          statusCode: 503,
+          statusText: 'Service Unavailable',
+          error: 'Service is temporarily unavailable',
+        })
+      );
+      expect(mockLogger.error).toHaveBeenCalled();
+    });
+
+    it('should handle network errors when listing models', async () => {
+      global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+
+      const result = await provider.listModels();
+
+      expect(result.isErr()).toBe(true);
+      expect(result.error).toBeInstanceOf(LLMProviderError);
+      expect(result.error?.message).toContain('Network error');
+      expect(result.error?.provider).toBe('openrouter');
+      expect(mockLogger.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('getCompletion', () => {
+    // ... (existing tests)
+
+    it('should handle network errors when getting completion', async () => {
+      global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+
+      const result = await provider.getCompletion('system prompt', 'user prompt');
+
+      expect(result.isErr()).toBe(true);
+      expect(result.error).toBeInstanceOf(LLMProviderError);
+      expect(result.error?.message).toContain('Network error');
+      expect((result.error as LLMProviderError).provider).toBe('openrouter');
       expect(mockLogger.error).toHaveBeenCalled();
     });
   });

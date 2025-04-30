@@ -2,8 +2,11 @@ import { ChatAnthropic } from '@langchain/anthropic';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { ChatOpenAI } from '@langchain/openai';
 
+import { ILLMConfigService } from '@core/config/interfaces';
+import { LLMConfigService } from '@core/config/llm-config.service';
 import { Container } from '@core/di/container';
-import { resolveDependency } from '@core/di/utils'; // Import helpers from utils
+import { assertIsDefined, resolveDependency } from '@core/di/utils'; // Import helpers from utils
+import { IFileOperations } from '@core/file-operations/interfaces';
 import { ILLMProvider, LLMProviderFactory } from '@core/llm/interfaces';
 import { LLMAgent } from '@core/llm/llm-agent';
 import {
@@ -11,12 +14,11 @@ import {
   GoogleGenAILLMProvider,
   OpenAILLMProvider,
 } from '@core/llm/llm-provider';
-import { OpenRouterProvider } from '@core/llm/providers/open-router-provider';
 import { LLMProviderRegistry } from '@core/llm/provider-registry';
-import { ILLMConfigService } from '@core/config/interfaces';
+import { OpenRouterProvider } from '@core/llm/providers/open-router-provider';
 import { Result } from '@core/result/result';
 import { ILogger } from '@core/services/logger-service';
-import { IFileOperations } from '@core/file-operations/interfaces';
+import { createPromptModule } from 'inquirer';
 import { LLMConfig } from 'types/shared';
 
 export function registerLlmModule(container: Container): void {
@@ -187,6 +189,24 @@ export function registerLlmModule(container: Container): void {
       ),
     };
     return new LLMProviderRegistry(configService, providerFactories);
+  });
+
+  container.registerFactory<ILLMConfigService>('ILLMConfigService', () => {
+    const fileOps = resolveDependency<IFileOperations>(container, 'IFileOperations');
+    const logger = resolveDependency<ILogger>(container, 'ILogger');
+    const inquirer = resolveDependency<ReturnType<typeof createPromptModule>>(
+      container,
+      'Inquirer'
+    );
+    const providerRegistry = resolveDependency<LLMProviderRegistry>(
+      container,
+      'LLMProviderRegistry'
+    );
+    assertIsDefined(fileOps, 'IFileOperations dependency not found');
+    assertIsDefined(logger, 'ILogger dependency not found');
+    assertIsDefined(inquirer, 'Inquirer dependency not found');
+    assertIsDefined(providerRegistry, 'ILLMProviderRegistry dependency not found');
+    return new LLMConfigService(fileOps, logger, inquirer, providerRegistry);
   });
 
   // Register LLMAgent
