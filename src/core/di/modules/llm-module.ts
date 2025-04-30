@@ -11,6 +11,7 @@ import {
   GoogleGenAILLMProvider,
   OpenAILLMProvider,
 } from '@core/llm/llm-provider';
+import { OpenRouterProvider } from '@core/llm/providers/open-router-provider';
 import { LLMProviderRegistry } from '@core/llm/provider-registry';
 import { ILLMConfigService } from '@core/config/interfaces';
 import { Result } from '@core/result/result';
@@ -153,6 +154,23 @@ export function registerLlmModule(container: Container): void {
     }
   });
 
+  // Register OpenRouter provider factory
+  container.registerFactory<LLMProviderFactory>('ILLMProvider.OpenRouter.Factory', () => {
+    const logger = resolveDependency<ILogger>(container, 'ILogger');
+
+    return function factory(config: LLMConfig): Result<ILLMProvider, Error> {
+      try {
+        return Result.ok(new OpenRouterProvider(config, logger));
+      } catch (error) {
+        logger.error(
+          `Error creating OpenRouter provider instance: ${error instanceof Error ? error.message : String(error)}`,
+          error as Error
+        );
+        return Result.err(error instanceof Error ? error : new Error(String(error)));
+      }
+    };
+  });
+
   // Register LLMProviderRegistry
   container.registerFactory<LLMProviderRegistry>('LLMProviderRegistry', () => {
     const configService = resolveDependency<ILLMConfigService>(container, 'ILLMConfigService');
@@ -163,6 +181,10 @@ export function registerLlmModule(container: Container): void {
         'ILLMProvider.GoogleGenAI.Factory'
       ),
       anthropic: resolveDependency<LLMProviderFactory>(container, 'ILLMProvider.Anthropic.Factory'),
+      openrouter: resolveDependency<LLMProviderFactory>(
+        container,
+        'ILLMProvider.OpenRouter.Factory'
+      ),
     };
     return new LLMProviderRegistry(configService, providerFactories);
   });

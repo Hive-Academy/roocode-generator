@@ -180,6 +180,7 @@ describe('LLMConfigService', () => {
       expect(result.error?.message).toContain('Failed to save config');
     });
   });
+
   let service: LLMConfigService;
   const configPath = `${process.cwd()}/llm.config.json`;
   const validConfig: LLMConfig = {
@@ -362,38 +363,59 @@ describe('LLMConfigService', () => {
       ...userAnswers,
     };
 
+    beforeEach(() => {
+      // Reset inquirer mock before each test in this describe block
+      mockInquirer.mockReset();
+      // Default mock for inquirer to resolve with basic answers
+      mockInquirer
+        .mockResolvedValueOnce({ provider: userAnswers.provider })
+        .mockResolvedValueOnce({ apiKey: userAnswers.apiKey })
+        .mockResolvedValueOnce({ model: userAnswers.model })
+        .mockResolvedValueOnce({ temperature: baseConfig.temperature }); // Default temperature
+    });
+
     it('should prompt user, update config, and save successfully', async () => {
-      mockInquirer.mockResolvedValue(userAnswers);
       mockFileOps.writeFile.mockResolvedValue(Result.ok(undefined));
+      // Mock provider registry to return a provider that doesn't support listModels
+      mockProviderRegistry.getProvider.mockResolvedValue(
+        Result.ok({ name: 'new-provider', getCompletion: jest.fn() })
+      );
 
       const result = await service.interactiveEditConfig(baseConfig);
 
       expect(result.isOk()).toBe(true);
-      expect(mockInquirer).toHaveBeenCalledTimes(1);
+      // Expect prompts for provider, apiKey, model, and temperature
+      expect(mockInquirer).toHaveBeenCalledTimes(4);
       // Check if questions passed to prompt match expected structure (basic check)
-      expect(mockInquirer.mock.calls[0][0]).toHaveLength(3); // provider, apiKey, model
-      expect(mockInquirer.mock.calls[0][0][0].name).toBe('provider');
-      expect(mockInquirer.mock.calls[0][0][1].name).toBe('apiKey');
-      expect(mockInquirer.mock.calls[0][0][2].name).toBe('model');
+      const questions = mockInquirer.mock.calls.map((call) => call[0][0]); // Get the first question object from each call
+      expect(questions[0].name).toBe('provider');
+      expect(questions[1].name).toBe('apiKey');
+      expect(questions[2].name).toBe('model');
+      expect(questions[3].name).toBe('temperature');
 
       expect(mockFileOps.writeFile).toHaveBeenCalledWith(
         configPath,
         JSON.stringify(expectedSavedConfig, null, 2)
       );
       expect(mockLogger.error).not.toHaveBeenCalled();
+      expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('saved successfully'));
     });
 
     it('should use defaults from baseConfig in prompts', async () => {
-      mockInquirer.mockResolvedValue(userAnswers); // Answers don't matter here
       mockFileOps.writeFile.mockResolvedValue(Result.ok(undefined));
+      // Mock provider registry to return a provider that doesn't support listModels
+      mockProviderRegistry.getProvider.mockResolvedValue(
+        Result.ok({ name: baseConfig.provider, getCompletion: jest.fn() })
+      );
 
       await service.interactiveEditConfig(baseConfig);
 
-      expect(mockInquirer).toHaveBeenCalledTimes(1);
-      const questions = mockInquirer.mock.calls[0][0] as Question[];
+      expect(mockInquirer).toHaveBeenCalledTimes(4);
+      const questions = mockInquirer.mock.calls.map((call) => call[0][0]) as Question[];
       expect(questions[0].default).toBe(baseConfig.provider);
       expect(questions[1].default).toBe(baseConfig.apiKey);
       expect(questions[2].default).toBe(baseConfig.model);
+      expect(questions[3].default).toBe(baseConfig.temperature);
     });
 
     it('should use fallback defaults if baseConfig fields are empty', async () => {
@@ -404,37 +426,46 @@ describe('LLMConfigService', () => {
         maxTokens: 1,
         temperature: 1,
       };
-      mockInquirer.mockResolvedValue(userAnswers);
       mockFileOps.writeFile.mockResolvedValue(Result.ok(undefined));
+      // Mock provider registry to return a provider that doesn't support listModels
+      mockProviderRegistry.getProvider.mockResolvedValue(
+        Result.ok({ name: 'openai', getCompletion: jest.fn() })
+      );
 
       await service.interactiveEditConfig(emptyBaseConfig);
 
-      expect(mockInquirer).toHaveBeenCalledTimes(1);
-      const questions = mockInquirer.mock.calls[0][0] as Question[];
+      expect(mockInquirer).toHaveBeenCalledTimes(4);
+      const questions = mockInquirer.mock.calls.map((call) => call[0][0]) as Question[];
       expect(questions[0].default).toBe('openai'); // Fallback default
       expect(questions[1].default).toBe(''); // API key has no fallback
       expect(questions[2].default).toBe('gpt-4'); // Fallback default
+      expect(questions[3].default).toBe(1); // Default temperature from emptyBaseConfig
     });
 
     it('should return error if inquirer prompt fails', async () => {
       const promptError = new Error('Inquirer failed');
-      mockInquirer.mockRejectedValue(promptError);
+      // Mock only the first prompt to fail
+      mockInquirer.mockRejectedValueOnce(promptError);
 
       const result = await service.interactiveEditConfig(baseConfig);
 
       expect(result.isErr()).toBe(true);
-      expect(result.error).toBe(promptError);
+      expect(result.error).toBeInstanceOf(Error); // Expect a new Error wrapping the original
+      expect(result.error?.message).toContain('Interactive configuration failed');
       expect(mockFileOps.writeFile).not.toHaveBeenCalled();
       expect(mockLogger.error).toHaveBeenCalledWith(
-        'Failed interactive edit of LLM config',
-        promptError
+        'Configuration failed', // The catch block logs this
+        promptError // The original error
       );
     });
 
     it('should return error if saveConfig fails', async () => {
       const saveError = new Error('Save failed');
-      mockInquirer.mockResolvedValue(userAnswers);
       mockFileOps.writeFile.mockResolvedValue(Result.err(saveError));
+      // Mock provider registry to return a provider that doesn't support listModels
+      mockProviderRegistry.getProvider.mockResolvedValue(
+        Result.ok({ name: userAnswers.provider, getCompletion: jest.fn() })
+      );
 
       const result = await service.interactiveEditConfig(baseConfig);
 
@@ -447,37 +478,229 @@ describe('LLMConfigService', () => {
       expect(mockLogger.error).not.toHaveBeenCalled(); // Error handled by caller
     });
 
+    it('should fetch and list models if provider supports it', async () => {
+      const mockModels = ['model-a', 'model-b', 'model-c'];
+      const mockProvider = {
+        name: 'openai',
+        listModels: jest.fn().mockResolvedValue(Result.ok(mockModels)),
+        getCompletion: jest.fn(),
+      };
+      // Mock inquirer responses: provider, apiKey, model selection, temperature
+      mockInquirer
+        .mockResolvedValueOnce({ provider: 'openai' })
+        .mockResolvedValueOnce({ apiKey: 'test-key' })
+        .mockResolvedValueOnce({ model: 'model-b' }) // User selects model-b
+        .mockResolvedValueOnce({ temperature: 0.5 });
+
+      mockProviderRegistry.getProvider.mockResolvedValue(Result.ok(mockProvider));
+      mockFileOps.writeFile.mockResolvedValue(Result.ok(undefined));
+
+      await service.interactiveEditConfig(baseConfig);
+
+      // Expect inquirer to be called 4 times: provider, apiKey, model (list), temperature
+      expect(mockInquirer).toHaveBeenCalledTimes(4);
+      // Verify listModels was called
+      expect(mockProvider.listModels).toHaveBeenCalled();
+      // Verify the model prompt was a list type with the fetched models
+      const modelPrompt = mockInquirer.mock.calls.find(
+        (call) => call[0][0].name === 'model'
+      )?.[0][0];
+      expect(modelPrompt).toBeDefined();
+      expect(modelPrompt.type).toBe('list');
+      expect(modelPrompt.choices).toEqual(mockModels);
+
+      // Verify the saved config includes the selected model
+      const savedConfig = JSON.parse(mockFileOps.writeFile.mock.calls[0][1]);
+      expect(savedConfig.model).toBe('model-b');
+    });
+
+    it('should fallback to manual model input if listModels fails', async () => {
+      const mockProvider = {
+        name: 'openai',
+        listModels: jest.fn().mockResolvedValue(Result.err(new Error('API error'))),
+        getCompletion: jest.fn(),
+      };
+      // Mock inquirer responses: provider, apiKey, manual model input, temperature
+      mockInquirer
+        .mockResolvedValueOnce({ provider: 'openai' })
+        .mockResolvedValueOnce({ apiKey: 'test-key' })
+        .mockResolvedValueOnce({ model: 'manual-model-input' }) // User provides manual input
+        .mockResolvedValueOnce({ temperature: 0.5 });
+
+      mockProviderRegistry.getProvider.mockResolvedValue(Result.ok(mockProvider));
+      mockFileOps.writeFile.mockResolvedValue(Result.ok(undefined));
+
+      await service.interactiveEditConfig(baseConfig);
+
+      // Expect inquirer to be called 4 times: provider, apiKey, model (input), temperature
+      expect(mockInquirer).toHaveBeenCalledTimes(4);
+      // Verify listModels was called
+      expect(mockProvider.listModels).toHaveBeenCalled();
+      // Verify the model prompt was an input type
+      const modelPrompt = mockInquirer.mock.calls.find(
+        (call) => call[0][0].name === 'model'
+      )?.[0][0];
+      expect(modelPrompt).toBeDefined();
+      expect(modelPrompt.type).toBe('input');
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Could not fetch models list')
+      );
+
+      // Verify the saved config includes the manual model input
+      const savedConfig = JSON.parse(mockFileOps.writeFile.mock.calls[0][1]);
+      expect(savedConfig.model).toBe('manual-model-input');
+    });
+
+    it('should fallback to manual model input if provider does not support listModels', async () => {
+      const mockProvider = {
+        name: 'unsupported-provider',
+        getCompletion: jest.fn(),
+        // No listModels method
+      };
+      // Mock inquirer responses: provider, apiKey, manual model input, temperature
+      mockInquirer
+        .mockResolvedValueOnce({ provider: 'unsupported-provider' })
+        .mockResolvedValueOnce({ apiKey: 'test-key' })
+        .mockResolvedValueOnce({ model: 'manual-model-input' }) // User provides manual input
+        .mockResolvedValueOnce({ temperature: 0.5 });
+
+      mockProviderRegistry.getProvider.mockResolvedValue(Result.ok(mockProvider));
+      mockFileOps.writeFile.mockResolvedValue(Result.ok(undefined));
+
+      await service.interactiveEditConfig(baseConfig);
+
+      // Expect inquirer to be called 4 times: provider, apiKey, model (input), temperature
+      expect(mockInquirer).toHaveBeenCalledTimes(4);
+      // Verify listModels was NOT called on the mockProvider
+      expect(mockProvider.getCompletion).not.toHaveBeenCalledWith('listModels'); // Check for listModels call attempt
+
+      // Verify the model prompt was an input type
+      const modelPrompt = mockInquirer.mock.calls.find(
+        (call) => call[0][0].name === 'model'
+      )?.[0][0];
+      expect(modelPrompt).toBeDefined();
+      expect(modelPrompt.type).toBe('input');
+      // No warning should be logged if listModels is simply not present
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+
+      // Verify the saved config includes the manual model input
+      const savedConfig = JSON.parse(mockFileOps.writeFile.mock.calls[0][1]);
+      expect(savedConfig.model).toBe('manual-model-input');
+    });
+
+    it('should fallback to manual model input if listModels returns empty array', async () => {
+      const mockProvider = {
+        name: 'openai',
+        listModels: jest.fn().mockResolvedValue(Result.ok([])), // Empty array
+        getCompletion: jest.fn(),
+      };
+      // Mock inquirer responses: provider, apiKey, manual model input, temperature
+      mockInquirer
+        .mockResolvedValueOnce({ provider: 'openai' })
+        .mockResolvedValueOnce({ apiKey: 'test-key' })
+        .mockResolvedValueOnce({ model: 'manual-model-input' }) // User provides manual input
+        .mockResolvedValueOnce({ temperature: 0.5 });
+
+      mockProviderRegistry.getProvider.mockResolvedValue(Result.ok(mockProvider));
+      mockFileOps.writeFile.mockResolvedValue(Result.ok(undefined));
+
+      await service.interactiveEditConfig(baseConfig);
+
+      // Expect inquirer to be called 4 times: provider, apiKey, model (input), temperature
+      expect(mockInquirer).toHaveBeenCalledTimes(4);
+      // Verify listModels was called
+      expect(mockProvider.listModels).toHaveBeenCalled();
+      // Verify the model prompt was an input type
+      const modelPrompt = mockInquirer.mock.calls.find(
+        (call) => call[0][0].name === 'model'
+      )?.[0][0];
+      expect(modelPrompt).toBeDefined();
+      expect(modelPrompt.type).toBe('input');
+      // No warning should be logged for empty list, only for errors
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+
+      // Verify the saved config includes the manual model input
+      const savedConfig = JSON.parse(mockFileOps.writeFile.mock.calls[0][1]);
+      expect(savedConfig.model).toBe('manual-model-input');
+    });
+
     // Test prompt validation functions
     describe('Interactive Prompt Validation', () => {
       let questions: any[]; // Type properly if possible
 
       beforeEach(async () => {
         // Call once to get the questions structure
-        mockInquirer.mockResolvedValue(userAnswers);
+        // Mock inquirer responses to get through the flow and capture questions
+        mockInquirer
+          .mockResolvedValueOnce({ provider: 'openai' })
+          .mockResolvedValueOnce({ apiKey: 'test-key' })
+          .mockResolvedValueOnce({ model: 'gpt-4' })
+          .mockResolvedValueOnce({ temperature: 0.1 });
+
+        // Mock provider registry to avoid model listing issues
+        mockProviderRegistry.getProvider.mockResolvedValue(
+          Result.ok({ name: 'openai', getCompletion: jest.fn() })
+        );
         mockFileOps.writeFile.mockResolvedValue(Result.ok(undefined));
+
         await service.interactiveEditConfig(baseConfig);
-        questions = mockInquirer.mock.calls[0][0];
+        // Capture all calls to inquirer.prompt
+        questions = mockInquirer.mock.calls.map((call) => call[0][0]);
       });
 
       it('should validate provider input', () => {
         const validate = questions.find((q: any) => q.name === 'provider')?.validate;
+        expect(validate).toBeDefined();
         expect(validate('test')).toBe(true);
-        expect(validate('')).toBe('Provider name is required and cannot be empty.');
-        expect(validate('  ')).toBe('Provider name is required and cannot be empty.');
+        expect(validate('')).toBe('Provider selection is required');
+        expect(validate('  ')).toBe('Provider selection is required');
       });
 
       it('should validate apiKey input', () => {
         const validate = questions.find((q: any) => q.name === 'apiKey')?.validate;
+        expect(validate).toBeDefined();
         expect(validate('test')).toBe(true);
-        expect(validate('')).toBe('API Key is required and cannot be empty.');
-        expect(validate('  ')).toBe('API Key is required and cannot be empty.');
+        expect(validate('a-valid-key_1.2')).toBe(true); // Test regex
+        expect(validate('')).toBe('API key is required');
+        expect(validate('  ')).toBe('API key is required');
+        expect(validate('invalid@key')).toBe('Invalid API key format'); // Test regex
+        expect(validate('key with spaces')).toBe('Invalid API key format'); // Test regex
       });
 
-      it('should validate model input', () => {
-        const validate = questions.find((q: any) => q.name === 'model')?.validate;
-        expect(validate('test')).toBe(true);
-        expect(validate('')).toBe('Model name is required and cannot be empty.');
-        expect(validate('  ')).toBe('Model name is required and cannot be empty.');
+      it('should validate model input (manual fallback)', async () => {
+        // Need to trigger the manual model input path
+        mockInquirer.mockReset(); // Reset mocks
+        mockInquirer
+          .mockResolvedValueOnce({ provider: 'unsupported-provider' }) // Select provider that doesn't list models
+          .mockResolvedValueOnce({ apiKey: 'test-key' })
+          .mockResolvedValueOnce({ model: 'manual-model' }) // Manual input
+          .mockResolvedValueOnce({ temperature: 0.1 });
+
+        mockProviderRegistry.getProvider.mockResolvedValue(
+          Result.ok({ name: 'unsupported-provider', getCompletion: jest.fn() })
+        );
+        mockFileOps.writeFile.mockResolvedValue(Result.ok(undefined));
+
+        await service.interactiveEditConfig(baseConfig);
+        const questionsManual = mockInquirer.mock.calls.map((call) => call[0][0]);
+
+        const validate = questionsManual.find((q: any) => q.name === 'model')?.validate;
+        expect(validate).toBeDefined();
+        expect(validate('test-model')).toBe(true);
+        expect(validate('')).toBe('Model name is required');
+        expect(validate('  ')).toBe('Model name is required');
+      });
+
+      it('should validate temperature input', () => {
+        const validate = questions.find((q: any) => q.name === 'temperature')?.validate;
+        expect(validate).toBeDefined();
+        expect(validate(0)).toBe(true);
+        expect(validate(1)).toBe(true);
+        expect(validate(2)).toBe(true);
+        expect(validate(0.5)).toBe(true);
+        expect(validate(-0.1)).toBe('Temperature must be between 0 and 2');
+        expect(validate(2.1)).toBe('Temperature must be between 0 and 2');
+        expect(validate('abc')).toBe('Temperature must be between 0 and 2'); // Inquirer number type handles non-numeric, but validate should catch range
       });
     });
   });
