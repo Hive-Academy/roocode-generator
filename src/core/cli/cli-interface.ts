@@ -64,16 +64,13 @@ export class CliInterface implements ICliInterface {
       this.parsedArgs.options = { ...options, generators, context, output };
     });
 
-    // Example command: config
+    // LLM Configuration command - interactive only
     this.program
       .command('config')
-      .description('Configure LLM settings (interactively if no options provided)')
-      .option('-p, --provider <provider>', 'Set the LLM provider name')
-      .option('-k, --api-key <key>', 'Set the API key for the provider')
-      .option('-m, --model <model_name>', 'Set the specific model name')
-      .action((options: Record<string, any>) => {
+      .description('Configure LLM settings through an interactive setup process')
+      .action(() => {
         this.parsedArgs.command = 'config';
-        this.parsedArgs.options = options;
+        this.parsedArgs.options = {}; // No CLI options needed for interactive mode
       });
   }
 

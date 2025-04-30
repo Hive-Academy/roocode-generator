@@ -121,6 +121,8 @@ export interface LLMConfig {
   temperature: number;
   /** Optional model-specific parameters */
   modelParams?: Record<string, unknown>;
+  /** Optional API URL override */
+  apiUrl?: string;
 }
 
 /**
