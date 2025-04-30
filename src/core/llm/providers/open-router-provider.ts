@@ -93,12 +93,33 @@ export class OpenRouterProvider extends BaseLLMProvider {
       }
 
       const data = (await response.json()) as OpenRouterCompletionResponse;
-      const completion = data.choices[0]?.message?.content;
 
-      if (!completion) {
+      // Perform robust checks for the expected structure
+      if (!data || !Array.isArray(data.choices) || data.choices.length === 0) {
+        throw new LLMProviderError(
+          'OpenRouter response has invalid structure: missing or empty choices array',
+          'INVALID_RESPONSE_FORMAT',
+          this.name,
+          { responseData: data } as Record<string, unknown>
+        );
+      }
+
+      const firstChoice = data.choices[0];
+      if (!firstChoice || !firstChoice.message) {
+        throw new LLMProviderError(
+          'OpenRouter response has invalid structure: first choice or message missing',
+          'INVALID_RESPONSE_FORMAT',
+          this.name,
+          { responseData: data } as Record<string, unknown>
+        );
+      }
+
+      const completion = firstChoice.message.content;
+
+      if (completion === undefined || completion === null) {
         throw new LLMProviderError(
           'OpenRouter response missing completion content',
-          'INVALID_RESPONSE',
+          'EMPTY_COMPLETION_CONTENT',
           this.name,
           { choices: data.choices } as Record<string, unknown>
         );

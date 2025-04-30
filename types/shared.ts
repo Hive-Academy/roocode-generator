@@ -105,7 +105,7 @@ export interface AnalysisResult {
  *   provider: "anthropic",
  *   apiKey: "sk-...",
  *   maxTokens: 2000,
- *   temperature: 0.7
+ *   temperature: 0.1
  * };
  */
 export interface LLMConfig {

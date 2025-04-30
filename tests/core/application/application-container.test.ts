@@ -77,8 +77,8 @@ describe('ApplicationContainer', () => {
       provider: '',
       apiKey: '',
       model: '',
-      maxTokens: 2048,
-      temperature: 0.7,
+      maxTokens: 80000,
+      temperature: 0.1,
     };
 
     // --- CLI Options Path ---

@@ -66,7 +66,7 @@ describe('LLMProviderRegistry', () => {
       provider: 'openrouter',
       model: 'test-model',
       apiKey: 'test-key',
-      temperature: 0.7,
+      temperature: 0.1,
       maxTokens: 1000,
     };
 
@@ -85,7 +85,7 @@ describe('LLMProviderRegistry', () => {
       provider: 'invalid-provider',
       model: 'test-model',
       apiKey: 'test-key',
-      temperature: 0.7,
+      temperature: 0.1,
       maxTokens: 1000,
     };
 
@@ -103,7 +103,7 @@ describe('LLMProviderRegistry', () => {
       provider: 'generic1',
       model: 'test-model',
       apiKey: 'test-key',
-      temperature: 0.7,
+      temperature: 0.1,
       maxTokens: 1000,
     };
 
@@ -151,7 +151,7 @@ describe('LLMProviderRegistry', () => {
       const config: LLMConfig = {
         ...providerConfig,
         apiKey: 'test-key',
-        temperature: 0.7,
+        temperature: 0.1,
         maxTokens: 1000,
       };
 
@@ -176,7 +176,7 @@ describe('LLMProviderRegistry', () => {
       provider: 'unsupported',
       model: 'test-model',
       apiKey: 'test-key',
-      temperature: 0.7,
+      temperature: 0.1,
       maxTokens: 1000,
     };
 
@@ -196,7 +196,7 @@ describe('LLMProviderRegistry', () => {
       provider: 'openrouter',
       model: 'test-model',
       apiKey: 'test-key',
-      temperature: 0.7,
+      temperature: 0.1,
       maxTokens: 1000,
     };
 
@@ -252,7 +252,7 @@ describe('LLMProviderRegistry', () => {
       const config: LLMConfig = {
         ...providerConfig,
         apiKey: 'test-key',
-        temperature: 0.7,
+        temperature: 0.1,
         maxTokens: 1000,
       };
 
@@ -278,7 +278,7 @@ describe('LLMProviderRegistry', () => {
       provider: 'failing',
       model: 'test-model',
       apiKey: 'test-key',
-      temperature: 0.7,
+      temperature: 0.1,
       maxTokens: 1000,
     };
 

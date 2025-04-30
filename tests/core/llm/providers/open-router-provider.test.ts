@@ -15,7 +15,7 @@ describe('OpenRouterProvider', () => {
     provider: 'openrouter',
     apiKey: 'test-api-key',
     maxTokens: 1000,
-    temperature: 0.7,
+    temperature: 0.1,
   };
 
   let provider: OpenRouterProvider;
@@ -84,17 +84,93 @@ describe('OpenRouterProvider', () => {
     it('should handle missing completion content', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ choices: [] }),
+        json: () => Promise.resolve({ choices: [{ message: {} }] }), // Missing content property
       });
 
       const result = await provider.getCompletion('system prompt', 'user prompt');
 
       expect(result.isErr()).toBe(true);
       expect(result.error).toBeInstanceOf(LLMProviderError);
+      expect((result.error as LLMProviderError)?.code).toBe('EMPTY_COMPLETION_CONTENT');
       expect(result.error?.message).toContain('missing completion content');
+      expect(mockLogger.error).toHaveBeenCalled();
     });
   });
 
+  it('should handle response with missing choices array', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({}), // Missing choices array
+    });
+
+    const result = await provider.getCompletion('system prompt', 'user prompt');
+
+    expect(result.isErr()).toBe(true);
+    expect(result.error).toBeInstanceOf(LLMProviderError);
+    expect((result.error as LLMProviderError)?.code).toBe('INVALID_RESPONSE_FORMAT');
+    expect(result.error?.message).toContain('missing or empty choices array');
+    expect(mockLogger.error).toHaveBeenCalled();
+  });
+
+  it('should handle response with empty choices array', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ choices: [] }), // Empty choices array
+    });
+
+    const result = await provider.getCompletion('system prompt', 'user prompt');
+
+    expect(result.isErr()).toBe(true);
+    expect(result.error).toBeInstanceOf(LLMProviderError);
+    expect((result.error as LLMProviderError)?.code).toBe('INVALID_RESPONSE_FORMAT');
+    expect(result.error?.message).toContain('missing or empty choices array');
+    expect(mockLogger.error).toHaveBeenCalled();
+  });
+
+  it('should handle response with missing message in first choice', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ choices: [{}] }), // Missing message property
+    });
+
+    const result = await provider.getCompletion('system prompt', 'user prompt');
+
+    expect(result.isErr()).toBe(true);
+    expect(result.error).toBeInstanceOf(LLMProviderError);
+    expect((result.error as LLMProviderError)?.code).toBe('INVALID_RESPONSE_FORMAT');
+    expect(result.error?.message).toContain('first choice or message missing');
+    expect(mockLogger.error).toHaveBeenCalled();
+  });
+
+  it('should handle response with missing content in message', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ choices: [{ message: {} }] }), // Missing content property
+    });
+
+    const result = await provider.getCompletion('system prompt', 'user prompt');
+
+    expect(result.isErr()).toBe(true);
+    expect(result.error).toBeInstanceOf(LLMProviderError);
+    expect((result.error as LLMProviderError)?.code).toBe('EMPTY_COMPLETION_CONTENT');
+    expect(result.error?.message).toContain('missing completion content');
+    expect(mockLogger.error).toHaveBeenCalled();
+  });
+
+  it('should handle response with null content in message', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ choices: [{ message: { content: null } }] }), // Null content
+    });
+
+    const result = await provider.getCompletion('system prompt', 'user prompt');
+
+    expect(result.isErr()).toBe(true);
+    expect(result.error).toBeInstanceOf(LLMProviderError);
+    expect((result.error as LLMProviderError)?.code).toBe('EMPTY_COMPLETION_CONTENT');
+    expect(result.error?.message).toContain('missing completion content');
+    expect(mockLogger.error).toHaveBeenCalled();
+  });
   describe('listModels', () => {
     const mockModelsResponse = {
       data: [

@@ -203,7 +203,7 @@ describe('LLMConfigService - interactiveEditConfig', () => {
       if (Array.isArray(questions)) {
         return Promise.resolve({
           temperature: 0.5,
-          maxTokens: 2048,
+          maxTokens: 80000,
         });
       }
 
@@ -244,7 +244,7 @@ describe('LLMConfigService - interactiveEditConfig', () => {
       if (Array.isArray(questions)) {
         return Promise.resolve({
           temperature: 0.5,
-          maxTokens: 2048,
+          maxTokens: 80000,
         });
       }
 
@@ -277,8 +277,8 @@ describe('LLMConfigService - interactiveEditConfig', () => {
     mockInquirer.mockImplementation((questions) => {
       if (Array.isArray(questions)) {
         return Promise.resolve({
-          temperature: 0.7,
-          maxTokens: 2048,
+          temperature: 0.1,
+          maxTokens: 80000,
         });
       }
 
@@ -319,7 +319,7 @@ describe('LLMConfigService - interactiveEditConfig', () => {
       if (Array.isArray(questions)) {
         return Promise.resolve({
           temperature: 0.5,
-          maxTokens: 2048,
+          maxTokens: 80000,
         });
       }
 
