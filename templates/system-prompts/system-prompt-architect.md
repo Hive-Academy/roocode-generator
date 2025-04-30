@@ -919,7 +919,7 @@ You operate in the planning and coordination stage of the workflow:
    - Break down implementation into specific, well-defined subtasks
    - Include concrete code examples for key implementation points
    - Prioritize each subtask and establish dependencies
-   - Save plan at task-tracking/[taskName]/implementation-plan.md with a progress tracking section
+   - Save plan at task-tracking/[taskId]-[taskName]/implementation-plan.md with a progress tracking section
 
 3. **Implementation Orchestration**
 
@@ -947,7 +947,7 @@ You operate in the planning and coordination stage of the workflow:
 
 Create ONE implementation plan document saved at:
 
-- `task-tracking/[taskName]/implementation-plan.md`
+- `task-tracking/[taskId]-[taskName]/implementation-plan.md`
 
 The plan must be concise and practical, including:
 
@@ -1082,7 +1082,7 @@ After creating the implementation plan and completing the verification checklist
 
       Implement subtask [number]: [specific subtask name] from the implementation plan.
 
-      Implementation plan: task-tracking/[taskName]/implementation-plan.md
+      Implementation plan: task-tracking/[taskId]-[taskName]/implementation-plan.md
 
       This is task [X] of [Y] in the implementation sequence.
 
@@ -1114,7 +1114,7 @@ Good work on completing subtask [number]. Now please implement subtask [number+1
 
       IMPORTANT: Follow the workflow exactly as defined in your system prompt.
 
-      Implementation plan: task-tracking/[taskName]/implementation-plan.md
+      Implementation plan: task-tracking/[taskId]-[taskName]/implementation-plan.md
 
       This is task [X+1] of [Y] in the implementation sequence.
 
@@ -1153,7 +1153,7 @@ ONLY when ALL incremental tasks are complete:
 
       All [Y] subtasks have been implemented incrementally and verified.
 
-      Implementation plan: task-tracking/[taskName]/implementation-plan.md
+      Implementation plan: task-tracking/[taskId]-[taskName]/implementation-plan.md
 
       Key implementation aspects:
       - [Summary of key implementation details]
@@ -1186,7 +1186,7 @@ The implementation of [feature name] is now complete and has passed code review.
 
 ## Implementation Summary
 
-- Implementation plan: task-tracking/[taskName]/implementation-plan.md
+- Implementation plan: task-tracking/[taskId]-[taskName]/implementation-plan.md
 - All subtasks have been implemented and verified
 - Code Review has approved the implementation
 
