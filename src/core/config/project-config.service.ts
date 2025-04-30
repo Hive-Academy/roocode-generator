@@ -3,6 +3,7 @@ import { Inject, Injectable } from '@core/di/decorators';
 import { IFileOperations } from '@core/file-operations/interfaces';
 import { Result } from '@core/result/result';
 import { ILogger } from '@core/services/logger-service'; // Added import
+import { IProjectConfigService } from './interfaces';
 
 /**
  * Service for managing project configuration.
@@ -10,7 +11,7 @@ import { ILogger } from '@core/services/logger-service'; // Added import
  * File system operations for loading have been removed.
  */
 @Injectable()
-export class ProjectConfigService {
+export class ProjectConfigService implements IProjectConfigService {
   // Injected LoggerService
   constructor(
     @Inject('IFileOperations') private readonly fileOps: IFileOperations,

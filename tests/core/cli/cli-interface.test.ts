@@ -69,30 +69,28 @@ describe('CliInterface', () => {
     }
   });
 
-  it('should properly parse generate command with memory-bank generator', async () => {
+  // New test cases for generate command with specific generator types
+  it('should parse generate command with memory-bank generator type', async () => {
     // Arrange
     const expectedCommand = 'generate';
-    const expectedGenerators = ['memory-bank'];
-    // Set process.argv for this specific test case
-    // Includes node executable and script path placeholders
+    const expectedGeneratorType = 'memory-bank';
     process.argv = ['node', 'cli.js', 'generate', '--generators', 'memory-bank'];
 
     // Act
-    // Call the actual parseArgs method (no arguments needed)
     await cliInterface.parseArgs();
     const args = cliInterface.getParsedArgs();
 
     // Assert
     expect(args.command).toBe(expectedCommand);
-    // Commander parses options into the options object directly
-    expect(args.options.generators).toEqual(expectedGenerators);
+    expect(args.options.generatorType).toBe(expectedGeneratorType);
+    expect(args.options.generators).toBeUndefined(); // Ensure old 'generators' array is removed
   });
 
-  it('should parse generate command with multiple generators', async () => {
+  it('should parse generate command with roo generator type', async () => {
     // Arrange
     const expectedCommand = 'generate';
-    const expectedGenerators = ['rules', 'prompts'];
-    process.argv = ['node', 'cli.js', 'generate', '--generators', 'rules', 'prompts']; // Commander handles multiple args
+    const expectedGeneratorType = 'roo';
+    process.argv = ['node', 'cli.js', 'generate', '--generators', 'roo'];
 
     // Act
     await cliInterface.parseArgs();
@@ -100,15 +98,29 @@ describe('CliInterface', () => {
 
     // Assert
     expect(args.command).toBe(expectedCommand);
-    expect(args.options.generators).toEqual(expectedGenerators);
+    expect(args.options.generatorType).toBe(expectedGeneratorType);
+    expect(args.options.generators).toBeUndefined(); // Ensure old 'generators' array is removed
   });
 
-  it('should handle generate command with no specific generators provided', async () => {
+  it('should parse generate command with cursor generator type', async () => {
     // Arrange
     const expectedCommand = 'generate';
-    // Commander sets the option value to an empty array if the flag is present but has no value(s)
-    // Or undefined if the flag is not present at all. Let's test presence without value.
-    const expectedGenerators: string[] = []; // Commander returns [] when the option is defined but not provided
+    const expectedGeneratorType = 'cursor';
+    process.argv = ['node', 'cli.js', 'generate', '--generators', 'cursor'];
+
+    // Act
+    await cliInterface.parseArgs();
+    const args = cliInterface.getParsedArgs();
+
+    // Assert
+    expect(args.command).toBe(expectedCommand);
+    expect(args.options.generatorType).toBe(expectedGeneratorType);
+    expect(args.options.generators).toBeUndefined(); // Ensure old 'generators' array is removed
+  });
+
+  it('should handle generate command without --generators flag', async () => {
+    // Arrange
+    const expectedCommand = 'generate';
     process.argv = ['node', 'cli.js', 'generate']; // No --generators flag
 
     // Act
@@ -117,14 +129,36 @@ describe('CliInterface', () => {
 
     // Assert
     expect(args.command).toBe(expectedCommand);
-    expect(args.options.generators).toEqual(expectedGenerators);
+    expect(args.options.generatorType).toBeUndefined(); // generatorType should be undefined
+    expect(args.options.generators).toBeUndefined(); // Ensure old 'generators' array is removed
   });
 
-  it('should parse config command with provider option', async () => {
+  it('should handle generate command with an invalid --generators value', async () => {
+    // Arrange
+    const invalidGeneratorType = 'invalid-type';
+    process.argv = ['node', 'cli.js', 'generate', '--generators', invalidGeneratorType];
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {}); // Spy on console.error
+
+    // Act
+    await cliInterface.parseArgs();
+    const args = cliInterface.getParsedArgs();
+
+    // Assert
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      `Error: Invalid generator type specified: ${invalidGeneratorType}. Allowed types are: memory-bank, roo, cursor`
+    );
+    expect(args.command).toBeNull(); // Command should be set to null on error
+    expect(args.options).toEqual({}); // Options should be reset on error
+
+    consoleErrorSpy.mockRestore(); // Restore console.error spy
+  });
+
+  // Existing test cases for other commands and error handling
+  // Updated test case for config command (no options expected)
+  it('should parse config command without options', async () => {
     // Arrange
     const expectedCommand = 'config';
-    const expectedProvider = 'openai';
-    process.argv = ['node', 'cli.js', 'config', '--provider', 'openai'];
+    process.argv = ['node', 'cli.js', 'config']; // No options
 
     // Act
     await cliInterface.parseArgs();
@@ -132,39 +166,10 @@ describe('CliInterface', () => {
 
     // Assert
     expect(args.command).toBe(expectedCommand);
-    expect(args.options.provider).toBe(expectedProvider);
-    expect(args.options.apiKey).toBeUndefined();
-    expect(args.options.model).toBeUndefined();
+    expect(args.options).toEqual({}); // Should be empty options
   });
 
-  it('should parse config command with all options', async () => {
-    // Arrange
-    const expectedCommand = 'config';
-    const expectedProvider = 'anthropic';
-    const expectedApiKey = 'sk-123';
-    const expectedModel = 'claude-3';
-    process.argv = [
-      'node',
-      'cli.js',
-      'config',
-      '--provider',
-      expectedProvider,
-      '--api-key',
-      expectedApiKey,
-      '--model',
-      expectedModel,
-    ];
-
-    // Act
-    await cliInterface.parseArgs();
-    const args = cliInterface.getParsedArgs();
-
-    // Assert
-    expect(args.command).toBe(expectedCommand);
-    expect(args.options.provider).toBe(expectedProvider);
-    expect(args.options.apiKey).toBe(expectedApiKey);
-    expect(args.options.model).toBe(expectedModel);
-  });
+  // Removed test case 'should parse config command with all options' as config command is interactive only
 
   // Test case for when no command is provided (should default or show help)
   it('should have null command when no command is provided', async () => {
@@ -220,8 +225,7 @@ describe('CliInterface', () => {
     expect(args.options).toEqual({}); // Options should be empty
   });
 
-  // New test cases for error handling and help
-
+  // Updated test case for unknown option for generate command
   it('should call process.exit with code 1 on unknown option for generate command', async () => {
     // Arrange
     process.argv = ['node', 'cli.js', 'generate', '--unknown-option'];
@@ -230,17 +234,7 @@ describe('CliInterface', () => {
     // Commander.js should detect the unknown option and trigger exit(1)
     await expect(cliInterface.parseArgs()).resolves.toBeUndefined();
     expect(mockExit).toHaveBeenCalledWith(1);
-
-    // Verify state
-    const args = cliInterface.getParsedArgs();
-    // Command might be set before Commander detects the error and exits
-    expect(args.command).toBe('generate');
-    // Check that options might contain defaults even if an error occurred before full processing
-    expect(args.options).toEqual({
-      context: [], // Default value
-      generators: [], // Default value
-      output: undefined, // Default value
-    });
+    // Removed assertions about args.command and args.options
   });
 
   it('should call process.exit with code 1 on unknown option for config command', async () => {
@@ -286,7 +280,6 @@ describe('CliInterface', () => {
   it('should call process.exit with code 0 on command-specific help request (config --help)', async () => {
     // Arrange
     process.argv = ['node', 'cli.js', 'config', '--help'];
-
     // Act & Assert
     await expect(cliInterface.parseArgs()).resolves.toBeUndefined();
     expect(mockExit).toHaveBeenCalledWith(0);

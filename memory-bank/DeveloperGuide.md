@@ -154,7 +154,12 @@ Understanding the basic flow of command execution is helpful for adding new comm
 
 1.  **Parsing (`CliInterface`):** The `src/core/cli/cli-interface.ts` uses `commander` to parse command-line arguments (`process.argv`) and options.
 2.  **Routing (`ApplicationContainer`):** The `src/core/application/application-container.ts` retrieves the parsed command and uses its `executeCommand` method (typically a `switch` statement) to route to the appropriate handler method (e.g., `executeGenerateCommand`).
-3.  **Orchestration (`GeneratorOrchestrator`):** For the `generate` command, the handler delegates to `src/core/application/generator-orchestrator.ts`, which identifies and runs the specific `IGenerator` implementations.
+3.  **Orchestration (`GeneratorOrchestrator`):** For the `generate` command, the handler delegates to `src/core/application/generator-orchestrator.ts`. The `generate` command now implicitly triggers the `ai-magic` generator. The `--generators` flag is used to specify the _type_ of content to generate within `ai-magic`.
+
+    - The `--generators` flag accepts a single value: `memory-bank`, `roo`, or `cursor`.
+    - `memory-bank`: Generates documentation and other content for the Memory Bank.
+    - `roo`: Generates RooCode rules based on project context.
+    - `cursor`: Placeholder for future cursor-based generation functionality.
 
 For a more detailed step-by-step breakdown and diagram, see the **System Design** section in [[TechnicalArchitecture#System-Design]].
 

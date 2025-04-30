@@ -13,24 +13,23 @@ export interface IGeneratorOrchestrator {
   initialize(): Promise<void>;
 
   /**
-   * Executes generators. If selectedGenerators is provided, only those are run.
-   * Otherwise, all registered generators are run.
-   * @param selectedGenerators Optional array of generator names to execute.
-   * @param options Additional options for generation (e.g., modes)
+   * Executes a specific command with provided options.
+   * @param command The command name to execute (e.g., 'generate').
+   * @param options Options for the command.
+   * @returns Result<void, Error> indicating success or failure.
    */
-  execute(selectedGenerators?: string[], options?: { modes?: string[] }): Promise<void>;
+  execute(command: string, options: Record<string, any>): Promise<Result<void, Error>>;
 
   /**
    * Execute the selected generators in sequence.
+   * This method is for executing a list of generators directly, potentially for non-command-based flows.
    * @param config The project configuration.
    * @param selectedGenerators Array of generator names to execute.
-   * @param options Additional options for generation (e.g., modes)
    * @returns Result<void, Error> indicating success or failure.
    */
   executeGenerators(
     config: ProjectConfig,
-    selectedGenerators: string[],
-    options?: { modes?: string[] }
+    selectedGenerators: string[]
   ): Promise<Result<void, Error>>;
 }
 

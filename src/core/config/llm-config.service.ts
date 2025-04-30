@@ -246,7 +246,8 @@ export class LLMConfigService implements ILLMConfigService {
         message: 'Set maximum tokens per response (1000-8192):',
         default: 80000,
         validate: (input: number) =>
-          (input >= 1000 && input <= 8192) || 'Maximum tokens must be between 1000 and 8192',
+          (input >= 10000 && input <= 1000000) ||
+          'Maximum tokens must be between 10000 and 1000000',
       },
     ]);
 

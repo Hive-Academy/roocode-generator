@@ -28,27 +28,17 @@ export class ApplicationContainer {
     progress.start('Generating...');
 
     try {
-      const selectedGenerators = options.generators as string[];
-      if (!selectedGenerators || selectedGenerators.length === 0) {
-        progress.fail(
-          "No generators specified. Use 'generate --generators memory-bank' for memory bank generation."
-        );
-        return Result.err(
-          new Error(
-            "No generators specified. Use 'generate --generators memory-bank' for memory bank generation."
-          )
-        );
+      // The generator type will be in options.generatorType after CLI parsing refactoring (Subtask 2)
+      // The GeneratorOrchestrator will now handle routing to AiMagicGenerator based on command and options
+      this.logger.info(`Executing 'generate' command via GeneratorOrchestrator.`);
+      const result = await this.generatorOrchestrator.execute('generate', options); // Pass command and options
+
+      if (result.isErr()) {
+        const errorMessage = result.error?.message ?? 'Unknown generator execution error.';
+        this.logger.error(`Generator execution failed: ${errorMessage}`);
+        progress.fail(`Generator execution failed: ${errorMessage}`);
+        return Result.err(result.error ?? new Error(errorMessage));
       }
-      const modes = (options.modes as string[]) || [
-        'architect',
-        'boomerang',
-        'code',
-        'code-review',
-      ];
-      this.logger.info(
-        `Executing 'generate' command with generators: ${selectedGenerators?.join(', ') || 'All (default)'}`
-      );
-      await this.generatorOrchestrator.execute(selectedGenerators, { modes });
 
       this.logger.debug("Generator orchestrator execution completed for 'generate' command.");
       progress.succeed('Generation completed successfully.');

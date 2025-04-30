@@ -94,8 +94,28 @@ export class OpenRouterProvider extends BaseLLMProvider {
 
       const data = (await response.json()) as OpenRouterCompletionResponse;
 
+      // Check for error structure in the response body even if status is OK
+      if (data && typeof data === 'object' && 'error' in data) {
+        this.logger.error(
+          'OpenRouter response contained an error in the body',
+          new Error('OpenRouter API error in body')
+        );
+        const errorMessage = (data as any).error?.message || JSON.stringify((data as any).error);
+        throw new LLMProviderError(
+          `OpenRouter API error in body: ${errorMessage}`,
+          'API_ERROR_IN_BODY',
+          this.name,
+          { responseData: data }
+        );
+      }
+
       // Perform robust checks for the expected structure
       if (!data || !Array.isArray(data.choices) || data.choices.length === 0) {
+        this.logger.error(
+          'OpenRouter response has invalid structure: missing or empty choices array. Response data: ' +
+            JSON.stringify(data),
+          new Error('Invalid response structure')
+        );
         throw new LLMProviderError(
           'OpenRouter response has invalid structure: missing or empty choices array',
           'INVALID_RESPONSE_FORMAT',
