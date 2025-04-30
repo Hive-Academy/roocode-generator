@@ -154,7 +154,7 @@ The core strategy is **Dependency Inversion via New Service**. We will introduce
 
 ### Subtask 4: Modify `LLMConfigService` to Use `IModelListerService`
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Update `LLMConfigService` to remove the old dependency and use the new `IModelListerService`.
 
@@ -176,11 +176,11 @@ The core strategy is **Dependency Inversion via New Service**. We will introduce
 
 **Acceptance Criteria**:
 
-- [ ] `ILLMProviderRegistry` is no longer injected into `LLMConfigService`.
-- [ ] `IModelListerService` is injected into `LLMConfigService`.
-- [ ] `listAndSelectModel` method is removed.
-- [ ] `interactiveEditConfig` uses `IModelListerService` to attempt model listing and falls back to `promptForModelName` correctly.
-- [ ] Application builds successfully.
+- [x] `ILLMProviderRegistry` is no longer injected into `LLMConfigService`.
+- [x] `IModelListerService` is injected into `LLMConfigService`.
+- [x] `listAndSelectModel` method is removed.
+- [x] `interactiveEditConfig` uses `IModelListerService` to attempt model listing and falls back to `promptForModelName` correctly.
+- [x] Application builds successfully with code changes, but test files need to be updated in Subtask 6.
 
 **Estimated effort**: 20 minutes
 

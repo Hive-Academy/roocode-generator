@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { LLMConfig } from '../../../types/shared';
-import type { ILLMProviderRegistry } from '../llm/interfaces';
+import type { IModelListerService } from '../llm/interfaces';
 import { Inject, Injectable } from '../di/decorators';
 import { IFileOperations } from '../file-operations/interfaces';
 import { Result } from '../result/result';
 import { ILogger } from '../services/logger-service';
-import { ILLMConfigService } from './interfaces'; // Added ILLMProviderRegistry import, assuming it's in interfaces.ts
+import { ILLMConfigService } from './interfaces';
 /**
  * Service for managing LLM configuration.
  * Handles loading, saving, and interactive editing of LLM config from llm.config.json.
@@ -19,7 +19,7 @@ export class LLMConfigService implements ILLMConfigService {
     @Inject('ILogger') private readonly logger: ILogger,
     @Inject('Inquirer')
     private readonly inquirer: ReturnType<typeof import('inquirer').createPromptModule>,
-    @Inject('ILLMProviderRegistry') private readonly providerRegistry: ILLMProviderRegistry
+    @Inject('IModelListerService') private readonly modelListerService: IModelListerService
   ) {}
 
   /**
@@ -107,8 +107,30 @@ export class LLMConfigService implements ILLMConfigService {
       const apiKey = await this.promptForApiKey(providerName);
 
       // Try to list models or fallback to manual input
-      let modelName = await this.listAndSelectModel(providerName, apiKey);
-      if (!modelName) {
+      let modelName = '';
+      const modelsResult = await this.modelListerService.listModelsForProvider(
+        providerName,
+        apiKey
+      );
+
+      if (modelsResult.isOk() && modelsResult.value && modelsResult.value.length > 0) {
+        // If models were successfully retrieved, prompt user to select one
+        const answer = await this.inquirer({
+          type: 'list',
+          name: 'model',
+          message: 'Select model:',
+          choices: modelsResult.value,
+          pageSize: 10,
+        });
+
+        modelName = answer.model as string;
+      } else {
+        // If model listing failed, log a warning and fall back to manual input
+        if (modelsResult.isErr() && modelsResult.error) {
+          this.logger.warn(`Could not fetch available models: ${modelsResult.error.message}`);
+        } else {
+          this.logger.warn(`No models available for ${providerName}`);
+        }
         modelName = await this.promptForModelName(providerName);
       }
 
@@ -201,63 +223,6 @@ export class LLMConfigService implements ILLMConfigService {
     });
 
     return answer.model as string;
-  }
-
-  /**
-   * Attempts to list available models using a temporary provider instance
-   * @param providerName Provider to get models for
-   * @param apiKey API key for authentication
-   * @returns Selected model name or empty string if listing failed
-   */
-  private async listAndSelectModel(providerName: string, apiKey: string): Promise<string> {
-    try {
-      const factoryResult = this.providerRegistry.getProviderFactory(providerName);
-      if (!factoryResult.isOk() || !factoryResult.value) {
-        this.logger.warn(`Provider factory not found for ${providerName}`);
-        return '';
-      }
-
-      const tempConfig: LLMConfig = {
-        provider: providerName,
-        apiKey: apiKey,
-        model: 'temporary',
-        temperature: 1,
-        maxTokens: 2048,
-      };
-
-      const providerResult = factoryResult.value(tempConfig);
-      if (!providerResult.isOk() || !providerResult.value) {
-        this.logger.warn(`Failed to create provider instance for ${providerName}`);
-        return '';
-      }
-
-      const provider = providerResult.value;
-      if (typeof provider.listModels !== 'function') {
-        this.logger.warn(`Provider ${providerName} does not support listing models`);
-        return '';
-      }
-
-      const modelsResult = await provider.listModels();
-      if (!modelsResult.isOk() || !modelsResult.value || modelsResult.value.length === 0) {
-        this.logger.warn(`No models available for ${providerName}`);
-        return '';
-      }
-
-      const answer = await this.inquirer({
-        type: 'list',
-        name: 'model',
-        message: 'Select model:',
-        choices: modelsResult.value,
-        pageSize: 10,
-      });
-
-      return answer.model as string;
-    } catch (error) {
-      this.logger.warn(
-        `Could not fetch available models: ${error instanceof Error ? error.message : String(error)}`
-      );
-      return '';
-    }
   }
 
   /**

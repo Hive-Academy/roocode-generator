@@ -4,7 +4,7 @@ import 'reflect-metadata';
 import './llm-config.service.interactive-edit.test'; // Import the new test file
 import { LLMConfigService } from '../../../src/core/config/llm-config.service';
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
-import { ILLMProviderRegistry } from '../../../src/core/llm/interfaces';
+import { IModelListerService } from '../../../src/core/llm/interfaces';
 import { Result } from '../../../src/core/result/result';
 import { ILogger } from '../../../src/core/services/logger-service';
 import { LLMConfig } from '../../../types/shared';
@@ -13,7 +13,7 @@ describe('LLMConfigService', () => {
   let mockFileOps: jest.Mocked<IFileOperations>;
   let mockLogger: jest.Mocked<ILogger>;
   let mockInquirer: jest.Mock;
-  let mockProviderRegistry: jest.Mocked<ILLMProviderRegistry>;
+  let mockModelListerService: jest.Mocked<IModelListerService>;
 
   beforeEach(() => {
     // Setup mocks
@@ -38,9 +38,8 @@ describe('LLMConfigService', () => {
 
     mockInquirer = jest.fn();
 
-    mockProviderRegistry = {
-      getProvider: jest.fn(),
-      getProviderFactory: jest.fn(),
+    mockModelListerService = {
+      listModelsForProvider: jest.fn(),
     };
   });
 
@@ -59,7 +58,7 @@ describe('LLMConfigService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Provide the mocked inquirer instance during service creation
-    service = new LLMConfigService(mockFileOps, mockLogger, mockInquirer, mockProviderRegistry);
+    service = new LLMConfigService(mockFileOps, mockLogger, mockInquirer, mockModelListerService);
   });
 
   // --- validateConfig ---
