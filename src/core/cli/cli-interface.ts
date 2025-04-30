@@ -34,34 +34,32 @@ export class CliInterface implements ICliInterface {
     const generateCommand = this.program.command('generate').description('Run code generators');
 
     // Add existing options for generate command
-    generateCommand
-      .option(
-        '-g, --generators <names...>',
-        'Specify which generators to run (e.g., MemoryBank Rules)'
-      )
-      .option('-t, --template <template>', 'Specify the template to use (if applicable)')
-      .option('-o, --output <output>', 'Specify the output directory (if applicable)');
+    generateCommand.option(
+      '-g, --generators <type>', // Changed from <names...>
+      'Specify which type of content to generate within ai-magic (memory-bank, roo, cursor)'
+    ); // Removed .choices()
 
-    // Existing generate command action handler for other generators
+    // Adjust action handler to expect a single string or undefined and perform manual validation
     generateCommand.action((options: Record<string, any>) => {
       this.parsedArgs.command = 'generate';
-      let generators: string[] = [];
-      if (options.generators) {
-        if (Array.isArray(options.generators)) {
-          generators = options.generators.map(String);
-        } else {
-          generators = [String(options.generators)];
-        }
+      const generatorType = options.generators as string | undefined; // Expect single value
+      const allowedGeneratorTypes = ['memory-bank', 'roo', 'cursor'];
+
+      if (generatorType && !allowedGeneratorTypes.includes(generatorType)) {
+        // Handle invalid generator type - log error and prevent further action
+        console.error(
+          `Error: Invalid generator type specified: ${generatorType}. Allowed types are: ${allowedGeneratorTypes.join(', ')}`
+        );
+        // Set command to null or an error state to prevent execution in ApplicationContainer
+        this.parsedArgs.command = null;
+        this.parsedArgs.options = {};
+        return; // Stop further processing in this action handler
       }
 
-      const context = options.context
-        ? Array.isArray(options.context)
-          ? options.context
-          : [String(options.context)]
-        : [];
-      const output = options.output ? String(options.output) : undefined;
-
-      this.parsedArgs.options = { ...options, generators, context, output };
+      // Store the single type in parsedArgs.options
+      this.parsedArgs.options = { ...options, generatorType };
+      // Remove the old 'generators' array if it exists in options
+      delete this.parsedArgs.options.generators;
     });
 
     // LLM Configuration command - interactive only

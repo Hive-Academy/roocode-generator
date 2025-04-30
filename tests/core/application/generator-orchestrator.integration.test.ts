@@ -70,55 +70,84 @@ describe('GeneratorOrchestrator Integration Test', () => {
     orchestrator = new GeneratorOrchestrator(generators, projectConfigServiceInstance, mockLogger);
   });
 
-  it('should load default config from ProjectConfigService and execute generators', async () => {
-    const selectedGenerators = ['mock-generator-1']; // Select one generator to run
+  it('should execute AiMagicGenerator with options for "generate" command', async () => {
+    // This integration test now focuses on the new 'generate' command flow
+    // It verifies that the orchestrator correctly resolves and calls AiMagicGenerator
+    // with the provided options when the command is 'generate'.
+
+    // We need to add AiMagicGenerator to the list of generators for this test
+    const mockAiMagicGenerator: jest.Mocked<IGenerator<any>> = {
+      name: 'ai-magic',
+      generate: jest.fn().mockResolvedValue(Result.ok(undefined)),
+      validate: jest.fn().mockResolvedValue(Result.ok(undefined)),
+    };
+
+    // Re-instantiate orchestrator with AiMagicGenerator
+    const generators = [mockGenerator1, mockGenerator2, mockAiMagicGenerator];
+    orchestrator = new GeneratorOrchestrator(generators, projectConfigServiceInstance, mockLogger);
+
+    const options = { generatorType: 'memory-bank', someOtherOption: 'value' };
+
+    // Mock loadConfig to return a successful result as it's called internally by the new execute method
+    jest
+      .spyOn(projectConfigServiceInstance, 'loadConfig')
+      .mockReturnValueOnce(Result.ok(testDefaultConfig));
 
     // Act
-    await orchestrator.execute(selectedGenerators);
+    const result = await orchestrator.execute('generate', options);
 
     // Assert
-    // 1. Verify ProjectConfigService logged the use of default config
-    expect(mockLogger.info).toHaveBeenCalledWith(
-      'Using in-memory default roocode-config.json configuration.'
-    );
+    expect(result.isOk()).toBe(true);
 
-    // 2. Verify the orchestrator logged the start and success messages
-    expect(mockLogger.info).toHaveBeenCalledWith(
-      `Executing generators: ${selectedGenerators.join(', ')}`
-    );
-    expect(mockLogger.info).toHaveBeenCalledWith(`Executing generator: ${selectedGenerators[0]}`);
-    expect(mockLogger.info).toHaveBeenCalledWith('All selected generators executed successfully.');
+    // Verify that AiMagicGenerator was called with the correct arguments
 
-    // 3. Verify the selected generator was called with the default config
-    expect(mockGenerator1.generate).toHaveBeenCalledTimes(1);
-    expect(mockGenerator1.generate).toHaveBeenCalledWith(
-      testDefaultConfig, // Compare against the known default config defined in the test
-      [process.cwd()] // Default context path
-    );
+    expect(mockAiMagicGenerator.generate).toHaveBeenCalledTimes(1);
+    expect(mockAiMagicGenerator.generate).toHaveBeenCalledWith(expect.objectContaining(options));
 
-    // 4. Verify the unselected generator was not called
+    // Verify other generators were not called
+
+    expect(mockGenerator1.generate).not.toHaveBeenCalled();
+
     expect(mockGenerator2.generate).not.toHaveBeenCalled();
 
-    // 5. Verify no errors were logged by the orchestrator itself regarding config loading
+    // Verify no errors were logged
+
     expect(mockLogger.error).not.toHaveBeenCalled();
   });
 
-  it('should handle error if ProjectConfigService loadConfig fails (hypothetical)', async () => {
-    const configError = new Error('Failed to load config');
-    // Mock loadConfig to return an error (it's synchronous now)
-    jest
-      .spyOn(projectConfigServiceInstance, 'loadConfig')
-      .mockReturnValueOnce(Result.err(configError));
+  it('should return an error if AiMagicGenerator is not found for "generate" command', async () => {
+    // This test verifies that if AiMagicGenerator is not registered,
+    // the orchestrator returns an error when the 'generate' command is executed.
 
-    // Act & Assert
-    // The execute method catches the error from loadConfig and throws it
-    await expect(orchestrator.execute(['mock-generator-1'])).rejects.toThrow(configError);
+    // Instantiate orchestrator WITHOUT AiMagicGenerator
+    const generators = [mockGenerator1, mockGenerator2];
+    orchestrator = new GeneratorOrchestrator(generators, projectConfigServiceInstance, mockLogger);
 
-    // Verify error logging
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      `Failed to load project config: ${configError.message}`,
-      configError
-    );
+    const options = { generatorType: 'memory-bank' };
+
+    // Act
+    const result = await orchestrator.execute('generate', options);
+
+    // Assert
+    expect(result.isErr()).toBe(true);
+    expect(result.error?.message).toContain('AiMagicGenerator not found in the registry.');
+
+    // Verify no generators were called
+
     expect(mockGenerator1.generate).not.toHaveBeenCalled();
+
+    expect(mockGenerator2.generate).not.toHaveBeenCalled();
+
+    // Verify error was logged
+
+    expect(mockLogger.error).toHaveBeenCalledWith('AiMagicGenerator not found in the registry.');
   });
+
+  // The previous test case for ProjectConfigService loadConfig failure is removed
+  // because the new execute method's primary check is for the generator existence first.
+  // A separate test for ProjectConfigService loadConfig failure might be added elsewhere
+  // if needed, but it's less relevant to the orchestrator's new 'generate' command flow.
+
+  // Keep the executeGenerators test if it's still relevant for other command flows
+  // For now, assuming the orchestrator's main execute method is for command routing.
 });

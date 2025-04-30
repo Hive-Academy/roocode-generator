@@ -1,4 +1,4 @@
-import path from 'path'; // Added path import
+import path from 'path';
 import { Inject, Injectable } from '@core/di/decorators';
 import { IServiceContainer } from '@core/di/interfaces';
 import { BaseGenerator } from '@core/generators/base-generator';
@@ -9,14 +9,14 @@ import { IFileOperations } from '@core/file-operations/interfaces';
 import { LLMAgent } from '@core/llm/llm-agent';
 import { ProjectConfig } from '../../types/shared';
 import { MemoryBankService } from '@memory-bank/memory-bank-service';
-import { IRulesPromptBuilder } from '@generators/rules/interfaces'; // Added RulesPromptBuilder interface import
-import { IContentProcessor } from '@memory-bank/interfaces'; // Import IContentProcessor
+import { IRulesPromptBuilder } from '@generators/rules/interfaces';
+import { IContentProcessor } from '@memory-bank/interfaces';
 
 @Injectable()
 export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
   readonly name = 'ai-magic';
-  // Define output path for rules
-  private readonly rulesOutputPath = path.join('.roo', 'rules-code', 'generated-rules.md');
+  // Define output path for roo
+  private readonly rooOutputPath = path.join('.roo', 'roo-code', 'generated-roo.md');
 
   constructor(
     @Inject('IServiceContainer') protected container: IServiceContainer,
@@ -25,8 +25,8 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
     @Inject('IProjectAnalyzer') private readonly projectAnalyzer: IProjectAnalyzer,
     @Inject('LLMAgent') private readonly llmAgent: LLMAgent,
     @Inject('MemoryBankService') private readonly memoryBankService: MemoryBankService,
-    @Inject('IRulesPromptBuilder') private readonly rulesPromptBuilder: IRulesPromptBuilder, // Added RulesPromptBuilder injection
-    @Inject('IContentProcessor') private readonly contentProcessor: IContentProcessor // Added ContentProcessor injection
+    @Inject('IRulesPromptBuilder') private readonly rulesPromptBuilder: IRulesPromptBuilder,
+    @Inject('IContentProcessor') private readonly contentProcessor: IContentProcessor
   ) {
     super(container);
     this.logger.debug(`${this.name} generator initialized`);
@@ -45,8 +45,8 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
       !this.projectAnalyzer ||
       !this.llmAgent ||
       !this.memoryBankService ||
-      !this.rulesPromptBuilder || // Added RulesPromptBuilder check
-      !this.contentProcessor // Added ContentProcessor check
+      !this.rulesPromptBuilder ||
+      !this.contentProcessor
     ) {
       return Result.err(new Error(`${this.name} generator is missing required dependencies.`));
     }
@@ -54,17 +54,31 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
   }
 
   protected async executeGeneration(
-    config: ProjectConfig, // Use config
+    options: ProjectConfig, // options is ProjectConfig, includes CLI options
     contextPaths: string[]
   ): Promise<Result<string, Error>> {
+    // Return type is string on success (message or path)
     try {
       this.logger.info('Starting AI Magic generation process...');
+
+      // Access generatorType from options (assuming ProjectConfig will be updated to include it)
+      const generatorType = (options as any).generatorType as string | undefined;
+      if (!generatorType) {
+        this.logger.error('The --generators flag is required when using --generate.');
+        return Result.err(new Error('The --generators flag is required when using --generate.'));
+      }
+
+      // For "cursor" generator type, skip project analysis and return placeholder immediately.
+      if (generatorType === 'cursor') {
+        this.logger.info('Skipping project analysis for cursor generation placeholder.');
+        return this.handleCursorGenerationPlaceholder([], options);
+      }
 
       if (!contextPaths?.length) {
         return Result.err(new Error('No context path provided for analysis'));
       }
 
-      // 1. Analyze Project
+      // 1. Analyze Project (needed for both memory-bank and roo)
       const projectContextResult = await this.analyzeProject(contextPaths);
       if (projectContextResult.isErr()) {
         return Result.err(projectContextResult.error ?? new Error('Project analysis failed'));
@@ -74,51 +88,20 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
         return Result.err(new Error('Project context is undefined after analysis'));
       }
 
-      // 2. Generate Memory Bank Files (concurrently with rules)
-      this.logger.info('Starting Memory Bank Service generation...');
-      const memoryBankPromise = this.memoryBankService.generateMemoryBank(projectContext, config); // Pass config
-
-      // 3. Generate Rules File (concurrently with memory bank)
-      this.logger.info('Starting Rules file generation...');
-      const rulesFilePromise = this.generateRulesFile(projectContext);
-
-      // Wait for both processes to complete
-      const [memoryBankResult, rulesFileResult] = await Promise.all([
-        memoryBankPromise,
-        rulesFilePromise,
-      ]);
-
-      // Handle results and potential errors
-      let finalMessage = '';
-      const errors: string[] = [];
-
-      if (memoryBankResult.isErr()) {
-        const errMsg = `Memory Bank Service failed: ${memoryBankResult.error?.message ?? 'Unknown error'}`;
-        this.logger.error(errMsg, memoryBankResult.error);
-        errors.push(errMsg);
-      } else {
-        finalMessage += `Memory Bank generated successfully. ${memoryBankResult.value ?? ''}\n`;
-        this.logger.info(
-          `Memory Bank Service completed successfully. ${memoryBankResult.value ?? ''}`
-        );
+      switch (generatorType) {
+        case 'memory-bank':
+          return this.generateMemoryBankContent(projectContext, options);
+        case 'roo':
+          return this.generateRooContent(projectContext, options);
+        case 'cursor':
+          return this.handleCursorGenerationPlaceholder(projectContext, options); // Corrected method name
+        default: {
+          // Added curly braces for scope
+          const errorMsg = `Unknown generator type: ${generatorType}`;
+          this.logger.error(errorMsg);
+          return Result.err(new Error(errorMsg));
+        } // Added closing curly brace
       }
-
-      if (rulesFileResult.isErr()) {
-        const errMsg = `Rules file generation failed: ${rulesFileResult.error?.message ?? 'Unknown error'}`;
-        this.logger.error(errMsg, rulesFileResult.error);
-        errors.push(errMsg);
-      } else {
-        finalMessage += `Rules file generated successfully at ${rulesFileResult.value}.\n`;
-        this.logger.info(`Rules file generated successfully at ${rulesFileResult.value}`);
-      }
-
-      if (errors.length > 0) {
-        return Result.err(
-          new Error(`AI Magic generation completed with errors:\n- ${errors.join('\n- ')}`)
-        );
-      }
-
-      return Result.ok(finalMessage.trim());
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : 'Unknown error during AI Magic generation';
@@ -147,105 +130,236 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
   }
 
   /**
-   * Generates the rules file using the RulesPromptBuilder and LLMAgent.
+   * Generates memory bank content using the MemoryBankService.
    * @param projectContext The analyzed project context.
+   * @param options The project configuration including CLI options.
+   * @returns Result containing a success message or an error.
+   */
+  private async generateMemoryBankContent(
+    projectContext: ProjectContext,
+    _options: ProjectConfig // Renamed options to _options
+  ): Promise<Result<string, Error>> {
+    this.logger.info('Generating memory bank content...');
+    const mbResult = await this.memoryBankService.generateMemoryBank(projectContext, _options); // Use _options
+    if (mbResult.isErr()) {
+      return Result.err(mbResult.error ?? new Error('Unknown memory bank generation error')); // Added nullish coalescing
+    }
+    const successMessage = `Memory Bank Service completed successfully. ${mbResult.value ?? ''}`;
+    this.logger.info(successMessage);
+    return Result.ok(successMessage);
+  }
+
+  /**
+   * Orchestrates the generation of the roo file.
+   * @param projectContext The analyzed project context.
+   * @param options The project configuration including CLI options.
    * @returns Result containing the path to the generated file or an error.
    */
-  private async generateRulesFile(projectContext: ProjectContext): Promise<Result<string, Error>> {
+  private async generateRooContent(
+    projectContext: ProjectContext,
+    _options: ProjectConfig // Renamed options to _options
+  ): Promise<Result<string, Error>> {
+    this.logger.info('Generating roo (rules) content...');
     try {
-      // Stringify context for the prompt builder
+      // 1. Build Prompts
+      const promptResult = this.buildRooPrompts(projectContext);
+      if (promptResult.isErr()) {
+        return Result.err(promptResult.error ?? new Error('Unknown error building roo prompts')); // Added nullish coalescing
+      }
+
+      // Access value only after checking isOk()
+      if (!promptResult.isOk()) {
+        // This case should theoretically not be reached due to the isErr() check above,
+        // but as a safeguard, return an error if value is unexpectedly not available.
+        return Result.err(new Error('Failed to build roo prompts: Result value is not OK.'));
+      }
+      const { systemPrompt, userPrompt } = promptResult.value as {
+        systemPrompt: string;
+        userPrompt: string;
+      };
+
+      // 2. Get Completion from LLM
+      const completionResult = await this.getRooCompletion(systemPrompt, userPrompt);
+      if (completionResult.isErr()) {
+        return Result.err(
+          completionResult.error ?? new Error('Unknown error getting roo completion')
+        ); // Added nullish coalescing
+      }
+      const rawContent = completionResult.value;
+
+      // Check if rawContent is defined before processing
+      if (rawContent === undefined || rawContent === null) {
+        return Result.err(new Error('LLM returned undefined or null content for roo file.'));
+      }
+
+      // 3. Process Content
+      const processedContentResult = this.processRooContent(rawContent);
+      if (processedContentResult.isErr()) {
+        // Log warning and return the error
+        this.logger.warn(`Content processing failed: ${processedContentResult.error?.message}`);
+        return Result.err(
+          processedContentResult.error ?? new Error('Unknown error processing roo content')
+        ); // Return the error
+      }
+      const finalContent = processedContentResult.value; // Use value directly as processRooContent now returns string on Ok
+
+      if (!finalContent || finalContent.trim().length === 0) {
+        return Result.err(new Error('Roo content became empty after processing.'));
+      }
+
+      // 4. Write File
+      const writeResult = await this.writeRooFile(finalContent);
+      if (writeResult.isErr()) {
+        return Result.err(writeResult.error ?? new Error('Unknown error writing roo file')); // Added nullish coalescing
+      }
+
+      const successMessage = `Roo file generated successfully at ${writeResult.value!}`; // Added non-null assertion
+      this.logger.info(successMessage);
+      return Result.ok(writeResult.value!); // Return the path with non-null assertion
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Unknown error during roo generation orchestration';
+      const errorInstance = error instanceof Error ? error : new Error(message);
+      this.logger.error(`Error in generateRooContent: ${message}`, errorInstance);
+      return Result.err(errorInstance);
+    }
+  }
+
+  /**
+   * Builds the system and user prompts for roo generation.
+   * @param projectContext The analyzed project context.
+   * @returns Result containing the system and user prompts or an error.
+   */
+  private buildRooPrompts(
+    projectContext: ProjectContext
+  ): Result<{ systemPrompt: string; userPrompt: string }, Error> {
+    try {
       const contextString = JSON.stringify(projectContext, null, 2);
 
-      // Build System Prompt
-      const systemPromptResult = this.rulesPromptBuilder.buildSystemPrompt('code'); // Assuming 'code' mode
+      const systemPromptResult = this.rulesPromptBuilder.buildSystemPrompt('code');
       if (systemPromptResult.isErr()) {
         return Result.err(
-          // Fix 1: Nullish coalescing for error message
-          new Error(
-            `Failed to build rules system prompt: ${systemPromptResult.error?.message ?? 'Unknown error'}`
-          )
+          systemPromptResult.error ?? new Error('Unknown error building roo system prompt') // Added nullish coalescing
         );
       }
 
-      // Build User Prompt
       const userPromptResult = this.rulesPromptBuilder.buildPrompt(
-        'Generate project-specific rules based on the context.', // Basic instruction
+        'Generate project-specific roo based on the context.',
         contextString,
-        '' // No template needed here
+        ''
       );
       if (userPromptResult.isErr()) {
         return Result.err(
-          // Fix 1: Nullish coalescing for error message
-          new Error(
-            `Failed to build rules user prompt: ${userPromptResult.error?.message ?? 'Unknown error'}`
-          )
+          userPromptResult.error ?? new Error('Unknown error building roo user prompt') // Added nullish coalescing
         );
       }
 
-      // Fix 2: Ensure both prompts are valid strings before proceeding
       const systemPrompt = systemPromptResult.value;
       const userPrompt = userPromptResult.value;
 
       if (!systemPrompt || !userPrompt) {
-        // This case should technically not be hit due to prior checks, but belts and suspenders
         return Result.err(new Error('System or user prompt became undefined unexpectedly.'));
       }
 
-      this.logger.debug('Requesting rules content from LLM...');
-      const completionResult = await this.llmAgent.getCompletion(
-        systemPrompt, // Now guaranteed to be string
-        userPrompt // Now guaranteed to be string
-      );
-      if (completionResult.isErr()) {
-        // Fix 1: Nullish coalescing for error message
-        return Result.err(
-          new Error(
-            `LLM failed to generate rules content: ${completionResult.error?.message ?? 'Unknown error'}`
-          )
-        );
-      }
-      const rawContent = completionResult.value;
-      if (!rawContent || rawContent.trim().length === 0) {
-        return Result.err(new Error('LLM returned empty content for rules file.'));
-      }
-      this.logger.debug('Received rules content from LLM.');
+      return Result.ok({ systemPrompt, userPrompt });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error building roo prompts';
+      const errorInstance = error instanceof Error ? error : new Error(message);
+      this.logger.error(`Error in buildRooPrompts: ${message}`, errorInstance);
+      return Result.err(errorInstance);
+    }
+  }
 
-      // Strip potential markdown code blocks (LLMs sometimes wrap output)
+  /**
+   * Gets completion content from the LLM for roo generation.
+   * @param systemPrompt The system prompt.
+   * @param userPrompt The user prompt.
+   * @returns Result containing the raw content from the LLM or an error.
+   */
+  private async getRooCompletion(
+    systemPrompt: string,
+    userPrompt: string
+  ): Promise<Result<string, Error>> {
+    this.logger.debug('Requesting roo content from LLM...');
+    const completionResult = await this.llmAgent.getCompletion(systemPrompt, userPrompt);
+    if (completionResult.isErr()) {
+      return Result.err(
+        completionResult.error ?? new Error('Unknown error getting roo completion from LLM') // Added nullish coalescing
+      );
+    }
+    const rawContent = completionResult.value;
+    if (!rawContent || rawContent.trim().length === 0) {
+      return Result.err(new Error('LLM returned empty content for roo file.'));
+    }
+    this.logger.debug('Received roo content from LLM.');
+    return Result.ok(rawContent);
+  }
+
+  /**
+   * Processes the raw content for roo generation (e.g., stripping markdown).
+   * @param rawContent The raw content from the LLM.
+   * @returns Result containing the processed content or an error.
+   */
+  private processRooContent(rawContent: string): Result<string, Error> {
+    try {
       const strippedContentResult = this.contentProcessor.stripMarkdownCodeBlock(rawContent);
       if (strippedContentResult.isErr()) {
-        this.logger.warn(
-          // Fix 1: Nullish coalescing for error message
-          `Failed to strip markdown from rules content, using raw content. Error: ${strippedContentResult.error?.message ?? 'Unknown stripping error'}`
-        );
-        // Proceed with raw content if stripping fails, but log a warning
-      }
-      const finalContent = strippedContentResult.isOk() ? strippedContentResult.value : rawContent;
-
-      if (!finalContent || finalContent.trim().length === 0) {
-        // Check again after potential stripping
-        return Result.err(new Error('Rules content became empty after processing.'));
-      }
-
-      // Write content to file
-      this.logger.debug(`Writing generated rules to ${this.rulesOutputPath}`);
-      const writeResult = await this.fileOps.writeFile(this.rulesOutputPath, finalContent);
-      if (writeResult.isErr()) {
-        // Fix 1: Nullish coalescing for error message
+        // Log warning and return the error
         return Result.err(
-          new Error(
-            `Failed to write rules file: ${writeResult.error?.message ?? 'Unknown file writing error'}`
-          )
+          strippedContentResult.error ?? new Error('Unknown error stripping markdown') // Added nullish coalescing
         );
       }
-
-      return Result.ok(this.rulesOutputPath);
+      const strippedContent = strippedContentResult.value;
+      if (
+        strippedContent === undefined ||
+        strippedContent === null ||
+        strippedContent.trim().length === 0
+      ) {
+        return Result.err(new Error('Stripped roo content is empty or undefined.'));
+      }
+      return Result.ok(strippedContent); // Return string on Ok
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Unknown error generating rules file';
-      // Fix 3: Ensure caught error is an Error instance for logging
+        error instanceof Error ? error.message : 'Unknown error processing roo content';
       const errorInstance = error instanceof Error ? error : new Error(message);
-      this.logger.error(`Error in generateRulesFile: ${message}`, errorInstance);
-      return Result.err(errorInstance); // Return the actual error instance
+      this.logger.error(`Error in processRooContent: ${message}`, errorInstance);
+      return Result.err(errorInstance);
     }
+  }
+
+  /**
+   * Writes the final roo content to a file.
+   * @param content The final content to write.
+   * @returns Result containing the path to the written file or an error.
+   */
+  private async writeRooFile(content: string): Promise<Result<string, Error>> {
+    try {
+      this.logger.debug(`Writing generated roo to ${this.rooOutputPath}`);
+      const writeResult = await this.fileOps.writeFile(this.rooOutputPath, content);
+      if (writeResult.isErr()) {
+        return Result.err(
+          writeResult.error ?? new Error('Unknown error writing roo file') // Added nullish coalescing
+        );
+      }
+      return Result.ok(this.rooOutputPath);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error writing roo file';
+      const errorInstance = error instanceof Error ? error : new Error(message);
+      this.logger.error(`Error in writeRooFile: ${message}`, errorInstance);
+      return Result.err(errorInstance);
+    }
+  }
+
+  private handleCursorGenerationPlaceholder(
+    _projectContext: ProjectContext,
+    _options: ProjectConfig // Renamed _config to _options for consistency
+  ): Result<string, Error> {
+    // Added context and config parameters, changed return type
+    // Basic placeholder implementation
+    const message = 'Cursor generation functionality will be implemented in a future task.';
+    this.logger.info(message);
+    return Result.ok(message); // Return a string message
   }
 }

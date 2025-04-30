@@ -1,7 +1,7 @@
 ---
 title: Technical Architecture
-version: 1.1.0
-lastUpdated: 2024-08-15 (Based on context, update if necessary)
+version: 1.1.1
+lastUpdated: 2025-04-30
 documentStatus: Final
 author: Software Architect AI
 ---
@@ -33,13 +33,13 @@ The application follows a **Modular CLI Architecture with LLM Integration**. The
 4.  **Command Parsing (`CliInterface`):** The `ApplicationContainer` resolves the `CliInterface` (`@core/cli/cli-interface.ts`). The `CliInterface` uses the `commander` library to define commands (`generate`, `config`, etc.) and parse `process.argv`. Action callbacks capture the parsed command name and options into the `CliInterface` instance's `parsedArgs`.
 5.  **Configuration Loading:** Relevant configuration services (`ProjectConfigService`, `LLMConfigService`) load project-specific (`roocode-config.json`) and LLM (`llm.config.json`) settings, respectively.
 6.  **Command Routing (`ApplicationContainer`):** The `ApplicationContainer` retrieves the parsed command and options from the `CliInterface`. Its `executeCommand` method acts as a router, using a `switch` statement on the command name to delegate to specific handler methods (e.g., `executeGenerateCommand`, `executeConfigCommand`).
-7.  **Generator Orchestration (`generate` command):** When `executeGenerateCommand` is called, it resolves and uses the `GeneratorOrchestrator` (`@core/application/generator-orchestrator.ts`). The orchestrator identifies the requested `IGenerator` instances (e.g., `AiMagicGenerator`, `RulesGenerator`) based on CLI arguments or defaults and executes their `generate` methods.
-8.  **Generation Process (Example: `AiMagicGenerator`):**
-    - **Project Analysis:** `AiMagicGenerator` uses the `ProjectAnalyzer` (`@core/analysis/project-analyzer.ts`) to analyze the project context (tech stack, structure, dependencies) via `FileOperations` and potentially `LLMAgent`.
-    - **Rules Generation:** It uses its internal logic (potentially `RulesPromptBuilder`, `TemplateProcessor`, `LLMAgent`) to generate context-aware coding rules.
-    - **Memory Bank Service Call:** It calls the `MemoryBankService` (`@memory-bank/memory-bank-service.ts`), passing the gathered `ProjectContext`.
-    - **Memory Bank Generation (within `MemoryBankService`):** The service uses its components (`MemoryBankOrchestrator`, `IMemoryBankTemplateProcessor`, `IMemoryBankContentGenerator`, `LLMAgent`, etc.) to generate the memory bank documentation files.
-    - **File Operations:** Both `AiMagicGenerator` (for rules) and `MemoryBankService` (for docs) use the `FileOperations` service (`@core/file-operations/file-operations.ts`) to write the generated files.
+7.  **Generate Command Execution (`ApplicationContainer` & `GeneratorOrchestrator`):** When `executeGenerateCommand` is called, it resolves the `GeneratorOrchestrator` (`@core/application/generator-orchestrator.ts`). The `generate` command now implicitly triggers the `AiMagicGenerator`. The `ApplicationContainer` passes the parsed options, including the `generatorType` value from the `--generators` flag, to the `GeneratorOrchestrator`, which in turn passes them to the `AiMagicGenerator`.
+8.  **AiMagicGenerator Execution and Internal Routing:** The `AiMagicGenerator` (`@generators/ai-magic-generator.ts`) receives the `generatorType` (e.g., `memory-bank`, `roo`, `cursor`) from the options. It then routes the execution to the corresponding internal generation logic:
+    - If `generatorType` is `memory-bank`: It calls the `MemoryBankService` (`@memory-bank/memory-bank-service.ts`) to generate documentation.
+    - If `generatorType` is `roo`: It executes the logic for generating RooCode rules (using `ProjectAnalyzer`, `TemplateProcessor`, `LLMAgent`, etc.).
+    - If `generatorType` is `cursor`: It executes a placeholder for future cursor-based generation.
+    - **Project Analysis:** Regardless of the `generatorType`, `AiMagicGenerator` may use the `ProjectAnalyzer` (`@core/analysis/project-analyzer.ts`) to analyze the project context (tech stack, structure, dependencies) via `FileOperations` and potentially `LLMAgent`.
+    - **File Operations:** The specific generation logic within `AiMagicGenerator` (or the services it calls, like `MemoryBankService`) uses the `FileOperations` service (`@core/file-operations/file-operations.ts`) to write the generated files.
 9.  **User Feedback:** Throughout the process, `ProgressIndicator` (`ora`) and `LoggerService` (`chalk`) provide feedback to the user via the terminal.
 10. **Completion/Error Handling:** The application uses a `Result` type (`@core/result/result.ts`) for explicit success/failure handling. The main `run` method manages the overall result, and top-level error handling catches unexpected issues, exiting with appropriate status codes.
 
@@ -56,30 +56,28 @@ graph TD
         C -- Registers --> D(Services / Modules `@core/di/modules/*`);
         B -- Resolves & Runs --> E(ApplicationContainer `@core/application/application-container.ts`);
         E -- Uses --> F(CliInterface `@core/cli/cli-interface.ts`);
-        F -- Parses Args --> E;
-        E -- Uses --> G(GeneratorOrchestrator `@core/application/generator-orchestrator.ts`);
+        F -- Parses Args (`--generate`, `--generators <type>`) --> E;
+        E -- Routes `generate` command --> G(GeneratorOrchestrator `@core/application/generator-orchestrator.ts`);
+        E -- Passes `generatorType` value --> G;
         E -- Uses --> H(Config Services `@core/config/*`);
         E -- Uses --> I(LoggerService `@core/services/logger-service.ts`);
         E -- Uses --> J(ProgressIndicator `@core/ui/progress-indicator.ts`);
     end
 
     subgraph Generators [Generator Execution Flow]
-        G -- Executes --> K{Specific Generator (IGenerator)};
-        K(AiMagicGenerator) -- Uses --> L(ProjectAnalyzer `@core/analysis/project-analyzer.ts`);
-        K -- Uses --> M(TemplateProcessor / Manager `@core/templating/*`); # For rules
-        K -- Uses --> N(FileManager / Specific (`@generators/*/file-manager.ts`)); # For rules
-        K -- Calls --> MB_Service(MemoryBankService `@memory-bank/memory-bank-service.ts`);
-        L -- Uses --> O(LLMAgent `@core/llm/llm-agent.ts`);
-        M -- May Use --> O; # Rules generation might use LLM
-        MB_Service -- Uses --> MB_Orchestrator(MemoryBankOrchestrator);
-        MB_Orchestrator -- Uses --> MB_Components(Memory Bank Components);
-        MB_Components -- Uses --> O; # Memory Bank uses LLM
-        MB_Components -- Uses --> T(FileOperations `@core/file-operations/file-operations.ts`);
+        G -- Resolves & Executes --> K(AiMagicGenerator `@generators/ai-magic-generator.ts`);
+        K -- Receives `generatorType` value --> K;
+        K -- Routes based on `generatorType` --> L{Specific Generation Logic};
+        L(Memory Bank) -- Uses --> MB_Service(MemoryBankService `@memory-bank/memory-bank-service.ts`);
+        L(Roo / Rules) -- Uses --> Rules_Logic(Rules Generation Logic);
+        L(Cursor) -- Executes --> Cursor_Placeholder(Cursor Placeholder Logic);
+        K -- Uses --> P(ProjectAnalyzer `@core/analysis/project-analyzer.ts`);
+        P, Rules_Logic, MB_Service -- Use --> O(LLMAgent `@core/llm/llm-agent.ts`);
         O -- Uses --> Q(LLMProviderRegistry `@core/llm/provider-registry.ts`);
         Q -- Uses --> H;
         Q -- Creates --> R[LLM Providers (Langchain) `@core/llm/llm-provider.ts`];
         R -- Calls --> S[External LLM APIs];
-        N -- Uses --> T; # Rules file manager uses FileOperations
+        Rules_Logic, MB_Service -- Use --> T(FileOperations `@core/file-operations/file-operations.ts`);
         T -- Interacts --> U[Filesystem];
     end
 
@@ -93,7 +91,7 @@ graph TD
     style Generators fill:#ccf,stroke:#333,stroke-width:2px
 ```
 
-_Diagram showing the initialization, command handling, and generator execution flow, including DI, LLM interaction, and file operations._
+_Diagram showing the initialization, command handling, and generator execution flow, including DI, LLM interaction, and file operations. The `generate` command now implicitly routes to `AiMagicGenerator`, which handles internal routing based on the `--generators` flag._
 
 ## 3. Core Components
 
@@ -105,24 +103,30 @@ _Diagram showing the initialization, command handling, and generator execution f
   - `interfaces.ts`: Defines core application service contracts (`IGeneratorOrchestrator`, `IProjectManager`, `ICliInterface`).
 - **`@core/cli` (Command Line Interface):**
   - `cli-main.ts`: The primary bootstrap file for the bundled CLI. It is the execution entry point after the `bin/roocode-generator.js` launcher script requires the bundled file. It is responsible for setting up the environment, initializing the DI container, and starting the CLI command parsing and execution flow. The Vite build is configured to use this file as the main entry point (`vite.config.ts:build.lib.entry`).
-  - `CliInterface`: Handles command-line argument parsing (`commander`), interactive prompts (`inquirer`), and basic console output formatting (`chalk`).
+  - `CliInterface`: Handles command-line argument parsing (`commander`), including the `--generate` command and the associated `--generators <type>` flag. It performs manual validation of the `--generators` type value. It also handles interactive prompts (`inquirer`) and basic console output formatting (`chalk`).
+- **`@core/application` (Application Core):**
+  - `ApplicationContainer`: Orchestrates the main application lifecycle, command routing (`generate`, `config`), and top-level workflow execution. Its `executeGenerateCommand` method now routes directly to the `GeneratorOrchestrator`, passing the parsed options including the `generatorType` from the `--generators` flag.
+  - `GeneratorOrchestrator`: Manages the registration and execution of different generator modules (`IGenerator`). For the `generate` command, its role is simplified to primarily resolve and execute the `AiMagicGenerator`, passing the options received from the `ApplicationContainer`.
+  - `IProjectManager` (Stub): Placeholder for potential future project-level state management.
+  - `interfaces.ts`: Defines core application service contracts (`IGeneratorOrchestrator`, `IProjectManager`, `ICliInterface`).
 - **`@core/config` (Configuration Management):**
-  - `LLMConfigService`: Manages loading, saving, validation, and interactive editing of LLM settings (`llm.config.json`).
-  - `ProjectConfigService`: Manages loading and validation of project settings (`roocode-config.json`).
+  - `LLMConfigService`: Manages loading, saving, validation, and interactive editing of LLM settings (`llm.config.json`). Now depends on `IModelListerService` for interactive model selection.
+  - `ProjectConfigService`: Manages loading and validation of project settings (`roocode-config.config.json`).
 - **`@core/llm` (LLM Interaction):**
   - `LLMAgent`: Central point for interacting with LLMs, orchestrating analysis or completion tasks. Uses the `LLMProviderRegistry` to get the configured provider.
   - `LLMProviderRegistry`: Dynamically loads and caches the configured LLM provider (`openai`, `google-genai`, `anthropic`) based on `llm.config.json`. Uses registered provider factories.
+  - `ModelListerService`: Provides a list of available LLM models, used by `LLMConfigService` for interactive configuration. Depends on `LLMProviderRegistry` to get the list of supported models.
   - `LLMProvider` (Implementations: `OpenAILLMProvider`, `GoogleGenAILLMProvider`, `AnthropicLLMProvider`): Adapters for specific LLM services using `langchain` clients (`@langchain/*`).
 - **`@core/generators` (Base Generator Logic):**
   - `BaseGenerator`: Abstract class providing common structure (`name`, `generate`, `validate`, `executeGeneration`) and lifecycle (`initialize`, `validateDependencies`) for all generators. Inherits from `BaseService`.
   - `IGenerator`: Interface defining the contract for generator modules.
 - **`@generators` (Specific Generators):** Modules implementing `IGenerator` for specific tasks:
-  - `AiMagicGenerator`: The primary generator responsible for analyzing the project (`ProjectAnalyzer`), generating context-aware coding rules (using `RulesPromptBuilder`, `TemplateProcessor`, `LLMAgent`), and invoking the `MemoryBankService` to generate documentation.
+  - `AiMagicGenerator`: The primary generator for LLM-driven content. It is implicitly triggered by the `generate` command. It receives the `generatorType` value from the `--generators` flag and routes execution to the appropriate internal logic for generating memory bank content, RooCode rules, or executing the cursor placeholder. It utilizes `ProjectAnalyzer`, `LLMAgent`, and other services for these tasks.
   - `RulesGenerator`: (Legacy) Generates coding standard rules based on project analysis and templates. Its core functionality is now integrated into `AiMagicGenerator`. Includes sub-components like `IRulesFileManager`, `IRulesContentProcessor`, `IRulesPromptBuilder`.
   - `IRulesFileManager`: Manages saving the generated single Markdown rules file to `.roo/rules-code/rules.md`.
   - `SystemPromptsGenerator`, `RoomodesGenerator`, `VSCodeCopilotRulesGenerator`: Simpler generators creating specific configuration files, often using the core `TemplateManager`.
 - **`@memory-bank` (Memory Bank Service & Components):** Contains the logic refactored from the original `MemoryBankGenerator`.
-  - `MemoryBankService`: A dedicated service invoked by `AiMagicGenerator` to handle the generation of memory bank documentation (`ProjectOverview.md`, `DeveloperGuide.md`, `TechnicalArchitecture.md`). It orchestrates the process using the components below.
+  - `MemoryBankService`: A dedicated service invoked by `AiMagicGenerator` (when `generatorType` is `memory-bank`) to handle the generation of memory bank documentation (`ProjectOverview.md`, `DeveloperGuide.md`, `TechnicalArchitecture.md`). It orchestrates the process using the components below.
   - `MemoryBankOrchestrator`: Coordinates the generation steps within the service.
   - `IProjectContextService`: Gathers project context (used by `AiMagicGenerator` before calling the service).
   - `IMemoryBankTemplateManager`: Loads memory bank specific templates.
@@ -194,16 +198,16 @@ _Diagram showing the initialization, command handling, and generator execution f
 - **Result Pattern:** The `Result<T, E>` class (`@core/result/result.ts`) is used extensively for robust, explicit error handling, promoting predictable control flow over exception-based handling for expected failures (e.g., file not found, API errors).
 - **Modular Generators:** The `GeneratorOrchestrator` dynamically loads and executes `IGenerator` implementations based on CLI input, allowing for easy addition or removal of generators.
 
-### 5.3. Data Flow (Example: `generate ai-magic`)
+### 5.3. Data Flow (Example: `--generate --generators [type]`)
 
-1.  **User Input:** `roocode generate ai-magic`
-2.  **CLI Parsing (`CliInterface`):** Command `generate`, options `{ generators: ['ai-magic'] }` identified (or similar handling for single generator).
+1.  **User Input:** `roocode-generator --generate --generators memory-bank` (or `roo`, `cursor`)
+2.  **CLI Parsing (`CliInterface`):** Command `generate`, options `{ generators: ['memory-bank'] }` identified.
 3.  **Application Routing (`ApplicationContainer`):** Routes to `executeGenerateCommand`.
 4.  **Orchestration (`GeneratorOrchestrator`):**
-    - Resolves `AiMagicGenerator` using its registered token ('AiMagicGenerator').
+    - Resolves `AiMagicGenerator` using its registered token ('ai-magic').
     - Loads `ProjectConfig` using `ProjectConfigService`.
 5.  **AiMagicGenerator Execution:**
-    - Calls `ProjectAnalyzer.analyzeProject` (using `FileOperations`, potentially `LLMAgent`) to get `ProjectContext`.
+    - Calls `ProjectAnalyzer.analyzeProject` (using `FileOperations`, potentially `LLMAgent`) to get `ProjectContext` using `config.baseDir` as context path.
     - **Rules Generation:** Uses internal logic (e.g., `RulesPromptBuilder`, `TemplateProcessor`, `LLMAgent`) to generate rules content.
     - Calls `IRulesFileManager.saveRulesFile` (using `FileOperations`) to write `.roo/rules-code/rules.md`.
     - **Memory Bank Service Call:** Calls `MemoryBankService.generateMemoryBank(projectContext)`.

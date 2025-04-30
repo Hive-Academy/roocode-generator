@@ -272,5 +272,75 @@ describe('ApplicationContainer', () => {
     });
   });
 
-  // TODO: Add tests for executeGenerateCommand and run if needed, focusing on calls
+  // --- executeGenerateCommand ---
+  describe('executeGenerateCommand', () => {
+    it('should call generatorOrchestrator.execute with "generate" and options', async () => {
+      const options = { generatorType: 'memory-bank', someOption: 'value' };
+      mockGeneratorOrchestrator.execute.mockResolvedValue(Result.ok(undefined));
+
+      // Need to access private method via 'any' for testing
+      const result = await (container as any).executeGenerateCommand(options);
+
+      expect(result.isOk()).toBe(true);
+      expect(mockProgressIndicatorInstance.start).toHaveBeenCalledWith('Generating...');
+      expect(mockGeneratorOrchestrator.execute).toHaveBeenCalledTimes(1);
+      expect(mockGeneratorOrchestrator.execute).toHaveBeenCalledWith('generate', options);
+      expect(mockProgressIndicatorInstance.succeed).toHaveBeenCalledWith(
+        'Generation completed successfully.'
+      );
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        "Generator orchestrator execution completed for 'generate' command."
+      );
+      expect(mockLogger.error).not.toHaveBeenCalled();
+      expect(mockProgressIndicatorInstance.fail).not.toHaveBeenCalled();
+    });
+
+    it('should return an error if generatorOrchestrator.execute fails', async () => {
+      const options = { generatorType: 'roo' };
+      const orchestratorError = new Error('Orchestrator failed');
+      mockGeneratorOrchestrator.execute.mockResolvedValue(Result.err(orchestratorError));
+
+      const result = await (container as any).executeGenerateCommand(options);
+
+      expect(result.isErr()).toBe(true);
+      expect(result.error).toBe(orchestratorError);
+      expect(mockProgressIndicatorInstance.start).toHaveBeenCalledWith('Generating...');
+      expect(mockGeneratorOrchestrator.execute).toHaveBeenCalledTimes(1);
+      expect(mockGeneratorOrchestrator.execute).toHaveBeenCalledWith('generate', options);
+      expect(mockProgressIndicatorInstance.succeed).not.toHaveBeenCalled();
+      expect(mockProgressIndicatorInstance.fail).toHaveBeenCalledWith(
+        `Generator execution failed: ${orchestratorError.message}`
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        `Generator execution failed: ${orchestratorError.message}`
+      );
+    });
+
+    it('should handle unexpected errors during execution', async () => {
+      const options = { generatorType: 'cursor' };
+      const unexpectedError = new Error('Unexpected generator error');
+      mockGeneratorOrchestrator.execute.mockImplementation(() => {
+        throw unexpectedError;
+      });
+
+      const result = await (container as any).executeGenerateCommand(options);
+
+      expect(result.isErr()).toBe(true);
+      expect(result.error?.message).toContain(
+        `Generator execution failed: ${unexpectedError.message}`
+      );
+      expect(mockProgressIndicatorInstance.start).toHaveBeenCalledWith('Generating...');
+      expect(mockGeneratorOrchestrator.execute).toHaveBeenCalledTimes(1);
+      expect(mockGeneratorOrchestrator.execute).toHaveBeenCalledWith('generate', options);
+      expect(mockProgressIndicatorInstance.succeed).not.toHaveBeenCalled();
+      expect(mockProgressIndicatorInstance.fail).toHaveBeenCalledWith(
+        `Generator execution failed: ${unexpectedError.message}`
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        `Generator execution failed: ${unexpectedError.message}`
+      );
+    });
+  });
+
+  // TODO: Add tests for run if needed, focusing on calls
 });
