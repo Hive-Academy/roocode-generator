@@ -1,9 +1,11 @@
 import { Result } from '../result/result';
 import type { AnalysisResult, LLMConfig } from '../../../types/shared';
+import { LLMProviderError } from './llm-provider-errors';
 
 export interface ILLMProvider {
   readonly name: string;
   getCompletion(systemPrompt: string, userPrompt: string): Promise<Result<string, Error>>;
+  listModels?(): Promise<Result<string[], LLMProviderError>>;
 }
 
 export interface ILLMProviderRegistry {
