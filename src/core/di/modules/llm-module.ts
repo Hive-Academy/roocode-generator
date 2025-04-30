@@ -7,8 +7,9 @@ import { LLMConfigService } from '@core/config/llm-config.service';
 import { Container } from '@core/di/container';
 import { assertIsDefined, resolveDependency } from '@core/di/utils'; // Import helpers from utils
 import { IFileOperations } from '@core/file-operations/interfaces';
-import { ILLMProvider, LLMProviderFactory } from '@core/llm/interfaces';
+import { ILLMProvider, IModelListerService, LLMProviderFactory } from '@core/llm/interfaces';
 import { LLMAgent } from '@core/llm/llm-agent';
+import { ModelListerService } from '@core/llm/model-lister.service';
 import {
   AnthropicLLMProvider,
   GoogleGenAILLMProvider,
@@ -189,6 +190,35 @@ export function registerLlmModule(container: Container): void {
       ),
     };
     return new LLMProviderRegistry(configService, providerFactories);
+  });
+
+  // Register provider factories for ModelListerService
+  container.registerFactory<Record<string, LLMProviderFactory>>('ILLMProviderFactories', () => {
+    return {
+      openai: resolveDependency<LLMProviderFactory>(container, 'ILLMProvider.OpenAI.Factory'),
+      'google-genai': resolveDependency<LLMProviderFactory>(
+        container,
+        'ILLMProvider.GoogleGenAI.Factory'
+      ),
+      anthropic: resolveDependency<LLMProviderFactory>(container, 'ILLMProvider.Anthropic.Factory'),
+      openrouter: resolveDependency<LLMProviderFactory>(
+        container,
+        'ILLMProvider.OpenRouter.Factory'
+      ),
+    };
+  });
+
+  // Register ModelListerService
+  container.registerFactory<IModelListerService>('IModelListerService', () => {
+    const logger = resolveDependency<ILogger>(container, 'ILogger');
+    const providerFactories = resolveDependency<Record<string, LLMProviderFactory>>(
+      container,
+      'ILLMProviderFactories'
+    );
+
+    assertIsDefined(logger, 'ILogger dependency not found');
+    assertIsDefined(providerFactories, 'ILLMProviderFactories dependency not found');
+    return new ModelListerService(providerFactories, logger);
   });
 
   container.registerFactory<ILLMConfigService>('ILLMConfigService', () => {
