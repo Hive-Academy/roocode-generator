@@ -47,7 +47,7 @@ export class ModelListerService implements IModelListerService {
         apiKey: apiKey,
         model: 'temporary', // Placeholder model name
         temperature: 1,
-        maxTokens: 2048,
+        maxTokens: 80000,
       };
 
       // Create a temporary provider instance

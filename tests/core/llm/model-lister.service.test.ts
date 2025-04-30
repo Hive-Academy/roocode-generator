@@ -194,7 +194,7 @@ describe('ModelListerService', () => {
         apiKey: apiKey,
         model: 'temporary', // Placeholder model name
         temperature: 1,
-        maxTokens: 2048,
+        maxTokens: 80000,
       });
     });
   });
