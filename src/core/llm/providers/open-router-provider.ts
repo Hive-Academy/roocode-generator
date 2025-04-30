@@ -42,6 +42,7 @@ export class OpenRouterProvider extends BaseLLMProvider {
   private readonly apiKey: string;
 
   private readonly DEFAULT_API_URL = 'https://openrouter.ai/api/v1';
+  private readonly DEFAULT_CONTEXT_SIZE = 4096; // Default to conservative size
 
   constructor(
     private readonly config: LLMConfig,
@@ -193,5 +194,28 @@ export class OpenRouterProvider extends BaseLLMProvider {
       this.logger.error('Failed to fetch OpenRouter models', err);
       return Result.err(LLMProviderError.fromError(error, this.name));
     }
+  }
+
+  /**
+   * Get the maximum context window size for the model.
+   * Uses the context_length from modelParams if available, otherwise defaults.
+   * @returns Promise resolving to the context window size in tokens
+   */
+  async getContextWindowSize(): Promise<number> {
+    // Check if context length is provided in modelParams
+    const contextLength = this.config.modelParams?.context_length as number | undefined;
+    // Use defaultContextSize from the base class
+    return Promise.resolve(contextLength ?? this.defaultContextSize);
+  }
+
+  /**
+   * Count the number of tokens in a text string using the base class implementation.
+   * @param text The text to count tokens for
+   * @returns Promise resolving to the token count
+   */
+  async countTokens(text: string): Promise<number> {
+    // OpenRouter doesn't provide a token counting API
+    // Use the default implementation from the base class
+    return super.countTokens(text);
   }
 }

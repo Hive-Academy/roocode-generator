@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import { IFileContentCollector, IFilePrioritizer } from '@core/analysis/interfaces';
 import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
 import { ResponseParser } from '../../../src/core/analysis/response-parser';
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
@@ -58,12 +59,22 @@ describe('ProjectAnalyzer Directory Handling', () => {
       fail: jest.fn(),
     } as unknown as jest.Mocked<ProgressIndicator>;
 
+    const contentCollector = {
+      collectContent: jest.fn(),
+    } as unknown as jest.Mocked<IFileContentCollector>;
+
+    const filePrioritizer = {
+      prioritizeFiles: jest.fn(),
+    } as unknown as jest.Mocked<IFilePrioritizer>;
+
     projectAnalyzer = new ProjectAnalyzer(
       mockFileOps,
       mockLogger,
       mockLLMAgent,
       mockResponseParser,
-      mockProgressIndicator
+      mockProgressIndicator,
+      contentCollector,
+      filePrioritizer
     );
   });
 

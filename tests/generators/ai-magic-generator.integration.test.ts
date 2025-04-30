@@ -6,6 +6,7 @@ import { IProjectAnalyzer, ProjectContext } from '@core/analysis/types';
 import { ILogger } from '@core/services/logger-service';
 import { IFileOperations } from '@core/file-operations/interfaces';
 import { LLMAgent } from '@core/llm/llm-agent';
+import { LLMProviderError } from '@core/llm/llm-provider-errors'; // Import LLMProviderError
 import { Result } from '@core/result/result';
 import { IServiceContainer } from '@core/di/interfaces';
 import { ProjectConfig } from '../../types/shared'; // Corrected import path
@@ -369,4 +370,72 @@ describe('AiMagicGenerator Integration Tests', () => {
     // We can also check that the overall error was returned, if needed:
     // expect(result.error?.message).toContain('AI Magic generation completed with errors');
   });
-}); // Move the closing bracket here to include the new test case
+  it('should successfully generate rules after retrying on invalid response format errors', async () => {
+    const mockContextPaths = ['/path/to/project'];
+    const mockConfig: ProjectConfig = {
+      name: 'test-project',
+      baseDir: '/path/to/project',
+      rootDir: '/path/to/project/dist',
+      generators: ['ai-magic'],
+    };
+    const mockMemoryBankOutputPath = 'memory-bank/output.md';
+    const mockRulesOutputPath = '.roo/rules-code/generated-rules.md';
+    const mockGeneratedRulesContent = '# Generated Rules\n\n- Rule 1';
+    const mockStrippedRulesContent = '# Generated Rules\n\n- Rule 1';
+
+    // Arrange: Mock analysis to succeed
+    mockProjectAnalyzer.analyzeProject.mockResolvedValue(Result.ok(mockProjectContext));
+    // Arrange: Mock MemoryBankService to succeed
+    (mockMemoryBankService.generateMemoryBank as jest.Mock).mockResolvedValue(
+      Result.ok(mockMemoryBankOutputPath)
+    );
+
+    // Arrange: Mock Rules generation steps with retries
+    mockRulesPromptBuilder.buildSystemPrompt.mockReturnValue(Result.ok('SYSTEM_PROMPT'));
+    mockRulesPromptBuilder.buildPrompt.mockReturnValue(Result.ok('USER_PROMPT'));
+
+    // Mock LLMAgent.getCompletion to fail twice with INVALID_RESPONSE_FORMAT, then succeed
+    const invalidFormatError = new LLMProviderError(
+      'Invalid response format',
+      'INVALID_RESPONSE_FORMAT',
+      'OpenRouterProvider' // Add the provider name
+    );
+    (mockLlmAgent.getCompletion as jest.Mock)
+      .mockResolvedValueOnce(Result.err(invalidFormatError)) // First attempt fails
+      .mockResolvedValueOnce(Result.err(invalidFormatError)) // Second attempt fails
+      .mockResolvedValueOnce(Result.ok(mockGeneratedRulesContent)); // Third attempt succeeds
+
+    mockContentProcessor.stripMarkdownCodeBlock.mockReturnValue(
+      Result.ok(mockStrippedRulesContent)
+    );
+    (mockFileOps.writeFile as jest.Mock).mockResolvedValue(Result.ok(undefined)); // Mock writeFile success
+
+    // Act
+    const result = await aiMagicGenerator.generate(mockConfig, mockContextPaths);
+
+    // Assert
+    expect(result.isOk()).toBe(true);
+    expect(result.value).toContain(
+      `Memory Bank generated successfully. ${mockMemoryBankOutputPath}`
+    );
+    const normalizedRulesPath = path.normalize(mockRulesOutputPath);
+    expect(result.value).toContain(`Rules file generated successfully at ${normalizedRulesPath}.`);
+
+    // Verify that LLMAgent.getCompletion was called the expected number of times (initial + 2 retries)
+    expect(mockLlmAgent.getCompletion).toHaveBeenCalledTimes(3);
+
+    // Verify other successful generation steps were called
+    expect(mockProjectAnalyzer.analyzeProject).toHaveBeenCalledTimes(1);
+    expect(mockMemoryBankService.generateMemoryBank).toHaveBeenCalledTimes(1);
+    expect(mockRulesPromptBuilder.buildSystemPrompt).toHaveBeenCalledTimes(1);
+    expect(mockRulesPromptBuilder.buildPrompt).toHaveBeenCalledTimes(1);
+    expect(mockContentProcessor.stripMarkdownCodeBlock).toHaveBeenCalledTimes(1);
+    expect(mockFileOps.writeFile).toHaveBeenCalledTimes(1);
+
+    // Verify logger calls for retries (optional, but good for confidence)
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('LLM call failed with INVALID_RESPONSE_FORMAT. Retrying...')
+    );
+    expect(mockLogger.warn).toHaveBeenCalledTimes(2); // Should log warning for each retry attempt
+  });
+});

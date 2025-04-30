@@ -68,12 +68,6 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
         return Result.err(new Error('The --generators flag is required when using --generate.'));
       }
 
-      // For "cursor" generator type, skip project analysis and return placeholder immediately.
-      if (generatorType === 'cursor') {
-        this.logger.info('Skipping project analysis for cursor generation placeholder.');
-        return this.handleCursorGenerationPlaceholder([], options);
-      }
-
       if (!contextPaths?.length) {
         return Result.err(new Error('No context path provided for analysis'));
       }

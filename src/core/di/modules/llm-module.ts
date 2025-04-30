@@ -10,11 +10,9 @@ import { IFileOperations } from '@core/file-operations/interfaces';
 import { ILLMProvider, IModelListerService, LLMProviderFactory } from '@core/llm/interfaces';
 import { LLMAgent } from '@core/llm/llm-agent';
 import { ModelListerService } from '@core/llm/model-lister.service';
-import {
-  AnthropicLLMProvider,
-  GoogleGenAILLMProvider,
-  OpenAILLMProvider,
-} from '@core/llm/llm-provider';
+import { AnthropicProvider } from '@core/llm/providers/anthropic-provider';
+import { GoogleGenAIProvider } from '@core/llm/providers/google-genai-provider';
+import { OpenAIProvider } from '@core/llm/providers/openai-provider';
 import { LLMProviderRegistry } from '@core/llm/provider-registry';
 import { OpenRouterProvider } from '@core/llm/providers/open-router-provider';
 import { Result } from '@core/result/result';
@@ -65,7 +63,7 @@ export function registerLlmModule(container: Container): void {
       return function factory(config: LLMConfig): Result<ILLMProvider, Error> {
         try {
           const client = clientFactory(config);
-          return Result.ok(new OpenAILLMProvider(config, () => client));
+          return Result.ok(new OpenAIProvider(config, logger, () => client));
         } catch (error) {
           logger.error(
             `Error creating OpenAI provider instance: ${error instanceof Error ? error.message : String(error)}`,
@@ -100,7 +98,7 @@ export function registerLlmModule(container: Container): void {
       return function factory(config: LLMConfig): Result<ILLMProvider, Error> {
         try {
           const client = clientFactory(config);
-          return Result.ok(new GoogleGenAILLMProvider(config, () => client));
+          return Result.ok(new GoogleGenAIProvider(config, logger, () => client));
         } catch (error) {
           logger.error(
             `Error creating Google GenAI provider instance: ${error instanceof Error ? error.message : String(error)}`,
@@ -134,7 +132,7 @@ export function registerLlmModule(container: Container): void {
       return function factory(config: LLMConfig): Result<ILLMProvider, Error> {
         try {
           const client = clientFactory(config);
-          return Result.ok(new AnthropicLLMProvider(config, () => client));
+          return Result.ok(new AnthropicProvider(config, logger, () => client));
         } catch (error) {
           logger.error(
             `Error creating Anthropic provider instance: ${error instanceof Error ? error.message : String(error)}`,

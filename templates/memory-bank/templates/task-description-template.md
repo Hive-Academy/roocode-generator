@@ -6,7 +6,7 @@ taskId: [taskId]
 priority: [priority]
 ---
 
-# Task Description: [taskID]/[taskName]
+# Task Description: [taskID]/[task-percise-name]
 
 ## Overview
 

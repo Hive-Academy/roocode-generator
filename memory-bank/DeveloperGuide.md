@@ -163,7 +163,7 @@ Understanding the basic flow of command execution is helpful for adding new comm
 
 For a more detailed step-by-step breakdown and diagram, see the **System Design** section in [[TechnicalArchitecture#System-Design]].
 
-## 3. Development Workflow
+### 3. Development Workflow
 
 ### 3.1. Process Overview
 
@@ -248,410 +248,303 @@ This project utilizes **Trunk-Based Development** with short-lived feature branc
     247 | - Use standard `try...catch` primarily for unexpected runtime errors at higher levels (like the main entry point or around external library calls that don't use the `Result` pattern).
     248 | - Provide meaningful error messages and context within error objects.
     249 | - Log errors using the `ILogger` service, often by passing the `error` object from a failed `Result`.
-    250 | - **Logging**: Use the `ILogger` service (resolved via DI) for all application logging. Avoid `console.log` in application code (except potentially at the very top level entry point for fatal errors before the logger is available, or within the `LoggerService` implementation itself). Use different log levels (`debug`, `info`, `warn`, `error`) appropriately.
-    251 | - **Memory Bank Errors**: Specific errors related to the Memory Bank generator functionality are defined in `src/core/errors/memory-bank-errors.ts`. These extend the base `MemoryBankError` (which extends `RooCodeError`) and provide more specific context:
-    252 | - `MemoryBankGenerationError`: Errors during the overall generation process.
-    253 | - `MemoryBankTemplateError`: Errors related to loading or processing memory bank templates.
-    254 | - `MemoryBankFileError`: Errors during file operations (read/write) within the memory bank context.
-    255 | - `MemoryBankValidationError`: Errors during validation steps specific to memory bank content or structure.
-    256 | Use these specific errors where applicable to provide clearer diagnostics.
-    257 | - **Commit Messages**: Strictly follow the [Conventional Commits specification](https://www.conventionalcommits.org/). This is enforced by Commitlint via Husky hooks (`commit-msg` hook). Example types: `feat`, `fix`, `refactor`, `perf`, `test`, `build`, `ci`, `docs`, `style`.
+    250 | - **Handling Unexpected API Responses:** When interacting with external APIs, particularly LLM providers, be prepared for responses that may have a successful HTTP status (e.g., 200 OK) but contain an error structure within the response body or an otherwise unexpected format (e.g., missing expected fields like `choices`). Implement checks for these internal error indicators _before_ attempting to parse the expected successful response structure. Log the full, raw response data for any unexpected formats to aid in debugging.
+    251 | - **Logging**: Use the `ILogger` service (resolved via DI) for all application logging. Avoid `console.log` in application code (except potentially at the very top level entry point for fatal errors before the logger is available, or within the `LoggerService` implementation itself). Use different log levels (`debug`, `info`, `warn`, `error`) appropriately.
+    252 | - **Memory Bank Errors**: Specific errors related to the Memory Bank generator functionality are defined in `src/core/errors/memory-bank-errors.ts`. These extend the base `MemoryBankError` (which extends `RooCodeError`) and provide more specific context:
+    253 | - `MemoryBankGenerationError`: Errors during the overall generation process.
+    254 | - `MemoryBankTemplateError`: Errors related to loading or processing memory bank templates.
+    255 | - `MemoryBankFileError`: Errors during file operations (read/write) within the memory bank context.
+    256 | - `MemoryBankValidationError`: Errors during validation steps specific to memory bank content or structure.
+    257 | Use these specific errors where applicable to provide clearer diagnostics.
     258 |
-    259 | ### 4.2. Modular DI Registration Pattern
+    259 | #### Retry Pattern for Transient LLM Errors
     260 |
-    261 | To enhance organization and maintainability, the project's custom Dependency Injection (DI) registration logic is modularized. Instead of a single large registration function, dependencies are registered in dedicated module files located under `src/core/di/modules/`.
+    261 | For operations interacting with external services, particularly LLM providers, transient errors can occur (e.g., network issues, temporary service unavailability, or malformed responses like a missing `choices` array). To handle these, a retry pattern with exponential backoff is implemented in `ProjectAnalyzer.analyzeProject`.
     262 |
-    263 | **Key Principles:**
+    263 | This pattern involves:
     264 |
-    265 | - **Separation of Concerns:** Each module file (e.g., `app-module.ts`, `core-module.ts`, `llm-module.ts`, `rules-module.ts`, `memory-bank-module.ts`) contains registration logic specific to its domain, typically using factory functions (`container.registerFactory`) or singleton registration (`container.registerSingleton`).
-    266 | - **Centralized Loading:** The main registration entry point (`src/core/di/registrations.ts`) imports these modules and calls their respective registration functions (`registerCoreModule`, `registerLlmModule`, etc.) within the `registerServices` function. This builds the complete dependency graph for the container.
-    267 | - **Scalability:** This pattern makes it easier to add or modify dependencies for specific features without altering a single, large registration file. New features should ideally have their own registration module.
-    268 |
-    269 | **Example Structure:**
-    270 |
-    271 | `272 | 
-273 | src/
-274 | └── core/
-275 | └── di/
-276 | ├── container.ts # Main Container class
-277 | ├── decorators.ts # @Injectable, @Inject decorators
-278 | ├── errors.ts # DI-specific errors
-279 | ├── index.ts # Barrel file for DI exports
-280 | ├── interfaces.ts # IServiceContainer interface
-281 | ├── types.ts # Core DI types (ServiceLifetime, etc.)
-282 | ├── modules/ # <-- DI Registration Modules
-283 | │ ├── app-module.ts
-284 | │ ├── core-module.ts
-285 | │ ├── llm-module.ts
-286 | │ ├── memory-bank-module.ts
-287 | │ └── rules-module.ts
-288 | └── registrations.ts # Central registration function (imports & calls modules)
-289 | 
-290 |`
-    291 |
-    292 | **Adding New Dependencies:**
-    293 |
-    294 | 1. Identify the appropriate module (e.g., `core`, `llm`, `rules`, `memory-bank`, or a new feature module).
-    295 | 2. Add the service registration (using `registerSingleton` or `registerFactory` from `@core/di/index.ts` helpers or directly on the container) within that module's registration function (e.g., `registerCoreModule`).
-    296 | 3. Ensure the module registration function is called within `src/core/di/registrations.ts`.
-    297 | 4. Use `@Inject('YourServiceToken')` in the constructor of classes needing the dependency. Ensure the token used matches the registration token.
-    298 |
-    299 | ### 4.3. Quality and Testing
-    300 |
-    301 | - **Testing Approach**: The project uses **Jest** (`^29.7.0`) as the primary testing framework, configured with `ts-jest` (`^29.3.2`) for seamless TypeScript support (`jest.config.js`). Unit and integration tests are expected to be located in the `tests/` directory, following the naming convention `*.test.ts`. _(Note: While co-location of tests (`src/component/component.test.ts`) is a common practice, the current configuration specifies `tests/**/*.test.ts`. Follow the existing structure unless a migration is planned)._
-    302 | - **Coverage Goals**: The project enforces a minimum global coverage threshold of **80%** for branches, functions, lines, and statements, as configured in `jest.config.js` (`coverageThreshold`). Strive to maintain or increase coverage with new contributions.
-
-- **Memory Bank Service Testing Patterns**: The Memory Bank service (`src/memory-bank/`) follows specific testing patterns:
-  - **Service/Component Testing**: Each major component (`MemoryBankService`, `MemoryBankOrchestrator`, `MemoryBankTemplateProcessor`, etc.) has dedicated unit tests.
-  - **Mock Dependencies**: Use Jest mocks (`jest.fn()`, `jest.mock()`) extensively for dependencies (LLM, File Operations, Logger, etc.) to isolate service components during unit testing.
-  - **Error Handling Tests**: Verify that specific `MemoryBankError` types are returned correctly via `Result.err()` and that errors are logged appropriately.
-  - **Success Path Tests**: Ensure the happy path works as expected, returning `Result.ok()`.
-  - **Integration Testing**: Test interactions between the `AiMagicGenerator` and the `MemoryBankService`, as well as internal service component interactions (e.g., Service -> Orchestrator -> FileManager). May use real implementations for some services (like FileOperations if testing actual file output) while mocking others (like LLMAgent).
-    309 | - **Validation**:
-    310 | - **Static Analysis**: Run `npm run lint` to check for code style and potential errors based on `eslint.config.mjs`. Fix all reported issues.
-    311 | - **Type Checking**: Run `npm run type-check` (uses `tsc --noEmit`) to ensure type safety based on `tsconfig.json`. Resolve all TypeScript errors.
-    312 | - **Running Tests**:
-    313 | - Run all tests once:
-    314 | `bash
-315 |     npm test
-316 |     `
-    317 | - Run tests in watch mode during development:
-    320 | `bash
-321 |     npm run test:watch
-322 |     `
-    323 | - Generate test coverage report:
-    324 | `bash
-325 |     npm run test:coverage
-326 |     `
-    327 | - **Testing Framework Setup**:
-    328 | - Jest configuration is defined in `jest.config.js`.
-    329 | - Key settings include: `preset: 'ts-jest'`, `testEnvironment: 'node'`, `testMatch`, `moduleNameMapper` (for resolving `@` aliases like `@core`), `coverageDirectory`, `coverageReporters`, `coverageThreshold`.
-    330 | - `transformIgnorePatterns` might be needed for dependencies that require transformation (e.g., ESM modules like `chalk`, `ora`).
-    331 | - **Test Maintenance Guidelines**:
-    332 | - Write tests for all new features and bug fixes.
-    333 | - Place test files in the `tests/` directory using the `*.test.ts` pattern.
-    334 | - Use descriptive test names (`it(...)` or `test(...)`) and group related tests with `describe` blocks.
-    335 | - Mock external dependencies (LLM APIs, file system for unit tests) using Jest's mocking capabilities.
-    336 | - **Mocking Interfaces:** When mocking dependencies injected via interfaces (e.g., `IFileOperations`), ensure your mock object implements _all_ methods defined in the interface, even if not directly used by the test subject. This prevents TypeScript errors and ensures the mock accurately reflects the interface contract. Keep mocks synchronized with interface changes.
-    337 | - Follow existing code style and formatting guidelines within tests.
-    338 | - Run tests locally (`npm test`) before committing changes.
-    339 | - CI pipelines automatically enforce test execution and coverage thresholds on pull requests/merges to `main`.
-    340 |
-    341 | ## 5. Common Operations
-    342 |
-    343 | ### 5.1. Development Tasks
-    344 |
-    345 | Standard npm scripts are configured in `package.json` for common development tasks:
-    346 |
-    347 | - **Build the project:** Compiles TypeScript to JavaScript in `dist/` and copies templates.
-    348 | `bash
-349 |   npm run build
-350 | ````
-351 | 
-352 | - **Run type checking:** Verifies TypeScript types without emitting JS files.
-353 |   `bash
-    354 | npm run type-check
-    355 | `356 | - **Run tests:** Executes the test suite using Jest.
-357 |  `bash
-    358 | npm test
-    359 | `360 | - **Run tests in watch mode:** Useful during development to automatically re-run tests on file changes.
-361 |  `bash
-    362 | npm run test:watch
-    363 | ``364 | - **Generate test coverage report:** Runs tests and outputs coverage information to `coverage/`.
-365 |  ``bash
-    366 | npm run test:coverage
-    367 | ``368 | - **Check for linting errors:** Runs ESLint based on `eslint.config.mjs`.
-369 |  ``bash
-    370 | npm run lint
-    371 | `372 | - **Automatically fix linting errors:** Applies ESLint's automatic fixes where possible.
-373 |  `bash
-    374 | npm run lint:fix
-    375 | `376 | - **Check code formatting:** Runs Prettier to check if files match the defined style.
-377 |  `bash
-    378 | npm run format
-    379 | `380 | - **Automatically fix formatting:** Runs Prettier to reformat files according to the defined style.
-381 |  `bash
-    382 | npm run format:write
-    383 | `384 | - **Run all style checks/fixes:** Combines formatting and lint fixing.
-385 |  `bash
-    386 | npm run style
-    387 | ``388 | - **Run in development mode:** Builds the project and immediately runs a common generation command (`generate --generators vscode-copilot-rules memory-bank`). Useful for quick testing during development.
-389 |  ``bash
-    390 | npm run dev
-    391 | ``392 | - **Run the CLI directly (after building):** Executes the main CLI entry point using `cross-env` to set `NODE_PATH` for alias resolution. Pass CLI arguments after `--`.
-393 |  ``bash
-    394 | npm run start -- [command] [options]
-    395 | # Example: npm run start -- config --provider openai
-    396 | # Example: npm run start -- generate --generators rules
-    397 | `398 |   Alternatively, run the compiled script directly:
-399 |  `bash
-    400 | # Ensure NODE*PATH is set for module-alias to work
-    401 | cross-env NODE_PATH=dist/src node dist/bin/roocode-generator.js [command] [options]
-    402 | ``403 | 
-404 | ### 5.2. Build and Deploy
-405 | 
-406 | - **Build Process**: Triggered by `npm run build`. Uses `tsc`(TypeScript Compiler) based on`tsconfig.json`to compile`src/\*\*/*.ts` files into JavaScript (`commonjs`modules) in the`dist/`directory. The`copyfiles -u 1 templates/**/\* dist/templates`script copies template assets from`templates/`to`dist/templates` so they are included in the build output.
-    407 | - **Deployment**: Deployment and package publishing to the npm registry are automated using `semantic-release`. This process typically runs in a CI/CD pipeline (e.g., GitHub Actions) triggered by merges or pushes to the `main` branch.
-    408 | - `semantic-release` analyzes commit messages (following Conventional Commits) since the last release.
-    409 | - It determines the appropriate version bump (patch, minor, major) based on commit types (`fix:`, `feat:`, `BREAKING CHANGE:`).
-    410 | - It generates changelog entries (using `@semantic-release/changelog`).
-    411 | - It commits version bumps and changelog files (`@semantic-release/git`).
-    412 | - It tags the release in Git.
-    413 | - It publishes the package to the npm registry (`@semantic-release/npm`).
-    414 | - It creates a GitHub release (`@semantic-release/github`).
-    415 | - Manual publishing (`npm publish`) is generally discouraged; rely on the automated CI process.
-    416 |
-    417 | ## 6. Working with Rule Templates
-    418 |
-    419 | The Rules Template System (`src/core/templating/`) is central to generating mode-specific rules and documentation, particularly for the `RulesGenerator`.
-    420 |
-    421 | ### 6.1. Template Structure and Syntax
-    422 |
-    423 | - **Location**: Templates are Markdown files located in `templates/rules/[mode]/` (e.g., `templates/rules/architect/base.md`). Customizations can be placed in `templates/rules/[mode]/custom.md`.
-    424 | - **Metadata**: Templates can include YAML front-matter for metadata (e.g., `Mode`, `Version`, `RequiredSections`), parsed by `RulesTemplateManager`.
-    425 | - **Sections**: Templates are divided into logical sections using Markdown headings (`## Section Name`).
-    426 | - **Contextual Rules Marker**: The special marker `{{CONTEXTUAL_RULES}}` is used within a template section. The `TemplateProcessor` replaces this marker with rules generated by the LLM based on the analyzed project context.
-    427 |
-    428 | **Example Template Structure (`templates/rules/architect/base.md`):\*\*
-    429 |
-    430 |`markdown
-    431 | ---
-    432 | Mode: architect
-    433 | Version: 1.0
-    434 | RequiredSections: [Overview, Principles] # Example metadata
-
-### 5.2.1. Handling Module Compatibility with Vite
-
-When building a Node.js CLI with Vite, you may encounter compatibility issues with certain dependencies that use different module formats (ES modules vs. CommonJS) or have specific requirements for their environment. This was observed with packages like `ora`, `inquirer`, and `langchain`.
-
-To address these issues, adjustments may be needed in the `vite.config.ts` file:
-
-- **`optimizeDeps.exclude`**: For packages that cause issues during Vite's dependency pre-bundling step, add them to the `optimizeDeps.exclude` array. This prevents Vite from trying to pre-bundle them, allowing them to be handled by Rollup during the build.
-- **`rollupOptions.external`**: Ensure that Node.js built-ins and external dependencies that should _not_ be bundled into the final output are listed in `rollupOptions.external`. While `rollup-plugin-node-externals` helps, explicitly listing problematic packages here can sometimes resolve issues.
-- **Import Statements**: In some cases, adjusting import statements in your source code (e.g., using dynamic `import()` or specific import paths provided by the package) might be necessary, although configuration adjustments are preferred.
-
-Refer to the `vite.config.ts` file and the specific package documentation for detailed examples and troubleshooting.
-435 | ---
-436 |
-437 | # Architect Mode Base Rules
-438 |
-439 | ## Overview
-440 |
-441 | Base rules for architectural planning...
-442 |
-443 | ## Principles
-444 |
-445 | - Principle A
-446 | - Principle B
-447 |
-448 | ## Contextual Guidelines
-449 |
-450 | This section will contain guidelines generated based on your project's specific context.
-451 |
-452 | {{CONTEXTUAL_RULES}}
-453 |
-454 | ## Best Practices
-455 |
-456 | Additional best practices...
-457 | `458 |
-    459 | ### 6.2. Developer Usage
-    460 |
-    461 | Interaction with the template system primarily involves the `IRulesTemplateManager`and`TemplateProcessor`components, resolved via Dependency Injection.
-    462 |
-    463 | 1. **Loading Base Templates:** Use`IRulesTemplateManager.loadBaseTemplate(mode)`to get the base template content for a specific mode.
-    464 | 2. **Loading Customizations:** Use`IRulesTemplateManager.loadCustomizations(mode)`to get customization content (returns empty string if none).
-    465 | 3. **Merging Templates:** Use`IRulesTemplateManager.mergeTemplates(baseContent, customContent)`to combine base and custom sections. Custom sections typically override base sections with the same name.
-    466 | 4. **Processing with Contextual Rules:** Use`TemplateProcessor.processTemplate(mode, projectContext)`which orchestrates loading, merging, LLM interaction (via`LLMAgent`) to generate rules for the `{{CONTEXTUAL_RULES}}`marker based on`projectContext`, and insertion into the final template string.
-    467 |
-    468 | (See `src/core/templating/rules-template-manager.ts`and`src/core/templating/template-processor.ts`for implementation details).
-    469 |
-    470 | ### 6.3. Error Handling
-    471 |
-    472 | - The template system uses the`Result<T, E>` pattern extensively (`src/core/result/result.ts`).
-    473 | - Operations like `loadBaseTemplate`, `loadCustomizations`, `mergeTemplates`, `processTemplate`return`Result`objects.
-    474 | - **Always** check the result using`isOk()`or`isErr()`before accessing`.value`or`.error`.
-    475 | - Handle potential errors gracefully, typically by logging the error using `ILogger`and potentially providing user feedback via`ICliInterface`or`ProgressIndicator`.
-    476 |
-    477 | **Example Error Handling Pattern:**
-    478 |
-    479 |``typescript
-    480 | const loadResult = await templateManager.loadBaseTemplate('architect');
-    481 | if (loadResult.isErr()) {
-    482 | const logger = container.resolve<ILogger>('ILogger').value!; // Resolve logger via DI
-    483 | logger.error(`Failed to load base template: ${loadResult.error.message}`, loadResult.error);
-    484 | // Propagate error or handle appropriately
-    485 | return Result.err(new Error(`Template loading failed: ${loadResult.error.message}`));
-    486 | }
-    487 | const baseContent = loadResult.value;
-    488 | // Proceed with baseContent...
-    489 | ``490 |
-    491 | ### 6.4. Best Practices
-    492 |
-    493 | - **Template Management:** Store templates and customizations in version control (`templates/`). Use clear names for files and sections. Use front-matter for metadata.
-    494 | - **Customization:** Create separate `custom.md`files. Document customization rationale. Test merged templates.
-    495 | - **Integration:** Resolve`IRulesTemplateManager`and`TemplateProcessor`via DI. Implement consistent`Result`-based error handling. Log template operations for debugging. Use `validateTemplate`where appropriate.
-    496 |
-    497 | ## 7. LLM-Based Rules Generator Implementation
-    498 |
-    499 | The`RulesGenerator` (`src/generators/rules/rules-generator.ts`) leverages LLMs to create context-aware coding standards.
-    500 |
-    501 | ### 7.1. Core Components
-    502 |
-    503 | - **`IProjectAnalyzer` (`src/core/analysis/project-analyzer.ts`):** Analyzes project tech stack, structure, dependencies using `FileOperations`and`LLMAgent`.
-    504 | - **`IRulesTemplateManager` (`src/core/templating/rules-template-manager.ts`):** Loads base rule templates and customizations.
-    505 | - **`TemplateProcessor` (`src/core/templating/template-processor.ts`):** Orchestrates template merging, LLM interaction (via `LLMAgent`) for contextual rule generation (`{{CONTEXTUAL_RULES}}`), and insertion.
-    506 | - **`LLMAgent` (`src/core/llm/llm-agent.ts`):** Handles communication with the configured LLM provider (via `LLMProviderRegistry`).
-    507 | - **`IRulesFileManager` (`src/generators/rules/rules-file-manager.ts`):** Saves generated rules to `.roo/rules/[mode]/[version].json`, manages version history in `.roo/rules-versions.json`, and handles backups.
-    508 | - **`IRulesContentProcessor` (`src/generators/rules/rules-content-processor.ts`):** Post-processes LLM output (e.g., strips markdown fences).
-    509 | - **`IRulesPromptBuilder` (`src/generators/rules/rules-prompt-builder.ts`):** Constructs prompts for the LLM based on context and templates.
-    510 |
-    511 | ### 7.2. Usage Example (Simplified Flow in `RulesGenerator.generate`)
-    512 |
-    513 |``typescript
-    514 | // Simplified conceptual flow within RulesGenerator.generate()
-    515 |
-    516 | // 1. Analyze Project Context (using IProjectAnalyzer)
-    517 | const contextResult = await this.projectAnalyzer.analyzeProject(contextPaths);
-    518 | if (contextResult.isErr()) return contextResult;
-    519 | const projectContext = contextResult.value!;
-    520 |
-    521 | // 2. Process Template (using TemplateProcessor)
-    522 | // - Loads base/custom templates (via IRulesTemplateManager)
-    523 | // - Merges templates
-    524 | // - Generates contextual rules via LLMAgent based on projectContext
-    525 | // - Inserts rules into {{CONTEXTUAL_RULES}} placeholder
-    526 | const processedTemplateResult = await this.templateProcessor.processTemplate(mode, projectContext);
-    527 | if (processedTemplateResult.isErr()) return processedTemplateResult;
-    528 | const finalContent = processedTemplateResult.value!;
-    529 |
-    530 | // 3. Post-Process Content (using IRulesContentProcessor)
-    531 | const processedRulesResult = this.contentProcessor.processContent(finalContent, { mode });
-    532 | if (processedRulesResult.isErr()) return processedRulesResult;
-    533 | const readyContent = processedRulesResult.value!;
-    534 |
-    535 | // 4. Save Rules (using IRulesFileManager)
-    536 | // - Handles versioning and history automatically
-    537 | const generatedRules: GeneratedRules = {
-    538 | /_ ... _/
-    539 | };
-    540 | const saveResult = await this.fileManager.saveRules(generatedRules);
-    541 | if (saveResult.isErr()) return saveResult;
-    542 |
-    543 | return Result.ok(saveResult.value!); // Return path or success message
-    544 | ```
-    545 |
-    546 | ### 7.3. Error Handling Patterns
-    547 |
-    548 | - **`Result` Type:** All core operations (`analyzeProject`, `processTemplate`, `getCompletion`, `saveRules`, `loadRules`, etc.) return a `Result<T, Error>`. Always check `isOk()`/`isErr()`.
-    549 | - **Logging:** Use the injected `ILogger`to log errors with context (mode, file path, operation name) and the underlying error object.
-    550 | - **Propagation:** Return`Result.err(error)`to propagate errors up the call stack. Handle errors at appropriate levels (e.g., in`ApplicationContainer`or command handlers).
-    551 | - **Fallback:** The`RulesGenerator`\_may\* include fallback logic to use static templates if LLM generation fails (check implementation).
-    552 |
-    553 | ### 7.4. Best Practices
-    554 |
-    555 | 1. **Project Analysis:** Provide accurate`contextPaths`. Handle analysis errors gracefully.
-    556 | 2. **Template Processing:** Ensure templates exist and are valid. Handle merge issues.
-    557 | 3. **File Management:** Rely on `RulesFileManager`for robust versioning and backups.
-    558 | 4. **Error Recovery:** Log detailed context. Provide user feedback via`ICliInterface`/`ProgressIndicator`.
-    559 | 5. **LLM Interaction:** Secure API keys (`.env`). Validate LLM responses. Handle API errors/rate limits.
-    560 |
-    561 | ### 7.5. Common Issues & Troubleshooting
-    562 |
-    563 | 1. **LLM API Errors:** Check API key validity (`.env`, `llm.config.json`), network, provider status, model name, token limits, temperature settings. Use `roocode config`to verify/update.
-    564 | 2. **Template Parsing/Merging Errors:** Verify template syntax (Markdown headings, front-matter,`{{CONTEXTUAL_RULES}}`). Check file paths used by `RulesTemplateManager`.
-    565 | 3. **File System Errors:** Ensure write permissions for the `.roo`directory. Check paths used by`RulesFileManager`.
-    566 | 4. **Context Analysis Failures:** Verify `IProjectAnalyzer`can access project files. Check permissions. Ensure LLM used for analysis (if any) is configured.
-    567 | 5. **Content Processing Errors:** Ensure LLM output matches expected format for`IRulesContentProcessor`.
-    568 |
-    569 | ### 7.6. Performance & Security
-    570 |
-    571 | - **Performance:** Caching is implemented for templates (`TemplateManager`) and LLM provider instances (`LLMProviderRegistry`). Consider caching analysis results (`IProjectAnalyzer`) if needed. Be mindful of resource usage with large files/responses.
-    572 | - **Security:** Protect API keys (`.env`, `.gitignore`). Be cautious about sending sensitive code to external LLMs. Validate file paths to prevent traversal issues (`FileOperations`). Run with appropriate permissions.
-    573 |
-    574 | ### 7.7. Content Aggregation Pattern
-    575 |
-    576 | This pattern describes how the `RulesGenerator`combines static template content with dynamically generated LLM content into a single, structured Markdown file.
-    577 |
-    578 | - **Source Combination:** The`TemplateProcessor`loads base and custom templates (Markdown files with sections defined by headings).
-    579 | - **LLM Insertion:** The`{{CONTEXTUAL_RULES}}`marker in the template is replaced by content generated by the LLM based on project context.
-    580 | - **Single Output:** The final output is a single Markdown string containing all combined content, including generated headings from the original templates and the inserted LLM output.
-    581 | - **File Manager:** The`IRulesFileManager` is responsible for saving this single Markdown string to the designated output file (`.roo/rules-code/rules.md`).
-    582 |
-    583 | ### 7.8. Content Processing Pattern
-    584 |
-    585 | This pattern highlights the use of a dedicated component for cleaning and formatting the raw output received from the LLM before it is saved or further processed.
-    586 |
-    587 | - **Purpose:** The `IRulesContentProcessor`is used to perform post-processing on the LLM's response. This is necessary because LLMs may include unwanted formatting (like markdown code fences) or need specific cleaning based on the expected output format.
-    588 | - **Implementation:** The`RulesContentProcessor`implements the`IRulesContentProcessor`interface and contains the logic for these cleaning/formatting steps.
-    589 | - **Integration:** The`RulesGenerator`calls the`IRulesContentProcessor.processContent()`method after receiving the processed template content from the`TemplateProcessor`and before saving the final output via the`IRulesFileManager`.
-    590 | - **Benefits:** Decouples the cleaning logic from the generator and file management, making it easier to modify or add new processing steps.
-    591 |
-    592 | ## 8. Troubleshooting
-    593 |
-    594 | ### 8.1. Common Issues
-    595 |
-    596 | - **Dependency Installation Errors (`npm install`):**
-    597 | - Ensure Node.js (>=18.x recommended) and npm versions are compatible.
-    598 | - Try removing `node_modules`and`package-lock.json`and reinstalling:`rm -rf node_modules && rm package-lock.json && npm install`.
-    599 | - Check network connectivity and npm registry status.
-    600 | - **Build Failures (`npm run build`):**
-    601 | - Check console output for specific TypeScript errors (`tsc`). Address type errors, missing imports, or configuration issues in `tsconfig.json`.
-    602 | - Ensure `copyfiles`command is correctly copying assets (like`templates/`) to `dist/`.
-    603 | - **Linting/Formatting Errors (`npm run lint`/`npm run format`):**
-    604 | - Run `npm run lint:fix`or`npm run format:write`to automatically fix issues.
-    605 | - Consult`eslint.config.mjs` and Prettier config for rule details.
-    606 | - Ensure editor extensions (ESLint, Prettier) are enabled and configured.
-    607 | - **Git Hook Failures (pre-commit, commit-msg):**
-    608 | - Ensure Husky is set up (`npm run prepare`).
-    609 | - Check the specific hook script that failed (usually linting or commit message format errors). Fix the underlying code or commit message according to Conventional Commits.
-    610 | - **LLM API Key Issues:**
-    611 | - Verify `.env`file exists in the project root and contains the correct API keys (e.g.,`OPENAI_API_KEY`).
-    612 | - Ensure `dotenv/config`is imported early in`bin/roocode-generator.js`.
-    613 | - Check the specific LLM provider's documentation for key validity and usage limits.
-    614 | - Verify `llm.config.json`has the correct provider/model selected. Use`roocode config` command to check/update interactively or via flags.
-    615 | - **Module Resolution Errors (`Cannot find module '@core/...'`):**
-    616 | - Ensure the project is built (`npm run build`) and the `dist`directory exists and contains compiled JS files.
-    617 | - Verify`module-alias`setup in`bin/roocode-generator.js`correctly points to`../dist/src`.
-    618 | - Confirm the `start`script in`package.json`uses`cross-env NODE_PATH=dist/src`or a similar mechanism to set the module resolution path for Node.js.
-    619 | - Check`tsconfig.json` `paths`and`baseUrl`are correctly configured for editor intellisense and potentially`ts-jest`mapping.
-    620 |
-    621 | ### 8.2. Support Resources
-    622 |
-    623 | - **Check Logs**: Look for detailed error messages and stack traces in the console output. Increase log level if necessary (check`LoggerService` or configuration).
-    624 | - **Project Issues**: Search existing issues or open a new one in the project's issue tracker (e.g., GitHub Issues). Provide detailed steps to reproduce, error messages, environment info (Node version, OS), and relevant configuration.
-    625 | - **Team Channel**: Contact the development team via the designated communication channel (e.g., Slack, Teams).
-    626 | - **Langchain Documentation**: Refer to the [Langchain JS/TS documentation](https://js.langchain.com/) for issues related to LLM interactions, specific providers (`@langchain/\*`), or core concepts.
-    627 | - **Dependency Documentation**: Consult the documentation for other key dependencies like Commander, Inquirer, Jest, ESLint, TypeScript, etc.
-    628 |
-    629 | ## 9. Environment Management
-    630 |
-    631 | ### 9.1. Infrastructure
-    632 |
-    633 | - The project runs primarily as a **local CLI tool** on the developer's or user's machine.
-    634 | - **CI/CD**: Uses GitHub Actions (implied by `@semantic-release/github`) for automated linting, testing, building, and releasing (via `semantic-release`). See workflow files (e.g., `.github/workflows/`).
-    635 | - **Distribution**: Published as an npm package to the npm registry.
-    636 |
-    637 | See [[TechnicalArchitecture#Infrastructure]] for more details.
-    638 |
-    639 | ### 9.2. Environments
-    640 |
-    641 | - **Development (Local):** Your local machine. Uses `.env`file for API keys. Run via`npm run dev`or`npm start`. Build output goes to `dist/`. Tests run against local code.
-    642 | - **CI (Continuous Integration):** Environment like GitHub Actions. Runs checks (`lint`, `test`, `build`). Uses secrets management (e.g., GitHub Secrets) for `NPM_TOKEN`for publishing and potentially API keys if needed during CI tests or release steps.
-    643 | - **Production (npm Registry / User's Machine):\*\* The published package installed via`npm install -g roocode-generator`or used via`npx`. Users run it in their own environments, manage their own `.env`files, and use`roocode config` to manage their LLM settings (`llm.config.json`).
-    644 |
-    645 | Environment-specific configurations (like different API endpoints if applicable, feature flags) are primarily managed through environment variables (`dotenv`) and the user-managed `llm.config.json`.
-646 |
-647 |
-648 |
-
-<!-- Vite Integration Update -->
-
-As part of our ongoing efforts to streamline development and enhance our CI/CD pipeline, we have integrated Vite into our project for efficient TypeScript bundling and building. Key updates include:
-
-- **Faster Builds:** Utilization of Vite’s esbuild for rapid TypeScript transpilation, significantly reducing build times.
-- **Real-Time Type Checking:** Incorporation of `vite-plugin-checker` for immediate TypeScript error feedback directly in the browser during development.
-- **Simplified Configuration:** Adoption of Vite’s native module aliasing in `vite.config.ts`, replacing older methods like `module-alias`.
-- **CI/CD Enhancements:** Updated CI pipeline processes now include running `vite build` and `tsc --noEmit` to ensure robust build validation before npm package publishing.
-- **Improved Developer Experience:** Enhanced support for Hot Module Replacement (HMR) resulting in a smoother development workflow and faster iteration cycles.
-
-_For further details, please refer to the [Vite Official Documentation](https://vite.dev/guide/features) and related resources._
+    265 | - Catching specific, identifiable transient errors (e.g., `LLMProviderError` with code `INVALID_RESPONSE_FORMAT`).
+    266 | - Retrying the operation a predefined number of times.
+    267 | - Waiting for an exponentially increasing duration between retries to avoid overwhelming the service.
+    268 | - Logging retry attempts and eventual failure or success.
+    269 |
+    270 | This approach improves the robustness of operations dependent on external services by automatically handling temporary issues.
+    271 |
+    272 | 257 | - **Commit Messages**: Strictly follow the [Conventional Commits specification](https://www.conventionalcommits.org/). This is enforced by Commitlint via Husky hooks (`commit-msg` hook). Example types: `feat`, `fix`, `refactor`, `perf`, `test`, `build`, `ci`, `docs`, `style`.
+    273 | 258 |
+    274 | 259 | ### 4.2. Modular DI Registration Pattern
+    275 | 260 |
+    276 | 261 | To enhance organization and maintainability, the project's custom Dependency Injection (DI) registration logic is modularized. Instead of a single large registration function, dependencies are registered in dedicated module files located under `src/core/di/modules/`.
+    277 | 262 |
+    278 | 263 | **Key Principles:**
+    279 | 264 |
+    280 | 265 | - **Separation of Concerns:** Each module file (e.g., `app-module.ts`, `core-module.ts`, `llm-module.ts`, `rules-module.ts`, `memory-bank-module.ts`) contains registration logic specific to its domain, typically using factory functions (`container.registerFactory`) or singleton registration (`container.registerSingleton`).
+    281 | 266 | - **Centralized Loading:** The main registration entry point (`src/core/di/registrations.ts`) imports these modules and calls their respective registration functions (`registerCoreModule`, `registerLlmModule`, etc.) within the `registerServices` function. This builds the complete dependency graph for the container.
+    282 | 267 | - **Scalability:** This pattern makes it easier to add or modify dependencies for specific features without altering a single, large registration file. New features should ideally have their own registration module.
+    283 | 268 |
+    284 | 269 | **Example Structure:**
+    285 | 270 |
+    286 | 271 | `272 |
+287 |
+288 | 273 | src/
+289 | 274 | └── core/
+290 | 275 | └── di/
+291 | 276 | ├── container.ts # Main Container class
+292 | 277 | ├── decorators.ts # @Injectable, @Inject decorators
+293 | 278 | ├── errors.ts # DI-specific errors
+294 | 279 | ├── index.ts # Barrel file for DI exports
+295 | 280 | ├── interfaces.ts # IServiceContainer interface
+296 | 281 | ├── types.ts # Core DI types (ServiceLifetime, etc.)
+297 | 282 | ├── modules/ # <-- DI Registration Modules
+298 | 283 | │ ├── app-module.ts
+299 | 284 | │ ├── core-module.ts
+300 | 285 | │ ├── llm-module.ts
+301 | 286 | │ ├── memory-bank-module.ts
+302 | 287 | │ └── rules-module.ts
+303 | 288 | └── registrations.ts # Central registration function (imports & calls modules)
+304 | 289 |
+305 | 290 |` 291 |
+    306 | 292 | **Adding New Dependencies:**
+    307 | 293 |
+    308 | 294 | 1. Identify the appropriate module (e.g.,`core`, `llm`, `rules`, `memory-bank`, or a new feature module).
+    309 | 295 | 2. Add the service registration (using `registerSingleton`or`registerFactory`from`@core/di/index.ts`helpers or directly on the container) within that module's registration function (e.g.,`registerCoreModule`).
+    310 | 296 | 3. Ensure the module registration function is called within `src/core/di/registrations.ts`.
+    311 | 297 | 4. Use `@Inject('YourServiceToken')` in the constructor of classes needing the dependency. Ensure the token used matches the registration token.
+    312 | 298 |
+    313 | 299 | ### 4.3. Quality and Testing
+    314 | 300 |
+    315 | 301 | - **Testing Approach**: The project uses **Jest** (`^29.7.0`) as the primary testing framework, configured with `ts-jest` (`^29.3.2`) for seamless TypeScript support (`jest.config.js`). Unit and integration tests are expected to be located in the `tests/`directory, following the naming convention`_.test.ts`. _(Note: While co-location of tests (`src/component/component.test.ts`) is a common practice, the current configuration specifies `tests/\*\*/_.test.ts`. Follow the existing structure unless a migration is planned)._
+316 |     302 | - **Coverage Goals**: The project enforces a minimum global coverage threshold of **80%** for branches, functions, lines, and statements, as configured in `jest.config.js` (`coverageThreshold`). Strive to maintain or increase coverage with new contributions.
+317 |
+318 | - **Memory Bank Service Testing Patterns**: The Memory Bank service (`src/memory-bank/`) follows specific testing patterns:
+319 |   - **Service/Component Testing**: Each major component (`MemoryBankService`, `MemoryBankOrchestrator`, `MemoryBankTemplateProcessor`, etc.) has dedicated unit tests.
+320 |   - **Mock Dependencies**: Use Jest mocks (`jest.fn()`, `jest.mock()`) extensively for dependencies (LLM, File Operations, Logger, etc.) to isolate service components during unit testing.
+321 |   - **Error Handling Tests**: Verify that specific `MemoryBankError`types are returned correctly via`Result.err()`and that errors are logged appropriately.
+322 |   - **Success Path Tests**: Ensure the happy path works as expected, returning`Result.ok()`.
+323 |   - **Integration Testing**: Test interactions between the `AiMagicGenerator`and the`MemoryBankService`, as well as internal service component interactions (e.g., Service -> Orchestrator -> FileManager). May use real implementations for some services (like FileOperations if testing actual file output) while mocking others (like LLMAgent).
+324 |     309 | - **Validation**:
+325 |     310 | - **Static Analysis**: Run `npm run lint`to check for code style and potential errors based on`eslint.config.mjs`. Fix all reported issues.
+326 |     311 | - **Type Checking**: Run `npm run type-check`(uses`tsc --noEmit`) to ensure type safety based on `tsconfig.json`. Resolve all TypeScript errors.
+327 |     312 | - **Running Tests**:
+328 |     313 | - Run all tests once:
+329 |     314 | `bash
+    330 | 315 | npm test
+    331 | 316 | `332 |     317 | - Run tests in watch mode during development:
+333 |     320 |`bash
+    334 | 321 | npm run test:watch
+    335 | 322 | `336 |     323 | - Generate test coverage report:
+337 |     324 |`bash
+    338 | 325 | npm run test:coverage
+    339 | 326 | `340 |     327 | - **Check for linting errors:** Runs ESLint based on`eslint.config.mjs`.
+341 |     328 | - **Automatically fix linting errors:** Applies ESLint's automatic fixes where possible.
+342 |     329 | - **Check code formatting:** Runs Prettier to check if files match the defined style.
+343 |     330 | - **Automatically fix formatting:** Runs Prettier to reformat files according to the defined style.
+344 |     331 | - **Run all style checks/fixes:** Combines formatting and lint fixing.
+345 |     332 | - **Run in development mode:** Builds the project and immediately runs a common generation command (`generate --generators vscode-copilot-rules memory-bank`). Useful for quick testing during development.
+346 |     333 | - **Run the CLI directly (after building):** Executes the main CLI entry point using `cross-env`to set`NODE*PATH`for alias resolution. Pass CLI arguments after`--`.
+347 |     334 |   Alternatively, run the compiled script directly:
+348 |     335 |
+349 |     336 | ### 5.2. Build and Deploy
+350 |     337 |
+351 |     338 | - **Build Process**: Triggered by `npm run build`. Uses `tsc`(TypeScript Compiler) based on`tsconfig.json`to compile`src/\*\*/\*.ts` files into JavaScript (`commonjs`modules) in the`dist/`directory. The`copyfiles -u 1 templates/**/\* dist/templates`script copies template assets from`templates/`to`dist/templates` so they are included in the build output.
+    352 | 339 | - **Deployment**: Deployment and package publishing to the npm registry are automated using `semantic-release`. This process typically runs in a CI/CD pipeline (e.g., GitHub Actions) triggered by merges or pushes to the `main` branch.
+    353 | 340 | - `semantic-release` analyzes commit messages (following Conventional Commits) since the last release.
+    354 | 341 | - It determines the appropriate version bump (patch, minor, major) based on commit types (`fix:`, `feat:`, `BREAKING CHANGE:`).
+    355 | 342 | - It generates changelog entries (using `@semantic-release/changelog`).
+    356 | 343 | - It commits version bumps and changelog files (`@semantic-release/git`).
+    357 | 344 | - It tags the release in Git.
+    358 | 345 | - It publishes the package to the npm registry (`@semantic-release/npm`).
+    359 | 346 | - It creates a GitHub release (`@semantic-release/github`).
+    360 | 347 | - Manual publishing (`npm publish`) is generally discouraged; rely on the automated CI process.
+    361 | 348 |
+    362 | 349 | ## 6. Working with Rule Templates
+    363 | 350 |
+    364 | 351 | The Rules Template System (`src/core/templating/`) is central to generating mode-specific rules and documentation, particularly for the `RulesGenerator`.
+    365 | 352 |
+    366 | 353 | ### 6.1. Template Structure and Syntax
+    367 | 354 |
+    368 | 355 | - **Location**: Templates are Markdown files located in `templates/rules/[mode]/` (e.g., `templates/rules/architect/base.md`). Customizations can be placed in `templates/rules/[mode]/custom.md`.
+    369 | 356 | - **Metadata**: Templates can include YAML front-matter for metadata (e.g., `Mode`, `Version`, `RequiredSections`), parsed by `RulesTemplateManager`.
+    370 | 357 | - **Sections**: Templates are divided into logical sections using Markdown headings (`## Section Name`).
+    371 | 358 | - **Contextual Rules Marker**: The special marker `{{CONTEXTUAL_RULES}}` is used within a template section. The `TemplateProcessor` replaces this marker with rules generated by the LLM based on the analyzed project context.
+    372 | 359 |
+    373 | 360 | **Example Template Structure (`templates/rules/architect/base.md`):\*\*
+    374 | 361 |
+    375 | 362 |`markdown
+376 |     363 | ---
+377 |     364 | Mode: architect
+378 |     365 | Version: 1.0
+379 |     366 | RequiredSections: [Overview, Principles] # Example metadata
+380 |
+381 | ### 5.2.1. Handling Module Compatibility with Vite
+382 |
+383 | When building a Node.js CLI with Vite, you may encounter compatibility issues with certain dependencies that use different module formats (ES modules vs. CommonJS) or have specific requirements for their environment. This was observed with packages like `ora`, `inquirer`, and `langchain`.
+384 |
+385 | To address these issues, adjustments may be needed in the `vite.config.ts` file:
+386 |
+387 | - **`optimizeDeps.exclude`**: For packages that cause issues during Vite's dependency pre-bundling step, add them to the `optimizeDeps.exclude` array. This prevents Vite from trying to pre-bundle them, allowing them to be handled by Rollup during the build.
+388 | - **`rollupOptions.external`\*\*: Ensure that Node.js built-ins and external dependencies that should \_not* be bundled into the final output are listed in `rollupOptions.external`. While `rollup-plugin-node-externals` helps, explicitly listing problematic packages here can sometimes resolve issues.
+    389 | - **Import Statements**: In some cases, adjusting import statements in your source code (e.g., using dynamic `import()` or specific import paths provided by the package) might be necessary, although configuration adjustments are preferred.
+    390 |
+    391 | Refer to the `vite.config.ts` file and the specific package documentation for detailed examples and troubleshooting.
+    392 | 367 | ---
+    393 | 368 |
+    394 | 369 | # Architect Mode Base Rules
+    395 | 370 |
+    396 | 371 | ## Overview
+    397 | 372 |
+    398 | 373 | Base rules for architectural planning...
+    399 | 374 |
+    400 | 375 | ## Principles
+    401 | 376 |
+    402 | 377 | - Principle A
+    403 | 378 | - Principle B
+    404 | 379 |
+    405 | 380 | ## Contextual Guidelines
+    406 | 381 |
+    407 | 382 | This section will contain guidelines generated based on your project's specific context.
+    408 | 383 |
+    409 | 384 | {{CONTEXTUAL_RULES}}
+    410 | 385 |
+    411 | 386 | ## Best Practices
+    412 | 387 |
+    413 | 388 | Additional best practices...
+    414 | 389 | `390 |
+415 |     391 | ### 6.2. Developer Usage
+416 |     392 |
+417 |     393 | Interaction with the template system primarily involves the `IRulesTemplateManager`and`TemplateProcessor`components, resolved via Dependency Injection.
+418 |     394 |
+419 |     395 | 1. **Loading Base Templates:** Use`IRulesTemplateManager.loadBaseTemplate(mode)`to get the base template content for a specific mode.
+420 |     396 | 2. **Loading Customizations:** Use`IRulesTemplateManager.loadCustomizations(mode)`to get customization content (returns empty string if none).
+421 |     397 | 3. **Merging Templates:** Use`IRulesTemplateManager.mergeTemplates(baseContent, customContent)`to combine base and custom sections. Custom sections typically override base sections with the same name.
+422 |     398 | 4. **Processing with Contextual Rules:** Use`TemplateProcessor.processTemplate(mode, projectContext)`which orchestrates loading, merging, LLM interaction (via`LLMAgent`) to generate rules for the `{{CONTEXTUAL_RULES}}`marker based on`projectContext`, and insertion into the final template string.
+423 |     399 |
+424 |     400 | (See `src/core/templating/rules-template-manager.ts`and`src/core/templating/template-processor.ts`for implementation details).
+425 |     401 |
+426 |     402 | ### 6.3. Error Handling
+427 |     403 |
+428 |     404 | - The template system uses the`Result<T, E>` pattern extensively (`src/core/result/result.ts`).
+429 |     405 | - Operations like `loadBaseTemplate`, `loadCustomizations`, `mergeTemplates`, `processTemplate`return`Result`objects.
+430 |     406 | - **Always** check the result using`isOk()`or`isErr()`before accessing`.value`or`.error`.
+431 |     407 | - Handle potential errors gracefully, typically by logging the error using `ILogger`and potentially providing user feedback via`ICliInterface`or`ProgressIndicator`.
+432 |     408 |
+433 |     409 | **Example Error Handling Pattern:**
+434 |     410 |
+435 |     411 |``typescript
+436 |     412 | const loadResult = await templateManager.loadBaseTemplate('architect');
+437 |     413 | if (loadResult.isErr()) {
+438 |     414 | const logger = container.resolve<ILogger>('ILogger').value!; // Resolve logger via DI
+439 |     415 | logger.error(`Failed to load base template: ${loadResult.error.message}`, loadResult.error);
+440 |     416 | // Propagate error or handle appropriately
+441 |     417 | return Result.err(new Error(`Template loading failed: ${loadResult.error.message}`));
+442 |     418 | }
+443 |     419 | const baseContent = loadResult.value;
+444 |     420 | // Proceed with baseContent...
+445 |     421 | ``422 |
+446 |     423 | ## 7. Troubleshooting
+447 |     424 |
+448 |     425 | ### 7.1. Common Issues
+449 |     426 |
+450 |     427 | - **Dependency Injection Errors**: If you encounter errors related to resolving dependencies, double-check:
+451 |     428 | - The service is registered in `src/core/di/registrations.ts`(or the relevant module).
+452 |     429 | - The token used in`@Inject('YourServiceToken')`exactly matches the registration token.
+453 |     430 | - The class is decorated with`@Injectable()`.
+454 |     431 | - `Reflect.metadata()` is imported at the application entry point (`bin/roocode-generator.ts`).
+455 |     432 | - **TypeScript Errors**: Ensure you run `npm run type-check`regularly. Common issues include:
+456 |     433 | - Incorrect type annotations.
+457 |     434 | - Missing properties on objects.
+458 |     435 | - Incompatible types in function calls.
+459 |     436 | - **Linting/Formatting Errors**: Run`npm run lint:fix`and`npm run format:write`to automatically fix most issues. Refer to`eslint.config.mjs`and Prettier config for specific rules.
+460 |     437 | - **Test Failures**:
+461 |     438 | - Check the test output for specific error messages.
+462 |     439 | - Ensure mocks are correctly configured and provide expected return values.
+463 |     440 | - Verify that the code under test handles edge cases and error conditions as expected.
+464 |     441 | - **LLM API Errors**:
+465 |     442 | - Check your API key and ensure you have sufficient credits.
+466 |     443 | - Verify the model name is correct and supported by the provider.
+467 |     444 | - Review the provider's documentation for specific error codes or messages.
+468 |     445 | - Implement retry logic for transient errors (see Section 4.1).
+469 |     446 | - **File Operation Errors**:
+470 |     447 | - Check file paths for correctness.
+471 |     448 | - Ensure necessary directories exist before writing files.
+472 |     449 | - Verify file permissions.
+473 |     450 | - **Memory Bank Generation Issues**:
+474 |     451 | - Ensure templates are correctly formatted Markdown with proper YAML front-matter and section headings.
+475 |     452 | - Verify the`{{CONTEXTUAL_RULES}}`marker is present in the template.
+476 |     453 | - Check the LLM output for any errors or unexpected content.
+477 |     454 | - Review the project context being provided to the`TemplateProcessor`.
+478 |     455 | - **Vite Build Issues**: If encountering problems during the build process with Vite, particularly related to module compatibility, refer to Section 5.2.1 and the `vite.config.ts`file.
+479 |     456 |
+480 |     457 | ### 7.2. Debugging
+481 |     458 |
+482 |     459 | - **Logging**: Use the`ILogger` service (`logger.debug`, `logger.info`, etc.) to output information during execution.
+483 |     460 | - **Debugger**: Use your IDE's debugger (e.g., VS Code's Node.js debugger) to step through code execution, inspect variables, and set breakpoints.
+484 |     461 | - **Error Stacks**: Analyze error stack traces to pinpoint the source of errors.
+485 |     462 | - **Raw API Responses**: Log raw API responses when troubleshooting external service integrations to understand the exact data being received.
+486 |     463 |
+487 |     464 | ## 8. Contributing
+488 |     465 |
+489 |     466 | Contributions are welcome! Please follow the development workflow outlined in Section 3 and the code guidelines in Section 4.
+490 |     467 |
+491 |     468 | 1. Fork the repository.
+492 |     469 | 2. Create a feature branch (`git checkout -b feat/your-feature`).
+493 |     470 | 3. Implement your changes and write tests.
+494 |     471 | 4. Commit your changes using Conventional Commits (`git commit -m "feat: add new feature"`).
+495 |     472 | 5. Push to your fork (`git push origin feat/your-feature`).
+496 |     473 | 6. Create a Pull Request to the main repository's `main`branch.
+497 |     474 | 7. Address any feedback during code review.
+498 |     475 |
+499 |     476 | ## 9. License
+500 |     477 |
+501 |     478 | This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+502 |     479 |
+503 |     480 | ## 10. Security
+504 |     481 |
+505 |     482 | Please see the [SECURITY.md](SECURITY.md) file for details on how to report security vulnerabilities.
+506 |     483 |
+507 |     484 | ## 11. Changelog
+508 |     485 |
+509 |     486 | See the [CHANGELOG.md](CHANGELOG.md) file for a history of changes.
+510 |     487 |
+511 |     488 | ## 12. Project Status
+512 |     489 |
+513 |     490 | The project is currently under active development.
+514 |     491 |
+515 |     492 | ---
+516 |     493 |
+517 |     494 | **Document Version History:**
+518 |     495 |
+519 |     496 | - **Version 1.1.0 (2024-08-28):** Added sections on Modular DI Registration Pattern, Memory Bank Service Testing Patterns, and Handling Module Compatibility with Vite. Updated sections on Project Structure, Command Execution Flow, and Common Operations to reflect the new`ai-magic`generator and simplified`--generators`flag. Clarified interface naming conventions.
+520 |     497 | - **Version 1.0.0 (2024-07-25):** Initial version covering basic setup, structure, workflow, and guidelines.
+521 |     498 |
+522 |     499 | ---
+523 |     500 |
+524 |     501 | **Memory Bank References:**
+525 |     502 |
+526 |     503 | The following information from memory bank files informed this document:
+527 |     504 |
+528 |     505 | 1. From ProjectOverview.md:
+529 |     506 |    - Project goals and scope.
+530 |     507 |    - Key features and their status.
+531 |     508 |
+532 |     509 | 2. From TechnicalArchitecture.md:
+533 |     510 |    - Overall system architecture.
+534 |     511 |    - Design patterns used (DI, Result).
+535 |     512 |    - Component interactions (CLI, ApplicationContainer, Generators, LLM).
+536 |     513 |
+537 |     514 | 3. From DeveloperGuide.md:
+538 |     515 |    - Existing development practices and standards.
+539 |     516 |    - Existing documentation structure.
+540 |     517 |
+541 |     518 | ---
+542 |     519 |
+543 |     520 | **Generated Content:**
+544 |     521 |
+545 |     522 | This document was generated by the RooCode Generator's`ai-magic`generator using the`memory-bank` option.
+    546 | 523 |
+    547 | 524 | ---
+    548 | 525 |
+    549 | 526 | **Disclaimer:**
+    550 | 527 |
+    551 | 528 | This document is automatically generated based on the project's codebase and existing documentation. While efforts are made to ensure accuracy, it may not always be perfectly up-to-date or complete. Always refer to the source code and consult with team members for definitive information.
+    552 | 529

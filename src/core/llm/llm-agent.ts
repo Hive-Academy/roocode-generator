@@ -6,6 +6,7 @@ import { IFileOperations } from '../file-operations/interfaces';
 import { ILogger } from '../services/logger-service';
 import { Dirent } from 'fs';
 import { LLMProviderRegistry } from './provider-registry';
+import { ILLMProvider } from './interfaces';
 
 @Injectable()
 export class LLMAgent implements ILLMAgent {
@@ -43,7 +44,9 @@ export class LLMAgent implements ILLMAgent {
       );
       if (completionResult.isOk()) {
         this.logger.debug(
-          `Temporary Logging: Raw LLM response token count: ${completionResult.value!.split(/\s+/).length}, Response: ${completionResult.value}`
+          `Temporary Logging: Raw LLM response token count: ${
+            completionResult.value!.split(/\s+/).length
+          }, Response: ${completionResult.value}`
         );
       }
 
@@ -59,7 +62,9 @@ export class LLMAgent implements ILLMAgent {
         analysis = JSON.parse(completionResult.value ?? '{}');
       } catch (jsonError) {
         this.logger.error(
-          `Failed to parse LLM completion JSON: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}`
+          `Failed to parse LLM completion JSON: ${
+            jsonError instanceof Error ? jsonError.message : String(jsonError)
+          }`
         );
         return Result.err(new Error('Failed to parse LLM completion JSON'));
       }
@@ -183,5 +188,40 @@ export class LLMAgent implements ILLMAgent {
       );
       return Result.err(error instanceof Error ? error : new Error(String(error)));
     }
+  }
+
+  /**
+   * Returns the model's context window size.
+   * @returns A Promise resolving to the context window size as a number.
+   */
+  async getModelContextWindow(): Promise<number> {
+    const providerResult = await this.llmProviderRegistry.getProvider();
+    if (providerResult.isErr() || !providerResult.value) {
+      this.logger.error('Failed to get LLM provider for context window size.');
+      return 0; // Default to 0 if provider is unavailable
+    }
+    return providerResult.value.getContextWindowSize();
+  }
+
+  /**
+   * Counts the number of tokens in the given text.
+   * @param text The text to count tokens for
+   * @returns A Promise resolving to the number of tokens in the text
+   */
+  async countTokens(text: string): Promise<number> {
+    const providerResult = await this.llmProviderRegistry.getProvider();
+    if (providerResult.isErr() || !providerResult.value) {
+      this.logger.error('Failed to get LLM provider for token counting.');
+      return 0; // Default to 0 if provider is unavailable
+    }
+    return providerResult.value.countTokens(text);
+  }
+
+  /**
+   * Returns the underlying LLM provider instance.
+   * @returns A Promise resolving to the LLM provider instance
+   */
+  async getProvider(): Promise<Result<ILLMProvider, Error>> {
+    return await this.llmProviderRegistry.getProvider();
   }
 }
