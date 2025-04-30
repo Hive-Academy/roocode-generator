@@ -91,7 +91,7 @@ The core strategy is **Dependency Inversion via New Service**. We will introduce
 
 ### Subtask 2: Implement `ModelListerService`
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Create the concrete implementation of `IModelListerService`.
 
@@ -118,11 +118,11 @@ The core strategy is **Dependency Inversion via New Service**. We will introduce
 
 **Acceptance Criteria**:
 
-- [ ] `ModelListerService` class is created in `src/core/llm/model-lister.service.ts`.
-- [ ] The class implements `IModelListerService`.
-- [ ] Dependencies (`ILLMProviderFactories`, `ILogger`) are injected correctly.
-- [ ] `listModelsForProvider` method correctly implements the model listing logic.
-- [ ] Error conditions (factory not found, provider creation fails, `listModels` not supported/fails) are handled.
+- [x] `ModelListerService` class is created in `src/core/llm/model-lister.service.ts`.
+- [x] The class implements `IModelListerService`.
+- [x] Dependencies (`ILLMProviderFactories`, `ILogger`) are injected correctly.
+- [x] `listModelsForProvider` method correctly implements the model listing logic.
+- [x] Error conditions (factory not found, provider creation fails, `listModels` not supported/fails) are handled.
 
 **Estimated effort**: 25 minutes
 
