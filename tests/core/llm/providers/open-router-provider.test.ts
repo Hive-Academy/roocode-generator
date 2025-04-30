@@ -1,8 +1,10 @@
 import { OpenRouterProvider } from '@core/llm/providers/open-router-provider';
 import { LLMConfig } from 'types/shared';
 import { LLMProviderError } from '@core/llm/llm-provider-errors';
+import { ILogger } from '@core/services/logger-service';
 
 describe('OpenRouterProvider', () => {
+  // Keep mockLogger untyped here for Jest mock methods
   const mockLogger = {
     debug: jest.fn(),
     info: jest.fn(),
@@ -22,8 +24,10 @@ describe('OpenRouterProvider', () => {
   let originalFetch: typeof global.fetch;
 
   beforeEach(() => {
-    provider = new OpenRouterProvider(mockConfig, mockLogger);
+    // Cast mockLogger to ILogger when passing to constructor
+    provider = new OpenRouterProvider(mockConfig, mockLogger as ILogger);
     originalFetch = global.fetch;
+    // mockClear should work now
     mockLogger.debug.mockClear();
     mockLogger.error.mockClear();
   });
@@ -277,4 +281,36 @@ describe('OpenRouterProvider', () => {
       expect(mockLogger.error).toHaveBeenCalled();
     });
   });
-});
+
+  describe('getContextWindowSize', () => {
+    it('should return configured context window size', async () => {
+      const providerWithContext = new OpenRouterProvider(
+        {
+          ...mockConfig, // Should be accessible now
+          modelParams: { context_length: 8192 },
+        },
+        mockLogger as ILogger // Cast here too
+      );
+      const size = await providerWithContext.getContextWindowSize();
+      expect(size).toBe(8192);
+    });
+
+    it('should return default context window size if not configured', async () => {
+      // Use the provider instance from beforeEach
+      const size = await provider.getContextWindowSize(); // provider should be accessible now
+      // The default in BaseLLMProvider is 4096
+      expect(size).toBe(4096);
+    });
+  });
+
+  describe('countTokens', () => {
+    it('should count tokens using default implementation', async () => {
+      // Use the provider instance from beforeEach
+      const text = 'Test string'; // Length 11
+      const tokens = await provider.countTokens(text); // provider should be accessible now
+      // Default implementation is Math.ceil(text.length / 4)
+      expect(tokens).toBe(Math.ceil(11 / 4)); // Should be 3
+      expect(tokens).toBe(3);
+    });
+  });
+}); // Closing brace for the main describe block

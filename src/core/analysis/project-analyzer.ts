@@ -316,10 +316,21 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
     return false;
   }
 
+  private readonly PROMPT_VERSION = 'v1.0.0';
+
   private buildSystemPrompt(): string {
-    return `Analyze the provided project files to determine its overall context.
-        Return a single JSON object containing the tech stack, project structure, and dependencies.
-        The JSON object must strictly adhere to the following structure:
+    return `Prompt Version: ${this.PROMPT_VERSION}
+
+IMPORTANT NOTICE:
+- This analysis is based on a PARTIAL codebase view
+- Focus ONLY on the provided files
+- Do not make assumptions about files not shown
+- If uncertain about any aspect, return null or empty arrays
+
+Analyze the provided project files to determine its overall context.
+Return a single JSON object containing the tech stack, project structure, and dependencies.
+
+The response MUST strictly follow this JSON schema:
         {
           "techStack": {
             "languages": string[], // e.g., ["TypeScript", "JavaScript", "Python"]
@@ -359,12 +370,16 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
     const providerResult = await this.llmAgent.getProvider();
     if (providerResult.isErr() || !providerResult.value) {
       this.logger.warn(
-        'LLM Provider or countTokens method not available for prompt overhead token estimation. Returning 0.'
+        'LLM Provider or countTokens method not available for prompt overhead token estimation. Using default overhead.'
       );
-      return 0;
+      return 1000; // Default overhead estimation for safety
     }
-    return providerResult.value.countTokens(
-      basePromptTemplate.replace('[FILE CONTENTS GO HERE]', '')
-    );
+
+    // Include version, schema, and warnings in overhead calculation
+    const templateWithoutContent = basePromptTemplate.replace('[FILE CONTENTS GO HERE]', '');
+    const overhead: number = await providerResult.value.countTokens(templateWithoutContent);
+
+    // Add safety margin for schema validation and version info
+    return Math.ceil(overhead * 1.1);
   }
 }

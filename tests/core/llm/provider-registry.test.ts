@@ -28,9 +28,17 @@ describe('LLMProviderRegistry', () => {
     };
 
     // Create the OpenRouter provider factory
-    openRouterFactory = (config: LLMConfig): Result<OpenRouterProvider, Error> => {
+    openRouterFactory = (config: LLMConfig): Result<ILLMProvider, Error> => {
       try {
-        return Result.ok(new OpenRouterProvider(config, mockLogger));
+        const provider = new OpenRouterProvider(config, mockLogger);
+        const asyncProvider: ILLMProvider = {
+          name: provider.name,
+          getCompletion: (...args) => provider.getCompletion(...args),
+          listModels: () => provider.listModels(),
+          getContextWindowSize: async () => Promise.resolve(provider.getContextWindowSize()),
+          countTokens: async (text: string) => Promise.resolve(provider.countTokens(text)),
+        };
+        return Result.ok(asyncProvider);
       } catch (error) {
         return Result.err(error instanceof Error ? error : new Error(String(error)));
       }
@@ -43,6 +51,8 @@ describe('LLMProviderRegistry', () => {
           name,
           getCompletion: jest.fn(),
           listModels: jest.fn(),
+          getContextWindowSize: async () => Promise.resolve(4096),
+          countTokens: async (text: string) => Promise.resolve(Math.ceil(text.length / 4)),
         };
         mockLogger.debug(`Creating ${name} provider with model: ${config.model}`);
         return Result.ok(mockProvider);
@@ -291,6 +301,47 @@ describe('LLMProviderRegistry', () => {
       expect(() =>
         expect(result.error?.message).toContain('Failed to create provider')
       ).not.toThrow();
+    }
+  });
+
+  it('should provide token counting functionality', async () => {
+    const config: LLMConfig = {
+      provider: 'generic1',
+      model: 'test-model',
+      apiKey: 'test-key',
+      temperature: 0.1,
+      maxTokens: 1000,
+    };
+
+    mockConfigService.loadConfig.mockResolvedValue(Result.ok(config));
+    const result = await registry.getProvider();
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk() && result.value) {
+      const provider = result.value;
+      const text = 'This is a test string';
+      const tokens = await provider.countTokens(text);
+      expect(tokens).toBe(Math.ceil(text.length / 4));
+    }
+  });
+
+  it('should return configured context window size', async () => {
+    const config: LLMConfig = {
+      provider: 'generic1',
+      model: 'test-model',
+      apiKey: 'test-key',
+      temperature: 0.1,
+      maxTokens: 1000,
+    };
+
+    mockConfigService.loadConfig.mockResolvedValue(Result.ok(config));
+    const result = await registry.getProvider();
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk() && result.value) {
+      const provider = result.value;
+      const size = await provider.getContextWindowSize();
+      expect(size).toBe(4096);
     }
   });
 });
