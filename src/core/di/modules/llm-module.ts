@@ -228,15 +228,15 @@ export function registerLlmModule(container: Container): void {
       container,
       'Inquirer'
     );
-    const providerRegistry = resolveDependency<LLMProviderRegistry>(
+    const modelListerService = resolveDependency<IModelListerService>(
       container,
-      'LLMProviderRegistry'
+      'IModelListerService'
     );
     assertIsDefined(fileOps, 'IFileOperations dependency not found');
     assertIsDefined(logger, 'ILogger dependency not found');
     assertIsDefined(inquirer, 'Inquirer dependency not found');
-    assertIsDefined(providerRegistry, 'ILLMProviderRegistry dependency not found');
-    return new LLMConfigService(fileOps, logger, inquirer, providerRegistry);
+    assertIsDefined(modelListerService, 'IModelListerService dependency not found');
+    return new LLMConfigService(fileOps, logger, inquirer, modelListerService);
   });
 
   // Register LLMAgent
