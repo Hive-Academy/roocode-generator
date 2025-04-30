@@ -41,6 +41,11 @@ export class LLMAgent implements ILLMAgent {
         'System: Analyze the following project files.',
         prompt
       );
+      if (completionResult.isOk()) {
+        this.logger.debug(
+          `Temporary Logging: Raw LLM response token count: ${completionResult.value!.split(/\s+/).length}, Response: ${completionResult.value}`
+        );
+      }
 
       if (completionResult.isErr()) {
         this.logger.error(
