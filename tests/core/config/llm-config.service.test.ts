@@ -2,12 +2,12 @@
 import type { Question } from 'inquirer';
 import 'reflect-metadata';
 import './llm-config.service.interactive-edit.test'; // Import the new test file
-import { LLMConfigService } from '../../../src/core/config/llm-config.service';
-import { IFileOperations } from '../../../src/core/file-operations/interfaces';
-import { IModelListerService } from '../../../src/core/llm/interfaces';
-import { Result } from '../../../src/core/result/result';
-import { ILogger } from '../../../src/core/services/logger-service';
-import { LLMConfig } from '../../../types/shared';
+import { LLMConfigService } from '@core/config/llm-config.service';
+import { IFileOperations } from '@core/file-operations/interfaces';
+import { IModelListerService } from '@core/llm/interfaces';
+import { Result } from '@core/result/result';
+import { ILogger } from '@core/services/logger-service';
+import { LLMConfig } from 'types/shared';
 
 describe('LLMConfigService', () => {
   let mockFileOps: jest.Mocked<IFileOperations>;

@@ -135,7 +135,7 @@ See [[task-tracking/fix-circular-dependency/task-description.md]] for detailed r
 
 ### Subtask 5: Create Unit Tests for `ModelListerService`
 
-**Status**: Blocked (Pending Subtask 0)
+**Status**: Completed
 
 **Description**: Create comprehensive unit tests for the new `ModelListerService`.
 **Files to Create/Modify**: `tests/core/llm/model-lister.service.test.ts` (New File)
@@ -144,7 +144,7 @@ See [[task-tracking/fix-circular-dependency/task-description.md]] for detailed r
 - [x] Unit tests for `ModelListerService` are created.
 - [x] Tests cover success and failure scenarios for model listing.
 - [x] Tests verify interactions with dependencies.
-- [ ] All tests in the new file pass (Blocked by Subtask 0).
+- [x] All tests in the new file pass.
       **Estimated effort**: 25 minutes
 
 ### Subtask 6: Update `LLMConfigService` Tests

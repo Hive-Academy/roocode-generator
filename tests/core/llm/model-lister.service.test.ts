@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import 'reflect-metadata';
-import { ModelListerService } from '../../../src/core/llm/model-lister.service';
-import { ILogger } from '../../../src/core/services/logger-service';
-import { LLMProviderFactory } from '../../../src/core/llm/interfaces';
-import { Result } from '../../../src/core/result/result';
-import { LLMProviderError } from '../../../src/core/llm/llm-provider-errors';
-import { LLMConfig } from '../../../types/shared';
+import { ModelListerService } from '@core/llm/model-lister.service';
+import { ILogger } from '@core/services/logger-service';
+import { LLMProviderFactory } from '@core/llm/interfaces';
+import { Result } from '@core/result/result';
+import { LLMProviderError } from '@core/llm/llm-provider-errors';
+import { LLMConfig } from 'types/shared';
 
 describe('ModelListerService', () => {
   let service: ModelListerService;
