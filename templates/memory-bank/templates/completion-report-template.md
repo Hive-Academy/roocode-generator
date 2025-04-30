@@ -6,7 +6,7 @@ taskId: [taskId]
 status: completed
 ---
 
-# Completion Report: [taskName]
+# Completion Report: [taskId]-[taskName]
 
 ## Task Summary
 
