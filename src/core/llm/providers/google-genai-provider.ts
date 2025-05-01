@@ -5,6 +5,7 @@ import { LLMProviderError } from '@core/llm/llm-provider-errors';
 import type { ILogger } from '@core/services/logger-service';
 import { LLMConfig } from 'types/shared';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { GoogleGenAITokenResponse, GoogleGenAIErrorResponse } from '../types/google-genai.types';
 
 @Injectable()
 export class GoogleGenAIProvider extends BaseLLMProvider {
@@ -65,16 +66,25 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
       );
 
       if (!response.ok) {
-        this.logger.warn(
-          `Failed to count tokens for Google GenAI model ${this.config.model}, using approximation`
-        );
+        try {
+          const errorData = (await response.json()) as GoogleGenAIErrorResponse;
+          this.logger.warn(
+            `Failed to count tokens for Google GenAI model ${this.config.model}. API Error: ${errorData.error.message} (Code: ${errorData.error.code}). Using approximation.`
+          );
+        } catch (jsonError: any) {
+          // Handle cases where the error response is not valid JSON
+          this.logger.warn(
+            `Failed to count tokens for Google GenAI model ${this.config.model}. Received non-OK response but could not parse error details. Error: ${jsonError?.message}. Using approximation.`
+          );
+        }
         return Promise.resolve(Math.ceil(text.length / 4));
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as GoogleGenAITokenResponse;
       const tokenCount = data?.totalTokens || Math.ceil(text.length / 4);
       return Promise.resolve(tokenCount);
     } catch (error: any) {
+      // This catch block handles network errors or issues before the response is received
       this.logger.warn(
         `Failed to count tokens for Google GenAI model ${this.config.model}, using approximation: ${error?.message}`
       );

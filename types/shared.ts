@@ -111,7 +111,7 @@ export interface AnalysisResult {
 export interface LLMConfig {
   /** Model identifier */
   model: string;
-  /** LLM provider (e.g., "anthropic", "openai") */
+  /** LLM provider (e.g., "anthropic", "openai", "google-genai") */
   provider: string;
   /** API key for authentication */
   apiKey: string;
@@ -123,6 +123,10 @@ export interface LLMConfig {
   modelParams?: Record<string, unknown>;
   /** Optional API URL override */
   apiUrl?: string;
+  /** Optional Google Cloud location for Google GenAI */
+  location?: string;
+  /** Optional Google Cloud project ID for Google GenAI */
+  projectId?: string;
 }
 
 /**
