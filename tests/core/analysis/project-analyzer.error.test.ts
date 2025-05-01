@@ -1,4 +1,10 @@
-import { IFileContentCollector, IFilePrioritizer } from '../../../src/core/analysis/interfaces';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import {
+  FileContentResult,
+  IFileContentCollector,
+  IFilePrioritizer,
+} from '../../../src/core/analysis/interfaces';
+import { ProjectContext } from '../../../src/core/analysis/types'; // Re-added ProjectContext import
 import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
 import { ResponseParser } from '../../../src/core/analysis/response-parser';
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
@@ -7,6 +13,7 @@ import { LLMProviderError } from '../../../src/core/llm/llm-provider-errors';
 import { Result } from '../../../src/core/result/result';
 import { ILogger } from '../../../src/core/services/logger-service';
 import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
+// Removed unused Dirent import
 
 describe('ProjectAnalyzer Error Handling Tests', () => {
   let projectAnalyzer: ProjectAnalyzer;
@@ -78,7 +85,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
 
     it('should handle file collection errors', async () => {
       const error = new Error('File collection failed');
-      mockContentCollector.collectContent.mockResolvedValueOnce(Result.err(error));
+      mockContentCollector.collectContent.mockResolvedValueOnce(Result.err<Error>(error)); // Corrected: Single type arg
 
       const result = await projectAnalyzer.analyzeProject(['/invalid/path']);
       expect(result.isErr()).toBe(true);
@@ -91,7 +98,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
 
     it('should handle no analyzable files found', async () => {
       mockContentCollector.collectContent.mockResolvedValueOnce(
-        Result.ok({ content: '', metadata: [] })
+        Result.ok<FileContentResult>({ content: '', metadata: [] }) // Corrected: Single type arg
       );
 
       const result = await projectAnalyzer.analyzeProject(['/empty/path']);
@@ -110,7 +117,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
         'LLM_ERROR',
         {}
       ) as Error;
-      mockLlmAgent.getCompletion.mockResolvedValueOnce(Result.err(error));
+      mockLlmAgent.getCompletion.mockResolvedValueOnce(Result.err<Error>(error)); // Corrected: Single type arg
 
       const result = await projectAnalyzer.analyzeProject(['/valid/path']);
       expect(result.isErr()).toBe(true);
@@ -125,7 +132,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
         'INVALID_RESPONSE_FORMAT',
         'LLM_ERROR'
       ) as Error;
-      mockLlmAgent.getCompletion.mockResolvedValueOnce(Result.err(error));
+      mockLlmAgent.getCompletion.mockResolvedValueOnce(Result.err<Error>(error)); // Corrected: Single type arg
 
       const result = await projectAnalyzer.analyzeProject(['/valid/path']);
       expect(result.isErr()).toBe(true);
@@ -136,9 +143,11 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
 
     it('should handle LLM response parsing errors', async () => {
       mockLlmAgent.getCompletion.mockResolvedValueOnce(Result.ok('invalid json'));
-      mockResponseParser.parseLlmResponse.mockResolvedValueOnce(
-        Result.err(new Error('Failed to parse JSON response'))
+      // Explicitly create Result object with full type before passing to mock
+      const errorResult: Result<ProjectContext | undefined, Error> = Result.err(
+        new Error('Failed to parse JSON response')
       );
+      mockResponseParser.parseLlmResponse.mockResolvedValueOnce(errorResult as never);
 
       const result = await projectAnalyzer.analyzeProject(['/valid/path']);
       expect(result.isErr()).toBe(true);
@@ -149,7 +158,9 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
 
     it('should handle undefined parsed results', async () => {
       mockLlmAgent.getCompletion.mockResolvedValueOnce(Result.ok('valid json'));
-      mockResponseParser.parseLlmResponse.mockResolvedValueOnce(Result.ok(undefined));
+      // Explicitly create Result object with full type before passing to mock
+      const undefinedResult: Result<ProjectContext | undefined, Error> = Result.ok(undefined);
+      mockResponseParser.parseLlmResponse.mockResolvedValueOnce(undefinedResult as never);
 
       const result = await projectAnalyzer.analyzeProject(['/valid/path']);
       expect(result.isErr()).toBe(true);
@@ -160,7 +171,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
 
     it('should handle directory reading errors', async () => {
       const error = new Error('Directory not found');
-      mockFileOps.readDir.mockResolvedValueOnce(Result.err(error));
+      mockFileOps.readDir.mockResolvedValueOnce(Result.err(error)); // Removed type arg
 
       const result = await projectAnalyzer.analyzeProject(['/invalid/path']);
       expect(result.isErr()).toBe(true);
@@ -171,7 +182,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
 
     it('should handle isDirectory check errors', async () => {
       const error = new Error('File not found');
-      mockFileOps.isDirectory.mockResolvedValueOnce(Result.err(error));
+      mockFileOps.isDirectory.mockResolvedValueOnce(Result.err(error)); // Removed type arg
 
       const result = await projectAnalyzer.analyzeProject(['/invalid/path']);
       expect(result.isErr()).toBe(true);
@@ -181,8 +192,9 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
     });
 
     it('should handle LLM model context window errors', async () => {
-      mockLlmAgent.getModelContextWindow.mockResolvedValueOnce(
-        Result.err(new Error('Context window unavailable'))
+      // Use mockRejectedValueOnce for functions returning Promise<number>
+      mockLlmAgent.getModelContextWindow.mockRejectedValueOnce(
+        new Error('Context window unavailable')
       );
 
       const result = await projectAnalyzer.analyzeProject(['/valid/path']);
@@ -207,7 +219,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
   describe('File Collection Error Handling', () => {
     it('should handle empty file collections', async () => {
       mockContentCollector.collectContent.mockResolvedValueOnce(
-        Result.ok({ content: '', metadata: [] })
+        Result.ok<FileContentResult>({ content: '', metadata: [] }) // Corrected: Single type arg
       );
 
       const result = await projectAnalyzer.analyzeProject(['/empty/path']);
@@ -238,7 +250,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
         'LLM_ERROR',
         {}
       ) as Error;
-      mockLlmAgent.getProvider.mockResolvedValueOnce(Result.err(error));
+      mockLlmAgent.getProvider.mockResolvedValueOnce(Result.err<Error>(error)); // Corrected: Single type arg
 
       const result = await projectAnalyzer.analyzeProject(['/valid/path']);
       expect(result.isErr()).toBe(true);
@@ -260,8 +272,9 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
     });
 
     it('should handle LLM context window errors', async () => {
-      mockLlmAgent.getModelContextWindow.mockResolvedValueOnce(
-        Result.err(new Error('Context window unavailable'))
+      // Use mockRejectedValueOnce for functions returning Promise<number>
+      mockLlmAgent.getModelContextWindow.mockRejectedValueOnce(
+        new Error('Context window unavailable')
       );
 
       const result = await projectAnalyzer.analyzeProject(['/valid/path']);
@@ -290,7 +303,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
         'LLM_ERROR',
         {}
       ) as Error;
-      mockLlmAgent.getCompletion.mockResolvedValueOnce(Result.err(error));
+      mockLlmAgent.getCompletion.mockResolvedValueOnce(Result.err<Error>(error)); // Corrected: Single type arg
 
       const result = await projectAnalyzer.analyzeProject(['/valid/path']);
       expect(result.isErr()).toBe(true);
@@ -306,7 +319,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
         'LLM_ERROR',
         {}
       ) as Error;
-      mockLlmAgent.getCompletion.mockResolvedValueOnce(Result.err(error));
+      mockLlmAgent.getCompletion.mockResolvedValueOnce(Result.err<Error>(error)); // Corrected: Single type arg
 
       const result = await projectAnalyzer.analyzeProject(['/valid/path']);
       expect(result.isErr()).toBe(true);
