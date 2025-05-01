@@ -27,6 +27,9 @@ export class MemoryBankOrchestrator implements IMemoryBankOrchestrator {
     @Inject('ILogger') private logger: ILogger
   ) {}
 
+  // Define the fixed output directory path
+  private readonly MEMORY_BANK_OUTPUT_DIR = './memory-bank';
+
   /**
    * Helper method to create and log generation errors
    */
@@ -62,57 +65,40 @@ export class MemoryBankOrchestrator implements IMemoryBankOrchestrator {
    * Orchestrates the generation of memory bank files
    *
    * @param projectContext - Structured project context data
-   * @param config - Project configuration
+   * @param config - Project configuration (used for project name/desc, template settings)
    * @returns Result indicating success or failure
    */
   async orchestrateGeneration(
     projectContext: ProjectContext, // Update signature to use ProjectContext
-    config: ProjectConfig
+    config: ProjectConfig // Keep config for other settings like templates
   ): Promise<Result<void, Error>> {
     // Serialize the structured context into a string for the content generator
     const stringContext = JSON.stringify(projectContext, null, 2);
     const errors: { fileType: string; error: Error; phase: string }[] = [];
 
     try {
-      // Add check for memoryBank config
-      if (!config.memoryBank?.outputDir) {
-        return this._handleGenerationError(
-          'Memory bank output directory is not configured',
-          'orchestrateGeneration',
-          undefined,
-          { configKey: 'memoryBank.outputDir' }
-        );
-      }
+      // Remove check for configurable output directory
 
-      // Create the memory-bank directory structure
+      // Create the memory-bank directory structure using the fixed path relative to project root
       this.logger.info('Creating memory bank directory structure...');
-      const dirResult = await this.fileManager.createMemoryBankDirectory(
-        config.memoryBank.outputDir // Use the configured output directory
-      );
+      // Pass the project root ('.') as the base directory for file manager
+      const dirResult = await this.fileManager.createMemoryBankDirectory('.');
 
       if (dirResult.isErr()) {
+        // Update error context if needed, baseDir might not be relevant anymore
         return this._handleGenerationError(
           'Failed to create memory-bank directory structure',
           'createMemoryBankDirectory',
           dirResult.error,
-          { baseDir: config.baseDir }
+          { targetDir: this.MEMORY_BANK_OUTPUT_DIR } // Use fixed path in context
         );
       }
 
       // Generate each memory bank file type
       this.logger.info('Generating memory bank files...');
       const fileTypesToGenerate = Object.values(MemoryBankFileType);
-      // Re-check config as it might have changed (though unlikely in this flow)
-      const outputDir = config.memoryBank?.outputDir;
-      if (!outputDir) {
-        // This should theoretically not be reached due to the earlier check, but good for safety
-        return this._handleGenerationError(
-          'Memory bank output directory became undefined during generation',
-          'orchestrateGeneration',
-          undefined,
-          { configKey: 'memoryBank.outputDir' }
-        );
-      }
+      // Remove the second check for outputDir
+
       let successCount = 0;
 
       for (const fileType of fileTypesToGenerate) {
@@ -178,7 +164,8 @@ export class MemoryBankOrchestrator implements IMemoryBankOrchestrator {
           continue;
         }
 
-        const outputFilePath = path.join(outputDir, `${String(fileType)}.md`); // Use outputDir (already applied, but included for completeness)
+        // Use the fixed output directory path
+        const outputFilePath = path.join(this.MEMORY_BANK_OUTPUT_DIR, `${String(fileType)}.md`);
         this.logger.debug(`Writing ${String(fileType)} to ${outputFilePath}`);
 
         const writeResult = await this.fileManager.writeMemoryBankFile(
@@ -209,7 +196,8 @@ export class MemoryBankOrchestrator implements IMemoryBankOrchestrator {
         // Use configured templatesDir, fallback to default
         const sourceTemplatesDir =
           config.memoryBank?.templatesDir || path.join('templates', 'memory-bank', 'templates');
-        const destTemplatesDir = path.join(outputDir, 'templates'); // Use outputDir
+        // Use the fixed output directory path for the destination
+        const destTemplatesDir = path.join(this.MEMORY_BANK_OUTPUT_DIR, 'templates');
 
         this.logger.debug(`Copying templates from ${sourceTemplatesDir} to ${destTemplatesDir}`);
         const copyResult = await this.fileManager.copyDirectoryRecursive(
