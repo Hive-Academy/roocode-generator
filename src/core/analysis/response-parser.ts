@@ -42,6 +42,9 @@ export class ResponseParser {
       // Parse JSON
       const parsed = JSON.parse(jsonStr);
 
+      // Apply defaults before validation to handle potential nulls from LLM
+      this.applyProjectContextDefaults(parsed);
+
       // Validate against projectContextSchema
       const schema = this.jsonSchemaHelper.getProjectContextSchema();
       const validationResult = this.jsonSchemaHelper.validateJson(JSON.stringify(parsed), schema);
@@ -88,5 +91,59 @@ export class ResponseParser {
     cleaned = cleaned.trim();
 
     return cleaned;
+  }
+
+  /**
+   * Applies default values to specific fields of the parsed ProjectContext object
+   * before schema validation to prevent errors due to null/undefined values.
+   * Modifies the object in place.
+   * @param parsedData The parsed JSON object from the LLM response.
+   */
+  private applyProjectContextDefaults(parsedData: any): void {
+    if (!parsedData) {
+      this.logger.warn('Attempted to apply defaults to null/undefined parsedData');
+      return;
+    }
+
+    // Ensure parent 'structure' object exists
+    if (!parsedData.structure) {
+      this.logger.debug('Initializing missing structure object in parsed LLM response');
+      parsedData.structure = {};
+    }
+
+    // Apply default to structure.testDir
+    if (
+      parsedData.structure.testDir === null ||
+      typeof parsedData.structure.testDir === 'undefined'
+    ) {
+      this.logger.debug('Defaulting null/undefined structure.testDir to empty string');
+      parsedData.structure.testDir = '';
+    }
+
+    // Apply default to structure.componentStructure
+    if (
+      parsedData.structure.componentStructure === null ||
+      typeof parsedData.structure.componentStructure === 'undefined'
+    ) {
+      this.logger.debug('Defaulting null/undefined structure.componentStructure to empty object');
+      parsedData.structure.componentStructure = {};
+    }
+
+    // Ensure parent 'dependencies' object exists
+    if (!parsedData.dependencies) {
+      this.logger.debug('Initializing missing dependencies object in parsed LLM response');
+      parsedData.dependencies = {};
+    }
+
+    // Apply default to dependencies.internalDependencies
+    if (
+      parsedData.dependencies.internalDependencies === null ||
+      typeof parsedData.dependencies.internalDependencies === 'undefined'
+    ) {
+      this.logger.debug(
+        'Defaulting null/undefined dependencies.internalDependencies to empty object'
+      );
+      parsedData.dependencies.internalDependencies = {};
+    }
   }
 }
