@@ -153,7 +153,9 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       }
 
       this.progress.update('Processing analysis results...');
-      const parsedResult = this.responseParser.parseJSON<ProjectContext>(result.value as string);
+      const parsedResult = this.responseParser.parseLlmResponse<ProjectContext>(
+        result.value as string
+      );
 
       if (parsedResult.isErr()) {
         this.progress.fail('Failed to parse analysis results from LLM');
