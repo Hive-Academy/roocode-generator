@@ -41,7 +41,44 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
   }
 
   async countTokens(text: string): Promise<number> {
-    // Google's token counting may differ, use approximation for now
-    return Promise.resolve(Math.ceil(text.length / 4));
+    try {
+      const response = await fetch(
+        `https://${this.config.location}-aiplatform.googleapis.com/v1/projects/${this.config.projectId}/locations/${this.config.location}/publishers/google/models/${this.config.model}:countTokens`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.config.apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: text,
+                  },
+                ],
+              },
+            ],
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        this.logger.warn(
+          `Failed to count tokens for Google GenAI model ${this.config.model}, using approximation`
+        );
+        return Promise.resolve(Math.ceil(text.length / 4));
+      }
+
+      const data = await response.json();
+      const tokenCount = data?.totalTokens || Math.ceil(text.length / 4);
+      return Promise.resolve(tokenCount);
+    } catch (error: any) {
+      this.logger.warn(
+        `Failed to count tokens for Google GenAI model ${this.config.model}, using approximation: ${error?.message}`
+      );
+      return Promise.resolve(Math.ceil(text.length / 4));
+    }
   }
 }

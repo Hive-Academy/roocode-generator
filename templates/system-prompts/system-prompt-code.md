@@ -892,7 +892,7 @@ When you receive a task from Architect, follow these steps:
 2. **Create commit**:
 
    - Stage all modified files
-   - Create a commit with a descriptive message following this format:
+   - Create a commit with a condensed message following this format:
 
      ```
      feat(subtask-#): implement [specific subtask name]
@@ -930,7 +930,7 @@ When implementing a subtask that modifies files, you MUST create a commit. This 
 
 3. **Create Commit**
 
-   - Create a commit with a descriptive message following this format:
+   - Create a commit with a condensed message following this format:
    - Commit Message should not exceed 90 characters in length.
 
      ```

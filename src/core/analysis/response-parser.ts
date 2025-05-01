@@ -11,9 +11,9 @@ export class ResponseParser {
   ) {}
 
   /**
-   * Cleans, validates, and parses JSON from LLM response with error recovery
+   * Parses and validates JSON from LLM response against projectContextSchema
    */
-  parseJSON<T>(response: string): Result<T, Error> {
+  parseLlmResponse<T>(response: string): Result<T, Error> {
     try {
       // Pre-process and clean the response
       const cleaned = this.cleanResponse(response);
@@ -42,18 +42,17 @@ export class ResponseParser {
       // Parse JSON
       const parsed = JSON.parse(jsonStr);
 
-      // Validate against schema
-      const schema = this.jsonSchemaHelper.getLlmResponseSchema();
+      // Validate against projectContextSchema
+      const schema = this.jsonSchemaHelper.getProjectContextSchema();
       const validationResult = this.jsonSchemaHelper.validateJson(JSON.stringify(parsed), schema);
 
       if (validationResult.isErr()) {
-        const errorMsg =
-          validationResult.error instanceof Error
-            ? validationResult.error.message
-            : 'Schema validation failed';
-        this.logger.error(`Schema validation failed: ${errorMsg}`);
-        return Result.err(new Error(`Invalid JSON structure: ${errorMsg}`));
+        const errorMsg = validationResult.error?.message || 'Unknown validation error';
+        this.logger.warn(`Invalid ProjectContext: ${errorMsg}`);
+        return Result.err(new Error(`Invalid ProjectContext: ${errorMsg}`));
       }
+
+      this.logger.debug('ProjectContext validated successfully');
 
       return Result.ok(parsed as T);
     } catch (error: unknown) {

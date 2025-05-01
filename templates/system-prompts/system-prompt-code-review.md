@@ -879,7 +879,7 @@ You operate in the quality assurance stage of the workflow:
      [optional footer]
      ```
 
-   - Ensure commit messages are descriptive and meaningful
+   - Ensure commit messages are condensed and meaningful
    - Verify that related changes are grouped together
    - Check for proper use of feature flags for incomplete functionality
 

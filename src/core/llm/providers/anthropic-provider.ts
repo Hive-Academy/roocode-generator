@@ -6,6 +6,9 @@ import type { ILogger } from '@core/services/logger-service';
 import { LLMConfig } from 'types/shared';
 import { ChatAnthropic } from '@langchain/anthropic';
 
+type AnthropicTokenCountResponse = {
+  total_tokens: number;
+};
 @Injectable()
 export class AnthropicProvider extends BaseLLMProvider {
   public readonly name = 'anthropic';
@@ -41,7 +44,35 @@ export class AnthropicProvider extends BaseLLMProvider {
   }
 
   async countTokens(text: string): Promise<number> {
-    // Anthropic uses its own token counting, use approximation for now
-    return Promise.resolve(Math.ceil(text.length / 4));
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages/count_tokens', {
+        method: 'POST',
+        headers: {
+          'x-api-key': this.config.apiKey,
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: this.config.model,
+          text: text,
+        }),
+      });
+
+      if (!response.ok) {
+        this.logger.warn(
+          `Failed to count tokens for Anthropic model ${this.config.model}, using approximation`
+        );
+        return Promise.resolve(Math.ceil(text.length / 4));
+      }
+
+      const data = (await response.json()) as AnthropicTokenCountResponse;
+      const tokenCount = data?.total_tokens || Math.ceil(text.length / 4);
+      return Promise.resolve(tokenCount);
+    } catch (error: any) {
+      this.logger.warn(
+        `Failed to count tokens for Anthropic model ${this.config.model}, using approximation: ${error?.message}`
+      );
+      return Promise.resolve(Math.ceil(text.length / 4));
+    }
   }
 }
