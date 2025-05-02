@@ -96,12 +96,12 @@ _(Note: Status tracking will be updated as tasks are delegated and completed)_
 - `src/core/analysis/tree-sitter-parser.service.ts`: Created the service implementation.
 - `src/core/di/modules/core-module.ts`: Registered the service using a factory.
 - `tests/core/analysis/tree-sitter-parser.service.test.ts`: Added unit tests (delegated).
-- `package.json`, `package-lock.json`: Added `inversify` dependency.
+- `package.json`, `package-lock.json`: Updated dependencies (removed inversify).
   **Implementation Details**:
 - Defined `ITreeSitterParserService` interface in `interfaces.ts`.
 - Defined placeholder `ParsedCodeInfo` type in `types.ts`.
-- Created `TreeSitterParserService` implementing the interface.
-- Injected `ILogger` using the string token `'ILogger'`.
+- Created `TreeSitterParserService` implementing the interface, using custom `@Injectable` decorator.
+- Injected `ILogger` using custom `@Inject('ILogger')` decorator.
 - Implemented dynamic grammar loading using `import()` for 'javascript' (`tree-sitter-javascript`) and 'typescript' (`tree-sitter-typescript/typescript`).
 - Added caching for loaded parsers.
 - Added mapping from file extensions (`.js`, `.jsx`, `.ts`, `.tsx`) to language strings.
