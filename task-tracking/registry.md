@@ -1,8 +1,9 @@
 # Task Registry
 
-| Task ID | Task Name                                                 | Status      | Dependencies | Start Date | Completion Date |
-| ------- | --------------------------------------------------------- | ----------- | ------------ | ---------- | --------------- |
-| TSK-003 | Fix OpenRouter Invalid Response Error in AiMagicGenerator | Completed   | None         | 2025-04-30 | 2025-04-30      |
-| TSK-004 | Fix OpenRouter Missing Choices Error                      | Completed   | None         | 2025-04-30 | 2025-04-30      |
-| TSK-005 | Fix Project Analyzer JSON Parsing Error                   | Completed   | None         |            |                 |
-| TSK-006 | Manual Testing Foundation                                 | In Progress | None         | 2025-05-02 |                 |
+| Task ID | Task Name                                                 | Status      | Dependencies | Start Date | Completion Date | Notes/Follow-up                                                                                                                              |
+| ------- | --------------------------------------------------------- | ----------- | ------------ | ---------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| TSK-003 | Fix OpenRouter Invalid Response Error in AiMagicGenerator | Completed   | None         | 2025-04-30 | 2025-04-30      |                                                                                                                                              |
+| TSK-004 | Fix OpenRouter Missing Choices Error                      | Completed   | None         | 2025-04-30 | 2025-04-30      |                                                                                                                                              |
+| TSK-005 | Fix Project Analyzer JSON Parsing Error                   | Completed   | None         |            |                 |                                                                                                                                              |
+| TSK-006 | Manual Testing Foundation                                 | Completed   | None         | 2025-05-02 | 2025-05-02      | Findings: ProjectContext lacks detailed internal structure. Follow-up: Enhance Project Analysis for more granular ProjectContext (New Task). |
+| TSK-007 | Enhance Project Analysis                                  | In Progress | TSK-006      | 2025-05-02 |                 |                                                                                                                                              |

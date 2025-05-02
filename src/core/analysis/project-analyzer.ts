@@ -171,6 +171,10 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         return Result.err(new Error('Parsed analysis result value is undefined'));
       }
 
+      // Log the generated ProjectContext for inspection
+      this.logger.debug('Generated ProjectContext:');
+      this.logger.debug(JSON.stringify(parsedResult.value, null, 2));
+
       const techStack = parsedResult.value.techStack ?? {
         languages: [],
         frameworks: [],

@@ -1103,6 +1103,7 @@ When receiving completed work from Architect:
    - Provide specific feedback about unmet criteria
    - Redelegate to Architect with required changes
    - Track redelegation in task registry
+6. Document Findings and Follow-up: Extract key findings, recommendations, and follow-up items from the completion report and add them to the task registry entry for the completed task. If a recommendation or follow-up item warrants a new task, create a new task entry in the registry and potentially a new task description for delegation.
 
 ## TASK DESCRIPTION DOCUMENT STANDARDS
 
