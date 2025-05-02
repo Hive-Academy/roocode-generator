@@ -17,7 +17,8 @@ export interface IProjectAnalyzer {
  */
 export interface CodeElementInfo {
   name: string;
-  // Potentially add more details later like start/end line, params, etc.
+  startLine: number; // Add start line number
+  endLine: number; // Add end line number
 }
 
 /**
