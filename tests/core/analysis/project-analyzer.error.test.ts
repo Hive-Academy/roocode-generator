@@ -3,6 +3,7 @@ import {
   FileContentResult,
   IFileContentCollector,
   IFilePrioritizer,
+  ITreeSitterParserService, // Import the missing interface
 } from '../../../src/core/analysis/interfaces';
 import { ProjectContext } from '../../../src/core/analysis/types'; // Re-added ProjectContext import
 import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
@@ -24,6 +25,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
   let mockProgress: jest.Mocked<ProgressIndicator>;
   let mockContentCollector: jest.Mocked<IFileContentCollector>;
   let mockFilePrioritizer: jest.Mocked<IFilePrioritizer>;
+  let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>; // Declare the mock variable
 
   beforeEach(() => {
     mockFileOps = {
@@ -65,6 +67,11 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
       prioritizeFiles: jest.fn(),
     } as any;
 
+    // Initialize the mock service
+    mockTreeSitterParserService = {
+      parse: jest.fn().mockResolvedValue(Result.ok({ functions: [], classes: [] })), // Default mock
+    } as any;
+
     projectAnalyzer = new ProjectAnalyzer(
       mockFileOps,
       mockLogger,
@@ -72,7 +79,8 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
       mockResponseParser,
       mockProgress,
       mockContentCollector,
-      mockFilePrioritizer
+      mockFilePrioritizer,
+      mockTreeSitterParserService // Pass the mock service
     );
   });
 

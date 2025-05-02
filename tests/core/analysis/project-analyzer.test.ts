@@ -705,9 +705,38 @@ describe('ProjectAnalyzer Analysis Result', () => {
     } as unknown as jest.Mocked<IFilePrioritizer>;
 
     mockTreeSitterParserService = {
-      // Initialize the mock variable
-      parse: jest.fn().mockResolvedValue(Result.ok({ functions: [], classes: [] })), // Default successful parse
+      parse: jest.fn(), // Will be mocked more specifically below or per test
     } as any;
+
+    // Mock TreeSitter parse specifically for this suite's files
+    const mockAppTsParseResult: ParsedCodeInfo = {
+      functions: [{ name: 'startApp', startLine: 5, endLine: 10 }],
+      classes: [{ name: 'Application', startLine: 12, endLine: 25 }],
+    };
+    const mockUtilsTsParseResult: ParsedCodeInfo = {
+      functions: [{ name: 'formatDate', startLine: 2, endLine: 5 }],
+      classes: [],
+    };
+    mockTreeSitterParserService.parse.mockImplementation(async (content, language) => {
+      // Determine file based on mock content used in collectContent mock
+      if (content === 'app.ts content' && language === 'typescript') {
+        return Result.ok(mockAppTsParseResult);
+      }
+      if (content === 'utils.ts content' && language === 'typescript') {
+        // Assuming utils is TS based on mock content
+        return Result.ok(mockUtilsTsParseResult);
+      }
+      // Default for safety or other files not explicitly mocked here
+      return Result.ok({ functions: [], classes: [] });
+    });
+
+    // Mock readFile needed for the TreeSitter parsing step within analyzeProject
+    mockFileOps.readFile.mockImplementation(async (filePath: string) => {
+      if (filePath.endsWith('app.ts')) return Result.ok('app.ts content');
+      if (filePath.endsWith('utils.ts')) return Result.ok('utils.ts content');
+      // Provide a default or handle other cases if necessary
+      return Result.err(new Error(`Unexpected readFile call in beforeEach: ${filePath}`));
+    });
 
     projectAnalyzer = new ProjectAnalyzer(
       mockFileOps,
@@ -721,8 +750,10 @@ describe('ProjectAnalyzer Analysis Result', () => {
     );
   });
 
-  it('should correctly parse LLM response and include definedFunctions/Classes', async () => {
-    mockLLMAgent.getCompletion.mockResolvedValue(Result.ok(mockLlmResponseWithNewFields)); // Use getCompletion
+  it('should correctly merge Tree-sitter data, overriding LLM response (AC1, AC2, AC3, AC6)', async () => {
+    // LLM response still provides other data (techStack, etc.) and potentially outdated structure info
+    mockLLMAgent.getCompletion.mockResolvedValue(Result.ok(mockLlmResponseWithNewFields));
+    // ResponseParser still parses the LLM response initially
     mockResponseParser.parseLlmResponse.mockReturnValue(Result.ok(mockParsedResultWithNewFields));
 
     const result = await projectAnalyzer.analyzeProject([rootPath]);
@@ -734,23 +765,27 @@ describe('ProjectAnalyzer Analysis Result', () => {
     expect(context.techStack.languages).toEqual(['TypeScript']);
     expect(context.structure.rootDir).toBe(rootPath); // Should use the provided root path
 
-    // Check new fields
+    // Check new fields - ASSERTING TREE-SITTER DATA OVERRIDES LLM DATA
     expect(context.structure.definedFunctions).toEqual({
-      'src/utils.ts': [{ name: 'formatDate' }],
-      'src/app.ts': [{ name: 'startApp' }],
+      // Data comes from the mockTreeSitterParserService mock in beforeEach
+      'src/app.ts': [{ name: 'startApp', startLine: 5, endLine: 10 }],
+      'src/utils.ts': [{ name: 'formatDate', startLine: 2, endLine: 5 }],
     });
     expect(context.structure.definedClasses).toEqual({
-      'src/app.ts': [{ name: 'Application' }],
+      // Data comes from the mockTreeSitterParserService mock in beforeEach
+      'src/app.ts': [{ name: 'Application', startLine: 12, endLine: 25 }],
     });
+    // Verify other LLM-derived data is preserved
     expect(context.dependencies.internalDependencies).toEqual({
       'src/app.ts': ['./utils'],
     });
   });
 
-  it('should apply default empty objects when definedFunctions/Classes are missing in LLM response', async () => {
+  it('should use Tree-sitter data even if missing in LLM response (AC1, AC2, AC3, AC6)', async () => {
+    // LLM response doesn't contain the structure fields
     mockLLMAgent.getCompletion.mockResolvedValue(Result.ok(mockLlmResponseWithoutNewFields));
     mockResponseParser.parseLlmResponse.mockReturnValue(
-      Result.ok(mockParsedResultWithoutNewFields)
+      Result.ok(mockParsedResultWithoutNewFields) // Parsed result also lacks the fields
     );
 
     const result = await projectAnalyzer.analyzeProject([rootPath]);
@@ -762,10 +797,16 @@ describe('ProjectAnalyzer Analysis Result', () => {
     expect(context.techStack.languages).toEqual(['JavaScript']);
     expect(context.structure.rootDir).toBe(rootPath); // Should use the provided root path
 
-    // Check that new fields default to empty objects
-    expect(context.structure.definedFunctions).toEqual({});
-    expect(context.structure.definedClasses).toEqual({});
-    expect(context.dependencies.internalDependencies).toEqual({}); // Assuming this also defaults if missing
+    // Check that Tree-sitter fields are populated correctly from the mock service
+    expect(context.structure.definedFunctions).toEqual({
+      'src/app.ts': [{ name: 'startApp', startLine: 5, endLine: 10 }],
+      'src/utils.ts': [{ name: 'formatDate', startLine: 2, endLine: 5 }],
+    });
+    expect(context.structure.definedClasses).toEqual({
+      'src/app.ts': [{ name: 'Application', startLine: 12, endLine: 25 }],
+    });
+    // Verify other LLM-derived data is preserved (or defaults if missing)
+    expect(context.dependencies.internalDependencies).toEqual({}); // Defaults correctly
   });
 
   it('should return error if LLM response generation fails', async () => {
@@ -874,7 +915,7 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
     );
   });
 
-  it('should call treeSitterParserService.parse for supported files and skip unsupported ones (AC7)', async () => {
+  it('should call treeSitterParserService.parse for supported files, skip unsupported, and include results in context (AC1, AC2, AC3, AC7)', async () => {
     // Arrange
     const rootPath = '/path/to/project';
     const tsFilePath = path.join(rootPath, 'src', 'component.ts');
@@ -914,16 +955,24 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
       return Promise.resolve(Result.err(new Error(`Unexpected readFile call: ${filePath}`)));
     });
 
-    // Mock successful parsing for supported files
-    const mockParsedInfo: ParsedCodeInfo = { functions: [], classes: [] };
-    // Removed async, return Promise.resolve as parse is async
-    mockTreeSitterParserService.parse.mockImplementation((content, language) => {
-      if (language === 'typescript' && content === tsContent)
-        return Promise.resolve(Result.ok(mockParsedInfo));
-      if (language === 'javascript' && content === jsContent)
-        return Promise.resolve(Result.ok(mockParsedInfo));
+    // Mock successful parsing for supported files with specific data
+    const mockTsParsedInfo: ParsedCodeInfo = {
+      functions: [],
+      classes: [{ name: 'MyComponent', startLine: 1, endLine: 1 }], // Example data
+    };
+    const mockJsParsedInfo: ParsedCodeInfo = {
+      functions: [{ name: 'helper', startLine: 1, endLine: 1 }], // Example data
+      classes: [],
+    };
+    mockTreeSitterParserService.parse.mockImplementation(async (content, language) => {
+      if (language === 'typescript' && content === tsContent) {
+        return Result.ok(mockTsParsedInfo);
+      }
+      if (language === 'javascript' && content === jsContent) {
+        return Result.ok(mockJsParsedInfo);
+      }
       // Should not be called for other languages/content in this test setup
-      return Promise.resolve(Result.err(new Error(`Unexpected parse call: lang=${language}`)));
+      return Result.err(new Error(`Unexpected parse call: lang=${language}`));
     });
 
     // Mock LLM and ResponseParser for successful run
@@ -954,12 +1003,38 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
     expect(mockTreeSitterParserService.parse).not.toHaveBeenCalledWith(expect.any(String), 'text');
     expect(mockTreeSitterParserService.parse).not.toHaveBeenCalledWith(expect.any(String), 'css');
 
-    // Verify logger.debug might have been called for skipping (optional, depends on implementation)
-    // expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining(`Skipping parsing for unsupported file: ${txtFilePath}`));
-    // expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining(`Skipping parsing for unsupported file: ${cssFilePath}`));
+    // Verify logger.debug was called for skipping unsupported files
+    expect(mockLogger.debug).toHaveBeenCalledWith(
+      expect.stringContaining(`Skipping unsupported file type: ${txtFilePath}`)
+    );
+    expect(mockLogger.debug).toHaveBeenCalledWith(
+      expect.stringContaining(`Skipping unsupported file type: ${cssFilePath}`)
+    );
+
+    // Verify the final context contains the parsed data
+    const finalContext = result.unwrap();
+    const relativeTsPath = path.relative(rootPath, tsFilePath);
+    const relativeJsPath = path.relative(rootPath, jsFilePath);
+    const relativeTxtPath = path.relative(rootPath, txtFilePath);
+    const relativeCssPath = path.relative(rootPath, cssFilePath);
+
+    expect(finalContext.structure.definedFunctions).toEqual({
+      [relativeJsPath]: mockJsParsedInfo.functions,
+    });
+    expect(finalContext.structure.definedClasses).toEqual({
+      [relativeTsPath]: mockTsParsedInfo.classes,
+    });
+
+    // Verify unsupported files are not present
+    expect(finalContext.structure.definedFunctions).not.toHaveProperty(relativeTsPath); // No functions in mock TS
+    expect(finalContext.structure.definedFunctions).not.toHaveProperty(relativeTxtPath);
+    expect(finalContext.structure.definedFunctions).not.toHaveProperty(relativeCssPath);
+    expect(finalContext.structure.definedClasses).not.toHaveProperty(relativeJsPath); // No classes in mock JS
+    expect(finalContext.structure.definedClasses).not.toHaveProperty(relativeTxtPath);
+    expect(finalContext.structure.definedClasses).not.toHaveProperty(relativeCssPath);
   });
 
-  it('should log a warning if parsing fails for a supported file (AC5)', async () => {
+  it('should log a warning if parsing fails and exclude failed file from context (AC5, AC6)', async () => {
     // Arrange
     const rootPath = '/path/to/project';
     const jsFilePath = path.join(rootPath, 'src', 'buggy.js');
@@ -1010,5 +1085,13 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
     expect(mockLogger.warn).toHaveBeenCalledWith(
       expect.stringContaining(mockError.message) // Check if the specific error message is logged
     );
+
+    // Verify the final context does NOT contain entries for the failed file
+    const finalContext = result.unwrap();
+    const relativeBuggyPath = path.relative(rootPath, jsFilePath);
+    expect(finalContext.structure.definedFunctions).not.toHaveProperty(relativeBuggyPath);
+    expect(finalContext.structure.definedClasses).not.toHaveProperty(relativeBuggyPath);
+    // Ensure other parts of the context might still exist (e.g., from LLM)
+    expect(finalContext.techStack).toBeDefined();
   });
 });

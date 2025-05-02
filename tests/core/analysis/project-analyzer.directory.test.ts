@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { IFileContentCollector, IFilePrioritizer } from '@core/analysis/interfaces';
+import {
+  IFileContentCollector,
+  IFilePrioritizer,
+  ITreeSitterParserService, // Import the missing interface
+} from '@core/analysis/interfaces';
 import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
 import { ResponseParser } from '../../../src/core/analysis/response-parser';
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
@@ -15,6 +19,7 @@ describe('ProjectAnalyzer Directory Handling', () => {
   let mockLLMAgent: jest.Mocked<LLMAgent>;
   let mockResponseParser: jest.Mocked<ResponseParser>;
   let mockProgressIndicator: jest.Mocked<ProgressIndicator>;
+  let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>; // Declare the mock variable
 
   beforeEach(() => {
     mockFileOps = {
@@ -67,6 +72,11 @@ describe('ProjectAnalyzer Directory Handling', () => {
       prioritizeFiles: jest.fn(),
     } as unknown as jest.Mocked<IFilePrioritizer>;
 
+    // Initialize the mock service
+    mockTreeSitterParserService = {
+      parse: jest.fn().mockResolvedValue(Result.ok({ functions: [], classes: [] })), // Default mock
+    } as any;
+
     projectAnalyzer = new ProjectAnalyzer(
       mockFileOps,
       mockLogger,
@@ -74,7 +84,8 @@ describe('ProjectAnalyzer Directory Handling', () => {
       mockResponseParser,
       mockProgressIndicator,
       contentCollector,
-      filePrioritizer
+      filePrioritizer,
+      mockTreeSitterParserService // Pass the mock service
     );
   });
 
