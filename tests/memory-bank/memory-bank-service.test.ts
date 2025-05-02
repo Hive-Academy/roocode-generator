@@ -28,6 +28,8 @@ describe('MemoryBankService', () => {
       configFiles: ['tsconfig.json'],
       mainEntryPoints: ['src/index.ts'],
       componentStructure: { 'src/components': ['Button.tsx'] },
+      definedClasses: {},
+      definedFunctions: {}, // Added missing property
     },
     dependencies: {
       dependencies: { react: '18.0.0' },

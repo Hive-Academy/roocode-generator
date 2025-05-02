@@ -4,7 +4,7 @@ type: implementation-plan
 category: enhancement
 taskId: TSK-007
 taskName: EnhanceProjectAnalysis
-status: Not Started
+status: Completed
 ---
 
 # Implementation Plan: TSK-007/Enhance Project Analysis
@@ -274,3 +274,12 @@ const finalContext: ProjectContext = {
 - Revert changes using Git version control.
 - The changes are localized primarily to `src/core/analysis/types.ts` and `src/core/analysis/project-analyzer.ts`, making rollback straightforward.
 - Unit tests should catch regressions if changes are reverted incorrectly.
+
+## 8. Revision History
+
+### Revision 1 (2025-05-02)
+
+- **Reason**: Code Review identified that the schema validation logic was not updated to handle the new `definedFunctions` and `definedClasses` fields in the LLM response, causing parsing failures.
+- **Status**: Changed overall status back to "In Progress".
+- **Required Action**: Update schema validation logic (likely in `response-parser.ts` or `json-schema-helper.ts`) to accept the enhanced `ProjectContext` structure.
+- **Resolution**: Updated Zod schema in `src/core/analysis/json-schema-helper.ts`. Fixed related test failures in `tests/core/analysis/project-analyzer.prompt.test.ts`. Refactored error propagation in `src/core/analysis/project-analyzer.ts` (`collectAnalyzableFiles` method). Delegated fixing of 5 persistent file collection error tests in `tests/core/analysis/project-analyzer.error.test.ts` to Junior Tester, who successfully resolved them by correcting mock implementations and assertions. Status changed to "Completed".

@@ -3,35 +3,57 @@
 
 import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
 import { JsonSchemaHelper } from '../../../src/core/analysis/json-schema-helper';
+import { Result } from '../../../src/core/result/result'; // Added import
+import { LLMAgent } from '../../../src/core/llm/llm-agent'; // Import for casting
 
 describe('ProjectAnalyzer Prompt Tests', () => {
   let projectAnalyzer: ProjectAnalyzer;
-  // Create dummy mocks for the 7 required constructor arguments
-  const mockArg1 = {} as any;
-  const mockArg2 = {} as any;
-  const mockArg3 = {} as any;
-  const mockArg4 = {} as any;
-  const mockArg5 = {} as any;
-  const mockArg6 = {} as any;
-  const mockArg7 = {} as any;
+  // Mock logger
+  const mockLogger = {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  };
+  // Create dummy mocks for the other 6 required constructor arguments
+  const mockFileOps = {} as any; // Pos 1
+  const mockLlmAgent = {
+    // Pos 3
+    // Mock getProvider needed for getPromptOverheadTokens test
+    getProvider: jest.fn().mockResolvedValue(
+      Result.ok({
+        countTokens: jest.fn().mockResolvedValue(10), // Mock countTokens as well
+      })
+    ),
+    // Add other methods if needed by other tests in this file, currently none
+    getModelContextWindow: jest.fn().mockResolvedValue(8000),
+    countTokens: jest.fn().mockResolvedValue(100),
+    getCompletion: jest.fn(),
+  } as unknown as LLMAgent; // Cast to satisfy TS
+  const mockResponseParser = {} as any; // Pos 4
+  const mockProgress = {} as any; // Pos 5
+  const mockContentCollector = {} as any; // Pos 6
+  const mockFilePrioritizer = {} as any; // Pos 7
 
   beforeEach(() => {
+    // Reset mocks before each test
+    jest.clearAllMocks();
     projectAnalyzer = new ProjectAnalyzer(
-      mockArg1,
-      mockArg2,
-      mockArg3,
-      mockArg4,
-      mockArg5,
-      mockArg6,
-      mockArg7
+      mockFileOps,
+      mockLogger, // Pos 2
+      mockLlmAgent,
+      mockResponseParser,
+      mockProgress,
+      mockContentCollector,
+      mockFilePrioritizer
     );
   });
 
   describe('buildSystemPrompt', () => {
     it('should include partial analysis warning', () => {
       const prompt = (projectAnalyzer as any).buildSystemPrompt();
-      expect(prompt).toContain('Analysis is based on partial codebase');
-      expect(prompt).toContain('Focus only on provided files');
+      expect(prompt).toContain('PARTIAL codebase view'); // Updated assertion
+      expect(prompt).toContain('Focus ONLY on the provided files'); // Keep this one
     });
 
     it('should include prompt version', () => {
@@ -41,7 +63,7 @@ describe('ProjectAnalyzer Prompt Tests', () => {
 
     it('should include JSON schema validation instructions', () => {
       const prompt = (projectAnalyzer as any).buildSystemPrompt();
-      expect(prompt).toContain('Response must strictly follow the JSON schema');
+      expect(prompt).toContain('MUST strictly follow this JSON schema'); // Updated assertion
     });
   });
 
@@ -78,6 +100,9 @@ describe('JsonSchemaHelper', () => {
           configFiles: ['package.json'],
           mainEntryPoints: ['src/index.ts'],
           componentStructure: { components: ['Button.tsx', 'Header.tsx'] },
+          // Add required fields from TSK-007
+          definedFunctions: {},
+          definedClasses: {},
         },
         dependencies: {
           dependencies: { react: '17.0.0' },
@@ -153,7 +178,12 @@ describe('JsonSchemaHelper', () => {
       const result = jsonSchemaHelper.validateJson(JSON.stringify(invalidProjectContext), schema);
       expect(result.error).toBeInstanceOf(Error);
       if (result.error) {
-        expect(result.error.message).toMatch(/expected/);
+        // Check for specific Zod error messages
+        expect(result.error.message).toMatch(
+          /techStack\.languages\.0 Expected string, received number/
+        );
+        expect(result.error.message).toMatch(/structure\.definedFunctions Required/);
+        expect(result.error.message).toMatch(/structure\.definedClasses Required/);
       }
     });
   });
@@ -162,23 +192,41 @@ describe('JsonSchemaHelper', () => {
 describe('Integration: ProjectAnalyzer with JsonSchemaHelper', () => {
   let projectAnalyzer: ProjectAnalyzer;
   let jsonSchemaHelper: JsonSchemaHelper;
-  const mockArg1 = {} as any;
-  const mockArg2 = {} as any;
-  const mockArg3 = {} as any;
-  const mockArg4 = {} as any;
-  const mockArg5 = {} as any;
-  const mockArg6 = {} as any;
-  const mockArg7 = {} as any;
+  // Mock logger for integration test setup
+  const mockLoggerIntegration = {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  };
+  // Dummy mocks for other args in integration test
+  const mockFileOpsInt = {} as any; // Pos 1
+  const mockLlmAgentInt = {
+    // Pos 3 (Add getProvider for consistency if needed, though not directly tested here)
+    getProvider: jest.fn().mockResolvedValue(
+      Result.ok({
+        countTokens: jest.fn().mockResolvedValue(10),
+      })
+    ),
+    getModelContextWindow: jest.fn().mockResolvedValue(8000),
+    countTokens: jest.fn().mockResolvedValue(100),
+    getCompletion: jest.fn(),
+  } as unknown as LLMAgent; // Cast to satisfy TS
+  const mockResponseParserInt = {} as any; // Pos 4
+  const mockProgressInt = {} as any; // Pos 5
+  const mockContentCollectorInt = {} as any; // Pos 6
+  const mockFilePrioritizerInt = {} as any; // Pos 7
 
   beforeEach(() => {
+    jest.clearAllMocks();
     projectAnalyzer = new ProjectAnalyzer(
-      mockArg1,
-      mockArg2,
-      mockArg3,
-      mockArg4,
-      mockArg5,
-      mockArg6,
-      mockArg7
+      mockFileOpsInt,
+      mockLoggerIntegration, // Pos 2
+      mockLlmAgentInt,
+      mockResponseParserInt,
+      mockProgressInt,
+      mockContentCollectorInt,
+      mockFilePrioritizerInt
     );
     jsonSchemaHelper = new JsonSchemaHelper();
   });
@@ -204,6 +252,9 @@ describe('Integration: ProjectAnalyzer with JsonSchemaHelper', () => {
         configFiles: ['package.json'],
         mainEntryPoints: ['src/index.ts'],
         componentStructure: { components: [prompt] },
+        // Add required fields for validation
+        definedFunctions: {},
+        definedClasses: {},
       },
       dependencies: {
         dependencies: { react: '17.0.0' },

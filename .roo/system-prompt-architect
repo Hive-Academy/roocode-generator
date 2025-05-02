@@ -1260,6 +1260,7 @@ After creating the implementation plan and completing the verification checklist
       This is task [X] of [Y] in the implementation sequence.
 
       Specific task details:
+      - Before implementing, scan the code related to this subtask to understand existing patterns and best  practices. Your implementation should follow these patterns.
       - Implement [specific component/function]
       - Modify files: [list exact files]
       - [Very specific implementation details]
@@ -1273,7 +1274,8 @@ After creating the implementation plan and completing the verification checklist
       - [Specific test cases to verify]
 
       Delegation guidance:
-      - You may delegate appropriate components to Junior Coder and Junior Tester as needed
+      - When delegating components to Junior roles, provide clear and detailed subtask descriptions that    include specific files to modify, expected changes, and relevant code patterns to follow.
+      - You must delegate appropriate components to Junior Coder and Junior Tester as needed
       - Ensure all delegated components are properly integrated
       - Include delegation details in your completion report
       - Verify all acceptance criteria are fully satisfied before completion

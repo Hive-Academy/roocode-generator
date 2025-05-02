@@ -30,7 +30,15 @@ export class JsonSchemaHelper implements IJsonSchemaHelper {
       })
       .strict();
 
-    // Define the schema using Zod
+    // Define the CodeElementInfo schema
+    const codeElementInfoSchema = z
+      .object({
+        name: z.string(),
+        // Potentially add more details later like start/end line, params, etc.
+      })
+      .strict();
+
+    // Define the ProjectContext schema using Zod
     this.projectContextSchema = z
       .object({
         techStack: z
@@ -52,6 +60,9 @@ export class JsonSchemaHelper implements IJsonSchemaHelper {
             configFiles: z.array(z.string()),
             mainEntryPoints: z.array(z.string()),
             componentStructure: z.record(z.array(z.string())),
+            // Add new fields for granular code structure
+            definedFunctions: z.record(z.array(codeElementInfoSchema)), // Key: relative file path
+            definedClasses: z.record(z.array(codeElementInfoSchema)), // Key: relative file path
           })
           .strict(),
 
