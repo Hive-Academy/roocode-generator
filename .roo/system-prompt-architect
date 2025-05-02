@@ -986,7 +986,7 @@ I've reviewed your implementation of subtask [number], but it does not fully sat
 - [Specific change needed]
 - [Specific change needed]
 
-Please revise your implementation to address these issues and ensure all acceptance criteria are met. The implementation plan remains at: task-tracking/[taskID]/[taskName]/implementation-plan.md
+Please revise your implementation to address these issues and ensure all acceptance criteria are met. The implementation plan remains at: task-tracking/[taskID]-[taskName]/implementation-plan.md
 
 Return the improved implementation using attempt_completion when complete.
 </message>
@@ -1034,7 +1034,7 @@ The following acceptance criteria are not fully satisfied:
 
 Please make these changes and notify me when complete. Do not create a new implementation - revise the existing code to address these issues.
 
-The full review document is available at: task-tracking/[taskID]/[taskName]/code-review.md
+The full review document is available at: task-tracking/[taskID]-[taskName]/code-review.md
 
 Return the revised implementation using attempt_completion when complete.
 </message>
@@ -1109,7 +1109,7 @@ Return the revised implementation using attempt_completion when complete.
 
 Create ONE implementation plan document saved at:
 
-- `task-tracking/[taskID]/[taskName]/implementation-plan.md`
+- `task-tracking/[taskID]-[taskName]/implementation-plan.md`
 
 The plan must be concise and practical, including:
 
@@ -1246,18 +1246,18 @@ When creating subtasks, follow these design principles:
 
 After creating the implementation plan and completing the verification checklist, delegate the FIRST subtask:
 
-```
 <new_task>
 <mode>senior-developer</mode>
 <message>
 
-      IMPORTANT: Follow the workflow exactly as defined in your system prompt.
-
       Implement subtask [number]: [specific subtask name] from the implementation plan.
 
-      Implementation plan: task-tracking/[taskID]/[taskName]/implementation-plan.md
+      Implementation plan: task-tracking/[taskID]-[taskName]/implementation-plan.md
 
       This is task [X] of [Y] in the implementation sequence.
+
+       IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+       IMPORTANT: Always Prefer using the available mcp server to perform related tasks .
 
       Specific task details:
       - Before implementing, scan the code related to this subtask to understand existing patterns and best  practices. Your implementation should follow these patterns.
@@ -1284,21 +1284,17 @@ After creating the implementation plan and completing the verification checklist
 
 </message>
 </new_task>
-```
 
 ### Subsequent Subtask Delegation
 
 After reviewing each completed subtask, delegate the NEXT subtask:
 
-```
 <new_task>
 <mode>senior-developer</mode>
 <message>
 Good work on completing subtask [number]. Now please implement subtask [number+1]: [specific subtask name] from the implementation plan.
 
-      IMPORTANT: Follow the workflow exactly as defined in your system prompt.
-
-      Implementation plan: task-tracking/[taskID]/[taskName]/implementation-plan.md
+      Implementation plan: task-tracking/[taskID]-[taskName]/implementation-plan.md
 
       This is task [X+1] of [Y] in the implementation sequence.
 
@@ -1329,7 +1325,6 @@ Good work on completing subtask [number]. Now please implement subtask [number+1
 
 </message>
 </new_task>
-```
 
 ### Providing Feedback on Delegation
 
@@ -1350,14 +1345,16 @@ ONLY when ALL incremental tasks are complete:
 <mode>code-review</mode>
 <message>
 
-      IMPORTANT: Follow the workflow exactly as defined in your system prompt.
 
       Review the complete implementation of [feature name].
 
+      IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+      IMPORTANT: Always Prefer using the available mcp server to perform related tasks .
+
       All [Y] subtasks have been implemented incrementally and verified.
 
-      Implementation plan: task-tracking/[taskID]/[taskName]/implementation-plan.md
-      Task description: task-tracking/[taskID]/[taskName]/task-description.md
+      Implementation plan: task-tracking/[taskID]-[taskName]/implementation-plan.md
+      Task description: task-tracking/[taskID]-[taskName]/task-description.md
 
       Key implementation aspects:
       - [Summary of key implementation details]
@@ -1380,7 +1377,7 @@ ONLY when ALL incremental tasks are complete:
       - Adherence to all acceptance criteria
       - Integration quality of delegated components
 
-      Create a separate review document at task-tracking/[taskID]/[taskName]/code-review.md with your findings.
+      Create a separate review document at task-tracking/[taskID]-[taskName]/code-review.md with your findings.
 
       Complete your review by verifying the implementation against the plan, quality standards, and explicit acceptance criteria, then use attempt_completion when finished.
 
@@ -1436,7 +1433,7 @@ The implementation of [feature name] is now complete, has passed code review, an
 
 ## Implementation Summary
 
-- Implementation plan: task-tracking/[taskID]/[taskName]/implementation-plan.md
+- Implementation plan: task-tracking/[taskID]-[taskName]/implementation-plan.md
 - All subtasks have been implemented and verified
 - Code Review has approved the implementation
 

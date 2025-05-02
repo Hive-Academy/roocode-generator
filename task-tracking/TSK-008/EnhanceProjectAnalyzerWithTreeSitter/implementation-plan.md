@@ -118,15 +118,34 @@ _(Note: Status tracking will be updated as tasks are delegated and completed)_
 
 ### 3. Implement Tree-sitter Querying Logic
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Implement the Tree-sitter queries and logic within `TreeSitterParserService` to extract function and class details.
-**Files to Modify**: - `src/core/analysis/tree-sitter-parser.service.ts`
-**Implementation Details**: - Define Tree-sitter queries for JavaScript and TypeScript to capture: - Function declarations (`function foo() {}`) - Function expressions (`const foo = function() {}`, `const bar = () => {}`) - Class declarations (`class MyClass {}`) - Potentially method definitions within classes if needed later (defer for now). - In the `parse` method, after successfully parsing, execute the relevant queries against the AST. - Iterate through query matches (`captures`). - For each match, extract the name (identifier node), start line (`startPosition.row`), and end line (`endPosition.row`). Note: Tree-sitter rows are 0-based, adjust to 1-based for output. - Populate the `ParsedCodeInfo` result object (e.g., `{ functions: CodeElementInfo[], classes: CodeElementInfo[] }`). - Handle cases where names might be complex or anonymous (log warning or skip).
-**Testing Requirements**: - Unit tests: Provide sample JS and TS code snippets (including various function/class syntaxes). Verify the service correctly extracts names and line numbers. Test edge cases (arrow functions, async functions, exported functions/classes).
-**Related Acceptance Criteria**: AC7, Prerequisite for AC2, AC3.
-**Estimated effort**: 30 minutes
-**Delegation Notes**: Suitable for Senior Developer. Requires understanding Tree-sitter query syntax and AST structure.
+**Files Modified**:
+
+- `src/core/analysis/tree-sitter-parser.service.ts`: Implemented query execution and element extraction logic within the `parse` method and helper methods (`extractElements`, `_processMatch`/`processQueryMatch`). Refactored by Junior Coder for SOLID principles and readability.
+- `src/core/analysis/tree-sitter.config.ts`: **New file** created by Junior Coder to hold queries and language configuration.
+- `src/core/analysis/types.ts`: Minor type fix by Junior Coder.
+- `tests/core/analysis/tree-sitter-parser.service.test.ts`: Split into `*.base.test.ts` and `*.extraction.test.ts` by Junior Tester.
+- `tests/core/analysis/tree-sitter-parser.service.base.test.ts`: Updated by Junior Coder to align with refactoring.
+- `tests/core/analysis/tree-sitter-parser.service.extraction.test.ts`: Implemented detailed extraction tests (delegated to Junior Tester, fixed by Senior Developer, updated by Junior Coder).
+  **Implementation Details**:
+- Defined Tree-sitter queries for JS/TS functions (declarations, expressions, arrows, methods, exports) and classes (declarations, exports). Queries moved to `tree-sitter.config.ts` during refactoring.
+- Added `@default_definition` capture to queries for anonymous default exports.
+- Implemented `extractElements` and `processQueryMatch` (refactored from `_processMatch`) to execute queries and process matches.
+- Logic correctly extracts name, 1-based start line, and 1-based end line.
+- Handles anonymous functions/classes, using `[anonymous_...]` as the placeholder name.
+- Refactored service by Junior Coder to improve structure (SRP) and readability.
+  **Testing Verification**:
+- Unit tests updated/created by Junior Tester, fixed by Senior Developer, and verified passing after refactoring by Junior Coder.
+- Tests cover various JS/TS function and class syntaxes, including exports and anonymous cases.
+- Tests assert correct name, 1-based start/end lines.
+- All 13 tests in `tree-sitter-parser.service.base.test.ts` and `tree-sitter-parser.service.extraction.test.ts` pass.
+  **Related Acceptance Criteria**: AC7, Prerequisite for AC2, AC3.
+  **Estimated effort**: 60 minutes (including test debugging and refactoring coordination)
+  **Delegation Notes**:
+- Test implementation delegated to Junior Tester. ✅ Completed (with fixes).
+- Code refactoring (SOLID, best practices) delegated to Junior Coder. ✅ Completed.
 
 ### 4. Integrate TreeSitterParserService into ProjectAnalyzer
 

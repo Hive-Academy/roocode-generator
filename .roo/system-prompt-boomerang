@@ -934,7 +934,7 @@ I've reviewed the implementation of [feature name], but it does not fully satisf
 - [Specific change needed]
 - [Specific change needed]
 
-Please revise the implementation to address these issues and ensure all acceptance criteria are fully satisfied. The task description remains at: task-tracking/[taskID]/[taskName]/task-description.md
+Please revise the implementation to address these issues and ensure all acceptance criteria are fully satisfied. The task description remains at: task-tracking/[taskID]-[taskName]/task-description.md
 
 Return the revised implementation ONLY when ALL acceptance criteria are fully satisfied and explicitly verified.
 </message>
@@ -1064,7 +1064,7 @@ This verification MUST be performed and reported VISIBLY at the beginning of EVE
    - Include specific file paths and components to be modified
    - Reference memory bank information without duplication
    - Include the defined acceptance criteria with verification methods
-   - Save the document at `task-tracking/[taskID]/[taskName]/task-description.md`
+   - Save the document at `task-tracking/[taskID]-[taskName]/task-description.md`
 
 6. **Task Registry Management**
 
@@ -1156,10 +1156,10 @@ The Task Description document is the foundation for the entire implementation pr
 
 All documentation follows this standardized file path structure:
 
-- Task Description: `task-tracking/[taskID]/[taskName]/task-description.md`
-- Implementation Plan: `task-tracking/[taskID]/[taskName]/implementation-plan.md` (created by Architect)
-- Code Review: `task-tracking/[taskID]/[taskName]/code-review.md` (created by Code Review)
-- Completion Report: `task-tracking/[taskID]/[taskName]/completion-report.md`
+- Task Description: `task-tracking/[taskID]-[taskName]/task-description.md`
+- Implementation Plan: `task-tracking/[taskID]-[taskName]/implementation-plan.md` (created by Architect)
+- Code Review: `task-tracking/[taskID]-[taskName]/code-review.md` (created by Code Review)
+- Completion Report: `task-tracking/[taskID]-[taskName]/completion-report.md`
 - Memory bank files: `memory-bank/[file-name].md`
 - Task Registry: `task-tracking/registry.md`
 
@@ -1280,14 +1280,14 @@ When receiving a new task from the user:
 
 Use the `new_task` tool with comprehensive context:
 
-```
 <new_task>
 <mode>architect</mode>
 <message>
 
-      IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+      Implement [feature name] according to the requirements in task-tracking/[taskID]-[taskName]/task-description.md.
 
-      Implement [feature name] according to the requirements in task-tracking/[taskID]/[taskName]/task-description.md.
+      IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+      IMPORTANT: Always Prefer using the available mcp server to perform related tasks .
 
       Key considerations:
 
@@ -1309,7 +1309,7 @@ Use the `new_task` tool with comprehensive context:
       - Testing strategy
 
       Save the implementation plan to:
-      task-tracking/[taskID]/[taskName]/implementation-plan.md
+      task-tracking/[taskID]-[taskName]/implementation-plan.md
 
       Relevant memory bank references:
       - memory-bank/TechnicalArchitecture.md:50-70 (component structure)
@@ -1329,22 +1329,23 @@ Use the `new_task` tool with comprehensive context:
 
 </message>
 </new_task>
-```
 
 ### Redelegating to Architect for Revisions
 
 When rejecting completed work:
 
-```
 <new_task>
 <mode>architect</mode>
 <message>
+
 # IMPLEMENTATION REVISION REQUIRED
 
 I've reviewed the implementation of [feature name], but it does not fully satisfy all the acceptance criteria.
 
 ## Unmet Acceptance Criteria
+
 - [Criterion X]: [Explanation of why it's not satisfied]
+
   - Current implementation: [What exists now]
   - Expected implementation: [What's needed]
   - Verification failure: [How verification failed]
@@ -1355,19 +1356,20 @@ I've reviewed the implementation of [feature name], but it does not fully satisf
   - Verification failure: [How verification failed]
 
 ## Implementation Issues
+
 - [Issue 1]: [Specific description and location]
 - [Issue 2]: [Specific description and location]
 
 ## Required Changes
+
 - [Specific change needed]
 - [Specific change needed]
 
-Please revise the implementation to address these issues and ensure ALL acceptance criteria are FULLY satisfied. The task description remains at: task-tracking/[taskID]/[taskName]/task-description.md
+Please revise the implementation to address these issues and ensure ALL acceptance criteria are FULLY satisfied. The task description remains at: task-tracking/[taskID]-[taskName]/task-description.md
 
 Return the revised implementation ONLY when ALL acceptance criteria are fully satisfied and explicitly verified.
 </message>
 </new_task>
-```
 
 ### Error Detection and Recovery
 

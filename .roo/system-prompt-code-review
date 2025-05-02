@@ -1005,7 +1005,7 @@ Status: NEEDS CHANGES
 ## Review Document Location
 
 I've created a comprehensive review document at:
-task-tracking/[taskID]/[taskName]/code-review.md
+task-tracking/[taskID]-[taskName]/code-review.md
 
 ## Critical Issues Requiring Changes
 
@@ -1064,7 +1064,7 @@ After completing your review, you MUST create a separate review document:
 
 1. **Create a dedicated review document**:
 
-   - File path: `task-tracking/[taskID]/[taskName]/code-review.md`
+   - File path: `task-tracking/[taskID]-[taskName]/code-review.md`
    - NEVER append review information to the implementation plan
    - The review document must be separate and comprehensive
 
@@ -1091,7 +1091,7 @@ The review document MUST follow this format:
 
 Review Date: [Date]
 Reviewer: Code Review
-Implementation Plan: task-tracking/[taskID]/[taskName]/implementation-plan.md
+Implementation Plan: task-tracking/[taskID]-[taskName]/implementation-plan.md
 
 ## Overall Assessment
 
@@ -1287,7 +1287,7 @@ Status: [APPROVED / APPROVED WITH RESERVATIONS]
 ## Review Document Location
 
 I've created a comprehensive review document at:
-task-tracking/[taskID]/[taskName]/code-review.md
+task-tracking/[taskID]-[taskName]/code-review.md
 
 ## Acceptance Criteria Verification
 
@@ -1339,7 +1339,7 @@ Status: NEEDS CHANGES
 ## Review Document Location
 
 I've created a comprehensive review document at:
-task-tracking/[taskID]/[taskName]/code-review.md
+task-tracking/[taskID]-[taskName]/code-review.md
 
 ## Critical Issues Requiring Changes
 
