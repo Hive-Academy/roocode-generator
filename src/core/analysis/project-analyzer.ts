@@ -228,11 +228,21 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
   private async collectAnalyzableFiles(rootDir: string): Promise<Result<string[], Error>> {
     try {
       const allFiles: string[] = [];
-      const scanDir = async (dirPath: string): Promise<void> => {
+      // Modify scanDir to return a Result for better error propagation
+      const scanDir = async (dirPath: string): Promise<Result<void, Error>> => {
         const result = await this.fileOps.readDir(dirPath);
-        if (!result.isOk() || !result.value) {
-          this.logger.debug(`Failed to read directory: ${dirPath}`);
-          return;
+        if (result.isErr()) {
+          // Return error Result instead of throwing
+          return Result.err(
+            new Error(
+              `Read directory failed: ${result.error instanceof Error ? result.error.message : String(result.error)}`
+            )
+          );
+        }
+        if (!result.value) {
+          // Handle case where readDir succeeds but returns no value (shouldn't happen with Dirent[])
+          this.logger.warn(`readDir for ${dirPath} returned ok but no value.`);
+          return Result.ok(undefined); // Return ok if just warning
         }
 
         const items = result.value;
@@ -252,20 +262,36 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
 
           const isDirResult = await this.isDirectory(fullPath);
           if (isDirResult.isErr()) {
-            this.logger.warn(`Error checking directory status: ${fullPath} - ${isDirResult.error}`);
-            continue;
+            // Return error Result instead of throwing
+            this.logger.warn(`Error checking directory status: ${fullPath} - ${isDirResult.error}`); // Keep warn log
+            return Result.err(
+              new Error(
+                `Is directory check failed: ${isDirResult.error instanceof Error ? isDirResult.error.message : String(isDirResult.error)}`
+              )
+            );
           }
 
           if (isDirResult.value) {
-            await scanDir(fullPath);
+            // Check result of recursive call
+            const scanResult = await scanDir(fullPath);
+            if (scanResult.isErr()) {
+              return scanResult; // Propagate error up
+            }
           } else if (this.shouldAnalyzeFile(fullPath)) {
             allFiles.push(fullPath);
           }
         }
+        // If loop completes without error, return success
+        return Result.ok(undefined);
       };
 
       const startTime = Date.now();
-      await scanDir(rootDir);
+      // Check the result of the initial scanDir call
+      const finalScanResult = await scanDir(rootDir);
+      if (finalScanResult.isErr()) {
+        // If scanDir returned an error, propagate it correctly typed
+        return Result.err(finalScanResult.error as Error);
+      }
       const elapsedTime = Date.now() - startTime;
       this.logger.debug(
         `File path collection completed in ${elapsedTime} ms. Found ${allFiles.length} analyzable files.`
