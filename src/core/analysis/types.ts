@@ -66,3 +66,14 @@ export interface ProjectContext {
   structure: ProjectStructure;
   dependencies: DependencyGraph;
 }
+
+import { CodeElementInfo } from './types'; // Add this if not already present at the top
+
+/**
+ * Represents the structured information extracted from parsed code.
+ * Placeholder structure for now.
+ */
+export interface ParsedCodeInfo {
+  functions: CodeElementInfo[];
+  classes: CodeElementInfo[];
+}

@@ -86,15 +86,35 @@ _(Note: Status tracking will be updated as tasks are delegated and completed)_
 
 ### 2. Create TreeSitterParserService Core
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Create the basic structure for the `TreeSitterParserService`, including grammar loading and basic parsing logic.
-**Files to Modify**: - `src/core/analysis/tree-sitter-parser.service.ts` (New file) - `src/core/di/registrations.ts` (Register the new service) - `src/core/analysis/interfaces.ts` (Define `ITreeSitterParserService` interface)
-**Implementation Details**: - Create `ITreeSitterParserService` interface defining methods like `parse(content: string, language: string): Promise<Result<ParsedCodeInfo, Error>>`. - Create `TreeSitterParserService` implementing the interface. - Inject `ILogger`. - Implement a mechanism to load grammars dynamically based on a language string (e.g., 'javascript', 'typescript'). Use `require` for grammars. Store loaded parsers/grammars in memory. - Map file extensions (`.js`, `.ts`, `.tsx`) to language strings. - Implement the basic `parse` method: select grammar, initialize parser, parse content. Return a placeholder result for now. - Handle errors during grammar loading or parser initialization. - Register the service in the DI container.
-**Testing Requirements**: - Unit tests: Verify service instantiation, successful grammar loading for JS/TS, error handling for unknown languages or loading failures.
-**Related Acceptance Criteria**: Prerequisite for AC7.
-**Estimated effort**: 30 minutes
-**Delegation Notes**: Suitable for Senior Developer due to potential complexities with Tree-sitter initialization and dynamic loading.
+**Files Modified**:
+
+- `src/core/analysis/interfaces.ts`: Added `ITreeSitterParserService` interface.
+- `src/core/analysis/types.ts`: Added `ParsedCodeInfo` type.
+- `src/core/analysis/tree-sitter-parser.service.ts`: Created the service implementation.
+- `src/core/di/modules/core-module.ts`: Registered the service using a factory.
+- `tests/core/analysis/tree-sitter-parser.service.test.ts`: Added unit tests (delegated).
+- `package.json`, `package-lock.json`: Added `inversify` dependency.
+  **Implementation Details**:
+- Defined `ITreeSitterParserService` interface in `interfaces.ts`.
+- Defined placeholder `ParsedCodeInfo` type in `types.ts`.
+- Created `TreeSitterParserService` implementing the interface.
+- Injected `ILogger` using the string token `'ILogger'`.
+- Implemented dynamic grammar loading using `import()` for 'javascript' (`tree-sitter-javascript`) and 'typescript' (`tree-sitter-typescript/typescript`).
+- Added caching for loaded parsers.
+- Added mapping from file extensions (`.js`, `.jsx`, `.ts`, `.tsx`) to language strings.
+- Implemented basic `parse` method: loads/retrieves parser, calls `parser.parse()`, returns placeholder `Result.ok({ functions: [], classes: [] })`.
+- Added error handling for grammar loading failures and internal parsing errors.
+- Registered the service in `core-module.ts` using `registerFactory` to handle dependency resolution.
+- Addressed TypeScript and ESLint issues, including using `@ts-expect-error` and `eslint-disable-next-line` for the `node-tree-sitter` import due to type definition limitations.
+  **Testing Verification**:
+- Unit tests created and verified by Senior Developer. Tests cover instantiation, grammar loading (success/failure/caching), and basic parse success/failure. Coverage: Statements: 83.33%, Branches: 38.46%, Functions: 80%, Lines: 82.22%.
+  **Related Acceptance Criteria**: Prerequisite for AC7.
+  **Estimated effort**: 45 minutes (including debugging type issues)
+  **Delegation Notes**:
+- Unit test creation (`tests/core/analysis/tree-sitter-parser.service.test.ts`) delegated to Junior Tester. ✅ Completed.
 
 ### 3. Implement Tree-sitter Querying Logic
 

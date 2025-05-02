@@ -31,3 +31,18 @@ export interface ITokenCounter {
   countTokens(content: string): Promise<Result<number, Error>>;
   getContextWindowSize(): Promise<Result<number, Error>>;
 }
+
+import { ParsedCodeInfo } from './types'; // Import the new type
+
+/**
+ * Defines the contract for parsing code using Tree-sitter.
+ */
+export interface ITreeSitterParserService {
+  /**
+   * Parses the given code content for a specific language.
+   * @param content - The source code content as a string.
+   * @param language - The language identifier (e.g., 'javascript', 'typescript').
+   * @returns A Promise resolving to a Result containing the parsed code information or an Error.
+   */
+  parse(content: string, language: string): Promise<Result<ParsedCodeInfo, Error>>;
+}

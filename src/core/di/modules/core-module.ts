@@ -25,6 +25,8 @@ import { FileContentCollector } from '@core/analysis/file-content-collector';
 import { FilePrioritizer } from '@core/analysis/file-prioritizer';
 import { IFileContentCollector, IFilePrioritizer, ITokenCounter } from '@core/analysis/interfaces';
 import { LLMTokenCounter } from '@core/analysis/token-counter';
+import { ITreeSitterParserService } from '@core/analysis/interfaces';
+import { TreeSitterParserService } from '@core/analysis/tree-sitter-parser.service';
 
 import { LLMAgent } from '@core/llm/llm-agent';
 
@@ -40,6 +42,12 @@ export function registerCoreModule(container: Container): void {
 
   // Analysis Services
   container.registerSingleton<IJsonSchemaHelper>('IJsonSchemaHelper', JsonSchemaHelper);
+
+  container.registerFactory<ITreeSitterParserService>('ITreeSitterParserService', () => {
+    const logger = resolveDependency<ILogger>(container, 'ILogger');
+    assertIsDefined(logger, 'ILogger dependency not found for TreeSitterParserService');
+    return new TreeSitterParserService(logger);
+  });
 
   container.registerFactory<ITokenCounter>('ITokenCounter', () => {
     const llmAgent = resolveDependency<LLMAgent>(container, 'LLMAgent');
