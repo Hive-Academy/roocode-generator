@@ -203,8 +203,15 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         structure: {
           ...structure,
           rootDir: rootPath,
+          // Add defaults for new fields from TSK-007
+          definedFunctions: structure.definedFunctions ?? {},
+          definedClasses: structure.definedClasses ?? {},
         },
-        dependencies,
+        dependencies: {
+          ...dependencies,
+          // Ensure internalDependencies default is handled
+          internalDependencies: dependencies.internalDependencies ?? {},
+        },
       };
 
       this.progress.succeed('Project context analysis completed successfully');
