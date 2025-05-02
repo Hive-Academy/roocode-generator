@@ -10,6 +10,7 @@ import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
 import { IFileContentCollector } from '../../../src/core/analysis/interfaces';
 import { IFilePrioritizer } from '../../../src/core/analysis/interfaces';
 import { Result } from '../../../src/core/result/result';
+// Removed unused import: import { ProjectContext } from '../../../src/core/analysis/types';
 
 describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
   let projectAnalyzer: ProjectAnalyzer;
@@ -27,6 +28,8 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       writeFile: jest.fn(),
       createDirectory: jest.fn(),
       validatePath: jest.fn(),
+      getFiles: jest.fn(),
+      readDir: jest.fn().mockResolvedValue(Result.ok([])), // Added readDir mock with default
     } as any;
 
     mockLogger = {
@@ -37,11 +40,22 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
     } as any;
 
     mockLLMAgent = {
-      getModelContextWindow: jest.fn(),
-      countTokens: jest.fn(),
+      getModelContextWindow: jest.fn().mockResolvedValue(10000), // Provide default mock value
+      countTokens: jest.fn().mockResolvedValue(10), // Provide default mock value
+      getCompletion: jest.fn(),
+      // Add getProvider mock, returning a mock provider with necessary methods
+      getProvider: jest.fn().mockResolvedValue(
+        Result.ok({
+          getContextWindowSize: jest.fn().mockReturnValue(10000),
+          countTokens: jest.fn().mockResolvedValue(10),
+          getCompletion: jest.fn(), // Include getCompletion on the mock provider if needed elsewhere
+        })
+      ),
     } as any;
 
-    mockResponseParser = {} as any;
+    mockResponseParser = {
+      parseLlmResponse: jest.fn(), // Corrected method name
+    } as any;
 
     mockProgress = {
       start: jest.fn(),
@@ -302,5 +316,246 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       expect(collectedFiles).toContain('empty-file.ts');
       expect(collectedFiles).not.toContain('invalid-file.ts');
     });
+  });
+});
+
+describe('ProjectAnalyzer Analysis Result', () => {
+  let projectAnalyzer: ProjectAnalyzer;
+  let mockFileOps: jest.Mocked<IFileOperations>;
+  let mockLogger: jest.Mocked<ILogger>;
+  let mockLLMAgent: jest.Mocked<LLMAgent>;
+  let mockResponseParser: jest.Mocked<ResponseParser>;
+  let mockProgress: jest.Mocked<ProgressIndicator>;
+  let mockContentCollector: jest.Mocked<IFileContentCollector>;
+  let mockFilePrioritizer: jest.Mocked<IFilePrioritizer>;
+
+  // Mock LLM response with new fields
+  const mockLlmResponseWithNewFields = `{
+    "techStack": { "languages": ["TypeScript"] },
+    "structure": {
+      "rootDir": "root",
+      "sourceDir": "src",
+      "definedFunctions": {
+        "src/utils.ts": [{ "name": "formatDate" }],
+        "src/app.ts": [{ "name": "startApp" }]
+      },
+      "definedClasses": {
+        "src/app.ts": [{ "name": "Application" }]
+      }
+    },
+    "dependencies": {
+      "internalDependencies": {
+        "src/app.ts": ["./utils"]
+      }
+    }
+  }`;
+
+  // Mock LLM response without new fields
+  const mockLlmResponseWithoutNewFields = `{
+    "techStack": { "languages": ["JavaScript"] },
+    "structure": {
+      "rootDir": "root",
+      "sourceDir": "src"
+    },
+    "dependencies": {
+      "internalDependencies": {}
+    }
+  }`;
+
+  // Mock parsed result for the response with new fields
+  const mockParsedResultWithNewFields = {
+    techStack: { languages: ['TypeScript'] },
+    structure: {
+      rootDir: 'root',
+      sourceDir: 'src',
+      definedFunctions: {
+        'src/utils.ts': [{ name: 'formatDate' }],
+        'src/app.ts': [{ name: 'startApp' }],
+      },
+      definedClasses: {
+        'src/app.ts': [{ name: 'Application' }],
+      },
+    },
+    dependencies: {
+      internalDependencies: {
+        'src/app.ts': ['./utils'],
+      },
+    },
+  };
+
+  // Mock parsed result for the response without new fields
+  const mockParsedResultWithoutNewFields = {
+    techStack: { languages: ['JavaScript'] },
+    structure: {
+      rootDir: 'root',
+      sourceDir: 'src',
+      // definedFunctions and definedClasses are missing
+    },
+    dependencies: {
+      internalDependencies: {},
+    },
+  };
+
+  beforeEach(() => {
+    mockFileOps = {
+      readFile: jest.fn(),
+      writeFile: jest.fn(),
+      createDirectory: jest.fn(),
+      validatePath: jest.fn(),
+      getFiles: jest.fn().mockResolvedValue(['src/app.ts', 'src/utils.ts']),
+      // Added readDir mock returning Dirent-like objects for the files
+      readDir: jest
+        .fn()
+        .mockResolvedValue(
+          Result.ok([{ name: 'src', isDirectory: () => true, isFile: () => false }])
+        ),
+    } as any;
+
+    // Need to mock readDir for subdirectories as well if collectAnalyzableFiles is recursive
+    // For simplicity, assume only one level for now, or adjust mock as needed.
+    // If 'src' is read, mock that call too:
+    (mockFileOps.readDir as jest.Mock).mockResolvedValueOnce(
+      Result.ok([
+        { name: 'app.ts', isDirectory: () => false, isFile: () => true },
+        { name: 'utils.ts', isDirectory: () => false, isFile: () => true },
+      ])
+    );
+
+    mockLogger = {
+      debug: jest.fn(),
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+    } as any;
+
+    mockLLMAgent = {
+      getModelContextWindow: jest.fn().mockResolvedValue(10000),
+      countTokens: jest.fn().mockResolvedValue(10),
+      getCompletion: jest.fn(),
+      // Add getProvider mock, returning a mock provider with necessary methods
+      getProvider: jest.fn().mockResolvedValue(
+        Result.ok({
+          getContextWindowSize: jest.fn().mockReturnValue(10000),
+          countTokens: jest.fn().mockResolvedValue(10),
+          getCompletion: jest.fn(), // Include getCompletion on the mock provider if needed elsewhere
+        })
+      ),
+    } as any;
+
+    mockResponseParser = {
+      parseLlmResponse: jest.fn(), // Corrected method name
+    } as any;
+
+    mockProgress = {
+      start: jest.fn(),
+      update: jest.fn(),
+      fail: jest.fn(),
+      succeed: jest.fn(), // Add succeed mock
+    } as any;
+
+    mockContentCollector = {
+      collectContent: jest.fn().mockResolvedValue(
+        Result.ok({
+          content: 'src/app.ts content\nsrc/utils.ts content',
+          metadata: [
+            { path: 'src/app.ts', size: 300 },
+            { path: 'src/utils.ts', size: 400 },
+          ],
+        })
+      ),
+    } as unknown as jest.Mocked<IFileContentCollector>;
+
+    mockFilePrioritizer = {
+      prioritizeFiles: jest.fn().mockReturnValue([
+        // Mock prioritizeFiles
+        { path: 'src/app.ts', size: 300 },
+        { path: 'src/utils.ts', size: 400 },
+      ]),
+    } as unknown as jest.Mocked<IFilePrioritizer>;
+
+    projectAnalyzer = new ProjectAnalyzer(
+      mockFileOps,
+      mockLogger,
+      mockLLMAgent,
+      mockResponseParser,
+      mockProgress,
+      mockContentCollector,
+      mockFilePrioritizer
+    );
+  });
+
+  it('should correctly parse LLM response and include definedFunctions/Classes', async () => {
+    mockLLMAgent.getCompletion.mockResolvedValue(Result.ok(mockLlmResponseWithNewFields)); // Use getCompletion
+    mockResponseParser.parseLlmResponse.mockReturnValue(Result.ok(mockParsedResultWithNewFields));
+
+    const result = await projectAnalyzer.analyzeProject(['root/path']);
+
+    expect(result.isOk()).toBe(true);
+    const context = result.unwrap(); // Removed 'as ProjectContext' cast
+
+    // Check existing fields (basic check)
+    expect(context.techStack.languages).toEqual(['TypeScript']);
+    expect(context.structure.rootDir).toBe('root/path'); // Should use the provided root path
+
+    // Check new fields
+    expect(context.structure.definedFunctions).toEqual({
+      'src/utils.ts': [{ name: 'formatDate' }],
+      'src/app.ts': [{ name: 'startApp' }],
+    });
+    expect(context.structure.definedClasses).toEqual({
+      'src/app.ts': [{ name: 'Application' }],
+    });
+    expect(context.dependencies.internalDependencies).toEqual({
+      'src/app.ts': ['./utils'],
+    });
+  });
+
+  it('should apply default empty objects when definedFunctions/Classes are missing in LLM response', async () => {
+    mockLLMAgent.getCompletion.mockResolvedValue(Result.ok(mockLlmResponseWithoutNewFields)); // Use getCompletion
+    mockResponseParser.parseLlmResponse.mockReturnValue(
+      Result.ok(mockParsedResultWithoutNewFields)
+    ); // Corrected method call
+
+    const result = await projectAnalyzer.analyzeProject(['root/path']);
+
+    expect(result.isOk()).toBe(true);
+    const context = result.unwrap(); // Removed 'as ProjectContext' cast
+
+    // Check existing fields (basic check)
+    expect(context.techStack.languages).toEqual(['JavaScript']);
+    expect(context.structure.rootDir).toBe('root/path');
+
+    // Check that new fields default to empty objects due to fallback logic
+    expect(context.structure.definedFunctions).toEqual({});
+    expect(context.structure.definedClasses).toEqual({});
+    expect(context.dependencies.internalDependencies).toEqual({}); // Also check default for internalDependencies
+  });
+
+  it('should return error if LLM response generation fails', async () => {
+    const error = new Error('LLM API Error');
+    mockLLMAgent.getCompletion.mockResolvedValue(Result.err(error)); // Use getCompletion
+
+    const result = await projectAnalyzer.analyzeProject(['root/path']);
+
+    expect(result.isErr()).toBe(true);
+    expect(result.error).toBe(error); // Use result.error
+    expect(mockResponseParser.parseLlmResponse).not.toHaveBeenCalled();
+    expect(mockProgress.fail).toHaveBeenCalledWith(
+      expect.stringContaining('LLM response generation failed')
+    );
+  });
+
+  it('should return error if LLM response parsing fails', async () => {
+    const parsingError = new Error('Invalid JSON');
+    mockLLMAgent.getCompletion.mockResolvedValue(Result.ok('invalid json')); // Use getCompletion
+    mockResponseParser.parseLlmResponse.mockReturnValue(Result.err(parsingError));
+
+    const result = await projectAnalyzer.analyzeProject(['root/path']);
+
+    expect(result.isErr()).toBe(true);
+    expect(result.error).toBe(parsingError); // Use result.error
+    expect(mockProgress.fail).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to parse LLM response')
+    );
   });
 });
