@@ -25,15 +25,17 @@ Before starting development, ensure you have the following installed:
 
 1.  **Clone the repository:**
 
-    ```bash
-    1 | git clone https://github.com/Hive-Academy/roocode-generator.git
-    2 | cd roocode-generator
+        ```bash
+
+    git clone https://github.com/Hive-Academy/roocode-generator.git
+    cd roocode-generator
     ```
 
 2.  **Install dependencies:**
 
-    ```bash
-    1 | npm install
+        ```bash
+
+    npm install
     ```
 
 3.  **Set up environment variables:**
@@ -41,18 +43,21 @@ Before starting development, ensure you have the following installed:
     - Create a `.env` file in the project root (`.`). You can copy `.env.example` if it exists.
     - Add the necessary API keys for the LLM services you intend to use:
       ```env
-      1 | # .env file content
-      2 | ANTHROPIC_API_KEY=your_anthropic_api_key
-      3 | GOOGLE_API_KEY=your_google_api_key # As seen in example config
-      4 | OPENAI_API_KEY=your_openai_api_key
+
       ```
-    - **Note:** Never commit your `.env` file to version control. It's included in `.gitignore` by default. The application uses `dotenv/config` to load these variables at runtime.
+
+# .env file content
+
+ANTHROPIC_API_KEY=your_anthropic_api_key
+GOOGLE_API_KEY=your_google_api_key # As seen in example config
+OPENAI_API_KEY=your_openai_api_key
+```    - **Note:** Never commit your`.env`file to version control. It's included in`.gitignore`by default. The application uses`dotenv/config` to load these variables at runtime.
 
 4.  **Prepare Git Hooks:**
     Husky is used to manage Git hooks for linting and commit message validation. Ensure hooks are installed by running the `prepare` script:
-    ```bash
-    1 | npm run prepare
-    ```
+    `bash
+npm run prepare
+    `
     This command is typically run automatically after `npm install`.
 
 ### 1.3. Required Tools & Technologies
@@ -84,64 +89,64 @@ This project utilizes the following tools and technologies:
 The project follows a structured approach, separating source code, build output, tests, and configuration. Below is a high-level overview. For a detailed breakdown of components and their responsibilities, see the [Core Components section](./TechnicalArchitecture.md#core-components) in the Technical Architecture document.
 
 ```
- 1 | roocode-generator/
- 2 | ├── bin/ # Compiled executable scripts (entry point: roocode-generator.js)
- 3 | ├── dist/ # Compiled JavaScript output from TypeScript (`outDir` in tsconfig.json)
- 4 | ├── src/ # Main TypeScript source code (`rootDir` in tsconfig.json)
- 5 | │ ├── core/ # Core framework components (DI, errors, services, etc.)
- 6 | │ │ ├── application/ # Application orchestration (ApplicationContainer, GeneratorOrchestrator)
- 7 | │ │ ├── analysis/ # Project analysis logic (ProjectAnalyzer, ResponseParser, types.ts)
- 8 | │ │ ├── cli/ # CLI interface implementation (CliInterface)
- 9 | │ │ ├── config/ # Configuration loading/saving (LLMConfigService, ProjectConfigService)
-10 | │ │ ├── di/ # Dependency Injection (Container, decorators, modules, registrations)
-11 | │ │ ├── errors/ # Custom error classes (RooCodeError, FileOperationError, memory-bank-errors.ts, etc.)
-12 | │ │ ├── file-operations/ # File system abstractions (FileOperations, interfaces.ts)
-13 | │ │ ├── generators/ # Base generator classes/interfaces (BaseGenerator, IGenerator)
-14 | │ │ ├── llm/ # LLM interaction (LLMAgent, providers, provider-registry)
-15 | │ │ ├── result/ # Result type definition (Result class)
-16 | │ │ ├── services/ # Common services (LoggerService, BaseService)
-17 | │ │ ├── template-manager/ # Generic template management (TemplateManager, Template)
-18 | │ │ ├── templating/ # Rules-specific template processing (RulesTemplateManager, TemplateProcessor)
-19 | │ │ ├── types/ # Core shared type definitions (shared.ts, common.ts) - Used by many core parts
-20 | │ │ └── ui/ # UI elements (ProgressIndicator - Ora wrapper)
-21 | │ ├── generators/ # Specific generator implementations
-22 | │ │ ├── rules/ # Legacy Rules generator specific files (RulesGenerator, RulesFileManager, etc.)
-23 | │ │ ├── roomodes-generator.ts
-24 | │ │ ├── system-prompts-generator.ts
-25 | │ │ ├── vscode-copilot-rules-generator.ts
-26 | │ │ └── ai-magic-generator.ts # New combined generator
-27 | │ ├── memory-bank/ # Memory Bank *service* specific files (MemoryBankService, orchestrator, etc.)
-28 | │ └── types/ # Top-level shared types (shared.ts - LLMConfig, ProjectConfig)
-29 | ├── templates/ # Static template files used by generators
-30 | │ ├── guide/ # Fallback templates for memory bank
-31 | │ ├── memory-bank/
-32 | │ │ └── templates/ # Task management templates (e.g., task-description-template.md)
-33 | │ ├── rules/ # Mode-specific rule templates (e.g., architect/base.md)
-34 | │ └── system-prompts/ # System prompt templates for modes
-35 | ├── tests/ # Unit and integration tests (`testMatch` in jest.config.js)
-36 | │ └── ... # Subdirectories mirroring src structure (co-location was planned but abandoned)
-37 | ├── .env.example # Example environment variables file
-38 | ├── .git/ # Git directory
-39 | ├── .gitignore # Files/directories ignored by Git (should include dist/, node_modules/, .env, coverage/)
-40 | ├── .husky/ # Husky Git hooks configuration
-41 | ├── .roo/ # RooCode specific configuration/rules (generated output)
-42 | │ └── rules-code/ # Generated single Markdown rules file
-43 | │     └── rules.md # The main generated rules file
-44 | ├── commitlint.config.js # Commitlint configuration (Conventional Commits)
-45 | ├── eslint.config.mjs # ESLint configuration (Flat Config format)
-46 | ├── jest.config.js # Jest test runner configuration
-47 | ├── LICENSE # Project license file (MIT)
-48 | ├── llm.config.json # LLM configuration file (managed by `config` command)
-49 | ├── package-lock.json # Exact dependency versions (indicates npm usage)
-50 | ├── package.json # Project metadata, dependencies, scripts
-51 | ├── README.md # Project overview and basic usage
-52 | ├── roocode-config.json # RooCode project configuration (used by generators)
-53 | ├── SECURITY.md # Security policy (standard template)
-54 | ├── tsconfig.json # TypeScript compiler configuration
-55 | └── memory-bank/ # Default output directory for generated Memory Bank documentation
-56 |     ├── DeveloperGuide.md # This file (generated)
-57 |     ├── ProjectOverview.md # Generated project overview
-58 |     └── TechnicalArchitecture.md # Generated architecture document
+roocode-generator/
+├── bin/ # Compiled executable scripts (entry point: roocode-generator.js)
+├── dist/ # Compiled JavaScript output from TypeScript (`outDir` in tsconfig.json)
+├── src/ # Main TypeScript source code (`rootDir` in tsconfig.json)
+│ ├── core/ # Core framework components (DI, errors, services, etc.)
+│ │ ├── application/ # Application orchestration (ApplicationContainer, GeneratorOrchestrator)
+│ │ ├── analysis/ # Project analysis logic (ProjectAnalyzer, ResponseParser, types.ts)
+│ │ ├── cli/ # CLI interface implementation (CliInterface)
+│ │ ├── config/ # Configuration loading/saving (LLMConfigService, ProjectConfigService)
+│ │ ├── di/ # Dependency Injection (Container, decorators, modules, registrations)
+│ │ ├── errors/ # Custom error classes (RooCodeError, FileOperationError, memory-bank-errors.ts, etc.)
+│ │ ├── file-operations/ # File system abstractions (FileOperations, interfaces.ts)
+│ │ ├── generators/ # Base generator classes/interfaces (BaseGenerator, IGenerator)
+│ │ ├── llm/ # LLM interaction (LLMAgent, providers, provider-registry)
+│ │ ├── result/ # Result type definition (Result class)
+│ │ ├── services/ # Common services (LoggerService, BaseService)
+│ │ ├── template-manager/ # Generic template management (TemplateManager, Template)
+│ │ ├── templating/ # Rules-specific template processing (RulesTemplateManager, TemplateProcessor)
+│ │ ├── types/ # Core shared type definitions (shared.ts, common.ts) - Used by many core parts
+│ │ └── ui/ # UI elements (ProgressIndicator - Ora wrapper)
+│ ├── generators/ # Specific generator implementations
+│ │ ├── rules/ # Legacy Rules generator specific files (RulesGenerator, RulesFileManager, etc.)
+│ │ ├── roomodes-generator.ts
+│ │ ├── system-prompts-generator.ts
+│ │ ├── vscode-copilot-rules-generator.ts
+│ │ └── ai-magic-generator.ts # New combined generator
+│ ├── memory-bank/ # Memory Bank *service* specific files (MemoryBankService, orchestrator, etc.)
+│ └── types/ # Top-level shared types (shared.ts - LLMConfig, ProjectConfig)
+├── templates/ # Static template files used by generators
+│ ├── guide/ # Fallback templates for memory bank
+│ ├── memory-bank/
+│ │ └── templates/ # Task management templates (e.g., task-description-template.md)
+│ ├── rules/ # Mode-specific rule templates (e.g., architect/base.md)
+│ └── system-prompts/ # System prompt templates for modes
+├── tests/ # Unit and integration tests (`testMatch` in jest.config.js)
+│ └── ... # Subdirectories mirroring src structure (co-location was planned but abandoned)
+├── .env.example # Example environment variables file
+├── .git/ # Git directory
+├── .gitignore # Files/directories ignored by Git (should include dist/, node_modules/, .env, coverage/)
+├── .husky/ # Husky Git hooks configuration
+├── .roo/ # RooCode specific configuration/rules (generated output)
+│ └── rules-code/ # Generated single Markdown rules file
+│     └── rules.md # The main generated rules file
+├── commitlint.config.js # Commitlint configuration (Conventional Commits)
+├── eslint.config.mjs # ESLint configuration (Flat Config format)
+├── jest.config.js # Jest test runner configuration
+├── LICENSE # Project license file (MIT)
+├── llm.config.json # LLM configuration file (managed by `config` command)
+├── package-lock.json # Exact dependency versions (indicates npm usage)
+├── package.json # Project metadata, dependencies, scripts
+├── README.md # Project overview and basic usage
+├── roocode-config.json # RooCode project configuration (used by generators)
+├── SECURITY.md # Security policy (standard template)
+├── tsconfig.json # TypeScript compiler configuration
+└── memory-bank/ # Default output directory for generated Memory Bank documentation
+    ├── DeveloperGuide.md # This file (generated)
+    ├── ProjectOverview.md # Generated project overview
+    └── TechnicalArchitecture.md # Generated architecture document
 ```
 
 ### 2.1. Command Execution Flow
@@ -166,39 +171,51 @@ For a more detailed step-by-step breakdown and diagram, see the [System Design s
 This project utilizes **Trunk-Based Development** with short-lived feature branches recommended for non-trivial changes.
 
 1.  **Sync with `main`:** Always ensure your local `main` branch is up-to-date before starting work:
-    ```bash
-    1 | git checkout main
-    2 | git pull origin main
-    ```
+    `bash
+git checkout main
+git pull origin main
+    `
 2.  **Create a Feature Branch (Recommended for > trivial changes):** While direct commits to `main` might occur for very small fixes, larger features or complex bug fixes should be done on short-lived feature branches:
     ```bash
-    1 | # Choose a descriptive name based on Conventional Commit types
-    2 | git checkout -b feat/your-feature-name
-    3 | # or
-    4 | git checkout -b fix/your-bug-fix-name
-    5 | # or
-    6 | git checkout -b refactor/component-name
+
     ```
-3.  **Develop:** Implement the feature or fix the bug. Follow the guidelines in Section 4. Write tests alongside your code (see Section 4.3).
+
+# Choose a descriptive name based on Conventional Commit types
+
+git checkout -b feat/your-feature-name
+
+# or
+
+git checkout -b fix/your-bug-fix-name
+
+# or
+
+git checkout -b refactor/component-name
+`3.  **Develop:** Implement the feature or fix the bug. Follow the guidelines in Section 4. Write tests alongside your code (see Section 4.3).
 4.  **Commit Changes:** Make small, logical commits using the **Conventional Commits** format (enforced by Commitlint via Husky hooks):
-    ```bash
-    1 | git add .
-    2 | # Use 'npm run cz' (if commitizen is added) or 'git commit' and follow guidelines
-    3 | git commit -m "feat(cli): add new 'analyze' command"
-    4 | git commit -m "fix(parser): resolve issue with template parsing errors"
-    5 | git commit -m "refactor(core): improve DI container performance"
-    6 | git commit -m "docs: update developer guide for testing strategy"
-    7 | git commit -m "test(llm): add tests for OpenAI provider"
-    8 | # etc.
+   `bash
+git add .
+
+# Use 'npm run cz' (if commitizen is added) or 'git commit' and follow guidelines
+
+git commit -m "feat(cli): add new 'analyze' command"
+git commit -m "fix(parser): resolve issue with template parsing errors"
+git commit -m "refactor(core): improve DI container performance"
+git commit -m "docs: update developer guide for testing strategy"
+git commit -m "test(llm): add tests for OpenAI provider"
+
+# etc.
+
     ```
     Commit messages will be linted automatically on `git commit` via Husky hooks. Fix any errors reported by the hook.
+
 5.  **Run Local Checks:** Before pushing, ensure code quality and that tests pass:
-    ```bash
-    1 | npm run lint          # Check for linting errors
-    2 | npm run format        # Check formatting (or npm run format:write to fix)
-    3 | npm run type-check    # Check for TypeScript errors
-    4 | npm test              # Run unit/integration tests
-    ```
+    `bash
+npm run lint          # Check for linting errors
+npm run format        # Check formatting (or npm run format:write to fix)
+npm run type-check    # Check for TypeScript errors
+npm test              # Run unit/integration tests
+    `
     Fix any issues reported by these checks.
 6.  **Push Changes:**
     - For direct commits (small fixes on `main` - use sparingly): `git push origin main`
@@ -281,22 +298,22 @@ To enhance organization and maintainability, the project's custom Dependency Inj
 **Example Structure:**
 
 ```
- 1 | src/
- 2 | └── core/
- 3 |     └── di/
- 4 |         ├── container.ts # Main Container class
- 5 |         ├── decorators.ts # @Injectable, @Inject decorators
- 6 |         ├── errors.ts # DI-specific errors
- 7 |         ├── index.ts # Barrel file for DI exports
- 8 |         ├── interfaces.ts # IServiceContainer interface
- 9 |         ├── types.ts # Core DI types (ServiceLifetime, etc.)
-10 |         ├── modules/ # <-- DI Registration Modules
-11 |         │   ├── app-module.ts
-12 |         │   ├── core-module.ts
-13 |         │   ├── llm-module.ts
-14 |         │   ├── memory-bank-module.ts
-15 |         │   └── rules-module.ts
-16 |         └── registrations.ts # Central registration function (imports & calls modules)
+src/
+└── core/
+    └── di/
+        ├── container.ts # Main Container class
+        ├── decorators.ts # @Injectable, @Inject decorators
+        ├── errors.ts # DI-specific errors
+        ├── index.ts # Barrel file for DI exports
+        ├── interfaces.ts # IServiceContainer interface
+        ├── types.ts # Core DI types (ServiceLifetime, etc.)
+        ├── modules/ # <-- DI Registration Modules
+        │   ├── app-module.ts
+        │   ├── core-module.ts
+        │   ├── llm-module.ts
+        │   ├── memory-bank-module.ts
+        │   └── rules-module.ts
+        └── registrations.ts # Central registration function (imports & calls modules)
 ```
 
 **Adding New Dependencies:**
@@ -321,17 +338,17 @@ To enhance organization and maintainability, the project's custom Dependency Inj
   - **Type Checking**: Run `npm run type-check`(uses`tsc --noEmit`) to ensure type safety based on `tsconfig.json`. Resolve all TypeScript errors.
 - **Running Tests**:
   - Run all tests once:
-    ```bash
-    1 | npm test
-    ```
+    `bash
+npm test
+    `
   - Run tests in watch mode during development:
-    ```bash
-    1 | npm run test:watch
-    ```
+    `bash
+npm run test:watch
+    `
   - Generate test coverage report:
-    ```bash
-    1 | npm run test:coverage
-    ```
+    `bash
+npm run test:coverage
+    `
 
 ## 5. Common Operations
 
@@ -357,7 +374,7 @@ The `package.json` file defines several scripts for common development tasks:
 - `npm run cli -- <args>`: Executes the main CLI entry point using `cross-env`to set`NODE_PATH`for alias resolution. Pass CLI arguments after`--`.
   Alternatively, run the compiled script directly:
   ```bash
-  1 | node dist/bin/roocode-generator.js <args>
+  node dist/bin/roocode-generator.js <args>
   ```
 
 ### 5.2. Build and Deploy
@@ -401,32 +418,44 @@ The Rules Template System (`src/core/templating/`) is central to generating mode
 **Example Template Structure (`templates/rules/architect/base.md`):**
 
 ```markdown
-1 | ---
-2 | Mode: architect
-3 | Version: 1.0
-4 | RequiredSections: [Overview, Principles] # Example metadata
-5 | ---
+---
+Mode: architect
+Version: 1.0
+RequiredSections: [Overview, Principles] # Example metadata
+---
+
 6 |
-7 | # Architect Mode Base Rules
+
+# Architect Mode Base Rules
+
 8 |
-9 | ## Overview
+
+## Overview
+
 10 |
-11 | Base rules for architectural planning...
+Base rules for architectural planning...
 12 |
-13 | ## Principles
+
+## Principles
+
 14 |
-15 | - Principle A
-16 | - Principle B
-17 |
-18 | ## Contextual Guidelines
+
+- Principle A
+- Principle B
+  17 |
+
+## Contextual Guidelines
+
 19 |
-20 | This section will contain guidelines generated based on your project's specific context.
+This section will contain guidelines generated based on your project's specific context.
 21 |
-22 | {{CONTEXTUAL_RULES}}
+{{CONTEXTUAL_RULES}}
 23 |
-24 | ## Best Practices
+
+## Best Practices
+
 25 |
-26 | Additional best practices...
+Additional best practices...
 ```
 
 ### 6.2. Developer Usage
@@ -450,15 +479,15 @@ Interaction with the template system primarily involves the `IRulesTemplateManag
 **Example Error Handling Pattern:**
 
 ```typescript
- 1 | const loadResult = await templateManager.loadBaseTemplate('architect');
- 2 | if (loadResult.isErr()) {
- 3 |   const logger = container.resolve<ILogger>('ILogger').value!; // Resolve logger via DI
- 4 |   logger.error(`Failed to load base template: ${loadResult.error.message}`, loadResult.error);
- 5 |   // Propagate error or handle appropriately
- 6 |   return Result.err(new Error(`Template loading failed: ${loadResult.error.message}`));
- 7 | }
- 8 | const baseContent = loadResult.value;
- 9 | // Proceed with baseContent...
+const loadResult = await templateManager.loadBaseTemplate('architect');
+if (loadResult.isErr()) {
+  const logger = container.resolve<ILogger>('ILogger').value!; // Resolve logger via DI
+  logger.error(`Failed to load base template: ${loadResult.error.message}`, loadResult.error);
+  // Propagate error or handle appropriately
+  return Result.err(new Error(`Template loading failed: ${loadResult.error.message}`));
+}
+const baseContent = loadResult.value;
+// Proceed with baseContent...
 ```
 
 ## 7. Troubleshooting
@@ -498,71 +527,52 @@ Interaction with the template system primarily involves the `IRulesTemplateManag
 ### 7.2. Debugging
 
 - **Logging**: Use the`ILogger` service (`logger.debug`, `logger.info`, etc.) to output information during execution.
-- **Debugger**: Use your IDE's debugger (e.g., VS Code's Node.js debugger) to step through code execution, inspect variables, and set breakpoints.
-- **Error Stacks**: Analyze error stack traces to pinpoint the source of errors.
-- **Raw API Responses**: Log raw API responses when troubleshooting external service integrations to understand the exact data being received.
+- **VS Code Debugger**: Configure VS Code's debugger (`launch.json`) to step through the code. Set breakpoints and inspect variables.
+  - Example `launch.json` configuration for debugging the CLI:
+    `json
+{
+  \"version\": \"0.2.0\",
+  \"configurations\": [
+    {
+      \"type\": \"node\",
+      \"request\": \"launch\",
+      \"name\": \"Debug CLI\",
+      \"runtimeArgs\": [\"-r\", \"ts-node/register\"],
+      \"args\": [\"${workspaceFolder}/src/bin/roocode-generator.ts\", \"generate\", \"--generators\", \"memory-bank\"], // Add your CLI args here
+      \"console\": \"integratedTerminal\",
+      \"internalConsoleOptions\": \"neverOpen\",
+      \"sourceMaps\": true,
+      \"cwd\": \"${workspaceFolder}\"
+    }
+  ]
+}
+    `
 
 ## 8. Contributing
 
-Contributions are welcome! Please follow the development workflow outlined in Section 3 and the code guidelines in Section 4.
+Contributions are welcome! Please follow the workflow outlined in Section 3. Ensure your code adheres to the guidelines in Section 4, includes appropriate tests, and passes all CI checks.
 
-1.  Fork the repository.
-2.  Create a feature branch (`git checkout -b feat/your-feature`).
-3.  Implement your changes and write tests.
-4.  Commit your changes using Conventional Commits (`git commit -m "feat: add new feature"`).
-5.  Push to your fork (`git push origin feat/your-feature`).
-6.  Create a Pull Request to the main repository's `main`branch.
-7.  Address any feedback during code review.
+When adding new features or making significant changes:
+
+- **Update Documentation**: If your changes affect the project structure, workflow, or usage, update the relevant documentation files (e.g., `README.md`, `DeveloperGuide.md`, `TechnicalArchitecture.md`).
+- **Consider Templates**: If adding new modes or significantly altering existing ones, update the corresponding rule templates in `templates/rules/`. If adding new task types, consider adding templates to `templates/memory-bank/templates/`.",
+- **Maintain Tests**: Ensure existing tests pass and add new tests to cover your changes. Maintain or improve test coverage.
 
 ## 9. Security
 
-Please see the [SECURITY.md](./SECURITY.md) file for details on how to report security vulnerabilities.
+Refer to the `SECURITY.md` file for details on reporting security vulnerabilities.
+Be mindful of API keys and sensitive information. Do not commit secrets to the repository.
 
 ## 10. Project Status
 
-The project is currently under active development.
+The project is currently under active development. See the project board or issue tracker for ongoing work and future plans.
 
 ## 11. License
 
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+This project is licensed under the MIT License. See the `LICENSE` file for details.
 
 ---
 
-**Document Version History:**
-
-- **Version 1.0.1 (2025-05-02):** Major refactor: Restructured sections, corrected duplicated code block line numbers, converted wiki-links to Markdown links, updated test co-location status, condensed overlapping content with `TechnicalArchitecture.md`, removed changelog section, updated metadata.
-- **Version 1.1.0 (2024-08-28):** Added sections on Modular DI Registration Pattern, Memory Bank Service Testing Patterns, and Handling Module Compatibility with Vite. Updated sections on Project Structure, Command Execution Flow, and Common Operations to reflect the new`ai-magic`generator and simplified`--generators`flag. Clarified interface naming conventions. _(Note: This version number was incorrectly assigned before the 1.0.1 refactor)_
-- **Version 1.0.0 (2024-07-25):** Initial version covering basic setup, structure, workflow, and guidelines.
-
----
-
-**Memory Bank References:**
-
-The following information from memory bank files informed this document:
-
-1.  From ProjectOverview.md:
-
-    - Project goals and scope.
-    - Key features and their status.
-
-2.  From TechnicalArchitecture.md:
-
-    - Overall system architecture.
-    - Design patterns used (DI, Result).
-    - Component interactions (CLI, ApplicationContainer, Generators, LLM).
-
-3.  From DeveloperGuide.md (previous version):
-    - Existing development practices and standards.
-    - Existing documentation structure.
-
----
-
-**Generated Content:**
-
-This document was generated by the RooCode Generator's`ai-magic`generator using the`memory-bank` option.
-
----
-
-**Disclaimer:**
-
-This document is automatically generated based on the project's codebase and existing documentation. While efforts are made to ensure accuracy, it may not always be perfectly up-to-date or complete. Always refer to the source code and consult with team members for definitive information.
+Generated by RooCode Generator
+Version: 1.0.1
+Timestamp: 2025-05-02T15:38:00Z // Example timestamp
