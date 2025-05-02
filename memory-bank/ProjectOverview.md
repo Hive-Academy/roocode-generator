@@ -1,50 +1,89 @@
-# Project Overview
+---
+title: Project Overview - roocode-generator
+version: 1.0.1
+lastUpdated: 2025-05-02
+type: core-documentation
+category: overview
+status: active
+---
 
-## Overview
+# Project Overview: roocode-generator
 
-This project, "roocode-generator," is a command-line interface (CLI) tool designed to automate the generation of code based on user input and potentially leveraging large language models (LLMs). It aims to streamline the development process by providing a programmatic way to create code snippets, files, or even larger code structures. The tool is built using TypeScript and JavaScript, utilizing various libraries for interacting with LLMs (Langchain), handling user input (inquirer, commander), and providing visual feedback (ora, chalk).
+## 1. Overview
 
-## Goals
+`roocode-generator` is a Node.js command-line interface (CLI) tool built with TypeScript, designed to streamline and standardize the creation of configuration files and documentation for projects adopting the RooCode methodology. It leverages an interactive CLI, a modular generator architecture, and integrates with Large Language Models (LLMs) via Langchain to provide intelligent, context-aware generation capabilities.
 
-*   **Automate Code Generation:** Provide a robust and flexible mechanism for generating code based on predefined templates or dynamic input.
-*   **Integrate with LLMs:** Enable the use of various LLMs (Anthropic, Google GenAI, OpenAI) to enhance code generation capabilities, potentially allowing for more intelligent and context-aware code creation.
-*   **Improve Developer Productivity:** Reduce the manual effort required for repetitive coding tasks by providing a quick and easy way to generate boilerplate or complex code structures.
-*   **Provide a User-Friendly CLI:** Offer an intuitive command-line interface for configuring and executing code generation tasks.
-*   **Support Multiple Output Formats:** Allow generated code to be output in various formats or directly into project files.
+## 2. Project Essentials
 
-## Scope
+- **Name**: roocode-generator
+- **Version**: 1.0.1 (as per `package.json`)
+- **Status**: Active Development
+- **License**: MIT (as per `LICENSE`)
+- **Repository**: `https://github.com/Hive-Academy/roocode-generator.git`
+- **Author**: Abdallah Khalil <abdallah@nghive.tech> (as per `package.json`)
 
-The scope of this project includes:
+## 3. Purpose and Goals
 
-*   Development of the core CLI application for code generation.
-*   Integration with various LLM providers through the Langchain library.
-*   Implementation of mechanisms for defining and using code generation templates.
-*   Handling user input and configuration through the command line.
-*   Providing clear and informative output to the user.
-*   Unit testing for core functionalities.
+The primary purpose of `roocode-generator` is to simplify and standardize the adoption and use of the RooCode workflow. Key goals include:
 
-The scope does **not** include:
+- **Accelerate Setup:** Reduce the manual effort required to configure RooCode for new or existing projects by automating the generation of necessary files.
+- **Ensure Consistency:** Promote standardized configurations and documentation (like Memory Bank files) across different teams and projects using RooCode.
+- **Improve Developer Experience:** Provide an intuitive CLI tool (`commander`, `inquirer`, `ora`) for easy interaction and generation.
+- **Flexibility & Extensibility:** Support configuration generation for various technology stacks through a modular architecture.
+- **Innovation:** Leverage LLMs (via Langchain) for context-aware generation (e.g., rules, documentation) based on project analysis.
 
-*   A graphical user interface (GUI).
-*   Advanced code analysis or refactoring capabilities beyond generation.
-*   Integration with every possible LLM or code generation engine.
-*   Full-fledged IDE integration (though the generated code can be used within an IDE).
+## 4. Core Features & Functionality
 
-## Stakeholders
+- **Interactive CLI:** User-friendly command-line interface built with `commander` for parsing arguments and `inquirer` for interactive prompts. Provides commands like `generate` and `config`.
+- **Modular Generator Architecture:** The system utilizes a core `GeneratorOrchestrator` to manage and execute different `IGenerator` implementations. Key generators/services identified:
+  - `MemoryBankService`: (Refactored from MemoryBankGenerator) A service responsible for generating core documentation (`ProjectOverview.md`, `TechnicalArchitecture.md`, `DeveloperGuide.md`) using LLM based on provided project context. It is primarily invoked by the `AiMagicGenerator`.
+  - `RulesGenerator`: Generates project-specific coding standards and rules (legacy, core functionality now integrated into `AiMagicGenerator`).
+  - `SystemPromptsGenerator`: Creates system prompt files for different RooCode modes.
+  - `RoomodesGenerator`: Generates the `.roomodes` file defining available workflow modes.
+  - `VSCodeCopilotRulesGenerator`: Configures VS Code settings for GitHub Copilot integration and rules.
+  - `AiMagicGenerator`: A comprehensive generator that performs project analysis (using `ProjectAnalyzer`), generates context-aware coding rules, and invokes the `MemoryBankService` to produce memory bank documentation.
+- **LLM Integration (Langchain):** Abstracted interaction with multiple LLM providers (OpenAI, Google GenAI, Anthropic) using the `langchain` library. Managed via `LLMConfigService` and `LLMProviderRegistry`. Configuration stored in `llm.config.json`.
+- **Project Context Analysis:** The `ProjectAnalyzer` service analyzes the target project's tech stack, directory structure, and dependencies to provide context for LLM-driven generation.
+- **Template System:** Uses a `TemplateManager` and `TemplateProcessor` for loading, merging (base + custom), and processing template files (primarily Markdown) used in generation. Includes a specialized `RulesTemplateManager` for rule generation.
+- **Configuration Management:** Manages project-specific settings (`roocode-config.json`) via `ProjectConfigService` and LLM settings (`llm.config.json`) via `LLMConfigService`. Includes a `config` command for interactive/CLI-based LLM setup.
+- **Dependency Injection:** Utilizes a custom, lightweight DI container (`src/core/di/container.ts`) with decorators (`@Injectable`, `@Inject`) and modular registration (`src/core/di/modules/`).
+- **Robust Error Handling:** Employs a custom `Result` type (`src/core/result/result.ts`) and specific error classes (`src/core/errors/`) for predictable error management.
 
-*   **Developers:** The primary users of the tool, who will leverage it to automate code generation.
-*   **Project Maintainers:** Responsible for the development, maintenance, and evolution of the `roocode-generator` tool.
-*   **LLM Providers:** Companies providing the large language models integrated into the tool.
-*   **Open Source Community:** Potential contributors and users who can provide feedback and contribute to the project.
+## 5. Technology Stack & Architecture
 
-## Timeline
+- **Primary Language:** TypeScript (`typescript`, `ts-jest`, `tseslint`)
+- **Runtime:** Node.js (`>=16` as per `package.json`)
+- **Architecture:** Modular CLI with LLM Integration (as per `TechnicalArchitecture.md`)
+- **Key Libraries:**
+  - **CLI:** `commander`, `inquirer`, `chalk`, `ora`
+  - **LLM:** `langchain`, `@langchain/core`, `@langchain/openai`, `@langchain/google-genai`, `@langchain/anthropic`
+  - **DI:** Custom Implementation (`reflect-metadata`)
+  - **Module Aliasing:** `module-alias`
+  - **Environment:** `dotenv`
+  - **Utilities:** `date-fns`
+- **Development Workflow:** Trunk-based Development (as per `DeveloperGuide.md`)
+- **Code Quality & Standards:** `eslint`, `prettier`, `@commitlint/cli`, `husky`
+- **Testing:** `jest`, `ts-jest` (with 80% coverage goal)
+- **Build:** `tsc`, `copyfiles`
+- **Release:** `semantic-release` (automated versioning and publishing)
 
-A detailed timeline is not available in the provided context. However, based on the project structure and dependencies, a typical development lifecycle for a CLI tool with LLM integration would involve:
+## 6. Project Structure Highlights
 
-*   **Phase 1: Core CLI Development:** Setting up the command-line interface, input handling, and basic output mechanisms.
-*   **Phase 2: Template Engine Implementation:** Developing the functionality to define and use code generation templates.
-*   **Phase 3: LLM Integration:** Integrating with various LLM providers using Langchain and implementing LLM-driven code generation logic.
-*   **Phase 4: Testing and Refinement:** Comprehensive testing, bug fixing, and performance optimization.
-*   **Phase 5: Documentation and Release:** Creating user documentation and releasing the tool.
+- **`src/`**: Main source code.
+  - **`core/`**: Foundational modules (DI, application, config, errors, file-operations, llm, result, services, templating, ui, analysis, types).
+  - **`generators/`**: Specific generator implementations (e.g., `rules/`, `roomodes-generator.ts`, `ai-magic-generator.ts`).
+  - **`memory-bank/`**: Contains the `MemoryBankService` and related logic for generating memory bank documentation.
+  - **`cli/`**: Core CLI setup (`cli-interface.ts`).
+- **`bin/`**: Executable script entry point.
+- **`templates/`**: Source templates for generation.
+- **`tests/`**: Unit and integration tests (Note: The previous plan to co-locate tests has been abandoned; tests remain in this dedicated directory).
+- **`.roo/`**: Target directory for generated RooCode rules and configuration.
+- **`memory-bank/`**: (In root) Contains the core project documentation files (`ProjectOverview.md`, `TechnicalArchitecture.md`, `DeveloperGuide.md`) and standard templates used by the generator.
+- **Configuration Files:** `.eslintrc.js`, `jest.config.js`, `tsconfig.json`, `commitlint.config.js`, `package.json`, `.prettierrc.js`.
 
-Specific milestones and their dates would need to be defined during the project planning phase.
+## 7. Key Documentation
+
+- **Technical Architecture:** Detailed system design, components, and patterns. See [TechnicalArchitecture.md](./TechnicalArchitecture.md).
+- **Developer Guide:** Setup, workflow, coding standards, testing, deployment. See [DeveloperGuide.md](./DeveloperGuide.md).
+- **README:** High-level project description and usage. See [README.md](../README.md).
+- **Memory Bank Templates:** Standard templates for project processes. See the [templates directory](./templates/).
