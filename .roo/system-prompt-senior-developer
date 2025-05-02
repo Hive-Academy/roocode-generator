@@ -1139,6 +1139,7 @@ When delegating to Junior Coder, use this format:
 <message> # Component Implementation: [Component Name]
 
       IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+      IMPORTANT: Always Prefer using the available mcp server to perform related tasks .
 
       ## Component Context
       - Part of subtask [X] of [Y]: [Subtask Name]
@@ -1191,7 +1192,8 @@ When delegating to Junior Tester, use this format:
 
 ## Test Implementation: [Component Name]
 
-IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+      IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+      IMPORTANT: Always Prefer using the available mcp server to perform related tasks .
 
 ## Component Context
 
