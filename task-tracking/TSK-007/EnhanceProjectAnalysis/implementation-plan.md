@@ -90,7 +90,7 @@ export interface DependencyGraph {
 
 ### 2. Update `ProjectAnalyzer` Prompt
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Modify the `buildSystemPrompt` method in `src/core/analysis/project-analyzer.ts` to include the updated JSON schema definition and instructions for extracting function/class names and internal dependencies.
 
@@ -123,9 +123,11 @@ export interface DependencyGraph {
 
 **Redelegation History**: N/A
 
+**Implementation Notes**: Updated the `buildSystemPrompt` method in `src/core/analysis/project-analyzer.ts`. Incremented `PROMPT_VERSION` to `v1.1.0`. Modified the JSON schema definition within the prompt string to include `structure.definedFunctions` and `structure.definedClasses`. Added explicit instructions for the LLM on how to populate these fields (using relative paths as keys and extracting top-level definitions) and refined instructions for `dependencies.internalDependencies`. Emphasized reliance on provided files and strict JSON output.
+
 ### 3. Update `ProjectAnalyzer` Default Values
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Update the fallback logic in the `analyzeProject` method within `src/core/analysis/project-analyzer.ts` to handle cases where the LLM response might be missing the new fields.
 
@@ -173,9 +175,11 @@ const finalContext: ProjectContext = {
 
 **Redelegation History**: N/A
 
+**Implementation Notes**: Added nullish coalescing operators (`?? {}`) to default `structure.definedFunctions`, `structure.definedClasses`, and `dependencies.internalDependencies` to empty objects in the final context construction within `analyzeProject`. This ensures robustness if the LLM omits these fields.
+
 ### 4. Update Unit Tests
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Update existing unit tests and potentially add new ones for `ProjectAnalyzer` to validate the new schema fields and the extraction logic based on mock LLM responses.
 
@@ -209,6 +213,9 @@ const finalContext: ProjectContext = {
 **Delegation Notes**: Suitable for Senior Developer or potentially Junior Tester under guidance, focusing on test case design and implementation. Senior Developer responsible for integration.
 
 **Redelegation History**: N/A
+
+**Implementation Notes**: Added a new `describe` block to `tests/core/analysis/project-analyzer.test.ts` for 'ProjectAnalyzer Analysis Result'. Updated mocks for `LLMAgent` (using `getCompletion`, adding `getProvider`), `ResponseParser` (using `parseLlmResponse`), and `FileOperations` (adding `getFiles`, `readDir`). Added tests to verify parsing of new `definedFunctions`/`definedClasses` fields and the fallback logic when they are missing. Corrected usage of `Result` methods (`unwrap`, `error`). Removed unused `ProjectContext` import to pass linting.
+**Implementation Notes**: Added a new `describe` block to `tests/core/analysis/project-analyzer.test.ts` for 'ProjectAnalyzer Analysis Result'. Updated mocks for `LLMAgent` (using `getCompletion`, adding `getProvider`), `ResponseParser` (using `parseLlmResponse`), and `FileOperations` (adding `getFiles`, `readDir`). Added tests to verify parsing of new `definedFunctions`/`definedClasses` fields and the fallback logic when they are missing. Corrected usage of `Result` methods (`unwrap`, `error`). Removed unused `ProjectContext` import to pass linting. **Update**: Fixed the `this.fileOps.isDirectory is not a function` error by adding the missing mock in the test setup. Refactored mocks within the 'File Prioritization and Token Limiting' tests to be test-specific, resolving conflicts and ensuring correct simulation of file collection. Corrected assertions in token limiting tests to properly access mock results. Added explicit types to map/find callbacks to resolve TS errors. All tests in `project-analyzer.test.ts` now pass.
 
 ### 5. Manual Verification Test Design & Execution Prep
 
