@@ -114,6 +114,10 @@ export function registerCoreModule(container: Container): void {
       'IFileContentCollector'
     );
     const filePrioritizer = resolveDependency<IFilePrioritizer>(container, 'IFilePrioritizer');
+    const treeSitterParserService = resolveDependency<ITreeSitterParserService>(
+      container,
+      'ITreeSitterParserService'
+    );
 
     assertIsDefined(fileOps, 'IFileOperations dependency not found');
     assertIsDefined(logger, 'ILogger dependency not found');
@@ -122,6 +126,7 @@ export function registerCoreModule(container: Container): void {
     assertIsDefined(progressIndicator, 'ProgressIndicator dependency not found');
     assertIsDefined(fileContentCollector, 'IFileContentCollector dependency not found');
     assertIsDefined(filePrioritizer, 'IFilePrioritizer dependency not found');
+    assertIsDefined(treeSitterParserService, 'ITreeSitterParserService dependency not found');
 
     return new ProjectAnalyzer(
       fileOps,
@@ -130,7 +135,8 @@ export function registerCoreModule(container: Container): void {
       responseParser,
       progressIndicator,
       fileContentCollector,
-      filePrioritizer
+      filePrioritizer,
+      treeSitterParserService // Pass the resolved dependency
     );
   });
 

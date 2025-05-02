@@ -5,6 +5,7 @@ import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
 import { JsonSchemaHelper } from '../../../src/core/analysis/json-schema-helper';
 import { Result } from '../../../src/core/result/result'; // Added import
 import { LLMAgent } from '../../../src/core/llm/llm-agent'; // Import for casting
+import { ITreeSitterParserService } from '@core/analysis/interfaces'; // Import the missing interface
 
 describe('ProjectAnalyzer Prompt Tests', () => {
   let projectAnalyzer: ProjectAnalyzer;
@@ -34,10 +35,15 @@ describe('ProjectAnalyzer Prompt Tests', () => {
   const mockProgress = {} as any; // Pos 5
   const mockContentCollector = {} as any; // Pos 6
   const mockFilePrioritizer = {} as any; // Pos 7
+  let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>; // Pos 8 - Declare mock
 
   beforeEach(() => {
     // Reset mocks before each test
     jest.clearAllMocks();
+    // Initialize the mock service
+    mockTreeSitterParserService = {
+      parse: jest.fn().mockResolvedValue(Result.ok({ functions: [], classes: [] })), // Default mock
+    } as any;
     projectAnalyzer = new ProjectAnalyzer(
       mockFileOps,
       mockLogger, // Pos 2
@@ -45,7 +51,8 @@ describe('ProjectAnalyzer Prompt Tests', () => {
       mockResponseParser,
       mockProgress,
       mockContentCollector,
-      mockFilePrioritizer
+      mockFilePrioritizer,
+      mockTreeSitterParserService // Pass the mock service
     );
   });
 
@@ -216,9 +223,14 @@ describe('Integration: ProjectAnalyzer with JsonSchemaHelper', () => {
   const mockProgressInt = {} as any; // Pos 5
   const mockContentCollectorInt = {} as any; // Pos 6
   const mockFilePrioritizerInt = {} as any; // Pos 7
+  let mockTreeSitterParserServiceInt: jest.Mocked<ITreeSitterParserService>; // Pos 8 - Declare mock
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Initialize the mock service for the integration test
+    mockTreeSitterParserServiceInt = {
+      parse: jest.fn().mockResolvedValue(Result.ok({ functions: [], classes: [] })), // Default mock
+    } as any;
     projectAnalyzer = new ProjectAnalyzer(
       mockFileOpsInt,
       mockLoggerIntegration, // Pos 2
@@ -226,7 +238,8 @@ describe('Integration: ProjectAnalyzer with JsonSchemaHelper', () => {
       mockResponseParserInt,
       mockProgressInt,
       mockContentCollectorInt,
-      mockFilePrioritizerInt
+      mockFilePrioritizerInt,
+      mockTreeSitterParserServiceInt // Pass the mock service
     );
     jsonSchemaHelper = new JsonSchemaHelper();
   });

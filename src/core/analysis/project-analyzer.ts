@@ -250,8 +250,9 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
           ...structure,
           rootDir: rootPath,
           // Add defaults for new fields from TSK-007
-          definedFunctions: structure.definedFunctions ?? {},
-          definedClasses: structure.definedClasses ?? {},
+          // AC1, AC6: Use Tree-sitter data, overriding LLM/defaults
+          definedFunctions: definedFunctionsMap,
+          definedClasses: definedClassesMap,
         },
         dependencies: {
           ...dependencies,

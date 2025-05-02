@@ -11,8 +11,9 @@ export const EXTENSION_LANGUAGE_MAP: Readonly<Record<string, SupportedLanguage>>
 };
 
 export const LANGUAGE_GRAMMAR_MAP: Readonly<Record<SupportedLanguage, string>> = {
+  // Use package names directly for potentially more robust resolution, especially post-build
   javascript: 'tree-sitter-javascript',
-  typescript: 'tree-sitter-typescript/typescript',
+  typescript: 'tree-sitter-typescript',
 };
 
 // --- Tree-sitter Queries ---
