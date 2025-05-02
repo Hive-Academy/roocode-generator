@@ -2,7 +2,7 @@ import { Injectable, Inject } from '../di/decorators';
 import { IFileOperations } from '../file-operations/interfaces';
 import { ILogger } from '../services/logger-service';
 import { Result } from '../result/result';
-import { IProjectAnalyzer, ProjectContext } from './types';
+import { IProjectAnalyzer, ProjectContext, CodeElementInfo } from './types'; // Import CodeElementInfo
 import { LLMAgent } from '../llm/llm-agent';
 import { LLMProviderError } from '../llm/llm-provider-errors';
 import { ResponseParser } from './response-parser';
@@ -13,9 +13,10 @@ import {
   ANALYZABLE_FILENAMES,
 } from './constants';
 import { ProgressIndicator } from '../ui/progress-indicator';
-import { IFileContentCollector, FileMetadata } from './interfaces';
+import { IFileContentCollector, FileMetadata, ITreeSitterParserService } from './interfaces'; // Import ITreeSitterParserService
 import { IFilePrioritizer } from './interfaces';
 import path from 'path';
+import { EXTENSION_LANGUAGE_MAP } from './tree-sitter.config'; // Import language map
 
 @Injectable()
 export class ProjectAnalyzer implements IProjectAnalyzer {
@@ -26,7 +27,9 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
     @Inject('ResponseParser') private readonly responseParser: ResponseParser,
     @Inject('ProgressIndicator') private readonly progress: ProgressIndicator,
     @Inject('IFileContentCollector') private readonly contentCollector: IFileContentCollector,
-    @Inject('IFilePrioritizer') private readonly filePrioritizer: IFilePrioritizer
+    @Inject('IFilePrioritizer') private readonly filePrioritizer: IFilePrioritizer,
+    @Inject('ITreeSitterParserService')
+    private readonly treeSitterParserService: ITreeSitterParserService // Inject the service
   ) {
     this.logger.debug('ProjectAnalyzer initialized');
   }
@@ -97,8 +100,51 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
 
       this.logger.debug(`Collected ${metadata.length} files with metadata`);
 
+      // --- Tree-sitter Parsing Step ---
+      this.progress.update('Parsing supported files for structure...');
+      const definedFunctionsMap: Record<string, CodeElementInfo[]> = {};
+      const definedClassesMap: Record<string, CodeElementInfo[]> = {};
+
+      for (const filePath of allFiles.value) {
+        const ext = path.extname(filePath).toLowerCase();
+        const language = EXTENSION_LANGUAGE_MAP[ext];
+
+        if (language) {
+          const readFileResult = await this.fileOps.readFile(filePath);
+          if (readFileResult.isErr()) {
+            this.logger.warn(
+              `Error reading file ${filePath} for parsing: ${readFileResult.error?.message ?? 'Unknown read error'}`
+            );
+            continue;
+          }
+          // We know value is defined here because isErr() was false
+          const content = readFileResult.value!;
+
+          // Assert content is non-null when passing to parse
+          const parseResult = await this.treeSitterParserService.parse(content, language); // AC7: Uses parser service
+          if (parseResult.isOk()) {
+            const relativePath = path.relative(rootPath, filePath);
+            // We know value is defined here because isOk() is true
+            definedFunctionsMap[relativePath] = parseResult.value!.functions;
+            definedClassesMap[relativePath] = parseResult.value!.classes;
+          } else {
+            // AC5: Logs warnings for parsing errors
+            this.logger.warn(
+              `Failed to parse ${filePath}: ${parseResult.error?.message ?? 'Unknown parse error'}`
+            );
+          }
+        } else {
+          // AC4 (Partial): Skipping unsupported file type
+          this.logger.debug(`Skipping unsupported file type: ${filePath}`);
+          // No explicit 'continue' needed here, loop proceeds naturally
+        }
+      }
+
+      this.logger.debug('Tree-sitter parsing step completed (placeholder).');
+      // --- End Tree-sitter Parsing Step ---
+
       const systemPrompt = this.buildSystemPrompt();
-      const filePrompt = content;
+      const filePrompt = content; // Note: LLM still gets the prioritized content
       const filePromptTokenCount = await this.llmAgent.countTokens(filePrompt);
       const systemPromptTokenCount = await this.llmAgent.countTokens(systemPrompt);
 
