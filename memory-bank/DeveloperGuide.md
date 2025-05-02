@@ -29,6 +29,9 @@ Before starting development, ensure you have the following installed:
 
     git clone https://github.com/Hive-Academy/roocode-generator.git
     cd roocode-generator
+
+    ```
+
     ```
 
 2.  **Install dependencies:**
@@ -36,12 +39,16 @@ Before starting development, ensure you have the following installed:
         ```bash
 
     npm install
+
+    ```
+
     ```
 
 3.  **Set up environment variables:**
 
     - Create a `.env` file in the project root (`.`). You can copy `.env.example` if it exists.
     - Add the necessary API keys for the LLM services you intend to use:
+
       ```env
 
       ```
@@ -176,6 +183,7 @@ git checkout main
 git pull origin main
     `
 2.  **Create a Feature Branch (Recommended for > trivial changes):** While direct commits to `main` might occur for very small fixes, larger features or complex bug fixes should be done on short-lived feature branches:
+
     ```bash
 
     ```
@@ -424,21 +432,13 @@ Version: 1.0
 RequiredSections: [Overview, Principles] # Example metadata
 ---
 
-6 |
-
 # Architect Mode Base Rules
-
-8 |
 
 ## Overview
 
-10 |
 Base rules for architectural planning...
-12 |
 
 ## Principles
-
-14 |
 
 - Principle A
 - Principle B
@@ -446,15 +446,12 @@ Base rules for architectural planning...
 
 ## Contextual Guidelines
 
-19 |
 This section will contain guidelines generated based on your project's specific context.
-21 |
+
 {{CONTEXTUAL_RULES}}
-23 |
 
 ## Best Practices
 
-25 |
 Additional best practices...
 ```
 

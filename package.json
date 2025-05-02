@@ -92,7 +92,6 @@
     "date-fns": "^4.1.0",
     "dotenv": "^16.5.0",
     "inquirer": "^12.5.2",
-    "inversify": "^7.5.1",
     "langchain": "^0.3.21",
     "node-tree-sitter": "^0.0.1",
     "ora": "^8.2.0",
