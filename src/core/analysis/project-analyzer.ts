@@ -329,19 +329,24 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
     return false;
   }
 
-  private readonly PROMPT_VERSION = 'v1.0.0';
+  private readonly PROMPT_VERSION = 'v1.1.0'; // Incremented for TSK-007
 
   private buildSystemPrompt(): string {
     return `Prompt Version: ${this.PROMPT_VERSION}
 
 IMPORTANT NOTICE:
-- This analysis is based on a PARTIAL codebase view
-- Focus ONLY on the provided files
-- Do not make assumptions about files not shown
-- If uncertain about any aspect, return null or empty arrays
+- This analysis is based on a PARTIAL codebase view.
+- Focus ONLY on the provided files. Do not make assumptions about files not shown.
+- If uncertain about any aspect, return null or empty arrays/objects as appropriate.
+- Keys for file-specific information (definedFunctions, definedClasses, internalDependencies) MUST be relative paths from the project root.
 
 Analyze the provided project files to determine its overall context.
 Return a single JSON object containing the tech stack, project structure, and dependencies.
+
+Instructions for specific fields:
+- structure.definedFunctions: For each file provided, identify top-level function definitions and list their names as objects { "name": "functionName" } under this field, keyed by the relative file path.
+- structure.definedClasses: For each file provided, identify top-level class definitions and list their names as objects { "name": "className" } under this field, keyed by the relative file path.
+- dependencies.internalDependencies: For each file provided, identify imported modules/files (both package imports like 'react' and relative project imports like './utils') and list them as strings under this field, keyed by the relative file path.
 
 The response MUST strictly follow this JSON schema:
         {
@@ -354,24 +359,26 @@ The response MUST strictly follow this JSON schema:
             "packageManager": string // e.g., "npm", "yarn", "pip", "maven", "gradle", "cargo"
           },
           "structure": {
-            "rootDir": string, // The absolute root path provided
+            "rootDir": string, // The absolute root path provided (already filled)
             "sourceDir": string, // Relative path(s) from rootDir to main source code (e.g., "src", "app")
             "testDir": string, // Relative path(s) from rootDir to main test code (e.g., "tests", "spec")
             "configFiles": string[], // Relative paths from rootDir to key config files (e.g., "tsconfig.json", "pyproject.toml")
             "mainEntryPoints": string[], // Relative paths from rootDir to main application entry points (e.g., "src/index.ts", "app/main.py")
-            "componentStructure": Record<string, string[]> // Optional: Map of component types/locations if identifiable
+            "componentStructure": Record<string, string[]>, // Optional: Map of component types/locations if identifiable
+            "definedFunctions": Record<string, Array<{ name: string }>>, // Key: relative file path, Value: List of top-level function names
+            "definedClasses": Record<string, Array<{ name: string }>> // Key: relative file path, Value: List of top-level class names
           },
           "dependencies": {
             "dependencies": Record<string, string>, // { "react": "^18.0.0" }
             "devDependencies": Record<string, string>, // { "jest": "^29.0.0" }
             "peerDependencies": Record<string, string>, // { "react": ">=17.0.0" }
-            "internalDependencies": Record<string, string[]> // Optional: Map of internal modules to their dependencies
+            "internalDependencies": Record<string, string[]> // Key: relative file path, Value: List of imported module/file paths (e.g., ["react", "./utils"])
           }
         }
-        Important:
+        Important Reminders:
         - Analyze based *only* on the provided file contents.
         - Infer fields like 'sourceDir', 'testDir', 'mainEntryPoints' based on common conventions and file contents.
-        - If a field cannot be determined (e.g., no clear package manager), return an empty array [] or empty object {} or null as appropriate for the type.
+        - If a field cannot be determined, return an empty array [], empty object {}, or null as appropriate for the type.
         - Return ONLY the JSON object without any surrounding text, explanations, markdown formatting, or code fences.
 
         Provided file contents:
