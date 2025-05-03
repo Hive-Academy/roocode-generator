@@ -77,7 +77,7 @@ _Note: The `cpy` command structure ensures `binding.gyp` goes to `dist/bin/` and
 
 ### 2. (Conditional) Implement Robust Native Module Handling with Vite Plugin
 
-**Status**: In Progress
+**Status**: In Progress (Paused)
 
 **Description**: Verify that `node-tree-sitter`, `tree-sitter-javascript`, and `tree-sitter-typescript` are correctly externalized by the build process (likely via `rollup-plugin-node-externals` already configured in `vite.config.ts`). Ensure Vite/Rollup does not attempt to bundle these modules, allowing runtime `require()` calls to resolve them within the installed `node_modules` directory. If externalization is missing or incorrect, adjust the Vite configuration. The use of `vite-plugin-native` is now considered a secondary option if simple externalization proves insufficient after testing.
 
@@ -129,6 +129,15 @@ _Note: Ensure that the configuration correctly prevents these modules from being
 **Estimated effort**: 30-60 minutes (includes potential debugging and plugin configuration adjustments)
 
 **Delegation Notes**: Suitable for Senior Developer. Requires understanding of Vite/Rollup build configuration and module externalization.
+**Progress**:
+
+- Verified `nodeExternals` plugin is configured to externalize dependencies.
+- Explicitly added tree-sitter packages to `external` array as a precaution.
+- Refactored `TreeSitterParserService` to use static `require` for grammars and pre-load them during an `initialize` phase called from `cli-main.ts`.
+- Added `rimraf` and a `clean` script to ensure fresh builds.
+- **Issue:** Build output (`dist/roocode-generator.js`) still does not contain the expected `require()` statements for tree-sitter modules, indicating externalization is failing despite configuration.
+- Attempted using `vite-plugin-native` but encountered configuration issues and reverted.
+  **Next Steps (Upon Resumption):** Re-evaluate Vite/Rollup configuration for potential conflicts or alternative externalization methods. Consider if `ssr.external` or `optimizeDeps.exclude` might be interfering, or if a different plugin/approach is needed. Test runtime behavior if externalization can be confirmed.
 
 ## 5. Implementation Sequence
 

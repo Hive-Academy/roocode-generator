@@ -17,17 +17,7 @@ export default defineConfig({
       }),
       enforce: 'pre', // Ensure it runs before Vite's internal plugins
     },
-    // Add vite-plugin-native
-    native({
-      // Attempt using 'dest' instead of 'copyDir' - check plugin docs if this fails
-      dest: 'dist/native-addons',
-      // Specify the source files using globs targeting the prebuilds
-      src: 'node_modules/tree-sitter-*/prebuilds/*/*.node', // Simplified glob
-      // Let the plugin handle resolving require paths if possible
-      // We might need to adjust the 'map' function if runtime resolution fails
-      // map: (modulePath) => { ... }
-      // Default target is 'node', which is correct
-    }),
+    // Removed native plugin configuration
   ],
   resolve: {
     alias: {
