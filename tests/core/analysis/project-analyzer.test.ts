@@ -718,6 +718,7 @@ describe('ProjectAnalyzer Analysis Result', () => {
       classes: [],
     };
     mockTreeSitterParserService.parse.mockImplementation(async (content, language) => {
+      // Re-add async
       // Determine file based on mock content used in collectContent mock
       if (content === 'app.ts content' && language === 'typescript') {
         return Result.ok(mockAppTsParseResult);
@@ -727,10 +728,11 @@ describe('ProjectAnalyzer Analysis Result', () => {
         return Result.ok(mockUtilsTsParseResult);
       }
       // Default for safety or other files not explicitly mocked here
-      return Result.ok({ functions: [], classes: [] });
+      return await Promise.resolve(Result.ok({ functions: [], classes: [] }));
     });
 
     // Mock readFile needed for the TreeSitter parsing step within analyzeProject
+    // eslint-disable-next-line @typescript-eslint/require-await
     mockFileOps.readFile.mockImplementation(async (filePath: string) => {
       if (filePath.endsWith('app.ts')) return Result.ok('app.ts content');
       if (filePath.endsWith('utils.ts')) return Result.ok('utils.ts content');
@@ -969,7 +971,7 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
         return Result.ok(mockTsParsedInfo);
       }
       if (language === 'javascript' && content === jsContent) {
-        return Result.ok(mockJsParsedInfo);
+        return await Promise.resolve(Result.ok(mockJsParsedInfo));
       }
       // Should not be called for other languages/content in this test setup
       return Result.err(new Error(`Unexpected parse call: lang=${language}`));

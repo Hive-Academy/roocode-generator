@@ -182,7 +182,7 @@ _(Note: Status tracking will be updated as tasks are delegated and completed)_
 
 ### 5. Merge Results and Finalize
 
-**Status**: Blocked
+**Status**: Verification Failed
 
 **Description**: Merge the data collected by Tree-sitter into the final `ProjectContext` object and update tests.
 **Files to Modify**: - `src/core/analysis/project-analyzer.ts` - `tests/core/analysis/project-analyzer.test.ts` (and potentially other related test files)
@@ -194,16 +194,16 @@ _(Note: Status tracking will be updated as tasks are delegated and completed)_
 - ✅ Attempted to fix runtime grammar loading errors (`ERR_UNSUPPORTED_DIR_IMPORT`, `Invalid language object`) by adjusting import paths in `src/core/analysis/tree-sitter.config.ts`.
   **Testing Requirements**:
 - ✅ Pass all existing and updated unit/integration tests for `ProjectAnalyzer`. (Verified implicitly by build success and test modifications).
-- ❌ **Manual Verification Failed:** Manual run of the generator (`npm start --generate -- --generators memory-bank`) failed due to a runtime error ("Invalid language object") when `TreeSitterParserService` attempts to load grammars in the built application context. This blocks verification of AC1, AC2, AC3, AC5 (syntax error test), and AC6 (runtime behavior).
+- ❌ **Manual Verification Failed (Again):** Despite the fix in TSK-011, the manual run of the generator (`npm start -- generate -- --generators memory-bank`) still fails with the same runtime error ("Invalid language object") when `TreeSitterParserService` attempts to load grammars in the built application context. This blocks verification of AC1, AC2, AC3, AC5 (syntax error test), and AC6 (runtime behavior). The fix from TSK-011 needs to be revisited.
   **Related Acceptance Criteria**:
-- ✅ AC1, AC2, AC3, AC6: Verified by integration tests against mocked data. **Blocked** for runtime verification.
-- ✅ AC5: Verified by integration tests asserting logger calls. **Blocked** for runtime verification.
+- ❌ AC1, AC2, AC3, AC6: Verified by integration tests against mocked data. **Blocked** for runtime verification due to persistent "Invalid language object" error.
+- ❌ AC5: Verified by integration tests asserting logger calls. **Blocked** for runtime verification due to persistent "Invalid language object" error.
   **Estimated effort**: 60 minutes (including debugging build/runtime issues)
   **Delegation Notes**:
 - Manual verification delegated to Junior Tester (❌ Failed due to runtime blocker).
 - Runtime error investigation delegated to Junior Coder (❌ Failed, identified likely build config issue).
   **Deviations**:
-- **Runtime Blocker:** Encountered persistent runtime errors ("Invalid language object") when running the built application. This appears related to how the build tool (Vite) handles the native Tree-sitter grammar modules. The fix likely requires modifying build configuration (e.g., `vite.config.ts` to externalize `tree-sitter-*` packages), which is outside the scope of this subtask and requires further investigation/architectural input. Manual verification and full AC satisfaction are blocked until this is resolved.
+- **Runtime Blocker Persists:** Despite the fix attempt in TSK-011, the persistent runtime error ("Invalid language object") remains when running the built application. This confirms the issue lies in how the build tool (Vite) handles the native Tree-sitter grammar modules. The fix applied in TSK-011 was insufficient. Manual verification and full AC satisfaction remain blocked.
 
 ## Implementation Sequence
 

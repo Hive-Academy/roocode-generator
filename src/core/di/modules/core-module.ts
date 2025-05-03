@@ -46,6 +46,7 @@ export function registerCoreModule(container: Container): void {
   container.registerFactory<ITreeSitterParserService>('ITreeSitterParserService', () => {
     const logger = resolveDependency<ILogger>(container, 'ILogger');
     assertIsDefined(logger, 'ILogger dependency not found for TreeSitterParserService');
+    // Instance is created here, but initialize() must be called elsewhere (e.g., cli-main.ts)
     return new TreeSitterParserService(logger);
   });
 
