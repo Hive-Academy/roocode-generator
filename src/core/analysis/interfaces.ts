@@ -39,7 +39,15 @@ import { ParsedCodeInfo } from './types'; // Import the new type
  */
 export interface ITreeSitterParserService {
   /**
+   * Initializes the service by pre-loading necessary grammars.
+   * Must be called before using the parse method.
+   * @returns A Promise resolving to a Result indicating success or failure.
+   */
+  initialize(): Promise<Result<void, Error>>;
+
+  /**
    * Parses the given code content for a specific language.
+   * Assumes initialize() has been successfully called.
    * @param content - The source code content as a string.
    * @param language - The language identifier (e.g., 'javascript', 'typescript').
    * @returns A Promise resolving to a Result containing the parsed code information or an Error.

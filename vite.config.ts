@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import checker from 'vite-plugin-checker';
 import { nodeExternals } from 'rollup-plugin-node-externals';
+// import native from 'vite-plugin-native'; // Removed native plugin
 import path from 'path';
 
 export default defineConfig({
@@ -16,6 +17,17 @@ export default defineConfig({
       }),
       enforce: 'pre', // Ensure it runs before Vite's internal plugins
     },
+    // Add vite-plugin-native
+    native({
+      // Attempt using 'dest' instead of 'copyDir' - check plugin docs if this fails
+      dest: 'dist/native-addons',
+      // Specify the source files using globs targeting the prebuilds
+      src: 'node_modules/tree-sitter-*/prebuilds/*/*.node', // Simplified glob
+      // Let the plugin handle resolving require paths if possible
+      // We might need to adjust the 'map' function if runtime resolution fails
+      // map: (modulePath) => { ... }
+      // Default target is 'node', which is correct
+    }),
   ],
   resolve: {
     alias: {
@@ -60,6 +72,7 @@ export default defineConfig({
         '@langchain/openai',
         'ora',
         // Add any other Node built-ins used if necessary
+        // Tree-sitter packages should be handled by nodeExternals plugin (deps: true)
       ],
       output: {
         // Preserve module structure for better code splitting and readability
