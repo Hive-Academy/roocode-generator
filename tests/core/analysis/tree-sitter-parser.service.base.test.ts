@@ -2,7 +2,7 @@
 import { TreeSitterParserService } from '@core/analysis/tree-sitter-parser.service';
 import { ILogger } from '@core/services/logger-service';
 import { mock, MockProxy } from 'jest-mock-extended';
-import { Result } from '@core/result/result';
+// Removed unused import: import { Result } from '@core/result/result';
 // Removed CodeElementInfo import
 
 // Mock the node-tree-sitter library and language grammars
@@ -47,21 +47,19 @@ describe('TreeSitterParserService (Base)', () => {
   // Updated describe name
   let service: TreeSitterParserService;
   let mockLogger: MockProxy<ILogger>;
+  // Removed mockGrammarLoader
   // Removed unused mockActualParser
 
   beforeEach(() => {
     // Reset mocks before each test
     jest.clearAllMocks();
-    // Re-mock the logger
+    // Re-mock the logger and grammar loader
     mockLogger = mock<ILogger>();
     mockLogger.info.mockImplementation(() => {});
     mockLogger.debug.mockImplementation(() => {});
     mockLogger.error.mockImplementation(() => {});
 
-    // Reset modules to ensure mocks are fresh for dynamic import tests
-    // jest.resetModules(); // Ensure modules are reset before each test - REMOVED as it might interfere with caching tests
-
-    // Instantiate the service FIRST
+    // Instantiate the service FIRST, passing only logger
     service = new TreeSitterParserService(mockLogger);
 
     // THEN Add a minimal default mock return value for parse in beforeEach
@@ -86,7 +84,9 @@ describe('TreeSitterParserService (Base)', () => {
     // Check if the constructor logs initialization message
     // Service constructor logs: this.logger.info('TreeSitterParserService initialized.');
     // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(mockLogger.info).toHaveBeenCalledWith('TreeSitterParserService initialized.');
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      'TreeSitterParserService created. Initialization required.'
+    ); // Updated message
   });
 
   // --- Grammar Loading Tests ---
@@ -104,14 +104,20 @@ describe('TreeSitterParserService (Base)', () => {
     expect(result2.isOk()).toBe(true);
     // Check actual log messages
 
-    // Check the log message for creating a new parser (refactored behavior)
+    // Grammar loading now happens via require(), cannot easily assert mockGrammarLoader calls.
+
+    // Check logs related to initialization and parsing
     // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(mockLogger.info).toHaveBeenCalledWith(`Creating new parser for language: ${language}`);
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      'Initializing Tree-sitter grammars via require...' // Updated message
+    );
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(mockLogger.info).toHaveBeenCalledWith(`Parsing content for language: ${language}`);
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(mockLogger.debug).toHaveBeenCalledWith(`Using cached parser for language: ${language}`);
-    // Verify dynamic import mock was involved (implicitly tested by logger message, but could be more explicit if needed)
-    // Verify Parser.setLanguage was called - expect any object as dynamic import returns real module
-    expect(mockParserInstance.setLanguage).toHaveBeenCalledWith(expect.any(Object));
+
+    // Verify Parser.setLanguage was called with the mock grammar object
+    expect(mockParserInstance.setLanguage).toHaveBeenCalledWith(mockJsLang);
     // Ensure setLanguage was called twice (initial load + cache hit verification)
     expect(mockParserInstance.setLanguage).toHaveBeenCalledTimes(2);
   });
@@ -129,57 +135,68 @@ describe('TreeSitterParserService (Base)', () => {
     expect(result2.isOk()).toBe(true);
     // Check actual log messages (Note: TS grammar path is different)
 
-    // Check the log message for creating a new parser (refactored behavior)
+    // Grammar loading now happens via require(), cannot easily assert mockGrammarLoader calls.
+
+    // Check logs related to initialization and parsing
     // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(mockLogger.info).toHaveBeenCalledWith(`Creating new parser for language: ${language}`);
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      'Initializing Tree-sitter grammars via require...' // Updated message
+    );
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(mockLogger.info).toHaveBeenCalledWith(`Parsing content for language: ${language}`);
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(mockLogger.debug).toHaveBeenCalledWith(`Using cached parser for language: ${language}`);
-    // Expect any object for setLanguage
-    expect(mockParserInstance.setLanguage).toHaveBeenCalledWith(expect.any(Object));
+
+    // Verify Parser.setLanguage was called with the mock grammar object
+    expect(mockParserInstance.setLanguage).toHaveBeenCalledWith(mockTsLang);
     expect(mockParserInstance.setLanguage).toHaveBeenCalledTimes(2); // Called twice (initial load + cache hit verification)
   });
 
-  it('should return Err when loading parser fails', async () => {
-    // Renamed test, uses spyOn
+  it('should return Err when an error occurs during grammar initialization (e.g., require fails or map set fails)', async () => {
     const content = 'let x = 1;';
     const language = 'javascript';
-    const loadError = new Error('Simulated loadParser failure');
+    const initError = new Error('Simulated initialization failure');
 
-    // Spy on the private _loadLanguageModule method (refactored) and make it return an Err result
-    // Need to cast as any because it's private
-    const loadModuleSpy = jest
-      .spyOn(TreeSitterParserService.prototype as any, '_loadLanguageModule')
-      .mockResolvedValue(Result.err(loadError));
+    // Mock Map.prototype.set to throw an error during initialization
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    const originalMapSet = Map.prototype.set;
+    Map.prototype.set = jest.fn().mockImplementationOnce(() => {
+      throw initError;
+    });
 
-    // Instantiate the service *after* setting up the spy
-    // No need to re-import the service class itself
-    const serviceWithSpy = new TreeSitterParserService(mockLogger);
+    // Instantiate the service (initialization happens on first parse)
+    const serviceWithError = new TreeSitterParserService(mockLogger);
 
-    // Act
-    const result = await serviceWithSpy.parse(content, language);
+    // Act: Calling parse triggers initialization, which should now fail
+    const result = await serviceWithError.parse(content, language);
 
     // Assert
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      // The error should be the one returned by the mocked loadParser
-      // The error returned by parse should wrap the original loadError
       expect(result.error!).toBeInstanceOf(Error);
-      expect(result.error!.message).toContain(loadError.message);
+      // Check the wrapped error message from initialize() -> _handleAndLogError
+      expect(result.error!.message).toContain(
+        'TreeSitterParserService grammar require() initialization failed'
+      );
+      expect(result.error!.message).toContain(initError.message);
     }
-    // Verify the spy was called
-    expect(loadModuleSpy).toHaveBeenCalledWith(language);
-    // Ensure the actual parser methods weren't called
+
+    // Ensure the actual parser methods weren't called because init failed
     expect(mockParserInstance.setLanguage).not.toHaveBeenCalled();
     expect(mockParserInstance.parse).not.toHaveBeenCalled();
-    // Check logger (optional, depends if loadParser logs before returning Err)
-    // The service's parse method logs before calling loadParser
-    // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(mockLogger.info).toHaveBeenCalledWith(`Parsing content for language: ${language}`);
-    // The service's parse method returns the error from loadParser immediately,
-    // so no error should be logged within the parse method itself for this case.
 
-    // Restore the original method
-    loadModuleSpy.mockRestore();
+    // Check logger for initialization error
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      expect.stringContaining('TreeSitterParserService grammar require() initialization failed'),
+      expect.objectContaining({ message: expect.stringContaining(initError.message) })
+    );
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(mockLogger.info).not.toHaveBeenCalledWith(`Parsing content for language: ${language}`); // Parse shouldn't start
+
+    // Restore original Map.prototype.set
+
+    Map.prototype.set = originalMapSet;
   });
 
   // Note: Testing 'unsupported' language directly via `parse` is hard due to type safety.

@@ -156,7 +156,7 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       mockLLMAgent.getModelContextWindow.mockResolvedValue(1000);
       mockLLMAgent.countTokens.mockResolvedValue(10); // Ensure countTokens is mocked
       // Mock TreeSitter parse for this test case (assuming successful parse for all)
-      mockTreeSitterParserService.parse.mockResolvedValue(
+      mockTreeSitterParserService.parse.mockImplementation(() =>
         Result.ok({ functions: [], classes: [] })
       );
 
@@ -233,7 +233,7 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       );
       mockLLMAgent.getModelContextWindow.mockResolvedValue(1000);
       mockLLMAgent.countTokens.mockResolvedValue(10);
-      mockTreeSitterParserService.parse.mockResolvedValue(
+      mockTreeSitterParserService.parse.mockImplementation(() =>
         Result.ok({ functions: [], classes: [] })
       );
 
@@ -307,7 +307,7 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       );
       mockLLMAgent.getModelContextWindow.mockResolvedValue(1000);
       mockLLMAgent.countTokens.mockResolvedValue(10);
-      mockTreeSitterParserService.parse.mockResolvedValue(
+      mockTreeSitterParserService.parse.mockImplementation(() =>
         Result.ok({ functions: [], classes: [] })
       );
 
@@ -383,7 +383,7 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
         Result.ok({ techStack: {}, structure: {}, dependencies: {} })
       );
       mockLLMAgent.countTokens.mockResolvedValue(10); // Mock token counting
-      mockTreeSitterParserService.parse.mockResolvedValue(
+      mockTreeSitterParserService.parse.mockImplementation(() =>
         Result.ok({ functions: [], classes: [] })
       );
 
@@ -464,7 +464,7 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
         Result.ok({ techStack: {}, structure: {}, dependencies: {} })
       );
       mockLLMAgent.countTokens.mockResolvedValue(5);
-      mockTreeSitterParserService.parse.mockResolvedValue(
+      mockTreeSitterParserService.parse.mockImplementation(() =>
         Result.ok({ functions: [], classes: [] })
       );
 
@@ -543,7 +543,7 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       );
       mockLLMAgent.getModelContextWindow.mockResolvedValue(1000);
       mockLLMAgent.countTokens.mockResolvedValue(10);
-      mockTreeSitterParserService.parse.mockResolvedValue(
+      mockTreeSitterParserService.parse.mockImplementation(() =>
         Result.ok({ functions: [], classes: [] })
       );
 
@@ -717,8 +717,7 @@ describe('ProjectAnalyzer Analysis Result', () => {
       functions: [{ name: 'formatDate', startLine: 2, endLine: 5 }],
       classes: [],
     };
-    mockTreeSitterParserService.parse.mockImplementation(async (content, language) => {
-      // Re-add async
+    mockTreeSitterParserService.parse.mockImplementation((content, language) => {
       // Determine file based on mock content used in collectContent mock
       if (content === 'app.ts content' && language === 'typescript') {
         return Result.ok(mockAppTsParseResult);
@@ -728,7 +727,7 @@ describe('ProjectAnalyzer Analysis Result', () => {
         return Result.ok(mockUtilsTsParseResult);
       }
       // Default for safety or other files not explicitly mocked here
-      return await Promise.resolve(Result.ok({ functions: [], classes: [] }));
+      return Result.ok({ functions: [], classes: [] }); // Return Result directly
     });
 
     // Mock readFile needed for the TreeSitter parsing step within analyzeProject
@@ -966,12 +965,12 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
       functions: [{ name: 'helper', startLine: 1, endLine: 1 }], // Example data
       classes: [],
     };
-    mockTreeSitterParserService.parse.mockImplementation(async (content, language) => {
+    mockTreeSitterParserService.parse.mockImplementation((content, language) => {
       if (language === 'typescript' && content === tsContent) {
         return Result.ok(mockTsParsedInfo);
       }
       if (language === 'javascript' && content === jsContent) {
-        return await Promise.resolve(Result.ok(mockJsParsedInfo));
+        return Result.ok(mockJsParsedInfo); // Return Result directly
       }
       // Should not be called for other languages/content in this test setup
       return Result.err(new Error(`Unexpected parse call: lang=${language}`));
@@ -1056,12 +1055,12 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
     mockFileOps.readFile.mockResolvedValue(Result.ok(jsContent));
 
     // Mock failed parsing for the JS file
-    // Ensure it returns Promise.resolve as parse is async
+    // Mock failed parsing for the JS file
     mockTreeSitterParserService.parse.mockImplementation((content, language) => {
       if (language === 'javascript' && content === jsContent) {
-        return Promise.resolve(Result.err(mockError));
+        return Result.err(mockError); // Return Result directly
       }
-      return Promise.resolve(Result.err(new Error('Unexpected parse call')));
+      return Result.err(new Error('Unexpected parse call')); // Return Result directly
     });
 
     // Mock LLM and ResponseParser for successful run otherwise

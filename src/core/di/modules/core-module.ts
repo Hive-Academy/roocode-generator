@@ -47,7 +47,7 @@ export function registerCoreModule(container: Container): void {
     const logger = resolveDependency<ILogger>(container, 'ILogger');
     assertIsDefined(logger, 'ILogger dependency not found for TreeSitterParserService');
     // Instance is created here, but initialize() must be called elsewhere (e.g., cli-main.ts)
-    return new TreeSitterParserService(logger);
+    return new TreeSitterParserService(logger); // Constructor only takes logger now
   });
 
   container.registerFactory<ITokenCounter>('ITokenCounter', () => {
@@ -119,6 +119,7 @@ export function registerCoreModule(container: Container): void {
       container,
       'ITreeSitterParserService'
     );
+    // GrammarLoaderService is now an indirect dependency via TreeSitterParserService
 
     assertIsDefined(fileOps, 'IFileOperations dependency not found');
     assertIsDefined(logger, 'ILogger dependency not found');
@@ -128,6 +129,7 @@ export function registerCoreModule(container: Container): void {
     assertIsDefined(fileContentCollector, 'IFileContentCollector dependency not found');
     assertIsDefined(filePrioritizer, 'IFilePrioritizer dependency not found');
     assertIsDefined(treeSitterParserService, 'ITreeSitterParserService dependency not found');
+    // No need to assert GrammarLoaderService here as it's injected into TreeSitterParserService
 
     return new ProjectAnalyzer(
       fileOps,
