@@ -127,7 +127,7 @@ export class TreeSitterParserService implements ITreeSitterParserService {
    * @param language - The language of the parser to retrieve.
    * @returns A Result containing the cached parser if valid, or an error/null if not found or invalid.
    */
-  private _getCachedParser(language: SupportedLanguage): Result<any | null, Error> {
+  private _getCachedParser(language: SupportedLanguage): Result<any, Error> {
     // Use 'any' for Parser instance type
     if (!this.parserCache.has(language)) {
       return Result.ok(null);
