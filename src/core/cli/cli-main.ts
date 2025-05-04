@@ -37,7 +37,7 @@ async function main(): Promise<void> {
     );
 
     logger.info('Initializing TreeSitterParserService...');
-    const initResult = await treeSitterService.initialize();
+    const initResult = treeSitterService.initialize();
     if (initResult.isErr()) {
       // Log the error message only, as the error object might cause issues with some logger transports
       logger.error(

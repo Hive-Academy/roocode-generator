@@ -43,7 +43,7 @@ export interface ITreeSitterParserService {
    * Must be called before using the parse method.
    * @returns A Promise resolving to a Result indicating success or failure.
    */
-  initialize(): Promise<Result<void, Error>>;
+  initialize(): Result<void, Error>;
 
   /**
    * Parses the given code content for a specific language.
@@ -52,5 +52,5 @@ export interface ITreeSitterParserService {
    * @param language - The language identifier (e.g., 'javascript', 'typescript').
    * @returns A Promise resolving to a Result containing the parsed code information or an Error.
    */
-  parse(content: string, language: string): Promise<Result<ParsedCodeInfo, Error>>;
+  parse(content: string, language: string): Result<ParsedCodeInfo, Error>;
 }
