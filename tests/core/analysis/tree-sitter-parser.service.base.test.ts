@@ -4,12 +4,8 @@ import { ILogger } from '@core/services/logger-service';
 import { mock, MockProxy } from 'jest-mock-extended';
 import { Result } from '@core/result/result'; // Add Result back
 import { GenericAstNode } from '@core/analysis/types'; // Import new types
-// Import the mock instance directly from the mock file path
-import { mockParserInstance } from '../../__mocks__/tree-sitter'; // Adjust the path as needed
+import { jest } from '@jest/globals'; // Ensure jest is imported
 
-// Mock the node-tree-sitter library and language grammars
-// We need to mock the default export for languages and the Parser class for node-tree-sitter
-// mockJsLang and mockTsLang moved inside jest.mock calls below
 // Define a reusable mock SyntaxNode structure
 const mockSyntaxNode = {
   type: 'program',
@@ -32,7 +28,40 @@ const mockSyntaxNode = {
   // Add other methods if needed by the service, e.g., walk() if used
 };
 
-// Using imported mockParserInstance for assertions
+// Define the mock parser instance directly in the test file
+const mockParserInstance = {
+  setLanguage: jest.fn(),
+  parse: jest.fn().mockReturnValue({ rootNode: mockSyntaxNode }), // Default implementation
+  getLogger: jest.fn(),
+  setLogger: jest.fn(),
+  getIncludedRanges: jest.fn(() => []),
+  getTimeoutMicros: jest.fn(() => 0),
+  setTimeoutMicros: jest.fn(),
+  reset: jest.fn(),
+  getLanguage: jest.fn(),
+  printDotGraphs: jest.fn(),
+};
+
+// Mock the node-tree-sitter library itself
+jest.mock('tree-sitter', () => {
+  // Define the MockParser class inside the factory
+  class MockParser {
+    constructor() {
+      // Return the singleton instance when the class is instantiated
+      return mockParserInstance;
+    }
+
+    // Add static methods if needed
+    static Language = {
+      // Mock static properties/methods if used
+      load: jest.fn().mockResolvedValue({
+        /* mock language object */
+      } as never),
+    };
+  }
+  // Return the MockParser class from the factory
+  return MockParser;
+});
 
 // Mock the dynamic imports for language grammars
 // Note: The actual path might differ based on how they are imported internally.
@@ -207,7 +236,7 @@ describe('TreeSitterParserService (Base)', () => {
     const originalMapSet = Map.prototype.set;
     Map.prototype.set = jest.fn().mockImplementationOnce(() => {
       throw initError;
-    });
+    }) as any;
 
     // Instantiate the service (initialization happens on first parse)
     const serviceWithError = new TreeSitterParserService(mockLogger);

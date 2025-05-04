@@ -17,6 +17,7 @@ module.exports = {
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
   moduleNameMapper: {
     '^@(core|generators|memory-bank|commands|types)/(.*)$': '<rootDir>/src/$1/$2',
+    // Removed tree-sitter mapping, will use jest.mock in the test file
   },
   // Update transformIgnorePatterns: Only ignore node_modules *except* the ones we need to transform
   // This pattern ensures that only the specified modules are *not* ignored.
