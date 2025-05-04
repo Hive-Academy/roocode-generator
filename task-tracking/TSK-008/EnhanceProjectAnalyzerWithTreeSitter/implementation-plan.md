@@ -204,7 +204,7 @@ private _convertNodeToGenericAst(
 
 ### 4. Modify `TreeSitterParserService.parse` Method
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Update the public `parse` method in `TreeSitterParserService`. Remove the old query execution logic (`extractElements`, `processQueryMatch`). Instead, after parsing the content into a `tree`, call the new `_convertNodeToGenericAst` function on the `tree.rootNode` and return the resulting `GenericAstNode` within a `Result.ok`.
 
@@ -300,7 +300,7 @@ parse(
 
 ### 5. Update `ProjectAnalyzer` Integration
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Modify `ProjectAnalyzer.analyzeProject` to:
 

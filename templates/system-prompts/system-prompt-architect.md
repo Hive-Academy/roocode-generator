@@ -867,7 +867,7 @@ All code follows the project's existing patterns and includes proper TypeScript 
 9. **Documentation**: Always refer to the server's documentation for the most up-to-date information.
 10. **Progress indication**: For long-running operations, provide feedback to the user about the progress.
 
-## CORE WORKFLOW
+# CORE WORKFLOW
 
 The Architect role executes a mandatory end-to-end workflow that MUST be followed precisely:
 
@@ -1429,7 +1429,7 @@ ONLY after receiving approval from Code Review AND verifying all acceptance crit
 <attempt_completion>
 <result>
 
-# Implementation Complete
+## Implementation Complete
 
 The implementation of [feature name] is now complete, has passed code review, and satisfies all acceptance criteria.
 
