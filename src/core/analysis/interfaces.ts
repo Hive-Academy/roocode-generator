@@ -1,4 +1,6 @@
 import { Result } from '../result/result';
+import { GenericAstNode } from './types'; // Added for generic AST
+import { SupportedLanguage } from './tree-sitter.config'; // Added for specific languages
 
 export interface FileMetadata {
   path: string;
@@ -32,8 +34,6 @@ export interface ITokenCounter {
   getContextWindowSize(): Promise<Result<number, Error>>;
 }
 
-import { ParsedCodeInfo } from './types'; // Import the new type
-
 /**
  * Defines the contract for parsing code using Tree-sitter.
  */
@@ -49,8 +49,8 @@ export interface ITreeSitterParserService {
    * Parses the given code content for a specific language.
    * Assumes initialize() has been successfully called.
    * @param content - The source code content as a string.
-   * @param language - The language identifier (e.g., 'javascript', 'typescript').
-   * @returns A Promise resolving to a Result containing the parsed code information or an Error.
+   * @param language - The specific supported language identifier.
+   * @returns A Result containing the root node of the generic AST or an Error.
    */
-  parse(content: string, language: string): Result<ParsedCodeInfo, Error>;
+  parse(content: string, language: SupportedLanguage): Result<GenericAstNode, Error>;
 }

@@ -52,9 +52,10 @@ describe('MemoryBankOrchestrator', () => {
       configFiles: [],
       mainEntryPoints: [],
       componentStructure: {},
-      definedClasses: {},
-      definedFunctions: {},
+      // definedClasses: {}, // Removed
+      // definedFunctions: {}, // Removed
     },
+    astData: {}, // Added required property
     dependencies: {
       dependencies: {},
       devDependencies: {},

@@ -91,9 +91,10 @@ describe('AiMagicGenerator Integration Tests', () => {
       configFiles: ['tsconfig.json'],
       mainEntryPoints: ['src/index.ts'],
       componentStructure: {},
-      definedClasses: {},
-      definedFunctions: {}, // Add any other required properties here
+      // definedClasses: {}, // Removed
+      // definedFunctions: {}, // Removed
     },
+    astData: {}, // Added required property
     dependencies: {
       dependencies: { react: '18.0.0' },
       devDependencies: { jest: '29.0.0' },
@@ -266,9 +267,10 @@ describe('AiMagicGenerator Integration Tests', () => {
         configFiles: ['tsconfig.json'],
         mainEntryPoints: ['src/index.ts'],
         componentStructure: {},
-        definedClasses: {},
-        definedFunctions: {}, // Add any other required properties here
+        // definedClasses: {}, // Removed
+        // definedFunctions: {}, // Removed
       },
+      astData: {}, // Added required property
       dependencies: {
         dependencies: { react: '18.0.0' },
         devDependencies: { jest: '29.0.0' },
