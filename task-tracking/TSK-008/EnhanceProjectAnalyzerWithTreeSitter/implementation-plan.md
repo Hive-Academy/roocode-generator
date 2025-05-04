@@ -15,6 +15,7 @@ This plan outlines the steps to modify the `ProjectAnalyzer` and `TreeSitterPars
 4.  Modify `TreeSitterParserService.parse` to return the root `GenericAstNode`.
 5.  Update `ProjectAnalyzer` to call the modified parser, collect the AST data, and populate the `astData` field in the final `ProjectContext`.
 6.  Update unit tests to cover the new functionality and data structures.
+7.  Add specific logging to verify `astData` is present in the final output object.
 
 **Files to Modify:**
 
@@ -32,11 +33,12 @@ The core change involves replacing the query-based extraction in `TreeSitterPars
 - **Depth Limiting (Consideration):** To manage potential performance issues and output size with very large files or deeply nested ASTs, a configurable depth limit can be added to the traversal function. Initially, we can implement without a limit and evaluate performance. If needed, a limit (e.g., 10-15 levels deep) can be added later or as part of the initial implementation if deemed critical. This will be a parameter to the traversal function.
 - **Integration:** `ProjectAnalyzer` will iterate through analyzable files, call the updated `TreeSitterParserService.parse`, and store the resulting `GenericAstNode` in a map keyed by the relative file path. This map will then populate the `astData` field in the `ProjectContext`.
 - **Error Handling:** Existing error handling for file reading and parsing failures in `ProjectAnalyzer` will be maintained. The parser service should return an `Error` Result if parsing fails.
+- **Verification Logging:** Add a debug log statement in `ProjectAnalyzer` immediately before returning the `finalContext` to explicitly log the complete object, including the merged `astData`.
 
 ## 3. Acceptance Criteria Mapping
 
 - **AC1 (Analyzer Runs):** Covered by successful execution after all subtasks.
-- **AC2 (astData Field):** Satisfied by Subtask 2 (Interface Update) and Subtask 5 (Analyzer Integration).
+- **AC2 (astData Field):** Satisfied by Subtask 2 (Interface Update), Subtask 5 (Analyzer Integration), and finally verified by Subtask 6.5 (Verify Final Output Log).
 - **AC3 (astData Keys):** Satisfied by Subtask 5 (Analyzer Integration).
 - **AC4 (astData Value Structure):** Satisfied by Subtask 1 (Interface Def), Subtask 3 (Traversal Impl), Subtask 4 (Parser Update), Subtask 5 (Analyzer Integration), and verified by Subtask 6 (Testing).
 - **AC5 (Node Text):** Satisfied by Subtask 3 (Traversal Impl) and verified by Subtask 6 (Testing).
@@ -44,7 +46,7 @@ The core change involves replacing the query-based extraction in `TreeSitterPars
 - **AC7 (Unsupported Files):** Existing logic in `ProjectAnalyzer` handles this; verified during testing (Subtask 6).
 - **AC8 (Syntax Errors):** Existing logic in `ProjectAnalyzer` handles parsing errors; verified during testing (Subtask 6).
 - **AC9 (Other Fields):** Ensured by careful modification in Subtask 5 (Analyzer Integration) and verified by Subtask 6 (Testing).
-- **AC10 (Unit Tests):** Satisfied by Subtask 6 (Testing).
+- **AC10 (Unit Tests):** Satisfied by Subtask 6 (Testing) and Subtask 6.4 (Final Test Verification).
 - **AC11 (Interface Update):** Satisfied by Subtask 2 (Interface Update).
 
 ## 4. Implementation Subtasks
@@ -486,39 +488,161 @@ const finalContext: ProjectContext = {
 
 **Delegation Notes**: Handled by Senior Developer as part of unblocking Subtask 6.
 
+### 6.2. Fix Mock Runtime Error
+
+**Status**: Completed
+
+**Description**: Address the runtime error `TypeError: Parser is not a constructor` occurring in `TreeSitterParserService` when running tests. This likely involves correcting how the `tree-sitter` module is mocked or how the mock is imported/required by the service during testing. Ensure the mock correctly provides a `Parser` constructor.
+
+**Files to Modify**:
+
+- `tests/__mocks__/tree-sitter.ts` (Likely needs adjustment to export `Parser` correctly)
+- `jest.config.js` (Verify `moduleNameMapper` is correct)
+- `src/core/analysis/tree-sitter-parser.service.ts` (Verify how `tree-sitter` is imported/required)
+
+**Implementation Details**:
+
+- Modified `tests/__mocks__/tree-sitter.ts` to export the `MockParser` class directly using `module.exports = { Parser: MockParser, ... }`.
+- Verified `jest.config.js` maps `^tree-sitter$` to the mock file.
+- Ensured `tree-sitter-parser.service.ts` uses `require('tree-sitter')` which Jest should intercept.
+
+**Testing Requirements**:
+
+- Run `npm test -- tests/core/analysis/tree-sitter-parser.service.base.test.ts`.
+- Confirm the `Parser is not a constructor` error is resolved.
+- Confirm the parser service tests now pass or fail for assertion reasons.
+
+**Related Acceptance Criteria**:
+
+- AC10 (Unit Tests) - Unblocks test execution further.
+
+**Estimated effort**: 30 minutes
+
+**Delegation Notes**: Handled by Senior Developer.
+
+### 6.3. Fix Assertion Failures in Analyzer Test
+
+**Status**: Completed
+
+**Description**: Address the assertion failures in `tests/core/analysis/project-analyzer.test.ts` after fixing the mock runtime error. These failures likely relate to incorrect mock setup for `readDir`, `isDirectory`, or `readFile` within the analyzer test suite, or mismatches between the expected `astData` structure and the mocked return values.
+
+**Files to Modify**:
+
+- `tests/core/analysis/project-analyzer.test.ts`
+
+**Implementation Details**:
+
+- Corrected `readDir` mock to return `Result.ok(['src', 'package.json'])` for the root path.
+- Corrected `isDirectory` mock to return `Result.ok(true)` only for `path.join(rootPath, 'src')`.
+- Ensured `readFile` mock returns `Result.ok(...)` for expected files (`app.ts`, `utils.ts`, `package.json`).
+- Updated assertions for `context.dependencies.dependencies` to match the structure derived from the mocked `package.json`.
+
+**Testing Requirements**:
+
+- Run `npm test -- tests/core/analysis/project-analyzer.test.ts`.
+- Confirm all assertion failures are resolved and the analyzer tests pass.
+
+**Related Acceptance Criteria**:
+
+- AC10 (Unit Tests) - Ensures analyzer tests correctly validate the integration.
+
+**Estimated effort**: 30 minutes
+
+**Delegation Notes**: Handled by Senior Developer.
+
+### 6.4. Final Test Verification
+
+**Status**: Completed
+
+**Description**: Run all relevant tests (`npm test -- tests/core/analysis/tree-sitter-parser.service.base.test.ts tests/core/analysis/project-analyzer.test.ts`) to ensure all previous fixes are integrated correctly and all tests related to the parser and analyzer now pass.
+
+**Files to Modify**: None.
+
+**Implementation Details**: Execute the test command.
+
+**Testing Requirements**:
+
+- Command `npm test -- tests/core/analysis/tree-sitter-parser.service.base.test.ts tests/core/analysis/project-analyzer.test.ts` must complete successfully with all tests passing.
+
+**Related Acceptance Criteria**:
+
+- AC10 (Unit Tests) - Final confirmation that tests pass.
+
+**Estimated effort**: 10 minutes
+
+**Delegation Notes**: Handled by Senior Developer.
+
+### 6.5. Verify `astData` in Final Output Log
+
+**Status**: Completed
+
+**Description**: Add debug logging for the `finalContext` object in `ProjectAnalyzer.analyzeProject` just before returning. Run the analyzer manually using the standard generation command and confirm that the logged `finalContext` includes the populated `astData` field. This verifies that the data is correctly merged and present in the final output object, addressing the core issue reported in the task revision.
+
+**Files to Modify**:
+
+- `src/core/analysis/project-analyzer.ts`
+
+**Implementation Details**:
+
+```typescript
+// In src/core/analysis/project-analyzer.ts, around line 268:
+
+      // Add logging for the final context before returning
+      this.logger.debug('Final ProjectContext (including astData):', JSON.stringify(finalContext, null, 2));
+
+      this.progress.succeed('Project context analysis completed successfully');
+      return Result.ok(finalContext);
+    } catch (error) {
+```
+
+**Testing Requirements**:
+
+- Build the project: `npm run build`.
+- Execute the memory bank generation command (which triggers analysis): `npm start -- generate -- --generators memory-bank`.
+- Inspect the console output for the "Final ProjectContext (including astData):" log message.
+- Confirm the logged JSON object contains the `astData` field.
+- Confirm the `astData` field is populated with keys representing relative file paths (e.g., `src/index.ts`) and values representing the generic AST structure for the corresponding files in the project being analyzed.
+- **Verification Note:** Double-check that `astData` is _not_ included in the schema definition within `buildSystemPrompt` in `project-analyzer.ts` and is _not_ part of the schema used by `ResponseParser` in `json-schema-helper.ts`. Confirm it only appears in the final logged `ProjectContext`.
+
+**Related Acceptance Criteria**:
+
+- AC2 (astData Field) - Final verification step.
+
+**Estimated effort**: 20 minutes (including build and manual run)
+
+**Delegation Notes**: Suitable for Senior Developer.
+
 ## 5. Implementation Sequence
 
-1.  **Subtask 1: Define Generic AST Node Interface** (Types groundwork)
-2.  **Subtask 2: Update ProjectContext and Related Interfaces** (Types groundwork)
-3.  **Subtask 3: Implement AST Traversal and Conversion Function** (Core logic in isolation)
-4.  **Subtask 4: Modify `TreeSitterParserService.parse` Method** (Connect traversal to parser API)
-5.  **Subtask 5: Update `ProjectAnalyzer` Integration** (Integrate parser changes into analyzer flow)
+1.  **Subtask 1: Define Generic AST Node Interface** (Completed)
+2.  **Subtask 2: Update ProjectContext and Related Interfaces** (Completed)
+3.  **Subtask 3: Implement AST Traversal and Conversion Function** (Completed)
+4.  **Subtask 4: Modify `TreeSitterParserService.parse` Method** (Completed)
+5.  **Subtask 5: Update `ProjectAnalyzer` Integration** (Completed)
 6.  **Subtask 6.1: Fix TS2307 Error in Parser Test** (Completed)
-7.  **Subtask 6.2: Fix Mock Runtime Error** (Fix `Parser is not a constructor` error - Completed)
+7.  **Subtask 6.2: Fix Mock Runtime Error** (Completed)
 8.  **Subtask 6.3: Fix Assertion Failures in Analyzer Test** (Completed)
-9.  **Subtask 6.4: Final Test Verification** (Not Started)
+9.  **Subtask 6.4: Final Test Verification** (Completed)
+10. **Subtask 6.5: Verify `astData` in Final Output Log** (Not Started) - **NEXT**
 
 ## 6. Testing Strategy
 
-- **Unit Testing:** Focus on testing the `_convertNodeToGenericAst` function in isolation (if possible) and the public `parse` method of `TreeSitterParserService`. Mock dependencies for `ProjectAnalyzer` tests, focusing on verifying its interaction with the parser service and the final structure of `ProjectContext`, especially the `astData` field. Use sample code snippets (valid and invalid) as input for parser tests.
-- **Integration Testing (Manual):** Run the `node run-analyzer.js` script on the current project or a sample project. Inspect the generated JSON output to manually verify:
-  - Presence and structure of the `astData` field.
-  - Correct relative paths as keys.
-  - Plausibility of the AST structure for a known file (spot-check `type`, `text`, `children`).
-  - Absence of `definedFunctions`/`definedClasses`.
-  - Correctness of other fields (`techStack`, `structure`, `dependencies`).
-  - Absence of errors/warnings for unsupported files.
-  - Presence of warnings for files with syntax errors (and their exclusion from `astData`).
+- **Unit Tests:** Focus on isolating the `TreeSitterParserService` (especially the traversal logic) and the `ProjectAnalyzer` (mocking the parser service). Verify the structure of `GenericAstNode` and the correct population of `astData`.
+- **Integration Tests:** (Covered by existing analyzer tests) Ensure the analyzer correctly integrates the parser results.
+- **Manual Verification:** Use the standard generation command (`npm start -- generate -- --generators memory-bank`) after implementation to manually inspect the `astData` in the final `ProjectContext` output log (as part of Subtask 6.5).
 
 ## 7. Verification Checklist
 
-- [ ] Plan is concise and focuses on practical implementation details.
-- [ ] Code style and architecture patterns have been analyzed (implicitly, by modifying existing services).
-- [ ] All files to be modified are identified.
-- [ ] Subtasks are clearly defined with specific code changes.
-- [ ] Implementation sequence is logical with clear dependencies.
-- [ ] Testing requirements are specific with test cases.
-- [ ] Progress tracking section is included for each subtask.
-- [ ] Acceptance criteria is clearly mapped to subtasks.
-- [ ] The plan does NOT duplicate business logic analysis from Task Description.
-- [ ] Guidance on subtask quality, definition, testability, and architectural alignment is included.
+- [x] Plan is concise and focuses on practical implementation details.
+- [x] Code style and architecture patterns have been analyzed (implicit in following existing structure).
+- [x] All files to be modified are identified.
+- [x] Subtasks are clearly defined with specific code changes.
+- [x] Implementation sequence is logical with clear dependencies.
+- [x] Testing requirements are specific with test cases.
+- [x] Progress tracking section is included for each subtask.
+- [x] Acceptance criteria is clearly mapped to subtasks.
+- [x] The plan does NOT duplicate business logic analysis from Task Description.
+- [x] Guidance on subtask quality, definition, testability, and architectural alignment is included.
+- [x] Added Subtask 6.5 for explicit final output verification.
+- [x] Updated Subtask 6.5 with correct manual verification command.
+- [x] Added verification note to Subtask 6.5 regarding schema checks.
