@@ -266,6 +266,9 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       };
 
       this.progress.succeed('Project context analysis completed successfully');
+      this.logger.debug(
+        `Final ProjectContext (including astData):\n${JSON.stringify(finalContext, null, 2)}`
+      );
       return Result.ok(finalContext);
     } catch (error) {
       this.progress.fail('Project context analysis failed');
