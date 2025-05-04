@@ -38,6 +38,7 @@ jest.mock('tree-sitter-typescript/typescript', () => ({ default: mockTsLang }), 
 describe('TreeSitterParserService (Extraction Logic)', () => {
   let service: TreeSitterParserService;
   let mockLogger: MockProxy<ILogger>;
+  // Removed mockGrammarLoader
 
   // Helper to mock query results for specific tests
   // Note: This mock setup assumes the service calls language.query(queryString).matches(tree.rootNode)
@@ -99,7 +100,7 @@ describe('TreeSitterParserService (Extraction Logic)', () => {
   beforeEach(() => {
     // Reset mocks before each test
     jest.clearAllMocks();
-    // Re-mock the logger
+    // Re-mock the logger and grammar loader
     mockLogger = mock<ILogger>();
     mockLogger.info.mockImplementation(() => {});
     mockLogger.debug.mockImplementation(() => {});
@@ -108,7 +109,7 @@ describe('TreeSitterParserService (Extraction Logic)', () => {
     // Reset modules to ensure mocks are fresh for dynamic import tests
     jest.resetModules(); // Ensure modules are reset before each test
 
-    // Instantiate the service
+    // Instantiate the service, passing only logger
     service = new TreeSitterParserService(mockLogger);
 
     // Ensure parse returns a mock tree
@@ -203,6 +204,7 @@ const func3 = () => {}; // line 4
         expect(result.value!.classes).toEqual([]);
       }
       // Verify query was called on the language object
+
       expect(mockJsLang.query).toHaveBeenCalled();
     });
 
@@ -279,6 +281,7 @@ export default () => {}; // line 5 (anonymous arrow)
         expect(result.value!.functions.length).toBe(expectedFunctions.length);
         expect(result.value!.classes).toEqual([]);
       }
+
       expect(mockJsLang.query).toHaveBeenCalled();
     });
 
@@ -361,6 +364,7 @@ export default class ClassC {} // line 7
         expect(result.value!.classes).toEqual(expectedClasses);
         expect(result.value!.functions).toEqual(expectedFunctions);
       }
+
       expect(mockJsLang.query).toHaveBeenCalled();
     });
 
@@ -415,6 +419,7 @@ export default class ClassC {} // line 7
         expect(result.value!.functions.length).toBe(expectedFunctions.length);
         expect(result.value!.classes).toEqual([]);
       }
+
       expect(mockJsLang.query).toHaveBeenCalled();
     });
   }); // End JavaScript describe
@@ -489,6 +494,7 @@ const tsFunc3 = (): string => "hello"; // line 4
         expect(result.value!.functions.length).toBe(expectedFunctions.length);
         expect(result.value!.classes).toEqual([]);
       }
+
       expect(mockTsLang.query).toHaveBeenCalled();
     });
 
@@ -577,6 +583,7 @@ export default async () => {}; // line 5 (anonymous async arrow)
         expect(result.value!.functions.length).toBe(expectedFunctions.length);
         expect(result.value!.classes).toEqual([]);
       }
+
       expect(mockTsLang.query).toHaveBeenCalled();
     });
 
@@ -669,6 +676,7 @@ export default class TsClassC {} // line 10
         expect(result.value!.classes).toEqual(expectedClasses);
         expect(result.value!.functions).toEqual(expectedFunctions);
       }
+
       expect(mockTsLang.query).toHaveBeenCalled();
     });
 
@@ -722,6 +730,7 @@ export default class TsClassC {} // line 10
         expect(result.value!.functions.length).toBe(expectedFunctions.length);
         expect(result.value!.classes).toEqual([]);
       }
+
       expect(mockTsLang.query).toHaveBeenCalled();
     });
   }); // End TypeScript describe
