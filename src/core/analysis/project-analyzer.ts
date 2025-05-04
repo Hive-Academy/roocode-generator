@@ -2,7 +2,7 @@ import { Injectable, Inject } from '../di/decorators';
 import { IFileOperations } from '../file-operations/interfaces';
 import { ILogger } from '../services/logger-service';
 import { Result } from '../result/result';
-import { IProjectAnalyzer, ProjectContext, CodeElementInfo } from './types'; // Import CodeElementInfo
+import { IProjectAnalyzer, ProjectContext, GenericAstNode } from './types'; // Import GenericAstNode
 import { LLMAgent } from '../llm/llm-agent';
 import { LLMProviderError } from '../llm/llm-provider-errors';
 import { ResponseParser } from './response-parser';
@@ -102,8 +102,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
 
       // --- Tree-sitter Parsing Step ---
       this.progress.update('Parsing supported files for structure...');
-      const definedFunctionsMap: Record<string, CodeElementInfo[]> = {};
-      const definedClassesMap: Record<string, CodeElementInfo[]> = {};
+      const astDataMap: Record<string, GenericAstNode> = {}; // New map
 
       for (const filePath of allFiles.value) {
         const ext = path.extname(filePath).toLowerCase();
@@ -121,27 +120,30 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
           const content = readFileResult.value!;
 
           // Assert content is non-null when passing to parse
-          const parseResult = this.treeSitterParserService.parse(content, language); // AC7: Uses parser service (Removed await)
+          const parseResult = this.treeSitterParserService.parse(content, language); // Expects Result<GenericAstNode, Error>
+
           if (parseResult.isOk()) {
-            // Normalize path separators to always use forward slashes for consistent map keys
             const relativePath = path.relative(rootPath, filePath).replace(/\\/g, '/');
-            // We know value is defined here because isOk() is true
-            definedFunctionsMap[relativePath] = parseResult.value!.functions;
-            definedClassesMap[relativePath] = parseResult.value!.classes;
+            // Store the entire AST root node
+            astDataMap[relativePath] = parseResult.value!; // Add non-null assertion
+            this.logger.debug(`Stored generic AST for ${relativePath}`);
+            // Remove old assignments:
+            // definedFunctionsMap[relativePath] = parseResult.value!.functions;
+            // definedClassesMap[relativePath] = parseResult.value!.classes;
           } else {
-            // AC5: Logs warnings for parsing errors
+            // AC8: Logs warnings for parsing errors
             this.logger.warn(
-              `Failed to parse ${filePath}: ${parseResult.error?.message ?? 'Unknown parse error'}`
+              `Failed to parse ${filePath} for AST: ${parseResult.error?.message ?? 'Unknown parse error'}`
             );
           }
         } else {
-          // AC4 (Partial): Skipping unsupported file type
+          // AC7: Skipping unsupported file type
           this.logger.debug(`Skipping unsupported file type: ${filePath}`);
           // No explicit 'continue' needed here, loop proceeds naturally
         }
       }
 
-      this.logger.debug('Tree-sitter parsing step completed (placeholder).');
+      this.logger.debug('Tree-sitter parsing step completed.');
       // --- End Tree-sitter Parsing Step ---
 
       const systemPrompt = this.buildSystemPrompt();
@@ -250,16 +252,17 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         structure: {
           ...structure,
           rootDir: rootPath,
-          // Add defaults for new fields from TSK-007
-          // AC1, AC6: Use Tree-sitter data, overriding LLM/defaults
-          definedFunctions: definedFunctionsMap,
-          definedClasses: definedClassesMap,
+          // Remove old fields:
+          // definedFunctions: definedFunctionsMap,
+          // definedClasses: definedClassesMap,
         },
         dependencies: {
           ...dependencies,
           // Ensure internalDependencies default is handled
           internalDependencies: dependencies.internalDependencies ?? {},
         },
+        // Add the new field:
+        astData: astDataMap, // AC2, AC3, AC4, AC9
       };
 
       this.progress.succeed('Project context analysis completed successfully');
@@ -412,14 +415,12 @@ IMPORTANT NOTICE:
 - This analysis is based on a PARTIAL codebase view.
 - Focus ONLY on the provided files. Do not make assumptions about files not shown.
 - If uncertain about any aspect, return null or empty arrays/objects as appropriate.
-- Keys for file-specific information (definedFunctions, definedClasses, internalDependencies) MUST be relative paths from the project root.
+- Keys for file-specific information (internalDependencies) MUST be relative paths from the project root.
 
 Analyze the provided project files to determine its overall context.
 Return a single JSON object containing the tech stack, project structure, and dependencies.
 
 Instructions for specific fields:
-- structure.definedFunctions: For each file provided, identify top-level function definitions and list their names as objects { "name": "functionName" } under this field, keyed by the relative file path.
-- structure.definedClasses: For each file provided, identify top-level class definitions and list their names as objects { "name": "className" } under this field, keyed by the relative file path.
 - dependencies.internalDependencies: For each file provided, identify imported modules/files (both package imports like 'react' and relative project imports like './utils') and list them as strings under this field, keyed by the relative file path.
 
 The response MUST strictly follow this JSON schema:
@@ -438,9 +439,8 @@ The response MUST strictly follow this JSON schema:
             "testDir": string, // Relative path(s) from rootDir to main test code (e.g., "tests", "spec")
             "configFiles": string[], // Relative paths from rootDir to key config files (e.g., "tsconfig.json", "pyproject.toml")
             "mainEntryPoints": string[], // Relative paths from rootDir to main application entry points (e.g., "src/index.ts", "app/main.py")
-            "componentStructure": Record<string, string[]>, // Optional: Map of component types/locations if identifiable
-            "definedFunctions": Record<string, Array<{ name: string }>>, // Key: relative file path, Value: List of top-level function names
-            "definedClasses": Record<string, Array<{ name: string }>> // Key: relative file path, Value: List of top-level class names
+            "componentStructure": Record<string, string[]> // Optional: Map of component types/locations if identifiable
+            // definedFunctions and definedClasses removed as they are now derived from astData
           },
           "dependencies": {
             "dependencies": Record<string, string>, // { "react": "^18.0.0" }
@@ -448,6 +448,7 @@ The response MUST strictly follow this JSON schema:
             "peerDependencies": Record<string, string>, // { "react": ">=17.0.0" }
             "internalDependencies": Record<string, string[]> // Key: relative file path, Value: List of imported module/file paths (e.g., ["react", "./utils"])
           }
+          // astData field is populated internally and not part of the LLM response schema
         }
         Important Reminders:
         - Analyze based *only* on the provided file contents.
