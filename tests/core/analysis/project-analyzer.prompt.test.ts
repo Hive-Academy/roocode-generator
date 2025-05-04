@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 
 import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
 import { JsonSchemaHelper } from '../../../src/core/analysis/json-schema-helper';
