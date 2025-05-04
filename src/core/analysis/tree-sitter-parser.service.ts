@@ -11,7 +11,9 @@ import {
   LanguageQueries,
   SupportedLanguage,
 } from './tree-sitter.config'; // Import from the new config file
-import { CodeElementInfo, ParsedCodeInfo } from './types';
+import { GenericAstNode, CodePosition } from './types'; // Added for generic AST
+import { SyntaxNode } from 'tree-sitter'; // Added for Tree-sitter nodes
+// Removed import for deprecated types: CodeElementInfo, ParsedCodeInfo
 
 // Use require based on documentation and user feedback
 const Parser = require('tree-sitter');
@@ -333,6 +335,50 @@ export class TreeSitterParserService implements ITreeSitterParserService {
       this._handleAndLogError(`Error executing Tree-sitter query for ${elementType}`, error);
       return [];
     }
+  } // Closing brace for extractElements method
+  // --- AST Conversion ---
+
+  /**
+   * Recursively converts a Tree-sitter SyntaxNode to a GenericAstNode.
+   * Includes an optional depth limit to prevent excessive recursion.
+   * @param node The Tree-sitter node to convert.
+   * @param currentDepth The current recursion depth.
+   * @param maxDepth The maximum recursion depth allowed (null for no limit).
+   * @returns The converted GenericAstNode.
+   * @private
+   */
+  private _convertNodeToGenericAst(
+    node: any, // Changed from SyntaxNode to 'any' due to TS errors with fieldName/parentFieldName
+    currentDepth: number = 0,
+    maxDepth: number | null = null // Optional depth limit
+  ): GenericAstNode {
+    if (maxDepth !== null && currentDepth > maxDepth) {
+      // Return a minimal node if depth limit is exceeded
+      return {
+        type: node.type,
+        text: '... [Max Depth Reached]', // Indicate truncation
+        startPosition: { row: node.startPosition.row, column: node.startPosition.column },
+        endPosition: { row: node.endPosition.row, column: node.endPosition.column },
+        isNamed: node.isNamed,
+        fieldName: node.fieldName || null, // Corrected property name
+        children: [], // No children beyond max depth
+      };
+    }
+
+    // Ensure children is an array, default to empty array if null/undefined
+    const children = node.children ?? [];
+
+    return {
+      type: node.type,
+      text: node.text, // Be mindful of large text nodes, potential optimization later if needed
+      startPosition: { row: node.startPosition.row, column: node.startPosition.column },
+      endPosition: { row: node.endPosition.row, column: node.endPosition.column },
+      isNamed: node.isNamed,
+      fieldName: node.fieldName || null, // Corrected property name
+      children: children.map((child) =>
+        this._convertNodeToGenericAst(child, currentDepth + 1, maxDepth)
+      ),
+    };
   }
 
   // --- Public API ---
