@@ -520,6 +520,7 @@ const baseContent = loadResult.value;
   - Check the LLM output for any errors or unexpected content.
   - Review the project context being provided to the`TemplateProcessor`.
 - **Vite Build Issues**: If encountering problems during the build process with Vite, particularly related to module compatibility, refer to Section 5.3 and the `vite.config.ts`file (if applicable).
+- **Tree-sitter Query Runtime Errors**: Previously, complex Tree-sitter queries (e.g., for specific function/class extraction) caused `TSQueryErrorNodeType` runtime errors, particularly after Vite builds. The architectural decision was made to remove these complex queries (Task TSK-012) and rely on LLM analysis for detailed code understanding in the future. Basic Tree-sitter parsing remains, but intricate queries were found to be brittle and difficult to maintain across grammar/build tool updates. If similar query errors arise, consider simplifying or removing the query in favor of LLM-based analysis.
 
 ### 7.2. Debugging
 

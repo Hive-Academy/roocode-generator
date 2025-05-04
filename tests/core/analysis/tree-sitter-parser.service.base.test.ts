@@ -91,13 +91,13 @@ describe('TreeSitterParserService (Base)', () => {
 
   // --- Grammar Loading Tests ---
 
-  it('should load and cache javascript grammar on first parse call', async () => {
+  it('should load and cache javascript grammar on first parse call', () => {
     const content = 'function hello() {}';
     const language = 'javascript';
 
     // Act
-    const result1 = await service.parse(content, language);
-    const result2 = await service.parse(content, language); // Second call
+    const result1 = service.parse(content, language);
+    const result2 = service.parse(content, language); // Second call
 
     // Assert
     expect(result1.isOk()).toBe(true);
@@ -122,13 +122,13 @@ describe('TreeSitterParserService (Base)', () => {
     expect(mockParserInstance.setLanguage).toHaveBeenCalledTimes(2);
   });
 
-  it('should load and cache typescript grammar on first parse call', async () => {
+  it('should load and cache typescript grammar on first parse call', () => {
     const content = 'class Greeter {}';
     const language = 'typescript';
 
     // Act
-    const result1 = await service.parse(content, language);
-    const result2 = await service.parse(content, language); // Second call
+    const result1 = service.parse(content, language);
+    const result2 = service.parse(content, language); // Second call
 
     // Assert
     expect(result1.isOk()).toBe(true);
@@ -152,7 +152,7 @@ describe('TreeSitterParserService (Base)', () => {
     expect(mockParserInstance.setLanguage).toHaveBeenCalledTimes(2); // Called twice (initial load + cache hit verification)
   });
 
-  it('should return Err when an error occurs during grammar initialization (e.g., require fails or map set fails)', async () => {
+  it('should return Err when an error occurs during grammar initialization (e.g., require fails or map set fails)', () => {
     const content = 'let x = 1;';
     const language = 'javascript';
     const initError = new Error('Simulated initialization failure');
@@ -168,7 +168,7 @@ describe('TreeSitterParserService (Base)', () => {
     const serviceWithError = new TreeSitterParserService(mockLogger);
 
     // Act: Calling parse triggers initialization, which should now fail
-    const result = await serviceWithError.parse(content, language);
+    const result = serviceWithError.parse(content, language);
 
     // Assert
     expect(result.isErr()).toBe(true);
@@ -206,7 +206,7 @@ describe('TreeSitterParserService (Base)', () => {
   // --- Parsing Tests (Error Handling) ---
   // Keep the test for parser.parse throwing an error
 
-  it('should return Err if the internal parser.parse throws an error', async () => {
+  it('should return Err if the internal parser.parse throws an error', () => {
     const content = 'invalid syntax ---';
     const language = 'javascript';
     const parseError = new Error('Simulated parsing error');
@@ -217,7 +217,7 @@ describe('TreeSitterParserService (Base)', () => {
     });
 
     // Act
-    const result = await service.parse(content, language);
+    const result = service.parse(content, language);
 
     // Assert
     expect(result.isErr()).toBe(true);

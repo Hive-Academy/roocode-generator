@@ -140,7 +140,7 @@ describe('TreeSitterParserService (Extraction Logic)', () => {
   describe('JavaScript', () => {
     const language = 'javascript';
 
-    it('should extract basic function declarations, expressions, and arrows', async () => {
+    it('should extract basic function declarations, expressions, and arrows', () => {
       const content = `
 function func1() {} // line 2
 const func2 = function() {}; // line 3
@@ -195,7 +195,7 @@ const func3 = () => {}; // line 4
         { name: 'func3', startLine: 4, endLine: 4 },
       ];
 
-      const result = await service.parse(content, language);
+      const result = service.parse(content, language);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -208,10 +208,10 @@ const func3 = () => {}; // line 4
       expect(mockJsLang.query).toHaveBeenCalled();
     });
 
-    it('should extract exported and default functions', async () => {
+    it('should extract exported and default functions', () => {
       const content = `
 export function func4() {} // line 2
-export const func5 = async () => {}; // line 3
+export const func5 = () => {}; // line 3
 export default function func6() {} // line 4
 export default () => {}; // line 5 (anonymous arrow)
         `;
@@ -273,7 +273,7 @@ export default () => {}; // line 5 (anonymous arrow)
         { name: '[anonymous_function]', startLine: 5, endLine: 5 }, // Expect anonymous for now
       ];
 
-      const result = await service.parse(content, language);
+      const result = service.parse(content, language);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -285,7 +285,7 @@ export default () => {}; // line 5 (anonymous arrow)
       expect(mockJsLang.query).toHaveBeenCalled();
     });
 
-    it('should extract class declarations and methods', async () => {
+    it('should extract class declarations and methods', () => {
       const content = `
 class ClassA { // line 2
   method1() {} // line 3
@@ -356,7 +356,7 @@ export default class ClassC {} // line 7
         { name: 'method2', startLine: 4, endLine: 4 },
       ];
 
-      const result = await service.parse(content, language);
+      const result = service.parse(content, language);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -368,7 +368,7 @@ export default class ClassC {} // line 7
       expect(mockJsLang.query).toHaveBeenCalled();
     });
 
-    it('should extract functions defined within object literals', async () => {
+    it('should extract functions defined within object literals', () => {
       const content = `
  const obj = { // line 2
    methodA: function() {}, // line 3
@@ -411,7 +411,7 @@ export default class ClassC {} // line 7
         { name: 'methodB', startLine: 4, endLine: 4 },
       ];
 
-      const result = await service.parse(content, language);
+      const result = service.parse(content, language);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -427,7 +427,7 @@ export default class ClassC {} // line 7
   describe('TypeScript', () => {
     const language = 'typescript';
 
-    it('should extract basic typed function declarations, expressions, and arrows', async () => {
+    it('should extract basic typed function declarations, expressions, and arrows', () => {
       const content = `
 function tsFunc1(): void {} // line 2
 const tsFunc2 = function(): number { return 1; }; // line 3
@@ -486,7 +486,7 @@ const tsFunc3 = (): string => "hello"; // line 4
         { name: 'tsFunc3', startLine: 4, endLine: 4 },
       ];
 
-      const result = await service.parse(content, language);
+      const result = service.parse(content, language);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -498,7 +498,7 @@ const tsFunc3 = (): string => "hello"; // line 4
       expect(mockTsLang.query).toHaveBeenCalled();
     });
 
-    it('should extract exported and default typed functions', async () => {
+    it('should extract exported and default typed functions', () => {
       const content = `
 export function tsFunc4(): void {} // line 2
 export const tsFunc5 = async (): Promise<void> => {}; // line 3
@@ -575,7 +575,7 @@ export default async () => {}; // line 5 (anonymous async arrow)
         { name: '[anonymous_function]', startLine: 5, endLine: 5 }, // Expect anonymous for now
       ];
 
-      const result = await service.parse(content, language);
+      const result = service.parse(content, language);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -587,7 +587,7 @@ export default async () => {}; // line 5 (anonymous async arrow)
       expect(mockTsLang.query).toHaveBeenCalled();
     });
 
-    it('should extract typed class declarations and methods, ignoring interfaces', async () => {
+    it('should extract typed class declarations and methods, ignoring interfaces', () => {
       const content = `
 interface MyInterface {} // line 2 (Should not be captured)
 class TsClassA { // line 3
@@ -669,7 +669,7 @@ export default class TsClassC {} // line 10
         { name: 'method2', startLine: 7, endLine: 7 },
       ];
 
-      const result = await service.parse(content, language);
+      const result = service.parse(content, language);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -680,7 +680,7 @@ export default class TsClassC {} // line 10
       expect(mockTsLang.query).toHaveBeenCalled();
     });
 
-    it('should extract typed functions defined within object literals', async () => {
+    it('should extract typed functions defined within object literals', () => {
       const content = `
  const tsObj: { methodA: () => void; methodB: () => number } = { // line 2
    methodA: function() {}, // line 3
@@ -722,7 +722,7 @@ export default class TsClassC {} // line 10
         { name: 'methodB', startLine: 4, endLine: 4 },
       ];
 
-      const result = await service.parse(content, language);
+      const result = service.parse(content, language);
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {

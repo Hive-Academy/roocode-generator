@@ -46,7 +46,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
     const rootPath = paths[0]; // Assuming the first path is the primary root
 
     try {
-      this.progress.start('Collecting project files for analysis...');
+      this.progress.start('Collecting project files for analysis...'); // Explicitly ignore promise
 
       // Calculate available tokens for file content
       const maxTokens =
@@ -121,9 +121,10 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
           const content = readFileResult.value!;
 
           // Assert content is non-null when passing to parse
-          const parseResult = await this.treeSitterParserService.parse(content, language); // AC7: Uses parser service
+          const parseResult = this.treeSitterParserService.parse(content, language); // AC7: Uses parser service (Removed await)
           if (parseResult.isOk()) {
-            const relativePath = path.relative(rootPath, filePath);
+            // Normalize path separators to always use forward slashes for consistent map keys
+            const relativePath = path.relative(rootPath, filePath).replace(/\\/g, '/');
             // We know value is defined here because isOk() is true
             definedFunctionsMap[relativePath] = parseResult.value!.functions;
             definedClassesMap[relativePath] = parseResult.value!.classes;

@@ -1,6 +1,5 @@
 import { Injectable } from '../di/decorators';
-import ora from 'ora';
-import type { Ora } from 'ora';
+import ora, { Ora } from 'ora'; // Import ora for spinner functionality
 
 @Injectable()
 export class ProgressIndicator {
