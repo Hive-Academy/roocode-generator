@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
- 
 
 import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
 import { JsonSchemaHelper } from '../../../src/core/analysis/json-schema-helper';
@@ -108,9 +107,10 @@ describe('JsonSchemaHelper', () => {
           mainEntryPoints: ['src/index.ts'],
           componentStructure: { components: ['Button.tsx', 'Header.tsx'] },
           // Add required fields from TSK-007
-          definedFunctions: {},
-          definedClasses: {},
+          // definedFunctions: {}, // Removed
+          // definedClasses: {}, // Removed
         },
+        astData: {}, // Added required property
         dependencies: {
           dependencies: { react: '17.0.0' },
           devDependencies: { jest: '26.0.0' },
@@ -172,7 +172,9 @@ describe('JsonSchemaHelper', () => {
           configFiles: ['package.json'],
           mainEntryPoints: ['src/index.ts'],
           componentStructure: { components: ['Button.tsx', 'Header.tsx'] },
+          // definedFunctions and definedClasses are missing, causing validation error below
         },
+        astData: {}, // Added required property
         dependencies: {
           dependencies: { react: '17.0.0' },
           devDependencies: { jest: '26.0.0' },
@@ -189,8 +191,10 @@ describe('JsonSchemaHelper', () => {
         expect(result.error.message).toMatch(
           /techStack\.languages\.0 Expected string, received number/
         );
-        expect(result.error.message).toMatch(/structure\.definedFunctions Required/);
-        expect(result.error.message).toMatch(/structure\.definedClasses Required/);
+        // Removed checks for definedFunctions/definedClasses as they are no longer required
+        // expect(result.error.message).toMatch(/structure\.definedFunctions Required/);
+        // expect(result.error.message).toMatch(/structure\.definedClasses Required/);
+        // Check for astData required if needed, but the main error is the language type
       }
     });
   });
@@ -266,9 +270,10 @@ describe('Integration: ProjectAnalyzer with JsonSchemaHelper', () => {
         mainEntryPoints: ['src/index.ts'],
         componentStructure: { components: [prompt] },
         // Add required fields for validation
-        definedFunctions: {},
-        definedClasses: {},
+        // definedFunctions: {}, // Removed
+        // definedClasses: {}, // Removed
       },
+      astData: {}, // Added required property
       dependencies: {
         dependencies: { react: '17.0.0' },
         devDependencies: { jest: '26.0.0' },

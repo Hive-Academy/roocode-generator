@@ -1,5 +1,3 @@
- 
- 
 /* eslint-disable @typescript-eslint/unbound-method */
 import path from 'path'; // Added path import
 import {
@@ -9,10 +7,11 @@ import {
 } from '../../../src/core/analysis/interfaces'; // Added FileMetadata import
 import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
 import { ResponseParser } from '../../../src/core/analysis/response-parser';
-import { ParsedCodeInfo } from '../../../src/core/analysis/types'; // Import ParsedCodeInfo from types.ts
+import { GenericAstNode } from '../../../src/core/analysis/types'; // Import GenericAstNode
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
+import { Result } from '../../../src/core/result/result'; // Import Result
 import { LLMAgent } from '../../../src/core/llm/llm-agent';
-import { Result } from '../../../src/core/result/result';
+// Removed duplicate Result import
 import { ILogger } from '../../../src/core/services/logger-service';
 import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
 
@@ -92,6 +91,22 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       parse: jest.fn(),
     } as any;
 
+    // Minimal valid GenericAstNode for mocking
+    const mockGenericAstNode: GenericAstNode = {
+      type: 'program',
+      text: '',
+      startPosition: { row: 0, column: 0 },
+      endPosition: { row: 0, column: 0 },
+      isNamed: true,
+      fieldName: null,
+      children: [],
+    };
+
+    // Mock TreeSitterParserService to return a generic AST node by default
+    mockTreeSitterParserService.parse.mockReturnValue(
+      Result.ok<GenericAstNode>(mockGenericAstNode)
+    );
+
     projectAnalyzer = new ProjectAnalyzer(
       mockFileOps,
       mockLogger,
@@ -158,10 +173,7 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       );
       mockLLMAgent.getModelContextWindow.mockResolvedValue(1000);
       mockLLMAgent.countTokens.mockResolvedValue(10); // Ensure countTokens is mocked
-      // Mock TreeSitter parse for this test case (assuming successful parse for all)
-      mockTreeSitterParserService.parse.mockReturnValue(
-        Result.ok<ParsedCodeInfo>({ functions: [], classes: [] }) // Corrected explicit typing
-      );
+      // TreeSitter mock is already set in beforeEach
 
       // Execute
       const result = await projectAnalyzer.analyzeProject([rootPath]);
@@ -236,9 +248,7 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       );
       mockLLMAgent.getModelContextWindow.mockResolvedValue(1000);
       mockLLMAgent.countTokens.mockResolvedValue(10);
-      mockTreeSitterParserService.parse.mockReturnValue(
-        Result.ok<ParsedCodeInfo>({ functions: [], classes: [] }) // Corrected explicit typing
-      );
+      // TreeSitter mock is already set in beforeEach
 
       // Execute
       const result = await projectAnalyzer.analyzeProject([rootPath]);
@@ -310,10 +320,7 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       );
       mockLLMAgent.getModelContextWindow.mockResolvedValue(1000);
       mockLLMAgent.countTokens.mockResolvedValue(10);
-      mockTreeSitterParserService.parse.mockReturnValue(
-        // Changed to mockReturnValue
-        Result.ok<ParsedCodeInfo>({ functions: [], classes: [] }) // Corrected explicit typing
-      );
+      // TreeSitter mock is already set in beforeEach
 
       // Execute
       const result = await projectAnalyzer.analyzeProject([rootPath]);
@@ -387,10 +394,7 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
         Result.ok({ techStack: {}, structure: {}, dependencies: {} })
       );
       mockLLMAgent.countTokens.mockResolvedValue(10); // Mock token counting
-      mockTreeSitterParserService.parse.mockReturnValue(
-        // Changed to mockReturnValue
-        Result.ok<ParsedCodeInfo>({ functions: [], classes: [] }) // Corrected explicit typing
-      );
+      // TreeSitter mock is already set in beforeEach
 
       // Execute
       const result = await projectAnalyzer.analyzeProject([rootPath]);
@@ -469,10 +473,7 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
         Result.ok({ techStack: {}, structure: {}, dependencies: {} })
       );
       mockLLMAgent.countTokens.mockResolvedValue(5);
-      mockTreeSitterParserService.parse.mockReturnValue(
-        // Changed to mockReturnValue
-        Result.ok<ParsedCodeInfo>({ functions: [], classes: [] }) // Corrected explicit typing
-      );
+      // TreeSitter mock is already set in beforeEach
 
       // Execute
       const result = await projectAnalyzer.analyzeProject([rootPath]);
@@ -549,10 +550,7 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       );
       mockLLMAgent.getModelContextWindow.mockResolvedValue(1000);
       mockLLMAgent.countTokens.mockResolvedValue(10);
-      mockTreeSitterParserService.parse.mockReturnValue(
-        // Changed to mockReturnValue
-        Result.ok<ParsedCodeInfo>({ functions: [], classes: [] }) // Corrected explicit typing
-      );
+      // TreeSitter mock is already set in beforeEach
 
       // Execute
       const result = await projectAnalyzer.analyzeProject([rootPath]);
