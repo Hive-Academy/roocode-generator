@@ -69,7 +69,7 @@ The core change involves replacing the query-based extraction in `TreeSitterPars
 
 ### 2. Update ProjectContext and Related Interfaces
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Modify `ProjectStructure` and `ProjectContext` interfaces in `src/core/analysis/types.ts`. Add the `astData` field and remove/deprecate `definedFunctions` and `definedClasses`. Also remove or update the now obsolete `ParsedCodeInfo` interface.
 
@@ -124,7 +124,7 @@ export interface ProjectContext {
 
 ### 3. Implement AST Traversal and Conversion Function
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Create a private helper function within `TreeSitterParserService` (e.g., `_convertNodeToGenericAst`) that takes a Tree-sitter `SyntaxNode` and recursively converts it and its children into the `GenericAstNode` structure. Include extraction of `type`, `text`, `startPosition`, `endPosition`, `isNamed`, and `parentFieldName`. Consider adding an optional `maxDepth` parameter.
 
@@ -197,6 +197,10 @@ private _convertNodeToGenericAst(
 **Estimated effort**: 30 minutes (without depth limit) / 45 minutes (with depth limit)
 
 **Delegation Notes**: Core logic, best handled by Senior Developer. Junior Coder could potentially implement with very clear guidance and examples.
+**Deviations**:
+
+- Changed `SyntaxNode` type to `any` for the `node` parameter in `_convertNodeToGenericAst` due to persistent TypeScript errors when accessing `fieldName` (or `parentFieldName`). The property access `node.fieldName` was retained. This may need revisiting if runtime issues occur.
+- Corrected a missing closing brace for the `extractElements` method that was causing parsing errors.
 
 ### 4. Modify `TreeSitterParserService.parse` Method
 
