@@ -13,15 +13,6 @@ export interface IProjectAnalyzer {
 }
 
 /**
- * Represents basic information about a defined code element (function, class, etc.).
- */
-export interface CodeElementInfo {
-  name: string;
-  startLine: number; // Add start line number
-  endLine: number; // Add end line number
-}
-
-/**
  * Represents a position in the source code.
  */
 export interface CodePosition {
@@ -64,8 +55,6 @@ export interface ProjectStructure {
   configFiles: string[]; // Relative paths from rootDir to key config files (e.g., 'tsconfig.json', '.eslintrc.js')
   mainEntryPoints: string[]; // Relative paths from rootDir to main application entry points
   componentStructure: Record<string, string[]>; // Map of component types/locations to file paths (e.g., { 'ui': ['src/components/ui/Button.tsx'] }) - Structure might need refinement based on analysis capabilities
-  definedFunctions: Record<string, CodeElementInfo[]>; // Key: relative file path -> List of functions defined in that file
-  definedClasses: Record<string, CodeElementInfo[]>; // Key: relative file path -> List of classes defined in that file
 }
 
 /**
@@ -86,13 +75,5 @@ export interface ProjectContext {
   techStack: TechStackAnalysis;
   structure: ProjectStructure;
   dependencies: DependencyGraph;
-}
-
-/**
- * Represents the structured information extracted from parsed code.
- * Placeholder structure for now.
- */
-export interface ParsedCodeInfo {
-  functions: CodeElementInfo[];
-  classes: CodeElementInfo[];
+  astData: Record<string, GenericAstNode>; // Key: relative file path -> Root AST node for the file
 }
