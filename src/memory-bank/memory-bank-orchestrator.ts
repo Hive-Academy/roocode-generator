@@ -28,8 +28,6 @@ export class MemoryBankOrchestrator implements IMemoryBankOrchestrator {
   ) {}
 
   // Define the fixed output directory path
-  private readonly MEMORY_BANK_OUTPUT_DIR = './memory-bank';
-
   /**
    * Helper method to create and log generation errors
    */
@@ -72,25 +70,26 @@ export class MemoryBankOrchestrator implements IMemoryBankOrchestrator {
     projectContext: ProjectContext, // Update signature to use ProjectContext
     config: ProjectConfig // Keep config for other settings like templates
   ): Promise<Result<void, Error>> {
+    // Determine the correct output directory path
+    const resolvedOutputDir = config.memoryBank?.outputDir || './memory-bank';
+    this.logger.debug(`Resolved memory bank output directory: ${resolvedOutputDir}`);
+
     // Serialize the structured context into a string for the content generator
-    const stringContext = JSON.stringify(projectContext, null, 2);
     const errors: { fileType: string; error: Error; phase: string }[] = [];
 
     try {
-      // Remove check for configurable output directory
-
-      // Create the memory-bank directory structure using the fixed path relative to project root
+      // Create the memory-bank directory structure using the resolved path
       this.logger.info('Creating memory bank directory structure...');
-      // Pass the project root ('.') as the base directory for file manager
-      const dirResult = await this.fileManager.createMemoryBankDirectory('.');
+      // Pass the resolved output directory to the file manager
+      const dirResult = await this.fileManager.createMemoryBankDirectory(resolvedOutputDir);
 
       if (dirResult.isErr()) {
-        // Update error context if needed, baseDir might not be relevant anymore
+        // Update error context to use the resolved path
         return this._handleGenerationError(
           'Failed to create memory-bank directory structure',
           'createMemoryBankDirectory',
           dirResult.error,
-          { targetDir: this.MEMORY_BANK_OUTPUT_DIR } // Use fixed path in context
+          { targetDir: resolvedOutputDir } // Use resolved path in context
         );
       }
 
@@ -136,7 +135,7 @@ export class MemoryBankOrchestrator implements IMemoryBankOrchestrator {
 
         const contentResult = await this.contentGenerator.generateContent(
           fileType,
-          stringContext, // Pass the serialized string context
+          projectContext, // Pass the ProjectContext object directly
           templateResult.value
         );
 
@@ -165,7 +164,7 @@ export class MemoryBankOrchestrator implements IMemoryBankOrchestrator {
         }
 
         // Use the fixed output directory path
-        const outputFilePath = path.join(this.MEMORY_BANK_OUTPUT_DIR, `${String(fileType)}.md`);
+        const outputFilePath = path.join(resolvedOutputDir, `${String(fileType)}.md`);
         this.logger.debug(`Writing ${String(fileType)} to ${outputFilePath}`);
 
         const writeResult = await this.fileManager.writeMemoryBankFile(
@@ -197,7 +196,7 @@ export class MemoryBankOrchestrator implements IMemoryBankOrchestrator {
         const sourceTemplatesDir =
           config.memoryBank?.templatesDir || path.join('templates', 'memory-bank', 'templates');
         // Use the fixed output directory path for the destination
-        const destTemplatesDir = path.join(this.MEMORY_BANK_OUTPUT_DIR, 'templates');
+        const destTemplatesDir = path.join(resolvedOutputDir, 'templates');
 
         this.logger.debug(`Copying templates from ${sourceTemplatesDir} to ${destTemplatesDir}`);
         const copyResult = await this.fileManager.copyDirectoryRecursive(
