@@ -1,16 +1,16 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import { IAstAnalysisService } from '@core/analysis/ast-analysis.interfaces'; // Added
 import path from 'path'; // Added path import
 import {
   IFileContentCollector,
   IFilePrioritizer,
   ITreeSitterParserService,
-} from '../../../src/core/analysis/interfaces'; // Added FileMetadata import
+} from '../../../src/core/analysis/interfaces';
 import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
 import { ResponseParser } from '../../../src/core/analysis/response-parser';
-import { GenericAstNode } from '../../../src/core/analysis/types'; // Import GenericAstNode
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
-import { Result } from '../../../src/core/result/result'; // Import Result
 import { LLMAgent } from '../../../src/core/llm/llm-agent';
+import { Result } from '../../../src/core/result/result'; // Import Result
 // Removed duplicate Result import
 import { ILogger } from '../../../src/core/services/logger-service';
 import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
@@ -27,7 +27,8 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
   let mockProgress: jest.Mocked<ProgressIndicator>;
   let mockContentCollector: jest.Mocked<IFileContentCollector>;
   let mockFilePrioritizer: jest.Mocked<IFilePrioritizer>;
-  let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>; // Added TreeSitter mock
+  let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>;
+  let mockAstAnalysisService: jest.Mocked<IAstAnalysisService>; // Added
 
   beforeEach(() => {
     // Mocks for the 'File Prioritization and Token Limiting' tests
@@ -88,24 +89,17 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
 
     mockTreeSitterParserService = {
       // Initialize the mock
-      parse: jest.fn(),
-    } as any;
+      initialize: jest.fn().mockResolvedValue(Result.ok(undefined)), // Added mock for initialize
+      parse: jest.fn(), // Kept basic mock for parse
+      parseFile: jest.fn().mockResolvedValue(Result.ok({ type: 'program', children: [] })), // Added mock for parseFile
+    } as jest.Mocked<ITreeSitterParserService>;
 
-    // Minimal valid GenericAstNode for mocking
-    const mockGenericAstNode: GenericAstNode = {
-      type: 'program',
-      text: '',
-      startPosition: { row: 0, column: 0 },
-      endPosition: { row: 0, column: 0 },
-      isNamed: true,
-      fieldName: null,
-      children: [],
-    };
-
-    // Mock TreeSitterParserService to return a generic AST node by default
-    mockTreeSitterParserService.parse.mockReturnValue(
-      Result.ok<GenericAstNode>(mockGenericAstNode)
-    );
+    mockAstAnalysisService = {
+      // Added
+      analyzeAst: jest
+        .fn()
+        .mockResolvedValue(Result.ok({ functions: [], classes: [], imports: [] })), // Added
+    } as jest.Mocked<IAstAnalysisService>; // Added
 
     projectAnalyzer = new ProjectAnalyzer(
       mockFileOps,
@@ -115,7 +109,8 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       mockProgress,
       mockContentCollector,
       mockFilePrioritizer,
-      mockTreeSitterParserService // Pass the new mock
+      mockTreeSitterParserService,
+      mockAstAnalysisService // Added 9th argument
     );
   });
 

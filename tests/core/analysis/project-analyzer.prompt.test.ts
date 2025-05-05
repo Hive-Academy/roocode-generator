@@ -4,7 +4,8 @@ import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
 import { JsonSchemaHelper } from '../../../src/core/analysis/json-schema-helper';
 import { Result } from '../../../src/core/result/result'; // Added import
 import { LLMAgent } from '../../../src/core/llm/llm-agent'; // Import for casting
-import { ITreeSitterParserService } from '@core/analysis/interfaces'; // Import the missing interface
+import { ITreeSitterParserService } from '@core/analysis/interfaces';
+import { IAstAnalysisService } from '@core/analysis/ast-analysis.interfaces'; // Added
 
 describe('ProjectAnalyzer Prompt Tests', () => {
   let projectAnalyzer: ProjectAnalyzer;
@@ -34,15 +35,24 @@ describe('ProjectAnalyzer Prompt Tests', () => {
   const mockProgress = {} as any; // Pos 5
   const mockContentCollector = {} as any; // Pos 6
   const mockFilePrioritizer = {} as any; // Pos 7
-  let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>; // Pos 8 - Declare mock
+  let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>; // Pos 8
+  let mockAstAnalysisService: jest.Mocked<IAstAnalysisService>; // Pos 9 - Added
 
   beforeEach(() => {
     // Reset mocks before each test
     jest.clearAllMocks();
-    // Initialize the mock service
+    // Initialize the mock services
     mockTreeSitterParserService = {
-      parse: jest.fn().mockResolvedValue(Result.ok({ functions: [], classes: [] })), // Default mock
-    } as any;
+      initialize: jest.fn().mockResolvedValue(Result.ok(undefined)),
+      parse: jest.fn(),
+      parseFile: jest.fn().mockResolvedValue(Result.ok({ type: 'program', children: [] })),
+    } as jest.Mocked<ITreeSitterParserService>;
+    mockAstAnalysisService = {
+      // Added
+      analyzeAst: jest
+        .fn()
+        .mockResolvedValue(Result.ok({ functions: [], classes: [], imports: [] })), // Added
+    } as jest.Mocked<IAstAnalysisService>; // Added
     projectAnalyzer = new ProjectAnalyzer(
       mockFileOps,
       mockLogger, // Pos 2
@@ -51,7 +61,8 @@ describe('ProjectAnalyzer Prompt Tests', () => {
       mockProgress,
       mockContentCollector,
       mockFilePrioritizer,
-      mockTreeSitterParserService // Pass the mock service
+      mockTreeSitterParserService,
+      mockAstAnalysisService // Added 9th argument
     );
   });
 
@@ -227,14 +238,23 @@ describe('Integration: ProjectAnalyzer with JsonSchemaHelper', () => {
   const mockProgressInt = {} as any; // Pos 5
   const mockContentCollectorInt = {} as any; // Pos 6
   const mockFilePrioritizerInt = {} as any; // Pos 7
-  let mockTreeSitterParserServiceInt: jest.Mocked<ITreeSitterParserService>; // Pos 8 - Declare mock
+  let mockTreeSitterParserServiceInt: jest.Mocked<ITreeSitterParserService>; // Pos 8
+  let mockAstAnalysisServiceInt: jest.Mocked<IAstAnalysisService>; // Pos 9 - Added
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Initialize the mock service for the integration test
+    // Initialize the mock services for the integration test
     mockTreeSitterParserServiceInt = {
-      parse: jest.fn().mockResolvedValue(Result.ok({ functions: [], classes: [] })), // Default mock
-    } as any;
+      initialize: jest.fn().mockResolvedValue(Result.ok(undefined)),
+      parse: jest.fn(),
+      parseFile: jest.fn().mockResolvedValue(Result.ok({ type: 'program', children: [] })),
+    } as jest.Mocked<ITreeSitterParserService>;
+    mockAstAnalysisServiceInt = {
+      // Added
+      analyzeAst: jest
+        .fn()
+        .mockResolvedValue(Result.ok({ functions: [], classes: [], imports: [] })), // Added
+    } as jest.Mocked<IAstAnalysisService>; // Added
     projectAnalyzer = new ProjectAnalyzer(
       mockFileOpsInt,
       mockLoggerIntegration, // Pos 2
@@ -243,7 +263,8 @@ describe('Integration: ProjectAnalyzer with JsonSchemaHelper', () => {
       mockProgressInt,
       mockContentCollectorInt,
       mockFilePrioritizerInt,
-      mockTreeSitterParserServiceInt // Pass the mock service
+      mockTreeSitterParserServiceInt,
+      mockAstAnalysisServiceInt // Added 9th argument
     );
     jsonSchemaHelper = new JsonSchemaHelper();
   });
