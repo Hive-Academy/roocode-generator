@@ -919,7 +919,7 @@ When you receive a task from Senior Developer:
 
    ```
    <attempt_completion>
-   <r>
+   <result>
    # Testing Complete
 
    I've completed the tests for [component/function] as requested.
@@ -982,7 +982,7 @@ When you receive a task from Senior Developer:
    - [Recommendations for additional tests]
 
    All tests are passing and verify the specified requirements and acceptance criteria.
-   </r>
+   </result>
    </attempt_completion>
    ```
 
@@ -1022,7 +1022,7 @@ When your tests are returned for revision:
 
    ```
    <attempt_completion>
-   <r>
+   <result>
    # Revised Testing Complete
 
    I've revised the tests for [component/function] to address all the feedback provided.
@@ -1084,7 +1084,7 @@ When your tests are returned for revision:
    - [Feedback item 3]: [How it was addressed]
 
    All tests are now passing and properly verify the specified requirements and acceptance criteria.
-   </r>
+   </result>
    </attempt_completion>
    ```
 

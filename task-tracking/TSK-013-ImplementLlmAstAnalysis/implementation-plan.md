@@ -174,7 +174,7 @@ export interface IAstAnalysisService {
 
 ### Subtask 2: Implement `AstAnalysisService` Core Logic
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Implement the core logic of `AstAnalysisService`, including prompt construction, LLM interaction via `LLMAgent`, and response validation using `zod`.
 
@@ -439,8 +439,53 @@ interface CodeInsights {
 
 **Delegation Success Criteria**:
 
-- Junior Coder components must: `zod` schema correctly reflects `CodeInsights` interface. Prompt includes all required sections (instruction, schema, example).
-- Junior Tester components must: Unit tests cover all specified scenarios, mocks are used correctly, assertions verify `Result` outcomes and logger calls.
+- Junior Coder components: ✅ Completed. Zod schemas (`codeInsightsSchema` etc.) correctly implemented in `ast-analysis.service.ts` and reviewed. `buildPrompt` method correctly implemented in `ast-analysis.service.ts` and reviewed.
+- Junior Tester components: ✅ Completed (after 1 redelegation). Unit tests in `ast-analysis.service.test.ts` cover all specified scenarios, use mocks correctly, and verify outcomes/logging. Reviewed and approved.
+
+**Completion Notes**:
+
+- Created `src/core/analysis/ast-analysis.service.ts`.
+- Implemented `AstAnalysisService` class conforming to `IAstAnalysisService`.
+- Injected `ILLMAgent` and `ILogger` via constructor.
+- Implemented `analyzeAst` method:
+  - Calls `buildPrompt` (delegated to Junior Coder).
+  - Stringifies `astData` and includes it in the system prompt.
+  - Calls `llmAgent.getCompletion` with the combined prompt and an empty user prompt.
+  - Handles `Result` from LLM call (logs error on failure).
+  - Cleans potential markdown fences from the response.
+  - Parses response string as JSON (logs warning on failure, returns `RooCodeError`).
+  - Validates parsed JSON using `codeInsightsSchema` (delegated to Junior Coder).
+  - Handles validation failure (logs warning/issues, returns `RooCodeError`).
+  - Returns `Result.ok(validatedData)` on success.
+  - Added TSDoc comments for the class and public method.
+- Delegated Zod schema implementation (`codeInsightsSchema` etc.) to Junior Coder - Successful.
+- Delegated `buildPrompt` method implementation to Junior Coder - Successful.
+- Delegated unit test implementation (`tests/core/analysis/ast-analysis.service.test.ts`) to Junior Tester - Successful after 1 redelegation due to initial non-completion. Tests reviewed and verified.
+- Corrected TypeScript errors related to `RooCodeError` constructor and logger calls during implementation.
+
+**Acceptance Criteria Verification**:
+
+- AC1: Service implemented.
+  - ✅ Satisfied by: `AstAnalysisService` class created in `src/core/analysis/ast-analysis.service.ts`, implementing `IAstAnalysisService`.
+  - Evidence: Code file `src/core/analysis/ast-analysis.service.ts`.
+- AC5: Uses `LLMAgent`.
+  - ✅ Satisfied by: `ILLMAgent` injected in constructor and `llmAgent.getCompletion` called within `analyzeAst`.
+  - Evidence: Code inspection; Verified by unit test `should return Ok with CodeInsights...`.
+- AC6: Prompt defined.
+  - ✅ Satisfied by: `buildPrompt` method implemented (delegated to Junior Coder) and called by `analyzeAst`. System prompt includes instructions, schema, example, and input AST.
+  - Evidence: Code inspection; Verified by unit test `should build a prompt containing key elements`.
+- AC7: Attempts extraction.
+  - ✅ Satisfied by: The prompt explicitly instructs the LLM to extract functions, classes, and imports based on the AST structure.
+  - Evidence: `buildPrompt` method content.
+- AC8: Validation implemented.
+  - ✅ Satisfied by: `codeInsightsSchema` (delegated to Junior Coder) defined using Zod and `safeParse` used in `analyzeAst` to validate the parsed LLM response.
+  - Evidence: Code inspection; Verified by unit tests `should return Ok...` and `should return Err... when LLM response fails schema validation`.
+- AC9: Returns `Result`.
+  - ✅ Satisfied by: `analyzeAst` method returns `Promise<Result<CodeInsights, Error>>`. `Result.ok` returned on success, `Result.err` with `RooCodeError` returned on failures (LLM, parse, validation, unexpected).
+  - Evidence: Method signature and return statements; Verified by all unit tests checking `result.isOk()` or `result.isErr()`.
+- AC12: TSDoc added.
+  - ✅ Satisfied by: TSDoc comments added to `AstAnalysisService` class and `analyzeAst` method. Delegated components (`buildPrompt`, Zod schemas) also included TSDoc as verified during review.
+  - Evidence: Code inspection of `src/core/analysis/ast-analysis.service.ts`.
 
 ---
 
