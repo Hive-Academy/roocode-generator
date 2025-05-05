@@ -1,11 +1,12 @@
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
 import { LLMAgent } from '../../../src/core/llm/llm-agent';
-import { ILogger } from '../../../src/core/services/logger-service';
+import { ILogger } from '../../../src/core/services/logger-service'; // Keep type import
+import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
 import { RulesTemplateManager } from '../../../src/core/templating/rules-template-manager';
 
 describe('RulesTemplateManager', () => {
   let mockFileOperations: jest.Mocked<IFileOperations>;
-  let mockLogger: jest.Mocked<ILogger>;
+  let mockLogger: jest.Mocked<ILogger>; // Keep declaration
   let mockLLMAgent: jest.Mocked<LLMAgent>;
   let templateManager: RulesTemplateManager;
 
@@ -30,12 +31,7 @@ describe('RulesTemplateManager', () => {
       extname: jest.fn(),
     } as unknown as jest.Mocked<IFileOperations>;
 
-    mockLogger = {
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    } as jest.Mocked<ILogger>;
+    mockLogger = createMockLogger(); // Initialize mock logger here
 
     mockLLMAgent = {
       getCompletion: jest.fn(),

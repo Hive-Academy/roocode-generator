@@ -1,17 +1,13 @@
 import { ContentProcessor } from '../../src/memory-bank/content-processor';
-import { ILogger } from '../../src/core/services/logger-service';
+import { ILogger } from '../../src/core/services/logger-service'; // Keep type import
+import { createMockLogger } from '../__mocks__/logger.mock'; // Import mock factory (Corrected path)
 
 describe('ContentProcessor', () => {
   let processor: ContentProcessor;
-  let mockLogger: jest.Mocked<ILogger>;
+  let mockLogger: jest.Mocked<ILogger>; // Keep declaration
 
   beforeEach(() => {
-    mockLogger = {
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    } as jest.Mocked<ILogger>;
+    mockLogger = createMockLogger(); // Initialize mock logger here
 
     processor = new ContentProcessor(mockLogger);
   });

@@ -12,7 +12,8 @@ import { IFileOperations } from '../../../src/core/file-operations/interfaces';
 import { LLMAgent } from '../../../src/core/llm/llm-agent';
 import { Result } from '../../../src/core/result/result'; // Import Result
 // Removed duplicate Result import
-import { ILogger } from '../../../src/core/services/logger-service';
+import { ILogger } from '../../../src/core/services/logger-service'; // Keep type import
+import { createMockLogger } from '../../__mocks__/logger.mock'; // Add mock factory import
 import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
 
 // Define a type for the metadata objects used frequently in tests
@@ -51,14 +52,7 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       copyDirectoryRecursive: jest.fn().mockResolvedValue(Result.ok(undefined)),
     } as jest.Mocked<IFileOperations>; // Use stricter typing
 
-    mockLogger = {
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      setLogLevel: jest.fn(), // Add missing method
-      getLogLevel: jest.fn(), // Add missing method
-    } as jest.Mocked<ILogger>;
+    mockLogger = createMockLogger();
 
     mockLLMAgent = {
       getModelContextWindow: jest.fn().mockResolvedValue(10000), // Provide default mock value

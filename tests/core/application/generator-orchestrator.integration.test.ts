@@ -5,7 +5,8 @@ import { GeneratorOrchestrator } from '@core/application/generator-orchestrator'
 import { IGeneratorOrchestrator } from '@core/application/interfaces';
 import { ProjectConfigService } from '@core/config/project-config.service';
 // Removed unused import IProjectConfigService
-import { ILogger } from '@core/services/logger-service';
+import { ILogger } from '@core/services/logger-service'; // Keep type import
+import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
 
 // Removed unused import ApplicationContainer
 import { IGenerator } from '@core/generators/base-generator';
@@ -23,12 +24,7 @@ const testDefaultConfig: ProjectConfig = {
 };
 
 // Mocks
-const mockLogger: jest.Mocked<ILogger> = {
-  debug: jest.fn(),
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-};
+let mockLogger: jest.Mocked<ILogger>; // Change to let
 
 // Mock IFileOperations (needed by ProjectConfigService constructor, though not used by loadConfig)
 const mockFileOps: jest.Mocked<IFileOperations> = {
@@ -61,6 +57,7 @@ describe('GeneratorOrchestrator Integration Test', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockLogger = createMockLogger(); // Initialize mock logger here
 
     // Manually instantiate ProjectConfigService with mocks
     projectConfigServiceInstance = new ProjectConfigService(mockFileOps, mockLogger);

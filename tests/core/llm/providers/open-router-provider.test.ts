@@ -1,16 +1,12 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { OpenRouterProvider } from '@core/llm/providers/open-router-provider';
 import { LLMConfig } from 'types/shared';
 import { LLMProviderError } from '@core/llm/llm-provider-errors';
-import { ILogger } from '@core/services/logger-service';
+import { ILogger } from '@core/services/logger-service'; // Keep type import
+import { createMockLogger } from '../../../__mocks__/logger.mock'; // Import mock factory
 
 describe('OpenRouterProvider', () => {
-  // Keep mockLogger untyped here for Jest mock methods
-  const mockLogger = {
-    debug: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-  };
+  let mockLogger: jest.Mocked<ILogger>; // Declare with type
 
   const mockConfig: LLMConfig = {
     model: 'test-model',
@@ -24,7 +20,8 @@ describe('OpenRouterProvider', () => {
   let originalFetch: typeof global.fetch;
 
   beforeEach(() => {
-    // Cast mockLogger to ILogger when passing to constructor
+    mockLogger = createMockLogger(); // Initialize mock logger here
+    // Cast mockLogger to ILogger when passing to constructor (still okay, but not strictly needed)
     provider = new OpenRouterProvider(mockConfig, mockLogger as ILogger);
     originalFetch = global.fetch;
     // mockClear should work now
