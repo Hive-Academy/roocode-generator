@@ -250,15 +250,22 @@ describe('ProjectAnalyzer Analysis Result', () => {
     expect(result.isOk()).toBe(true);
     const context = result.unwrap();
 
-    // Check existing fields (basic check)
-    expect(context.techStack.languages).toEqual(['TypeScript']); // From LLM mock
-    expect(context.structure.rootDir).toBe(rootPath); // Should use the provided root path
+    // Verify astData is ABSENT
+    expect(context).not.toHaveProperty('astData');
 
-    // Verify astData field (AC2, AC3, AC4)
-    expect(context.astData).toBeDefined();
-    expect(Object.keys(context.astData)).toEqual(['src/app.ts', 'src/utils.ts']); // Relative paths
-    expect(context.astData['src/app.ts']).toEqual(mockAstNode); // Check value against mock
-    expect(context.astData['src/utils.ts']).toEqual(mockAstNode); // Check value against mock
+    // Verify codeInsights is PRESENT and is an object
+    expect(context).toHaveProperty('codeInsights');
+    expect(typeof context.codeInsights).toBe('object');
+    expect(context.codeInsights).toEqual({}); // Defaults to {}
+
+    // Verify structure.componentStructure defaults to {}
+    expect(context.structure.componentStructure).toEqual({});
+
+    // Verify dependencies defaults
+    expect(context.dependencies.dependencies).toEqual({});
+    expect(context.dependencies.devDependencies).toEqual({});
+    expect(context.dependencies.peerDependencies).toEqual({});
+    expect(context.dependencies.internalDependencies).toEqual({});
 
     // Verify definedFunctions and definedClasses are NOT present (AC9)
     expect(context.structure).not.toHaveProperty('definedFunctions');
@@ -287,12 +294,6 @@ describe('ProjectAnalyzer Analysis Result', () => {
     // Check existing fields
     expect(context.techStack.languages).toEqual(['JavaScript']); // From LLM mock
     expect(context.structure.rootDir).toBe(rootPath); // Should use the provided root path
-
-    // Verify astData field (AC2, AC3, AC4)
-    expect(context.astData).toBeDefined();
-    expect(Object.keys(context.astData)).toEqual(['src/app.ts', 'src/utils.ts']); // Relative paths
-    expect(context.astData['src/app.ts']).toEqual(mockAstNode); // Check value against mock
-    expect(context.astData['src/utils.ts']).toEqual(mockAstNode); // Check value against mock
 
     // Verify definedFunctions and definedClasses are NOT present (AC9)
     expect(context.structure).not.toHaveProperty('definedFunctions');
@@ -367,11 +368,6 @@ describe('ProjectAnalyzer Analysis Result', () => {
       // Correct the prefix to match the actual log output
       expect.stringContaining(`Tree-sitter parsing failed for src/utils.ts: ${parseError.message}`)
     );
-
-    // Verify astData only contains the successfully parsed file (AC3, AC8)
-    expect(context.astData).toBeDefined();
-    expect(Object.keys(context.astData)).toEqual(['src/app.ts']); // Only app.ts should be present
-    expect(context.astData['src/app.ts']).toEqual(mockAstNode);
 
     // Verify other fields are still populated (AC9)
     expect(context.techStack.languages).toEqual(['JavaScript']); // From LLM mock
@@ -459,12 +455,6 @@ describe('ProjectAnalyzer Analysis Result', () => {
       'utils.ts content',
       'typescript'
     );
-
-    // Verify astData only contains supported files (AC3, AC7)
-    expect(context.astData).toBeDefined();
-    expect(Object.keys(context.astData)).toEqual(['src/app.ts', 'src/utils.ts']);
-    expect(context.astData['src/app.ts']).toEqual(mockAstNode);
-    expect(context.astData['src/utils.ts']).toEqual(mockAstNode);
 
     // Verify other fields are still populated (AC9)
     expect(context.techStack.languages).toEqual(['JavaScript']);

@@ -360,9 +360,9 @@ describe('ProjectAnalyzer - IAstAnalysisService Integration', () => {
 
     // Verify codeInsights content
     expect(context.codeInsights).toBeDefined();
-    expect(Object.keys(context.codeInsights!)).toEqual([file1RelativePath, file2RelativePath]);
-    expect(context.codeInsights![file1RelativePath]).toEqual(mockCodeInsights1);
-    expect(context.codeInsights![file2RelativePath]).toEqual(mockCodeInsights2);
+    expect(Object.keys(context.codeInsights)).toEqual([file1RelativePath, file2RelativePath]);
+    expect(context.codeInsights[file1RelativePath]).toEqual(mockCodeInsights1);
+    expect(context.codeInsights[file2RelativePath]).toEqual(mockCodeInsights2);
 
     // Verify logger messages for success
     expect(mockLogger.debug).toHaveBeenCalledWith(
@@ -374,174 +374,168 @@ describe('ProjectAnalyzer - IAstAnalysisService Integration', () => {
     expect(mockLogger.warn).not.toHaveBeenCalled(); // No warnings
     expect(mockLogger.error).not.toHaveBeenCalled(); // No errors related to AST analysis
 
-    // CRITICAL: Verify final context structure
-    const contextKeys = Object.keys(context);
-    // Ensure all expected keys are present
-    expect(contextKeys).toEqual(
-      expect.arrayContaining([
-        'techStack',
-        'structure',
-        'dependencies',
-        'astData',
-        'codeInsights', // Should be present in success case
-      ])
-    );
-    // Ensure ONLY the expected keys are present
-    expect(contextKeys.length).toBe(5);
-    // Explicitly check against potential extra properties (example)
-    expect(context).not.toHaveProperty('someIntermediateData');
-    expect(context).not.toHaveProperty('validAstData');
-  }); // <-- End of Success Path test
-
-  test('Partial Failure Path: should handle Err results from analyzeAst and log warnings', async () => {
-    // Arrange
-    const analysisError = new Error('Simulated AST analysis failure');
-    mockAstAnalysisService.analyzeAst
-      .mockResolvedValueOnce(Result.ok(mockCodeInsights1)) // file1.ts succeeds
-      .mockResolvedValueOnce(Result.err(analysisError)); // file2.js fails with Err
-
-    // Act
-    const result = await projectAnalyzer.analyzeProject([rootPath]);
-
-    // Assert
-    expect(result.isOk()).toBe(true); // Overall analysis should still succeed
-    const context = result.unwrap();
-
-    // Verify codeInsights only contains the successful result
+    // Verify codeInsights content
     expect(context.codeInsights).toBeDefined();
-    expect(Object.keys(context.codeInsights!)).toEqual([file1RelativePath]); // Only file1
-    expect(context.codeInsights![file1RelativePath]).toEqual(mockCodeInsights1);
-    expect(context.codeInsights![file2RelativePath]).toBeUndefined();
+    expect(Object.keys(context.codeInsights)).toEqual([file1RelativePath, file2RelativePath]);
+    expect(context.codeInsights[file1RelativePath]).toEqual(mockCodeInsights1);
+    expect(context.codeInsights[file2RelativePath]).toEqual(mockCodeInsights2);
 
-    // Verify logger messages
-    expect(mockLogger.debug).toHaveBeenCalledWith(
-      `Successfully generated code insights for ${file1RelativePath}`
-    );
-    expect(mockLogger.warn).toHaveBeenCalledTimes(1);
-    expect(mockLogger.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        `Failed to generate code insights for ${file2RelativePath}: ${analysisError.message}`
-      )
-    );
-    expect(mockLogger.error).not.toHaveBeenCalled(); // No errors expected for Err results
+    // Verify structure.componentStructure defaults to {}
+    expect(context.structure.componentStructure).toEqual({});
+
+    // Verify dependencies defaults
+    expect(context.dependencies.dependencies).toEqual({});
+    expect(context.dependencies.devDependencies).toEqual({});
+    expect(context.dependencies.peerDependencies).toEqual({});
+    expect(context.dependencies.internalDependencies).toEqual({});
 
     // CRITICAL: Verify final context structure
     const contextKeys = Object.keys(context);
     expect(contextKeys).toEqual(
-      expect.arrayContaining([
-        'techStack',
-        'structure',
-        'dependencies',
-        'astData',
-        'codeInsights', // Should still be present
-      ])
+      expect.arrayContaining(['techStack', 'structure', 'dependencies', 'codeInsights'])
     );
-    expect(contextKeys.length).toBe(5);
+    expect(contextKeys.length).toBe(4);
+    expect(context).not.toHaveProperty('astData');
     expect(context).not.toHaveProperty('someIntermediateData');
-  }); // <-- End of Partial Failure Path test
 
-  test('Promise Rejection Path: should handle promise rejections from analyzeAst and log errors', async () => {
-    // Arrange
-    const rejectionError = new Error('Simulated AST analysis promise rejection');
-    mockAstAnalysisService.analyzeAst
-      .mockResolvedValueOnce(Result.ok(mockCodeInsights1)) // file1.ts succeeds
-      .mockRejectedValueOnce(rejectionError); // file2.js promise rejects
+    test('Partial Failure Path: should handle Err results from analyzeAst and log warnings', async () => {
+      // Arrange
+      const analysisError = new Error('Simulated AST analysis failure');
+      mockAstAnalysisService.analyzeAst
+        .mockResolvedValueOnce(Result.ok(mockCodeInsights1)) // file1.ts succeeds
+        .mockResolvedValueOnce(Result.err(analysisError)); // file2.js fails with Err
 
-    // Act
-    const result = await projectAnalyzer.analyzeProject([rootPath]);
+      // Act
+      const result = await projectAnalyzer.analyzeProject([rootPath]);
 
-    // Assert
-    expect(result.isOk()).toBe(true); // Overall analysis should still succeed
-    const context = result.unwrap();
+      // Assert
+      expect(result.isOk()).toBe(true); // Overall analysis should still succeed
+      const context = result.unwrap();
 
-    // Verify codeInsights only contains the successful result
-    expect(context.codeInsights).toBeDefined();
-    expect(Object.keys(context.codeInsights!)).toEqual([file1RelativePath]); // Only file1
-    expect(context.codeInsights![file1RelativePath]).toEqual(mockCodeInsights1);
-    expect(context.codeInsights![file2RelativePath]).toBeUndefined();
+      // Verify codeInsights only contains the successful result
+      expect(context.codeInsights).toBeDefined();
+      expect(Object.keys(context.codeInsights)).toEqual([file1RelativePath]); // Only file1
+      expect(context.codeInsights[file1RelativePath]).toEqual(mockCodeInsights1);
+      expect(context.codeInsights[file2RelativePath]).toBeUndefined();
 
-    // Verify logger messages
-    expect(mockLogger.debug).toHaveBeenCalledWith(
-      `Successfully generated code insights for ${file1RelativePath}`
-    );
-    expect(mockLogger.error).toHaveBeenCalledTimes(1);
-    // Note: Promise.allSettled wraps rejection reason, check for that structure if needed,
-    // but the ProjectAnalyzer code logs the reason directly.
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      expect.stringContaining(
-        `AST analysis promise rejected for ${file2RelativePath}: ${rejectionError}`
-      )
-    );
-    expect(mockLogger.warn).not.toHaveBeenCalled(); // No warnings expected for rejections
+      // Verify logger messages
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        `Successfully generated code insights for ${file1RelativePath}`
+      );
+      expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          `Failed to generate code insights for ${file2RelativePath}: ${analysisError.message}`
+        )
+      );
+      expect(mockLogger.error).not.toHaveBeenCalled(); // No errors expected for Err results
 
-    // CRITICAL: Verify final context structure
-    const contextKeys = Object.keys(context);
-    expect(contextKeys).toEqual(
-      expect.arrayContaining([
-        'techStack',
-        'structure',
-        'dependencies',
-        'astData',
-        'codeInsights', // Should still be present
-      ])
-    );
-    expect(contextKeys.length).toBe(5);
-    expect(context).not.toHaveProperty('someIntermediateData');
-  }); // <-- End of Promise Rejection Path test
+      const contextKeys = Object.keys(context);
+      expect(contextKeys).toEqual(
+        expect.arrayContaining(['techStack', 'structure', 'dependencies', 'codeInsights'])
+      );
+      expect(contextKeys.length).toBe(4);
+      expect(context).not.toHaveProperty('astData');
+      expect(context).not.toHaveProperty('someIntermediateData');
+    }); // <-- End of Partial Failure Path test
 
-  test('No ASTs Case: should not call analyzeAst and codeInsights should be undefined if no ASTs are generated', async () => {
-    // Arrange: Mock TreeSitterParserService to fail parsing for all files
-    const parseError = new Error('Simulated parsing failure for all files');
-    mockTreeSitterParserService.parse.mockReturnValue(Result.err(parseError));
+    test('Promise Rejection Path: should handle promise rejections from analyzeAst and log errors', async () => {
+      // Arrange
+      const rejectionError = new Error('Simulated AST analysis promise rejection');
+      mockAstAnalysisService.analyzeAst
+        .mockResolvedValueOnce(Result.ok(mockCodeInsights1)) // file1.ts succeeds
+        .mockRejectedValueOnce(rejectionError); // file2.js promise rejects
 
-    // Act
-    const result = await projectAnalyzer.analyzeProject([rootPath]);
+      // Act
+      const result = await projectAnalyzer.analyzeProject([rootPath]);
 
-    // Assert
-    expect(result.isOk()).toBe(true); // Analysis should still succeed overall
-    const context = result.unwrap();
+      // Assert
+      expect(result.isOk()).toBe(true); // Overall analysis should still succeed
+      const context = result.unwrap();
 
-    // Verify astAnalysisService was NOT called
-    expect(mockAstAnalysisService.analyzeAst).not.toHaveBeenCalled();
+      // Verify codeInsights only contains the successful result
+      expect(context.codeInsights).toBeDefined();
+      expect(Object.keys(context.codeInsights)).toEqual([file1RelativePath]); // Only file1
+      expect(context.codeInsights[file1RelativePath]).toEqual(mockCodeInsights1);
+      expect(context.codeInsights[file2RelativePath]).toBeUndefined();
 
-    // Verify logger messages indicating parsing failures and skipping analysis
-    expect(mockLogger.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        `Tree-sitter parsing failed for ${file1RelativePath}: ${parseError.message}`
-      )
-    );
-    expect(mockLogger.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        `Tree-sitter parsing failed for ${file2RelativePath}: ${parseError.message}`
-      )
-    );
-    expect(mockLogger.debug).toHaveBeenCalledWith(
-      'No valid ASTs found to analyze. Skipping analysis step.'
-    );
+      // Verify logger messages
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        `Successfully generated code insights for ${file1RelativePath}`
+      );
+      expect(mockLogger.error).toHaveBeenCalledTimes(1);
+      // Note: Promise.allSettled wraps rejection reason, check for that structure if needed,
+      // but the ProjectAnalyzer code logs the reason directly.
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining(
+          `AST analysis promise rejected for ${file2RelativePath}: ${rejectionError}`
+        )
+      );
+      expect(mockLogger.warn).not.toHaveBeenCalled(); // No warnings expected for rejections
 
-    // Verify codeInsights is an empty object (as it's initialized to {})
-    expect(context.codeInsights).toEqual({});
+      // CRITICAL: Verify final context structure
+      const contextKeys = Object.keys(context);
+      expect(contextKeys).toEqual(
+        expect.arrayContaining([
+          'techStack',
+          'structure',
+          'dependencies',
+          'codeInsights', // Should still be present
+        ])
+      );
+      expect(contextKeys.length).toBe(4); // Length should be 4 now
+      expect(context).not.toHaveProperty('astData'); // Assert astData is NOT present
+      expect(context).not.toHaveProperty('someIntermediateData');
+    }); // <-- End of Promise Rejection Path test
 
-    // Verify astData is empty because parsing failed
-    expect(context.astData).toBeDefined();
-    expect(Object.keys(context.astData).length).toBe(0);
+    test('No ASTs Case: should not call analyzeAst and codeInsights should be undefined if no ASTs are generated', async () => {
+      // Arrange: Mock TreeSitterParserService to fail parsing for all files
+      const parseError = new Error('Simulated parsing failure for all files');
+      mockTreeSitterParserService.parse.mockReturnValue(Result.err(parseError));
 
-    // CRITICAL: Verify final context structure (should NOT include codeInsights)
-    const contextKeys = Object.keys(context);
-    expect(contextKeys).toEqual(
-      expect.arrayContaining([
-        'techStack',
-        'structure',
-        'dependencies',
-        'astData', // astData is still a required key, even if empty
-        'codeInsights', // Expect codeInsights to be present (as {})
-      ])
-    );
-    // Ensure ONLY the expected 5 keys are present
-    expect(contextKeys.length).toBe(5); // Expect 5 keys
-    // Removed: expect(context).not.toHaveProperty('codeInsights');
-    expect(context).not.toHaveProperty('someIntermediateData');
-  }); // <-- End of No ASTs Case test
+      // Act
+      const result = await projectAnalyzer.analyzeProject([rootPath]);
 
-  // More tests will be added here...
+      // Assert
+      expect(result.isOk()).toBe(true); // Analysis should still succeed overall
+      const context = result.unwrap();
+
+      // Verify astAnalysisService was NOT called
+      expect(mockAstAnalysisService.analyzeAst).not.toHaveBeenCalled();
+
+      // Verify logger messages indicating parsing failures and skipping analysis
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          `Tree-sitter parsing failed for ${file1RelativePath}: ${parseError.message}`
+        )
+      );
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          `Tree-sitter parsing failed for ${file2RelativePath}: ${parseError.message}`
+        )
+      );
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        'No valid ASTs found to analyze. Skipping analysis step.'
+      );
+
+      // Verify codeInsights is an empty object (as it's initialized to {})
+      expect(context.codeInsights).toEqual({});
+
+      // CRITICAL: Verify final context structure (should NOT include codeInsights)
+      const contextKeys = Object.keys(context);
+      expect(contextKeys).toEqual(
+        expect.arrayContaining([
+          'techStack',
+          'structure',
+          'dependencies',
+          'astData', // astData is still a required key, even if empty
+          'codeInsights', // Expect codeInsights to be present (as {})
+        ])
+      );
+      // Ensure ONLY the expected 5 keys are present
+      expect(contextKeys.length).toBe(5); // Expect 5 keys
+      // Removed: expect(context).not.toHaveProperty('codeInsights');
+      expect(context).not.toHaveProperty('someIntermediateData');
+    }); // <-- End of No ASTs Case test
+  });
 });

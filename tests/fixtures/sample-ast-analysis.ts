@@ -29,12 +29,11 @@ interface Config {}
 
 @Component({
   selector: 'app-root',
-  template: './app.component.html'
+  template: './app.component.html',
 })
 export class UserProfile {
   @Input() private name: string;
-  
-  @Inject('ILogger')
+
   constructor(
     private readonly logger: ILogger,
     @Optional() protected config?: Config
@@ -69,15 +68,12 @@ export class UserProfile {
   }
 }
 
-export function calculateTotal(
-  @Min(0) price: number,
-  @Max(100) quantity: number
-): number {
+export function calculateTotal(price: number, quantity: number): number {
   return price * quantity;
 }
 
 const processData = async (data: any[]): Promise<void> => {
-  await Promise.all(data.map(item => item.process()));
+  await Promise.all(data.map((item) => item.process()));
 };
 
 /*

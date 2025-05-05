@@ -76,11 +76,10 @@ export interface ProjectContext {
   techStack: TechStackAnalysis;
   structure: ProjectStructure;
   dependencies: DependencyGraph;
-  astData: Record<string, GenericAstNode>; // Key: relative file path -> Root AST node for the file
   /**
    * Optional map containing structured code insights extracted via AST analysis.
    * The key is the relative file path, and the value is the CodeInsights object for that file.
    * Populated by the AstAnalysisService.
    */
-  codeInsights?: { [filePath: string]: CodeInsights };
+  codeInsights: { [filePath: string]: CodeInsights }; // Made required as per new requirements
 }
