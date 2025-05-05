@@ -7,6 +7,7 @@ import {
   ITreeSitterParserService,
 } from '../../../src/core/analysis/interfaces';
 import { ProjectContext, GenericAstNode } from '../../../src/core/analysis/types'; // Import ProjectContext & GenericAstNode
+import { IAstAnalysisService } from '../../../src/core/analysis/ast-analysis.interfaces'; // Re-add for casting mock
 import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
 import { ResponseParser } from '../../../src/core/analysis/response-parser';
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
@@ -46,19 +47,22 @@ const mockAstNode: GenericAstNode = {
   ],
 };
 
+// --- Global Mocks & Variables ---
+let projectAnalyzer: ProjectAnalyzer;
+let mockFileOps: jest.Mocked<IFileOperations>;
+let mockLogger: jest.Mocked<ILogger>;
+let mockLLMAgent: jest.Mocked<LLMAgent>;
+let mockResponseParser: jest.Mocked<ResponseParser>;
+let mockProgress: jest.Mocked<ProgressIndicator>;
+let mockContentCollector: jest.Mocked<IFileContentCollector>;
+let mockFilePrioritizer: jest.Mocked<IFilePrioritizer>;
+let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>;
+// mockAstAnalysisService declaration removed
+
+const rootPath = 'root/path';
+
 // --- Describe Block for Analysis Result ---
 describe('ProjectAnalyzer Analysis Result', () => {
-  let projectAnalyzer: ProjectAnalyzer;
-  let mockFileOps: jest.Mocked<IFileOperations>;
-  let mockLogger: jest.Mocked<ILogger>;
-  let mockLLMAgent: jest.Mocked<LLMAgent>;
-  let mockResponseParser: jest.Mocked<ResponseParser>;
-  let mockProgress: jest.Mocked<ProgressIndicator>;
-  let mockContentCollector: jest.Mocked<IFileContentCollector>;
-  let mockFilePrioritizer: jest.Mocked<IFilePrioritizer>;
-  let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>; // Declare the mock variable
-
-  const rootPath = 'root/path';
   // Mock LLM response that might contain outdated/different TS structure info
   const mockLlmResponseWithOldTsData = JSON.stringify({
     techStack: { languages: ['TypeScript'], frameworks: ['Node.js'] },
@@ -182,6 +186,8 @@ describe('ProjectAnalyzer Analysis Result', () => {
       parse: jest.fn(), // Will be mocked more specifically below
     } as any;
 
+    // mockAstAnalysisService instantiation removed
+
     // Mock TreeSitterParserService.parse to return the mock AST node for supported languages
     mockTreeSitterParserService.parse.mockImplementation((content, language) => {
       if (language === 'typescript' || language === 'javascript') {
@@ -190,7 +196,9 @@ describe('ProjectAnalyzer Analysis Result', () => {
       }
       // For unsupported languages in this test context, return an error or a specific result
       // For simplicity, let's assume it might return an error if called unexpectedly
-      return Result.err(new Error(`Mock parse called with unexpected language: ${language}`));
+      return Result.err(
+        new Error(`Mock parse called with unexpected language: ${String(language)}`)
+      );
     });
 
     // Mock readFile to return simple content for the expected files
@@ -220,7 +228,8 @@ describe('ProjectAnalyzer Analysis Result', () => {
       mockProgress,
       mockContentCollector,
       mockFilePrioritizer,
-      mockTreeSitterParserService
+      mockTreeSitterParserService,
+      { analyzeAst: jest.fn() } as jest.Mocked<IAstAnalysisService> // Use specific cast
     );
   });
 
@@ -337,7 +346,9 @@ describe('ProjectAnalyzer Analysis Result', () => {
       if (language === 'typescript' || language === 'javascript') {
         return Result.ok(mockAstNode); // Succeed for others (app.ts)
       }
-      return Result.err(new Error(`Mock parse called with unexpected language: ${language}`));
+      return Result.err(
+        new Error(`Mock parse called with unexpected language: ${String(language)}`)
+      );
     });
 
     const result = await projectAnalyzer.analyzeProject([rootPath]);
@@ -416,7 +427,9 @@ describe('ProjectAnalyzer Analysis Result', () => {
       if (language === 'typescript' || language === 'javascript') {
         return Result.ok(mockAstNode);
       }
-      return Result.err(new Error(`Mock parse called with unexpected language: ${language}`));
+      return Result.err(
+        new Error(`Mock parse called with unexpected language: ${String(language)}`)
+      );
     });
 
     // Mock LLM response
@@ -453,4 +466,4 @@ describe('ProjectAnalyzer Analysis Result', () => {
     expect(context.structure.rootDir).toBe(rootPath);
     expect(context.dependencies.dependencies).toEqual({ express: '4.17.1' });
   });
-});
+}); // Closing bracket for 'ProjectAnalyzer Analysis Result' describe block
