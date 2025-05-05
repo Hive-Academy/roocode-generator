@@ -1,5 +1,6 @@
 import { Result } from '../../core/result/result';
 import { MemoryBankFileType } from '../interfaces';
+import { ProjectContext } from '../../core/analysis/types'; // Added import
 
 /**
  * Interface for generating memory bank content using LLM
@@ -14,7 +15,7 @@ export interface IMemoryBankContentGenerator {
    */
   generateContent(
     fileType: MemoryBankFileType,
-    context: string,
+    context: ProjectContext, // Changed type from string
     template: string
   ): Promise<Result<string, Error>>;
 }

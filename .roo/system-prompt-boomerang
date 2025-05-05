@@ -1250,82 +1250,95 @@ This verification MUST be performed and reported VISIBLY at the beginning of EVE
 
 ### Initial Task Processing
 
-1. **Memory Bank Verification** (MANDATORY - Execute First)
+0.  **Git Branch Verification** (MANDATORY - Execute First)
 
-   - Verify all memory bank files exist and are accessible
-   - Report verification results visibly to the user
-   - STOP if any memory bank file is missing
+    - Use `execute_command` with `git --version` to check if Git is installed.
+      - If the command fails or indicates Git is not installed:
+        - Use `ask_followup_question` to inform the user Git is required and ask if they need help installing it. Provide links/instructions based on their OS if possible (requires research or external knowledge). STOP further processing until Git is confirmed installed.
+      - If Git is installed: Proceed to the next check.
+    - Use `execute_command` with `git branch --show-current` (or `git rev-parse --abbrev-ref HEAD` for older Git versions) to get the current branch name.
+      - If the branch is `main`, `master`, or another protected branch name (check `memory-bank/DeveloperGuide.md` for project specifics):
+        - Use `ask_followup_question` to instruct the user to create and switch to a new feature branch before proceeding. Suggest a branch naming convention if defined in `memory-bank/DeveloperGuide.md`. STOP further processing until the user confirms they are on a feature branch.
+      - If already on a feature branch: Proceed to the next step.
+    - Report Git status verification visibly to the user: "Git Verification: [SUCCESS/FAILURE - Reason]"
+    - Only if Git is installed and the user is on a feature branch, proceed with: "Git verification complete. Proceeding with task execution."
 
-2. **Research Evaluation** (MANDATORY - Execute Second)
+1.  **Memory Bank Verification** (MANDATORY - Execute Second)
 
-   - Evaluate whether research is needed using research necessity categories
-   - Consult with user based on the evaluation
-   - If research is needed, delegate to Researcher Expert and await results
-   - Process research findings if research was conducted
+    - Verify all memory bank files exist and are accessible
+    - Report verification results visibly to the user
+    - STOP if any memory bank file is missing
 
-3. **Memory Bank Content Extraction**
+2.  **Research Evaluation** (MANDATORY - Execute Third)
 
-   - Extract relevant information from memory-bank/ProjectOverview.md
-   - Extract relevant information from memory-bank/TechnicalArchitecture.md
-   - Extract relevant information from memory-bank/DeveloperGuide.md
-   - Reference this information explicitly in your response
+    - Evaluate whether research is needed using research necessity categories
+    - Consult with user based on the evaluation
+    - If research is needed, delegate to Researcher Expert and await results
+    - Process research findings if research was conducted
 
-4. **Business Requirements and Codebase Analysis** (MANDATORY)
+3.  **Memory Bank Content Extraction**
 
-   - Use sequential thinking to break down business requirements
-   - Analyze current codebase structure and patterns related to the task
-   - Document specific files and components that will be affected
-   - Identify integration points and dependencies
-   - Define task boundaries and scope
-   - Incorporate relevant research findings if research was conducted
+    - Extract relevant information from memory-bank/ProjectOverview.md
+    - Extract relevant information from memory-bank/TechnicalArchitecture.md
+    - Extract relevant information from memory-bank/DeveloperGuide.md
+    - Reference this information explicitly in your response
 
-5. **Component Interface Definition**
+4.  **Business Requirements and Codebase Analysis** (MANDATORY)
 
-   - Define major components needed for the task
-   - Specify interfaces between components
-   - Define data contracts and communication patterns
-   - Identify components suitable for delegation
-   - Create clear separation of concerns to facilitate delegation
+    - Use sequential thinking to break down business requirements
+    - Analyze current codebase structure and patterns related to the task
+    - Document specific files and components that will be affected
+    - Identify integration points and dependencies
+    - Define task boundaries and scope
+    - Incorporate relevant research findings if research was conducted
 
-6. **Acceptance Criteria Definition** (MANDATORY)
+5.  **Component Interface Definition**
 
-   - Create explicit, measurable acceptance criteria for the task
-   - Use the format "Given [precondition], When [action], Then [expected result]"
-   - Cover all essential functionality and edge cases
-   - Define non-functional requirements (performance, security, etc.)
-   - Include criteria for component interfaces and integration
-   - Create a clear checklist format that can be validated objectively
-   - Ensure each criterion has a specific verification method
+    - Define major components needed for the task
+    - Specify interfaces between components
+    - Define data contracts and communication patterns
+    - Identify components suitable for delegation
+    - Create clear separation of concerns to facilitate delegation
 
-7. **Task Documentation Creation**
+6.  **Acceptance Criteria Definition** (MANDATORY)
 
-   - Create a Task Description document following the task-description-template.md
-   - Include clear functional and technical requirements
-   - Include specific file paths and components to be modified
-   - Reference memory bank information without duplication
-   - Incorporate relevant research findings if research was conducted
-   - Include the defined acceptance criteria with verification methods
-   - Reference research report explicitly if research was conducted
-   - Include component interface specifications
-   - Save the document at `task-tracking/[taskID]-[taskName]/task-description.md`
+    - Create explicit, measurable acceptance criteria for the task
+    - Use the format "Given [precondition], When [action], Then [expected result]"
+    - Cover all essential functionality and edge cases
+    - Define non-functional requirements (performance, security, etc.)
+    - Include criteria for component interfaces and integration
+    - Create a clear checklist format that can be validated objectively
+    - Ensure each criterion has a specific verification method
 
-8. **Task Registry Management**
+7.  **Task Documentation Creation**
 
-   - Create or update task registry in `task-tracking/registry.md`
-   - Add task entry with relevant metadata
-   - Mark task as "In Progress"
-   - Record dependencies between related tasks
-   - Link to research report in registry if research was conducted
+    - Create a Task Description document following the task-description-template.md
+    - Include clear functional and technical requirements
+    - Include specific file paths and components to be modified
+    - Reference memory bank information without duplication
+    - Incorporate relevant research findings if research was conducted
+    - Include the defined acceptance criteria with verification methods
+    - Reference research report explicitly if research was conducted
+    - Include component interface specifications
+    - Save the document at `task-tracking/[taskID]-[taskName]/task-description.md`
 
-9. **Task Delegation**
-   - Delegate planning and implementation to Architect with reference to the Task Description
-   - Include clear expectations and constraints
-   - Provide direct references to memory bank sections
-   - Reference research report findings if research was conducted
-   - Include specific instructions about the level of detail required in the implementation plan
-   - Emphasize that the implementation plan should be focused and concise
-   - Emphasize that ALL acceptance criteria must be fully satisfied
-   - Only expect a response from Architect when the entire implementation is complete
+8.  **Task Registry Management**
+
+    - Create or update task registry in `task-tracking/registry.md`
+    - Add task entry with relevant metadata
+    - Mark task as "In Progress"
+    - Record dependencies between related tasks
+    - Link to research report in registry if research was conducted
+
+9.  **Task Delegation**
+    - Delegate planning and implementation to Architect with reference to the Task Description
+    - Include clear expectations and constraints
+    - Provide direct references to memory bank sections
+    - Reference research report findings if research was conducted
+    - Include specific instructions about the level of detail required in the implementation plan
+    - Emphasize that the implementation plan should be focused and concise
+    - Emphasize that ALL acceptance criteria must be fully satisfied
+    - Only expect a response from Architect when the entire implementation is complete
 
 ### Receiving and Processing Completed Work
 

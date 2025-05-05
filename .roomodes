@@ -83,7 +83,7 @@
         [
           "edit",
           {
-            "fileRegex": "\\.(js|ts|jsx|tsx|css|scss|html|vue|svelte|php|py|rb|java|c|cpp|h|go|rs|cs|swift|kt)$",
+            "fileRegex": "\\.(md|js|ts|jsx|tsx|css|scss|html|vue|svelte|php|py|rb|java|c|cpp|h|go|rs|cs|swift|kt)$",
             "description": "Implementation code files only"
           }
         ],
