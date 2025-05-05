@@ -24,7 +24,9 @@ describe('AstAnalysisService', () => {
       } as jest.Mocked<ILLMAgent>;
 
       mockLogger = {
+        trace: jest.fn(),
         debug: jest.fn(),
+        verbose: jest.fn(),
         info: jest.fn(),
         warn: jest.fn(),
         error: jest.fn(),
@@ -325,7 +327,9 @@ describe('analyzeAst method', () => {
     } as jest.Mocked<ILLMAgent>;
 
     mockLogger = {
+      trace: jest.fn(),
       debug: jest.fn(),
+      verbose: jest.fn(),
       info: jest.fn(),
       warn: jest.fn(),
       error: jest.fn(),

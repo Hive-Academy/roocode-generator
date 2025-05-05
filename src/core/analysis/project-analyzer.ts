@@ -37,7 +37,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
     @Inject('IAstAnalysisService')
     private readonly astAnalysisService: IAstAnalysisService
   ) {
-    this.logger.debug('ProjectAnalyzer initialized');
+    this.logger.trace('ProjectAnalyzer initialized');
   }
 
   /**
@@ -418,12 +418,12 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
           const fullPath: string = path.join(dirPath, itemName);
 
           if (SKIP_DIRECTORIES.has(itemName)) {
-            this.logger.debug(`Skipping excluded directory: ${itemName}`);
+            this.logger.trace(`Skipping excluded directory: ${itemName}`);
             continue;
           }
 
           if (itemName.startsWith('.')) {
-            this.logger.debug(`Skipping hidden item: ${itemName}`);
+            this.logger.trace(`Skipping hidden item: ${itemName}`);
             continue;
           }
 
@@ -460,7 +460,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         return Result.err(finalScanResult.error as Error);
       }
       const elapsedTime = Date.now() - startTime;
-      this.logger.debug(
+      this.logger.info(
         `File path collection completed in ${elapsedTime} ms. Found ${allFiles.length} analyzable files.`
       );
 
@@ -494,31 +494,31 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       fileName === 'yarn.lock' ||
       fileName.endsWith('.lock')
     ) {
-      this.logger.debug(`Skipping test/generated/lock file: ${fileName}`);
+      this.logger.trace(`Skipping test/generated/lock file: ${fileName}`);
       return false;
     }
 
     if (BINARY_EXTENSIONS.has(ext)) {
-      this.logger.debug(`Skipping binary file: ${fileName}`);
+      this.logger.trace(`Skipping binary file: ${fileName}`);
       return false;
     }
 
     if (ANALYZABLE_FILENAMES.has(fileName)) {
-      this.logger.debug(`Including known filename: ${fileName}`);
+      this.logger.trace(`Including known filename: ${fileName}`);
       return true;
     }
 
     if (ANALYZABLE_EXTENSIONS.has(ext)) {
-      this.logger.debug(`Including file with known extension: ${fileName}`);
+      this.logger.trace(`Including file with known extension: ${fileName}`);
       return true;
     }
 
     if (!ext && ANALYZABLE_FILENAMES.has(fileName)) {
-      this.logger.debug(`Including known filename without extension: ${fileName}`);
+      this.logger.trace(`Including known filename without extension: ${fileName}`);
       return true;
     }
 
-    this.logger.debug(`Skipping file by default: ${fileName}`);
+    this.logger.trace(`Skipping file by default: ${fileName}`);
     return false;
   }
 
@@ -556,7 +556,6 @@ The response MUST strictly follow this JSON schema:
             "configFiles": string[], // Relative paths from rootDir to key config files (e.g., "tsconfig.json", "pyproject.toml")
             "mainEntryPoints": string[], // Relative paths from rootDir to main application entry points (e.g., "src/index.ts", "app/main.py")
             "componentStructure": Record<string, string[]> // Optional: Map of component types/locations if identifiable
-            // definedFunctions and definedClasses removed as they are now derived from astData
           },
           "dependencies": {
             "dependencies": Record<string, string>, // { "react": "^18.0.0" }
@@ -564,7 +563,7 @@ The response MUST strictly follow this JSON schema:
             "peerDependencies": Record<string, string>, // { "react": ">=17.0.0" }
             "internalDependencies": Record<string, string[]> // Key: relative file path, Value: List of imported module/file paths (e.g., ["react", "./utils"])
           }
-          // astData field is populated internally and not part of the LLM response schema
+   
         }
         Important Reminders:
         - Analyze based *only* on the provided file contents.

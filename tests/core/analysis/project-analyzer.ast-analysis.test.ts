@@ -107,7 +107,9 @@ describe('ProjectAnalyzer - IAstAnalysisService Integration', () => {
       // Removed getFiles as it's not in the interface
     };
     mockLogger = {
+      trace: jest.fn(),
       debug: jest.fn(),
+      verbose: jest.fn(),
       info: jest.fn(),
       warn: jest.fn(),
       error: jest.fn(),
