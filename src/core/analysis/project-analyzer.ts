@@ -3,6 +3,7 @@ import { IFileOperations } from '../file-operations/interfaces';
 import { ILogger } from '../services/logger-service';
 import { Result } from '../result/result';
 import { IProjectAnalyzer, ProjectContext, GenericAstNode } from './types'; // Import GenericAstNode
+import { CodeInsights, IAstAnalysisService } from './ast-analysis.interfaces'; // Added CodeInsights, IAstAnalysisService
 import { LLMAgent } from '../llm/llm-agent';
 import { LLMProviderError } from '../llm/llm-provider-errors';
 import { ResponseParser } from './response-parser';
@@ -29,15 +30,19 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
     @Inject('IFileContentCollector') private readonly contentCollector: IFileContentCollector,
     @Inject('IFilePrioritizer') private readonly filePrioritizer: IFilePrioritizer,
     @Inject('ITreeSitterParserService')
-    private readonly treeSitterParserService: ITreeSitterParserService // Inject the service
+    private readonly treeSitterParserService: ITreeSitterParserService, // Inject the service
+    @Inject('IAstAnalysisService') // Added injection
+    private readonly astAnalysisService: IAstAnalysisService // Added property
   ) {
     this.logger.debug('ProjectAnalyzer initialized');
   }
 
   /**
    * Analyzes the overall project context based on the collected files.
+   * This includes collecting file content, generating ASTs, analyzing ASTs for code insights using an LLM,
+   * and summarizing the project's tech stack, structure, and dependencies.
    * @param paths - An array containing the root path(s) of the project to analyze.
-   * @returns A Promise resolving to a Result containing the comprehensive ProjectContext or an Error.
+   * @returns A Promise resolving to a Result containing the comprehensive ProjectContext (including AST data and code insights) or an Error.
    */
   async analyzeProject(paths: string[]): Promise<Result<ProjectContext, Error>> {
     if (!paths || paths.length === 0) {
@@ -100,9 +105,14 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
 
       this.logger.debug(`Collected ${metadata.length} files with metadata`);
 
-      // --- Tree-sitter Parsing Step ---
+      // --- Tree-sitter Parsing and Analysis Step ---
       this.progress.update('Parsing supported files for structure...');
-      const astDataMap: Record<string, GenericAstNode> = {}; // New map
+      this.logger.debug('Starting AST generation and collection...'); // Corrected log
+
+      /**
+       * Collects valid AST data directly from synchronous parsing.
+       */
+      const validAstData: { relativePath: string; astData: GenericAstNode }[] = [];
 
       for (const filePath of allFiles.value) {
         const ext = path.extname(filePath).toLowerCase();
@@ -114,37 +124,82 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
             this.logger.warn(
               `Error reading file ${filePath} for parsing: ${readFileResult.error?.message ?? 'Unknown read error'}`
             );
-            continue;
+            continue; // Skip this file if read fails
           }
-          // We know value is defined here because isErr() was false
-          const content = readFileResult.value!;
+          const content = readFileResult.value!; // Safe due to isErr check
+          const relativePath = path.relative(rootPath, filePath).replace(/\\/g, '/');
 
-          // Assert content is non-null when passing to parse
-          const parseResult = this.treeSitterParserService.parse(content, language); // Expects Result<GenericAstNode, Error>
+          // Parse synchronously
+          const parseResult: Result<GenericAstNode, Error> = this.treeSitterParserService.parse(
+            content,
+            language
+          ); // Returns Result<GenericAstNode, Error>
 
           if (parseResult.isOk()) {
-            const relativePath = path.relative(rootPath, filePath).replace(/\\/g, '/');
-            // Store the entire AST root node
-            astDataMap[relativePath] = parseResult.value!; // Add non-null assertion
-            this.logger.debug(`Stored generic AST for ${relativePath}`);
-            // Remove old assignments:
-            // definedFunctionsMap[relativePath] = parseResult.value!.functions;
-            // definedClassesMap[relativePath] = parseResult.value!.classes;
+            // Directly add valid AST data
+            // Use non-null assertion as isOk() guarantees value exists
+            validAstData.push({ relativePath, astData: parseResult.value! });
+            this.logger.debug(`Successfully parsed and stored AST for ${relativePath}`); // Changed from trace
           } else {
-            // AC8: Logs warnings for parsing errors
+            // Log warning for parsing errors (Result.err)
+            // Use non-null assertion as else block implies isErr() which guarantees error exists
             this.logger.warn(
-              `Failed to parse ${filePath} for AST: ${parseResult.error?.message ?? 'Unknown parse error'}`
+              `Failed to parse AST for ${relativePath}: ${parseResult.error!.message}`
             );
           }
         } else {
-          // AC7: Skipping unsupported file type
-          this.logger.debug(`Skipping unsupported file type: ${filePath}`);
-          // No explicit 'continue' needed here, loop proceeds naturally
+          this.logger.debug(`Skipping unsupported file type: ${filePath}`); // Changed from trace
         }
       }
 
-      this.logger.debug('Tree-sitter parsing step completed.');
-      // --- End Tree-sitter Parsing Step ---
+      this.logger.debug(`Collected ${validAstData.length} valid ASTs.`);
+
+      /**
+       * Performs concurrent analysis on valid ASTs using AstAnalysisService.
+       */
+      const codeInsightsMap: { [filePath: string]: CodeInsights } = {};
+      if (validAstData.length > 0) {
+        this.progress.update(`Analyzing structure of ${validAstData.length} files...`);
+        this.logger.debug(`Starting concurrent AST analysis for ${validAstData.length} files...`);
+
+        // Use this.astAnalysisService
+        const analysisPromises = validAstData.map(
+          ({ relativePath, astData }) => this.astAnalysisService.analyzeAst(astData, relativePath) // Returns Promise<Result<CodeInsights, Error>>
+        );
+
+        const analysisSettledResults = await Promise.allSettled(analysisPromises);
+
+        /**
+         * Processes the results of the concurrent AST analysis.
+         */
+        analysisSettledResults.forEach((result, index) => {
+          const { relativePath } = validAstData[index];
+          if (result.status === 'fulfilled') {
+            // Explicitly type analysisResult
+            const analysisResult: Result<CodeInsights, Error> = result.value;
+            if (analysisResult.isOk()) {
+              // Use non-null assertion as isOk() guarantees value exists
+              codeInsightsMap[relativePath] = analysisResult.value!;
+              this.logger.debug(`Successfully generated code insights for ${relativePath}`);
+            } else {
+              // Log warning for analysis errors (Result.err)
+              // Use non-null assertion as else block implies isErr() which guarantees error exists
+              this.logger.warn(
+                `Failed to generate code insights for ${relativePath}: ${analysisResult.error!.message}`
+              );
+            }
+          } else {
+            // Log error for promise rejections during analysis
+            this.logger.error(
+              `AST analysis promise rejected for ${relativePath}: ${result.reason}`
+            );
+          }
+        });
+        this.logger.debug('Concurrent AST analysis step completed.');
+      } else {
+        this.logger.debug('No valid ASTs found to analyze. Skipping analysis step.');
+      }
+      // --- End Tree-sitter Parsing and Analysis Step ---
 
       const systemPrompt = this.buildSystemPrompt();
       const filePrompt = content; // Note: LLM still gets the prioritized content
@@ -247,27 +302,29 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         internalDependencies: {},
       };
 
+      // Assemble final context using results from LLM context analysis,
+      // successfully parsed ASTs (validAstData), and successful code insights (codeInsightsMap)
+      const astDataMap = Object.fromEntries(
+        validAstData.map((item) => [item.relativePath, item.astData])
+      );
+
       const finalContext: ProjectContext = {
         techStack,
         structure: {
           ...structure,
           rootDir: rootPath,
-          // Remove old fields:
-          // definedFunctions: definedFunctionsMap,
-          // definedClasses: definedClassesMap,
         },
         dependencies: {
           ...dependencies,
-          // Ensure internalDependencies default is handled
           internalDependencies: dependencies.internalDependencies ?? {},
         },
-        // Add the new field:
-        astData: astDataMap, // AC2, AC3, AC4, AC9
+        astData: astDataMap, // Populated from successfully parsed files (validAstData)
+        codeInsights: codeInsightsMap, // Populated from successfully analyzed ASTs
       };
 
       this.progress.succeed('Project context analysis completed successfully');
       this.logger.debug(
-        `Final ProjectContext (including astData):\n${JSON.stringify(finalContext, null, 2)}`
+        `Final ProjectContext (including astData and codeInsights):\n${JSON.stringify(finalContext, null, 2)}`
       );
       return Result.ok(finalContext);
     } catch (error) {
