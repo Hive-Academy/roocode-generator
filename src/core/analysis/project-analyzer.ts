@@ -126,12 +126,12 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
             );
             continue; // Skip this file if read fails
           }
-          const content = readFileResult.value!; // Safe due to isErr check
+          const fileContent = readFileResult.value!; // Renamed variable for clarity
           const relativePath = path.relative(rootPath, filePath).replace(/\\/g, '/');
 
           // Parse synchronously
           const parseResult: Result<GenericAstNode, Error> = this.treeSitterParserService.parse(
-            content,
+            fileContent, // Use fileContent here
             language
           ); // Returns Result<GenericAstNode, Error>
 
@@ -144,7 +144,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
             // Log warning for parsing errors (Result.err)
             // Use non-null assertion as else block implies isErr() which guarantees error exists
             this.logger.warn(
-              `Failed to parse AST for ${relativePath}: ${parseResult.error!.message}`
+              `Tree-sitter parsing failed for ${relativePath}: ${parseResult.error!.message}` // Updated log message
             );
           }
         } else {
@@ -213,21 +213,21 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       this.logger.debug(`File prompt token count: ${filePromptTokenCount}`);
       this.logger.debug(`System prompt token count: ${systemPromptTokenCount}`);
 
-      let result: Result<string, Error> = Result.err(new Error('Initial error before LLM call'));
+      let llmResult: Result<string, Error> = Result.err(new Error('Initial error before LLM call')); // Renamed variable
       const maxRetries = 3;
       let currentAttempt = 0;
 
       while (currentAttempt < maxRetries) {
         currentAttempt++;
         this.logger.debug(`Attempt ${currentAttempt} of ${maxRetries} for LLM completion.`);
-        result = await this.llmAgent.getCompletion(systemPrompt, filePrompt);
+        llmResult = await this.llmAgent.getCompletion(systemPrompt, filePrompt); // Use renamed variable
 
-        if (result.isOk()) {
+        if (llmResult.isOk()) { // Use renamed variable
           break;
         }
 
-        if (result.isErr()) {
-          const error = result.error;
+        if (llmResult.isErr()) { // Use renamed variable
+          const error = llmResult.error; // Use renamed variable
           if (error instanceof LLMProviderError && error.code === 'INVALID_RESPONSE_FORMAT') {
             this.logger.warn(
               `LLM returned invalid response format on attempt ${currentAttempt}. Retrying...`
@@ -251,19 +251,19 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         }
       }
 
-      if (result.isErr()) {
+      if (llmResult.isErr()) { // Use renamed variable
         this.progress.fail('Project context analysis failed after multiple LLM attempts');
-        return Result.err(result.error as Error);
+        return Result.err(llmResult.error as Error); // Use renamed variable
       }
 
       this.progress.update('Processing analysis results...');
       const parsedResult = this.responseParser.parseLlmResponse<ProjectContext>(
-        result.value as string
+        llmResult.value as string // Use renamed variable
       );
 
       if (parsedResult.isErr()) {
         this.progress.fail('Failed to parse analysis results from LLM');
-        this.logger.error(`Failed to parse LLM response: ${result.value}`, parsedResult.error);
+        this.logger.error(`Failed to parse LLM response: ${llmResult.value}`, parsedResult.error); // Use renamed variable
         return parsedResult;
       }
 
@@ -326,6 +326,9 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       this.logger.debug(
         `Final ProjectContext (including astData and codeInsights):\n${JSON.stringify(finalContext, null, 2)}`
       );
+
+      // --- TEMPORARY LOGGING REMOVED ---
+
       return Result.ok(finalContext);
     } catch (error) {
       this.progress.fail('Project context analysis failed');
@@ -341,22 +344,22 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       const allFiles: string[] = [];
       // Modify scanDir to return a Result for better error propagation
       const scanDir = async (dirPath: string): Promise<Result<void, Error>> => {
-        const result = await this.fileOps.readDir(dirPath);
-        if (result.isErr()) {
+        const readDirResult = await this.fileOps.readDir(dirPath); // Renamed variable
+        if (readDirResult.isErr()) { // Use renamed variable
           // Return error Result instead of throwing
           return Result.err(
             new Error(
-              `Read directory failed: ${result.error instanceof Error ? result.error.message : String(result.error)}`
+              `Read directory failed: ${readDirResult.error instanceof Error ? readDirResult.error.message : String(readDirResult.error)}` // Use renamed variable
             )
           );
         }
-        if (!result.value) {
+        if (!readDirResult.value) { // Use renamed variable
           // Handle case where readDir succeeds but returns no value (shouldn't happen with Dirent[])
           this.logger.warn(`readDir for ${dirPath} returned ok but no value.`);
           return Result.ok(undefined); // Return ok if just warning
         }
 
-        const items = result.value;
+        const items = readDirResult.value; // Use renamed variable
         for (const item of items) {
           const itemName: string = typeof item === 'string' ? item : item.name;
           const fullPath: string = path.join(dirPath, itemName);

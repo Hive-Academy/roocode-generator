@@ -29,7 +29,8 @@ const mockParserInstance = {
 };
 
 // Corrected mock target for 'require' style import
-jest.mock('node-tree-sitter', () => {
+jest.mock('tree-sitter', () => {
+  // Corrected module name
   // Directly return the mock constructor function
   return jest.fn().mockImplementation(() => mockParserInstance);
 });

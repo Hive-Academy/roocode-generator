@@ -1,11 +1,11 @@
- 
+import { IAstAnalysisService } from '@core/analysis/ast-analysis.interfaces'; // Added
 import {
   FileContentResult,
   IFileContentCollector,
   IFilePrioritizer,
-  ITreeSitterParserService, // Import the missing interface
+  ITreeSitterParserService,
 } from '../../../src/core/analysis/interfaces';
-import { ProjectContext } from '../../../src/core/analysis/types'; // Re-added ProjectContext import
+import { ProjectContext } from '../../../src/core/analysis/types';
 import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
 import { ResponseParser } from '../../../src/core/analysis/response-parser';
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
@@ -25,7 +25,8 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
   let mockProgress: jest.Mocked<ProgressIndicator>;
   let mockContentCollector: jest.Mocked<IFileContentCollector>;
   let mockFilePrioritizer: jest.Mocked<IFilePrioritizer>;
-  let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>; // Declare the mock variable
+  let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>;
+  let mockAstAnalysisService: jest.Mocked<IAstAnalysisService>; // Added
 
   beforeEach(() => {
     mockFileOps = {
@@ -69,8 +70,17 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
 
     // Initialize the mock service
     mockTreeSitterParserService = {
-      parse: jest.fn().mockResolvedValue(Result.ok({ functions: [], classes: [] })), // Default mock
-    } as any;
+      initialize: jest.fn().mockResolvedValue(Result.ok(undefined)), // Added mock for initialize
+      parse: jest.fn(), // Added basic mock for parse (if needed by interface)
+      parseFile: jest.fn().mockResolvedValue(Result.ok({ type: 'program', children: [] })), // Added mock for parseFile
+    } as jest.Mocked<ITreeSitterParserService>;
+
+    mockAstAnalysisService = {
+      // Added
+      analyzeAst: jest
+        .fn()
+        .mockResolvedValue(Result.ok({ functions: [], classes: [], imports: [] })), // Added
+    } as jest.Mocked<IAstAnalysisService>; // Added
 
     projectAnalyzer = new ProjectAnalyzer(
       mockFileOps,
@@ -80,7 +90,8 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
       mockProgress,
       mockContentCollector,
       mockFilePrioritizer,
-      mockTreeSitterParserService // Pass the mock service
+      mockTreeSitterParserService,
+      mockAstAnalysisService // Added 9th argument
     );
   });
 

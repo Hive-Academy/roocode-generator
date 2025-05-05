@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import { IAstAnalysisService } from '@core/analysis/ast-analysis.interfaces'; // Added
 import {
   IFileContentCollector,
   IFilePrioritizer,
-  ITreeSitterParserService, // Import the missing interface
+  ITreeSitterParserService,
 } from '@core/analysis/interfaces';
 import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
 import { ResponseParser } from '../../../src/core/analysis/response-parser';
@@ -19,7 +20,8 @@ describe('ProjectAnalyzer Directory Handling', () => {
   let mockLLMAgent: jest.Mocked<LLMAgent>;
   let mockResponseParser: jest.Mocked<ResponseParser>;
   let mockProgressIndicator: jest.Mocked<ProgressIndicator>;
-  let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>; // Declare the mock variable
+  let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>;
+  let mockAstAnalysisService: jest.Mocked<IAstAnalysisService>; // Added
 
   beforeEach(() => {
     mockFileOps = {
@@ -74,8 +76,17 @@ describe('ProjectAnalyzer Directory Handling', () => {
 
     // Initialize the mock service
     mockTreeSitterParserService = {
-      parse: jest.fn().mockResolvedValue(Result.ok({ functions: [], classes: [] })), // Default mock
-    } as any;
+      initialize: jest.fn().mockResolvedValue(Result.ok(undefined)), // Added mock for initialize
+      parse: jest.fn(), // Added basic mock for parse (if needed by interface)
+      parseFile: jest.fn().mockResolvedValue(Result.ok({ type: 'program', children: [] })), // Kept mock for parseFile
+    } as jest.Mocked<ITreeSitterParserService>;
+
+    mockAstAnalysisService = {
+      // Added
+      analyzeAst: jest
+        .fn()
+        .mockResolvedValue(Result.ok({ functions: [], classes: [], imports: [] })), // Added
+    } as jest.Mocked<IAstAnalysisService>; // Added
 
     projectAnalyzer = new ProjectAnalyzer(
       mockFileOps,
@@ -85,7 +96,8 @@ describe('ProjectAnalyzer Directory Handling', () => {
       mockProgressIndicator,
       contentCollector,
       filePrioritizer,
-      mockTreeSitterParserService // Pass the mock service
+      mockTreeSitterParserService,
+      mockAstAnalysisService // Added 9th argument
     );
   });
 

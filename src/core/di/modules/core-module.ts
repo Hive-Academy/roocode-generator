@@ -25,7 +25,8 @@ import { FileContentCollector } from '@core/analysis/file-content-collector';
 import { FilePrioritizer } from '@core/analysis/file-prioritizer';
 import { IFileContentCollector, IFilePrioritizer, ITokenCounter } from '@core/analysis/interfaces';
 import { LLMTokenCounter } from '@core/analysis/token-counter';
-import { ITreeSitterParserService } from '@core/analysis/interfaces';
+import { ITreeSitterParserService } from '@core/analysis/interfaces'; // Removed IAstAnalysisService from here
+import { IAstAnalysisService } from '@core/analysis/ast-analysis.interfaces'; // Added correct import
 import { TreeSitterParserService } from '@core/analysis/tree-sitter-parser.service';
 
 import { LLMAgent } from '@core/llm/llm-agent';
@@ -119,6 +120,10 @@ export function registerCoreModule(container: Container): void {
       container,
       'ITreeSitterParserService'
     );
+    const astAnalysisService = resolveDependency<IAstAnalysisService>( // Added
+      container, // Added
+      'IAstAnalysisService' // Added
+    ); // Added
     // GrammarLoaderService is now an indirect dependency via TreeSitterParserService
 
     assertIsDefined(fileOps, 'IFileOperations dependency not found');
@@ -129,6 +134,7 @@ export function registerCoreModule(container: Container): void {
     assertIsDefined(fileContentCollector, 'IFileContentCollector dependency not found');
     assertIsDefined(filePrioritizer, 'IFilePrioritizer dependency not found');
     assertIsDefined(treeSitterParserService, 'ITreeSitterParserService dependency not found');
+    assertIsDefined(astAnalysisService, 'IAstAnalysisService dependency not found'); // Added
     // No need to assert GrammarLoaderService here as it's injected into TreeSitterParserService
 
     return new ProjectAnalyzer(
@@ -139,7 +145,8 @@ export function registerCoreModule(container: Container): void {
       progressIndicator,
       fileContentCollector,
       filePrioritizer,
-      treeSitterParserService // Pass the resolved dependency
+      treeSitterParserService, // Pass the resolved dependency
+      astAnalysisService // Added the 9th argument
     );
   });
 

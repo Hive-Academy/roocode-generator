@@ -7,13 +7,12 @@ import {
   ClassInfo,
   ImportInfo,
 } from './ast-analysis.interfaces';
-import { GenericAstNode } from './types';
+import { GenericAstNode } from './types'; // Ensure this path is correct
 import { Result } from '../result/result';
 import { ILLMAgent } from '../llm/interfaces';
 import { ILogger } from '../services/logger-service';
 import { Injectable, Inject } from '../di/decorators';
-import { RooCodeError } from '../errors'; // Assuming RooCodeError exists and is appropriate
-
+import { RooCodeError } from '../errors';
 /**
  * Zod schema for validating FunctionInfo objects.
  * Ensures the object has a 'name' (string) and 'parameters' (array of strings).
@@ -50,10 +49,21 @@ const codeInsightsSchema: ZodType<CodeInsights> = z.object({
 });
 
 /**
- * Service responsible for analyzing Abstract Syntax Tree (AST) data using an LLM
- * to extract structured code insights.
+ * Represents the condensed structure extracted from the AST.
+ * This is used as input for the LLM prompt.
  */
-@Injectable() // Removed argument 'IAstAnalysisService'
+interface CondensedAst {
+  imports: { source: string }[];
+  functions: { name: string; params: string[] }[];
+  classes: { name: string }[];
+}
+
+/**
+ * Service responsible for analyzing Abstract Syntax Tree (AST) data.
+ * It first condenses the AST and then uses an LLM to extract structured code insights
+ * from the condensed representation.
+ */
+@Injectable()
 export class AstAnalysisService implements IAstAnalysisService {
   /**
    * Initializes a new instance of the AstAnalysisService.
@@ -66,8 +76,8 @@ export class AstAnalysisService implements IAstAnalysisService {
   ) {}
 
   /**
-   * Analyzes the provided AST data for a file using an LLM.
-   * Constructs a prompt, calls the LLM, parses and validates the response.
+   * Analyzes the provided AST data for a file by first condensing it and then using an LLM.
+   * Constructs a prompt with the condensed AST, calls the LLM, parses and validates the response.
    * @param astData The generic AST node representing the file's structure.
    * @param filePath The path of the file being analyzed.
    * @returns A Result containing the extracted CodeInsights on success, or an Error on failure.
@@ -79,17 +89,22 @@ export class AstAnalysisService implements IAstAnalysisService {
     this.logger.debug(`Analyzing AST for file: ${filePath}`);
 
     try {
-      const systemPromptBase = this.buildPrompt();
-      const astDataJsonString = JSON.stringify(astData);
-      // Replace placeholder AFTER getting the base prompt
-      const systemPrompt = systemPromptBase.replace('{{AST_DATA_JSON}}', astDataJsonString);
-      // Use an empty user prompt as the data is now in the system prompt
-      const userPrompt = '';
+      // Step 1: Condense the AST
+      const condensedAst = this._condenseAst(astData);
+      const condensedAstJson = JSON.stringify(condensedAst, null, 2); // Pretty print for prompt clarity
+
+      // Optional: Log the condensed AST for debugging
+      // this.logger.debug(`Condensed AST for ${filePath}:\n${condensedAstJson}`);
+
+      // Step 2: Build the prompt using the condensed AST JSON
+      const systemPrompt = this.buildPrompt(condensedAstJson);
+      const userPrompt = ''; // User prompt remains empty as data is in system prompt
 
       // Optional: Add token counting check here if needed later
       // const tokenCount = await this.llmAgent.countTokens(systemPrompt + userPrompt);
       // if (tokenCount > MAX_TOKENS) return Result.err(...)
 
+      // Step 3: Call the LLM
       const completionResult = await this.llmAgent.getCompletion(systemPrompt, userPrompt);
 
       if (completionResult.isErr()) {
@@ -99,7 +114,7 @@ export class AstAnalysisService implements IAstAnalysisService {
         return Result.err(error);
       }
 
-      // If isOk(), value should be defined per Result contract
+      // Step 4: Parse and Validate the LLM Response
       const rawResponse = completionResult.value!;
       let parsedJson: unknown;
 
@@ -115,10 +130,14 @@ export class AstAnalysisService implements IAstAnalysisService {
           `Failed to parse LLM JSON response for ${filePath}: ${parseError instanceof Error ? parseError.message : String(parseError)}`
         );
         this.logger.debug(`Raw response for ${filePath}:\n${rawResponse}`);
-        // Adjust RooCodeError call - assuming constructor is (message: string, code?: string, options?: { cause?: unknown })
         const errorMessage = `Invalid JSON response from LLM for ${filePath}. Parse Error: ${parseError instanceof Error ? parseError.message : String(parseError)}`;
         return Result.err(
-          new RooCodeError(errorMessage, 'LLM_JSON_PARSE_ERROR', { cause: parseError })
+          new RooCodeError(
+            errorMessage,
+            'LLM_JSON_PARSE_ERROR',
+            { rawResponse }, // Add context
+            parseError instanceof Error ? parseError : new Error(String(parseError))
+          )
         );
       }
 
@@ -128,137 +147,278 @@ export class AstAnalysisService implements IAstAnalysisService {
         this.logger.warn(
           `LLM response validation failed for ${filePath}: ${validationResult.error.message}`
         );
-        // Log the specific validation issues
         this.logger.debug(
           `Validation issues for ${filePath}: ${JSON.stringify(validationResult.error.issues, null, 2)}`
         );
-        // Log the JSON that failed validation
         this.logger.debug(
           `Parsed JSON for ${filePath} (failed validation):\n${JSON.stringify(parsedJson, null, 2)}`
         );
-        // Adjust RooCodeError call - include Zod issues in message and pass cause
         const validationIssues = JSON.stringify(validationResult.error.issues, null, 2);
         const errorMessage = `LLM response failed schema validation for ${filePath}. Issues: ${validationIssues}`;
         return Result.err(
-          new RooCodeError(errorMessage, 'LLM_SCHEMA_VALIDATION_ERROR', {
-            cause: validationResult.error,
-          })
+          new RooCodeError(
+            errorMessage,
+            'LLM_SCHEMA_VALIDATION_ERROR',
+            { parsedJson }, // Add context
+            validationResult.error
+          )
         );
       }
 
       this.logger.debug(`Successfully analyzed and validated AST insights for ${filePath}`);
       return Result.ok(validationResult.data);
     } catch (error) {
-      // Catch any unexpected errors during the process
       const errorMessage = `Unexpected error during AST analysis for ${filePath}: ${error instanceof Error ? error.message : String(error)}`;
-      // Pass the error object itself to the logger for potential stack trace logging
       this.logger.error(errorMessage, error instanceof Error ? error : undefined);
-      // Adjust RooCodeError call
       return Result.err(
-        new RooCodeError(errorMessage, 'UNEXPECTED_ANALYSIS_ERROR', { cause: error })
+        new RooCodeError(
+          errorMessage,
+          'UNEXPECTED_ANALYSIS_ERROR',
+          undefined,
+          error instanceof Error ? error : new Error(String(error))
+        )
       );
     }
   }
 
   /**
-   * Constructs the system prompt for the LLM to analyze AST data.
-   * Includes instructions, schema definition, and a few-shot example.
-   * @returns The system prompt string with the {{AST_DATA_JSON}} placeholder.
+   * Condenses a full GenericAstNode tree into a simplified structure containing
+   * only imports, function definitions, and class definitions.
+   * This is used to create a smaller input for the LLM.
+   * @param node The root GenericAstNode to start traversal from.
+   * @returns A CondensedAst object.
    */
-  private buildPrompt(): string {
-    // Implementation provided by Junior Coder - assumed correct based on review
-    const prompt = `
-        ### Instruction ###
-        Analyze the provided JSON AST ('astData') representing a source code file. Extract all top-level function definitions, class definitions, and import statements.
-        The 'astData' has nodes with a 'type' property (e.g., 'function_definition', 'class_definition', 'import_statement', 'identifier', 'formal_parameters', 'string_literal') and a 'children' array.
-        - Function names are typically in an 'identifier' node within 'function_definition'.
-        - Parameters are within 'formal_parameters' -> 'parameter_declaration' -> 'identifier'.
-        - Class names are typically in an 'identifier' node within 'class_definition'.
-        - Import sources are typically in a 'string_literal' or similar node within 'import_statement'.
+  private _condenseAst(node: GenericAstNode): CondensedAst {
+    const condensed: CondensedAst = { imports: [], functions: [], classes: [] };
 
-        Return the results ONLY as a valid JSON object matching the following TypeScript interface. Do NOT include any other text, explanations, or markdown formatting.
+    const findChildByType = (
+      parentNode: GenericAstNode,
+      type: string
+    ): GenericAstNode | undefined => {
+      return parentNode.children?.find((c) => c.type === type);
+    };
 
-        \`\`\`typescript
-        interface FunctionInfo {
-          name: string;
-          parameters: string[];
+    const findDescendantByType = (
+      startNode: GenericAstNode,
+      type: string
+    ): GenericAstNode | undefined => {
+      const queue = [...(startNode.children || [])];
+      while (queue.length > 0) {
+        const current = queue.shift();
+        if (!current) continue;
+        if (current.type === type) {
+          return current;
         }
+        queue.push(...(current.children || []));
+      }
+      return undefined;
+    };
 
-        interface ClassInfo {
-          name: string;
-        }
+    const extractText = (targetNode: GenericAstNode | undefined): string | undefined => {
+      if (!targetNode?.text) return undefined;
+      // Remove surrounding quotes for string literals
+      if (targetNode.type === 'string_literal' || targetNode.type === 'string') {
+        return targetNode.text.replace(/^['"`]|['"`]$/g, '');
+      }
+      return targetNode.text;
+    };
 
-        interface ImportInfo {
-          source: string;
-        }
+    const traverse = (currentNode: GenericAstNode) => {
+      if (!currentNode) return;
 
-        interface CodeInsights {
-          functions: FunctionInfo[];
-          classes: ClassInfo[];
-          imports: ImportInfo[];
-        }
-        \`\`\`
+      try {
+        if (currentNode.type === 'import_statement') {
+          // Common patterns: import 'source'; import {} from 'source'; import x from 'source';
+          const sourceNode =
+            findChildByType(currentNode, 'string_literal') || // TS/JS: import 'source'
+            findChildByType(currentNode, 'string') || // Python: import source / from source import ... (source is often identifier, handled below)
+            findDescendantByType(currentNode, 'string_literal') || // Deeper nested string
+            findDescendantByType(currentNode, 'string');
 
-        ### Example Input ('astData' Snippet) ###
+          let source = extractText(sourceNode);
 
-        \`\`\`json
-        {
-          "type": "program",
-          "children": [
-            {
-              "type": "import_statement",
-              "children": [
-                { "type": "import_clause", "children": [...] },
-                { "type": "string_literal", "text": "'react'" }
-              ]
-            },
-            {
-              "type": "function_definition",
-              "children": [
-                { "type": "identifier", "text": "calculateTotal" },
-                {
-                  "type": "formal_parameters",
-                  "children": [
-                    { "type": "parameter_declaration", "children": [{ "type": "identifier", "text": "price" }] },
-                    { "type": "parameter_declaration", "children": [{ "type": "identifier", "text": "quantity" }] }
-                  ]
-                },
-                { "type": "block", "children": [] }
-              ]
-            },
-            {
-              "type": "class_definition",
-              "children": [
-                { "type": "identifier", "text": "Product" },
-                { "type": "class_body", "children": [] }
-              ]
+          // Handle Python 'import identifier' or 'from identifier import ...'
+          if (
+            !source &&
+            (currentNode.text.startsWith('import ') || currentNode.text.startsWith('from '))
+          ) {
+            const potentialSourceIdentifier = currentNode.children?.find(
+              (c) => c.type === 'identifier' || c.type === 'dotted_name'
+            );
+            if (potentialSourceIdentifier) {
+              source = potentialSourceIdentifier.text;
             }
-          ]
+          }
+
+          if (source) {
+            condensed.imports.push({ source });
+          } else {
+            this.logger.debug(
+              `Could not extract source from import node: ${JSON.stringify(currentNode)}`
+            );
+          }
+        } else if (
+          currentNode.type === 'function_definition' ||
+          currentNode.type === 'function_declaration' ||
+          currentNode.type === 'method_definition'
+        ) {
+          const nameNode = findChildByType(currentNode, 'identifier');
+          const name = extractText(nameNode);
+
+          if (name) {
+            const paramsNode =
+              findChildByType(currentNode, 'formal_parameters') ||
+              findChildByType(currentNode, 'parameters'); // JS/TS vs Python
+            const params: string[] = [];
+            if (paramsNode) {
+              // Iterate through children, looking for identifiers within parameter declarations
+              paramsNode.children?.forEach((paramDecl) => {
+                // Different languages/structures might require different paths
+                const paramIdentifier =
+                  findChildByType(paramDecl, 'identifier') || // Simple identifier param
+                  findDescendantByType(paramDecl, 'identifier') || // More complex (e.g., typed param)
+                  (paramDecl.type === 'identifier' ? paramDecl : undefined); // Direct identifier (Python)
+                const paramName = extractText(paramIdentifier);
+                if (paramName && paramName !== 'self' && paramName !== 'cls') {
+                  // Exclude common conventionals
+                  params.push(paramName);
+                }
+              });
+            }
+            condensed.functions.push({ name, params });
+          } else {
+            this.logger.debug(
+              `Could not extract name from function node: ${JSON.stringify(currentNode)}`
+            );
+          }
+        } else if (
+          currentNode.type === 'class_definition' ||
+          currentNode.type === 'class_declaration'
+        ) {
+          const nameNode =
+            findChildByType(currentNode, 'identifier') ||
+            findChildByType(currentNode, 'type_identifier'); // TS specific
+          const name = extractText(nameNode);
+          if (name) {
+            condensed.classes.push({ name });
+          } else {
+            this.logger.debug(
+              `Could not extract name from class node: ${JSON.stringify(currentNode)}`
+            );
+          }
         }
-        \`\`\`
+      } catch (error) {
+        const nodeInfo = `(type: ${currentNode.type}, text: "${currentNode.text.substring(0, 50)}...")`; // Add node info to message
+        this.logger.warn(
+          `Error processing node ${nodeInfo} during AST condensation: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
 
-        ### Example Output (JSON only) ###
+      // Recursively traverse children regardless of current node type
+      currentNode.children?.forEach(traverse);
+    };
 
-        \`\`\`json
-        {
-          "functions": [{ "name": "calculateTotal", "parameters": ["price", "quantity"] }],
-          "classes": [{ "name": "Product" }],
-          "imports": [{ "source": "react" }]
-        }
-        \`\`\`
+    traverse(node);
+    return condensed;
+  }
 
-        ### Input 'astData' ###
+  /**
+   * Constructs the system prompt for the LLM to analyze the *condensed* AST data.
+   * Includes instructions, the target schema definition, and a few-shot example.
+   * @param condensedAstJson A JSON string representing the condensed AST structure.
+   * @returns The system prompt string.
+   */
+  private buildPrompt(condensedAstJson: string): string {
+    // Define the target schema structure clearly for the LLM
+    const targetSchemaString = `
+interface FunctionInfo {
+  name: string;
+  parameters: string[];
+}
+interface ClassInfo {
+  name: string;
+}
+interface ImportInfo {
+  source: string;
+}
+interface CodeInsights {
+  functions: FunctionInfo[];
+  classes: ClassInfo[];
+  imports: ImportInfo[];
+}`;
 
-        \`\`\`json
-        {{AST_DATA_JSON}}
-        \`\`\`
+    // Define the few-shot example
+    const exampleCondensedInput = JSON.stringify(
+      {
+        imports: [{ source: 'react' }, { source: './utils' }],
+        functions: [
+          { name: 'calculateTotal', params: ['price', 'quantity'] },
+          { name: 'formatDate', params: ['date'] },
+        ],
+        classes: [{ name: 'Product' }, { name: 'UserProfile' }],
+      },
+      null,
+      2
+    );
 
-        ### Output (JSON only) ###
+    const exampleOutput = JSON.stringify(
+      {
+        functions: [
+          { name: 'calculateTotal', parameters: ['price', 'quantity'] },
+          { name: 'formatDate', parameters: ['date'] },
+        ],
+        classes: [{ name: 'Product' }, { name: 'UserProfile' }],
+        imports: [{ source: 'react' }, { source: './utils' }],
+      },
+      null,
+      2
+    );
 
-        \`\`\`
-        `; // Note: Removed the final json backticks here as they were in the original plan but might cause issues. LLM should provide them.
+    // Construct the final prompt
+    const prompt = `
+### Instruction ###
+Analyze the provided **CONDENSED** JSON data ('condensedAstData') representing the key structural elements (imports, functions, classes) extracted from a source code file's Abstract Syntax Tree (AST).
+Your task is to reformat this condensed data into a specific JSON output structure.
 
-    // The placeholder {{AST_DATA_JSON}} will be replaced dynamically in the analyzeAst method.
+The input 'condensedAstData' follows this format:
+\`\`\`json
+{
+  "imports": [{ "source": "string" }],
+  "functions": [{ "name": "string", "params": ["string"] }],
+  "classes": [{ "name": "string" }]
+}
+\`\`\`
+
+Return the results ONLY as a valid JSON object matching the following TypeScript interface ('CodeInsights'). Ensure the property names in your output JSON exactly match the interface (e.g., use "parameters" for function parameters, not "params"). Do NOT include any other text, explanations, or markdown formatting.
+
+### Target Output Schema (CodeInsights) ###
+\`\`\`typescript
+${targetSchemaString}
+\`\`\`
+
+### Few-Shot Example ###
+
+**Example Input ('condensedAstData'):**
+\`\`\`json
+${exampleCondensedInput}
+\`\`\`
+
+**Example Output (JSON only):**
+\`\`\`json
+${exampleOutput}
+\`\`\`
+
+### Input 'condensedAstData' ###
+
+\`\`\`json
+${condensedAstJson}
+\`\`\`
+
+### Output (JSON only) ###
+
+\`\`\`json
+`; // The LLM should complete the JSON starting from here and add the closing ```
+
     return prompt;
   }
 }
