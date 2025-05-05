@@ -6,327 +6,247 @@ status: active
 taskId: TSK-013
 ---
 
-# Implementation Plan: TSK-013/ImplementLlmAstAnalysis (Revised)
+# Implementation Plan: TSK-013/FixAndIntegrateLlmAstAnalysis (Revised)
+
+**REVISION 4 (2025-05-05):** Plan refined based on user feedback. Focus is strictly on fixing `_condenseAst`, correcting `ProjectAnalyzer` context assembly (**specifically removing raw `astData` from the final output** and ensuring `codeInsights` is included), fixing defaults, and verifying the TSK-015 blocker resolution. No reimplementation, only targeted fixes.
+
+**REVISION 3 (2025-05-05):** Plan updated to focus on fixing the existing implementation based on revised task description and previous code review feedback.
+
+**REVISION 2 (2025-05-05):** Task redelegated due to Code Review feedback.
+
+**REVISION 1:** Initial approach revised to adopt AST Condensation/Filtering strategy.
 
 ## 1. Overview
 
-This plan outlines the steps to implement **TSK-013: Implement LLM Analysis of AST Data**. The goal is to enhance the `ProjectAnalyzer` by introducing a new service, `AstAnalysisService`, which uses an LLM to analyze the generic Abstract Syntax Tree (`astData`) generated in TSK-008. This analysis will extract structured code insights (functions, classes, imports) and store them in the `ProjectContext`.
+This plan outlines the steps to **fix and finalize** the implementation of **TSK-013**. The primary goals are:
 
-**REVISION:** The initial approach ("Approach 1: Direct LLM Call per File") proved unreliable due to LLM context length limits and network instability when processing large, full AST JSON structures. This revised plan adopts an **AST Condensation/Filtering** strategy within `AstAnalysisService` before calling the LLM, as recommended in the research report (Section 2 of task description).
+1. Correct the AST condensation logic (`_condenseAst`) in `AstAnalysisService` based on previous feedback.
+2. Correct the context assembly logic in `ProjectAnalyzer` to:
+   - **Exclude the large, raw `astData` from the final returned `ProjectContext`.**
+   - Ensure the generated `codeInsights` are correctly included in the final `ProjectContext`.
+   - Ensure correct default values for `componentStructure` and `dependencies`.
+3. Verify these fixes resolve the payload size issues blocking TSK-015.
 
-See [[task-tracking/TSK-013-ImplementLlmAstAnalysis/task-description.md]] for detailed requirements and the full research report.
+See [[task-tracking/TSK-013-ImplementLlmAstAnalysis/task-description.md]] for detailed requirements.
 
 ## 2. Implementation Strategy
 
-### 2.1. Approach (Revised)
+### 2.1. Approach (Targeted Fixes)
 
-1.  **AST Condensation (`AstAnalysisService`):** Before interacting with the LLM, the service will traverse the input `astData` (`GenericAstNode`) and extract only relevant nodes and their essential properties (e.g., type, name, parameters, source) related to functions, classes, and imports. This creates a significantly smaller, condensed JSON structure specifically for LLM analysis.
-2.  **New Service (`AstAnalysisService`):** Create a dedicated service responsible for:
-    - Accepting `astData` (`GenericAstNode`).
-    - **Performing AST Condensation/Filtering** to create a smaller JSON input for the LLM.
-    - Constructing a detailed prompt including task description, an explanation of the _condensed_ input structure, the target `CodeInsights` JSON schema, and few-shot examples mapping condensed input to `CodeInsights`.
-    - Calling the `LLMAgent` with the condensed input to get LLM completion.
-    - Validating the LLM response is valid JSON and conforms to the `CodeInsights` schema using the `zod` library.
-    - Returning the validated `CodeInsights` or an error using the `Result` pattern.
-3.  **Interface Definitions:** Define new interfaces (`IAstAnalysisService`, `CodeInsights`, `FunctionInfo`, `ClassInfo`, `ImportInfo`) in a dedicated file (`ast-analysis.interfaces.ts`). (Completed in Subtask 1)
-4.  **`ProjectContext` Update:** Add a `codeInsights?: { [filePath: string]: CodeInsights }` field to the `ProjectContext` interface (`types.ts`). (Completed in Subtask 1)
-5.  **`ProjectAnalyzer` Integration:**
-    - Inject `IAstAnalysisService`.
-    - After generating `astData` for each file, call `astAnalysisService.analyzeAst(astData)` concurrently using `Promise.allSettled`. (Condensation happens _inside_ the service).
-    - Handle the `Result`: If `ok`, merge insights into `projectContext.codeInsights`. If `err`, log a warning using `ILogger` and continue analysis for other files.
-6.  **Dependency Management:** Add `zod` as a project dependency. (Completed in Subtask 1)
-7.  **DI Registration:** Register `AstAnalysisService` in the appropriate DI module (e.g., `analysis-module.ts`).
+1.  **Fix `AstAnalysisService._condenseAst`:** Apply corrections based on prior code review feedback (Subtask 1).
+2.  **Fix `ProjectAnalyzer` Context Assembly:** Modify the final context creation step to **omit `astData`** and correctly include `codeInsights`. Fix default value handling (Subtask 2).
+3.  **Verify Fixes:** Update tests to reflect the corrected logic (especially the absence of `astData` and presence of `codeInsights` in the final context). Perform manual verification (AC10) and confirm TSK-015 blocker resolution (AC13) (Subtask 3).
 
 ### 2.2. Key Components
 
+- **Fix:**
+  - `src/core/analysis/ast-analysis.service.ts` (`_condenseAst` method)
+  - `src/core/analysis/project-analyzer.ts` (Final context assembly logic in `analyzeProject`)
+  - Unit tests for `AstAnalysisService` (`tests/core/analysis/ast-analysis.service.test.ts`)
+  - Integration tests for `ProjectAnalyzer` (`tests/core/analysis/project-analyzer.*.test.ts`) - **Crucially, verify `astData` is NOT in final context.**
 - **Create:**
-  - `src/core/analysis/ast-analysis.service.ts`
-  - `src/core/analysis/ast-analysis.interfaces.ts` (Completed)
-  - Unit tests for `AstAnalysisService` (e.g., `tests/core/analysis/ast-analysis.service.test.ts`) - _Needs update for condensation logic_
-  - Integration tests for `ProjectAnalyzer` analysis integration (e.g., `tests/core/analysis/project-analyzer.ast-analysis.test.ts`)
-- **Modify:**
-  - `src/core/analysis/project-analyzer.ts`
-  - `src/core/analysis/types.ts` (Completed)
-  - `src/core/di/modules/analysis-module.ts` (or core module)
-  - `package.json` / `package-lock.json` (Completed)
-  - Existing `ProjectAnalyzer` tests (`tests/core/analysis/project-analyzer.test.ts`, `tests/core/analysis/project-analyzer.treesitter.test.ts`)
-- **Use:**
-  - `src/core/llm/llm-agent.ts` (`LLMAgent`)
-  - `src/core/result/result.ts` (`Result`)
-  - `src/core/services/logger-service.ts` (`ILogger`)
-  - `zod` library
+  - `tests/fixtures/sample-ast-analysis.ts` (If not already created in previous attempts)
+- **Verify/Use:**
+  - Existing interfaces, DI, LLM Agent, Result pattern, Logger, zod.
 
 ### 2.3. Dependencies
 
-- Internal: `LLMAgent`, `ILogger`, `Result`, `GenericAstNode`, `ProjectContext`.
-- External: `zod`.
+- No changes.
 
-### 2.4. Risk Areas (Revised)
+### 2.4. Risk Areas
 
-- **AST Condensation Logic:** Implementing the traversal and filtering logic correctly and efficiently is crucial. Needs careful handling of different node types and structures.
-- **Prompt Engineering (Revised):** The prompt must now accurately describe the _condensed_ input structure to the LLM.
-- **Information Loss:** Condensation might inadvertently remove context needed by the LLM for accurate analysis, although targeting specific structures should minimize this for the required insights.
-- **LLM Reliability/Variability:** Still a risk, but reduced input size should improve reliability. Validation (`zod`) remains essential.
-- **Input `astData` Quality:** Still relies on TSK-008 output.
-- **Performance:** Condensation adds a pre-processing step, but the reduction in LLM processing time and token cost should yield a net performance gain.
+- **Condensation Fix:** Ensuring the `_condenseAst` fix is complete.
+- **Context Assembly Fix:** Ensuring `astData` is definitively removed and `codeInsights` correctly included in the final context object.
+- **Verification:** Thoroughly testing AC13.
 
 ## 3. Acceptance Criteria Mapping
 
-- **AC1 (Service Created):** Covered by Subtask 1 (Interface) & Revised Subtask 2 (Implementation).
-- **AC2 (Context Updated):** ✅ Completed in Subtask 1.
-- **AC3 (Integration):** Covered by Subtask 3.
-- **AC4 (Concurrency):** Covered by Subtask 3.
-- **AC5 (LLM Interaction):** Covered by Revised Subtask 2.
-- **AC6 (Prompt Definition):** Covered by Revised Subtask 2 (prompt uses condensed input).
-- **AC7 (Structured Output):** ✅ Completed in Subtask 1 (interface definition). Verified by Revised Subtask 2 (validation).
-- **AC8 (Validation):** Covered by Revised Subtask 2.
-- **AC9 (Error Handling):** Covered by Revised Subtask 2 & Subtask 3.
-- **AC10 (Basic Functionality):** Verified via testing (Subtask 4). _Should now be achievable._
-- **AC11 (No New Config):** Ensured by design.
-- **AC12 (Documentation):** Covered by all implementation subtasks.
+- **AC1 (Service Correctness):** Covered by Subtask 1.
+- **AC2 (Context Structure Verified):** ✅ Completed previously.
+- **AC3 (Integration Correctness):** Covered by Subtask 2 (**`codeInsights` populated, `astData` removed**).
+- **AC4 (Concurrency Verified):** ✅ Verified previously.
+- **AC5-AC9 (LLM Interaction, Prompt, Output, Validation, Errors):** ✅ Verified previously.
+- **AC10 (Basic Functionality Verified):** Covered by Subtask 3.
+- **AC11 (No New Config Verified):** ✅ Verified previously.
+- **AC12 (Code Documentation Updated):** Covered by Subtask 1 & 2.
+- **AC13 (Payload Prevention & Integration Correctness):** Covered by Subtask 1 & 2, Verified in Subtask 3 (**Blocker resolved due to `astData` removal and correct `codeInsights` integration**).
 
 ## 4. Implementation Subtasks
 
-### Subtask 1: Define Interfaces & Update Context
+### Subtask 0: Define Interfaces & Update Context (Completed)
 
 **Status**: ✅ Completed
-
-**Description**: Define the necessary interfaces for the AST analysis feature and update the `ProjectContext` to accommodate the results. Add `zod` dependency.
-_(No changes needed for this completed subtask)_
+_(No changes needed)_
 
 ---
 
-### Subtask 2 (Revised): Implement `AstAnalysisService` with Condensation
+### Subtask 1: Fix `AstAnalysisService` Condensation Logic
 
-**Status**: ✅ Completed
+**Status**: **Needs Fixes**
 
-**Description**: Implement the core logic of `AstAnalysisService`, including **AST condensation**, prompt construction (using condensed input), LLM interaction via `LLMAgent`, and response validation using `zod`.
-
-**Files to Modify**:
-
-- `src/core/analysis/ast-analysis.service.ts` (Create/Modify): Implement `analyzeAst` including condensation.
-- `tests/core/analysis/ast-analysis.service.test.ts` (Modify): Update tests for condensation logic.
-
-**Implementation Details**:
-
-1.  **Constructor:** Inject `LLMAgent` and `ILogger`.
-2.  **AST Condensation Logic (New private method, e.g., `_condenseAst`):**
-    - Accepts `astData: GenericAstNode`.
-    - Recursively traverses the `astData` tree.
-    - Identifies relevant node types: `import_statement`, `function_definition`, `class_definition`, and their key children (e.g., `identifier` for names, `formal_parameters` for params, `string_literal` for import sources).
-    - Constructs a new, simplified JSON object containing only these extracted details. Example structure:
-    ```json
-    {
-      "imports": [{ "source": "string" }],
-      "functions": [{ "name": "string", "params": ["string"] }],
-      "classes": [{ "name": "string" }]
-    }
-    ```
-    - Return this condensed JSON object. Handle potential errors during traversal if necessary.
-3.  **`analyzeAst` Method (Revised):**
-    - Receive `astData: GenericAstNode` and `filePath: string`.
-    - Call `_condenseAst(astData)` to get the condensed structure. Handle potential errors from condensation.
-    - **Prompt Construction (Revised `buildPrompt`):**
-      - Update the prompt to explain it receives a _condensed_ JSON input (describe the structure from step 2).
-      - Update the few-shot example to show a condensed input snippet mapping to the `CodeInsights` output.
-      - Keep the target `CodeInsights` schema definition in the prompt.
-    - **LLM Call:**
-      - Use `JSON.stringify(condensedAstData)` as the input payload (likely within the system prompt or as user input depending on final prompt structure).
-      - Call `this.llmAgent.getCompletion(systemPrompt, condensedJsonString)`.
-      - Handle potential errors from `getCompletion`.
-    - **Validation:**
-      - Define/use the `zod` schema for `CodeInsights` (from original Subtask 2).
-      - Parse the LLM response string.
-      - Validate the parsed object against the `codeInsightsSchema`.
-      - Handle parsing and validation errors, returning `Result.err`.
-    - **Return:** If validation succeeds, return `Result.ok(validatedData)`.
-
-**Testing Requirements (Revised)**:
-
-- Unit tests for `AstAnalysisService`:
-  - **New:** Test the `_condenseAst` method directly with various `GenericAstNode` inputs (simple cases, nested structures, files with/without relevant nodes) to verify the condensed output structure.
-  - Update existing tests:
-    - Mock `LLMAgent.getCompletion`.
-    - Provide mock _condensed_ AST data to `analyzeAst` (or mock `_condenseAst`).
-    - Test successful path: valid JSON response -> `Result.ok(CodeInsights)`.
-    - Test failure paths (LLM error, invalid JSON, schema validation failure).
-    - Verify the prompt construction reflects the condensed input.
-
-**Related Acceptance Criteria**:
-
-- AC1: Service implemented with condensation.
-- AC5: Uses `LLMAgent`.
-- AC6: Prompt updated for condensed input.
-- AC8: Validation implemented.
-- AC9: Returns `Result`.
-- AC12: TSDoc added/updated.
-
-**Estimated effort**: 1 - 1.5 hours (due to new condensation logic)
-
-**Required Delegation Components (Revised)**:
-
-- Implementation components for Junior Coder:
-  - Implement the `_condenseAst` private method for traversing `GenericAstNode` and extracting relevant details into the condensed JSON structure.
-  - Implement the `zod` schema (`codeInsightsSchema` and sub-schemas).
-  - Update the `buildPrompt` method to describe the condensed input structure and adjust the few-shot example.
-- Testing components for Junior Tester:
-  - Implement unit tests specifically for the `_condenseAst` method.
-  - Update existing/implement unit tests for `analyzeAst`, mocking `_condenseAst` or providing condensed input, covering success and failure paths for LLM interaction and validation.
-
-**Delegation Success Criteria (Revised)**:
-
-- Junior Coder components must: `_condenseAst` correctly extracts required info into the defined structure. `zod` schema is correct. `buildPrompt` accurately reflects the condensed input.
-- Junior Tester components must: Unit tests cover `_condenseAst` logic thoroughly. `analyzeAst` tests correctly mock dependencies and verify behavior with condensed input.
-
-**Actual Delegation Summary**:
-
-- Junior Coder: Implemented `_condenseAst` method, updated `buildPrompt` method. `zod` schema was already present. Work reviewed and integrated. (1 attempt)
-- Junior Tester: Implemented unit tests for `analyzeAst` using spy strategy for `_condenseAst`, covering success/failure paths and prompt verification. Work reviewed and integrated. (1 attempt)
-
-**Acceptance Criteria Verification**:
-
-- AC1 (Service Implemented): ✅ Satisfied by `src/core/analysis/ast-analysis.service.ts` implementation, including condensation logic in `_condenseAst`.
-- AC5 (Uses LLMAgent): ✅ Satisfied by `llmAgent.getCompletion` call within `analyzeAst`. Verified in unit tests.
-- AC6 (Prompt Updated): ✅ Satisfied by the updated `buildPrompt` method, which describes condensed input and includes a relevant few-shot example. Verified in unit tests.
-- AC8 (Validation Implemented): ✅ Satisfied by using `codeInsightsSchema.safeParse` on the LLM response within `analyzeAst`. Verified in unit tests.
-- AC9 (Returns Result): ✅ Satisfied by `analyzeAst` returning `Result.ok` or `Result.err`. Verified in unit tests.
-- AC12 (TSDoc Added): ✅ Satisfied by adding/updating TSDoc comments for the service, methods, and interfaces.
-
----
-
-### Subtask 3: Integrate `AstAnalysisService` into `ProjectAnalyzer`
-
-**Status**: Not Started (Resetting status)
-
-**Description**: Modify `ProjectAnalyzer` to use the new `AstAnalysisService` to analyze `astData` for each file concurrently and merge the results into `ProjectContext`. (Condensation happens inside the service).
+**Description**: Apply corrections to the `_condenseAst` method in `AstAnalysisService` based _only_ on previous code review feedback (e.g., handling methods with modifiers). Update unit tests for the corrected logic.
 
 **Files to Modify**:
 
-- `src/core/analysis/project-analyzer.ts`
-- `tests/core/analysis/project-analyzer.test.ts` (Update/Add)
-- `tests/core/analysis/project-analyzer.treesitter.test.ts` (Update/Add)
-- `tests/core/analysis/project-analyzer.ast-analysis.test.ts` (Create/Modify)
+- `src/core/analysis/ast-analysis.service.ts` (Modify `_condenseAst`)
+- `tests/core/analysis/ast-analysis.service.test.ts` (Modify/Add tests for corrected `_condenseAst`)
 
 **Implementation Details**:
-_(Largely the same as original Subtask 3, as the condensation is internal to the service)_
 
-1.  **Constructor Injection:** Inject `IAstAnalysisService`.
-2.  **Refactor `analyzeProject` Method:**
-    - Collect successfully parsed `astData` and `relativePath` into `validAstData`. Log warnings for parsing failures.
-    - Use `Promise.allSettled` to call `this.astAnalysisService.analyzeAst(astData, relativePath)` concurrently for each item in `validAstData`.
-    - Process results: Handle fulfilled/rejected promises and the inner `Result` (`ok`/`err`). Populate `codeInsightsMap` for successes, log warnings/errors for failures.
-    - Update final `ProjectContext` assembly to include `astData` (from `validAstData`) and `codeInsights` (from `codeInsightsMap`).
+1.  **Apply Review Feedback:** Implement the specific changes requested in the code review for `_condenseAst`.
+2.  **Update Unit Tests:** Adjust existing tests or add minimal new ones to cover _only_ the specific fixes applied to `_condenseAst`.
+3.  **Update TSDoc:** Ensure comments for the fixed parts of `_condenseAst` are accurate.
 
 **Testing Requirements**:
-_(Same as original Subtask 3)_
 
-- Update/add integration tests for `ProjectAnalyzer`.
-- Mock `IAstAnalysisService`.
-- Verify `analyzeAst` is called with full `astData`.
-- Verify `codeInsightsMap` population based on mocked `Ok` results.
-- Verify logging for mocked `Err` results and rejections.
-- Verify overall method success despite partial failures.
+- Unit tests covering the specific fixes in `_condenseAst` must pass.
 
-**Related Acceptance Criteria**:
-
-- AC3: Integration logic implemented.
-- AC4: Concurrency using `Promise.allSettled`.
-- AC9: Error handling for analysis results.
-- AC12: TSDoc added for modifications.
-
-**Estimated effort**: 30 minutes (Review/Minor Adjustments if needed)
+**Related Acceptance Criteria**: AC1, AC12, AC13 (Condensation part).
+**Estimated effort**: 30 minutes
 
 **Required Delegation Components**:
-_(Same as original Subtask 3)_
 
-- Implementation components for Junior Coder: Refactor AST collection (if needed after Subtask 2 changes), implement `Promise.allSettled` for analysis calls, implement result processing/logging.
-- Testing components for Junior Tester: Update/create integration tests verifying interaction with mocked `IAstAnalysisService`, context population, and logging.
+- Implementation: Apply specific fixes to `_condenseAst`.
+- Testing: Update unit tests for the fixes.
 
 **Delegation Success Criteria**:
-_(Same as original Subtask 3)_
 
-- Junior Coder components must: Correctly implement concurrent calls, handle results/errors, log appropriately.
-- Junior Tester components must: Tests accurately mock the service, verify interactions, context population, and logging.
+- Code review feedback for `_condenseAst` is addressed.
+- Unit tests validate the specific fixes.
 
 ---
 
-### Subtask 4: DI Registration & Testing
+### Subtask 2: Fix `ProjectAnalyzer` Context Assembly (Remove `astData`, Add `codeInsights`, Fix Defaults)
 
-**Status**: Not Started (Resetting status)
+**Status**: **Needs Fixes**
 
-**Description**: Register the new `AstAnalysisService` for dependency injection, ensure all automated tests pass, and perform manual verification (AC10), which should now be feasible with the condensation strategy.
+**Description**: Modify the final context assembly logic in `ProjectAnalyzer.analyzeProject` to **exclude the raw `astData` property** while ensuring the `codeInsights` property is correctly populated. Also, apply fixes for default values (`componentStructure`, `dependencies`) based on previous review feedback. Update integration tests to verify the final context structure.
 
 **Files to Modify**:
 
-- `src/core/di/modules/analysis-module.ts` (Create/Verify)
-- `src/core/di/registrations.ts` (Modify/Verify)
-- `tests/fixtures/sample-ast-analysis.ts` (Create/Verify)
-- `run-analyzer.js` (Modify temporarily for AC10, or use temporary logging)
+- `src/core/analysis/project-analyzer.ts` (Modify final context creation/return in `analyzeProject`)
+- `tests/core/analysis/project-analyzer.test.ts` (Update tests)
+- `tests/core/analysis/project-analyzer.treesitter.test.ts` (Update tests)
+- `tests/core/analysis/project-analyzer.ast-analysis.test.ts` (Update tests)
 
 **Implementation Details**:
 
-1.  **DI Registration:** Ensure `AstAnalysisService` is correctly registered (likely completed in the previous attempt, but verify).
-2.  **Testing & Verification:**
-    - Execute all automated tests (`npm test`, `npm run type-check`). Ensure all pass, including updated unit tests for `AstAnalysisService` (condensation) and integration tests for `ProjectAnalyzer`. Fix any failures.
-    - Perform the **Basic Manual Test (AC10) (Revised Expectation):**
-      - Use the simple fixture file (`tests/fixtures/sample-ast-analysis.ts`).
-      - Analyze _only_ this fixture file using a test script or temporary logging.
-      - Verify the `codeInsights` field contains the correctly extracted information.
-      - **Additionally (Optional but Recommended):** Attempt the full generator run again (e.g., `memory-bank`) to see if context length/reliability issues are significantly reduced or eliminated. Document the outcome.
+1.  **Apply Review Feedback (Defaults):** Implement the specific changes requested for default handling of `structure.componentStructure` (`{}`) and `dependencies.*` (`{}`).
+2.  **Modify Final Context Assembly:**
+    - Locate the step where the final `ProjectContext` object is created before being returned.
+    - **Ensure the `astData` property is NOT included/copied into this final object.**
+    - Ensure the collected `codeInsights` map IS correctly assigned to the `codeInsights` property of the final object.
+3.  **Update Integration Tests:**
+    - Modify integration tests (`project-analyzer.*.test.ts`) to:
+      - **Assert that `result.value.astData` is `undefined` or not present.**
+      - Assert that `result.value.codeInsights` IS present and correctly structured (based on mocks).
+      - Assert the correct default values for `componentStructure` and `dependencies`.
+4.  **Update TSDoc:** Ensure comments for the modified context assembly logic are accurate.
+
+**Testing Requirements**:
+
+- Integration tests for `ProjectAnalyzer` must pass, specifically verifying the **absence** of `astData`, the presence and correctness of `codeInsights`, and the correct default values in the final returned `ProjectContext`.
+
+**Related Acceptance Criteria**: AC3, AC12, AC13 (Integration part).
+**Estimated effort**: 30 minutes
+
+**Required Delegation Components**:
+
+- Implementation: Modify final context assembly logic in `analyzeProject`.
+- Testing: Update integration tests to verify the final context structure (no `astData`, yes `codeInsights`, correct defaults).
+
+**Delegation Success Criteria**:
+
+- Final `ProjectContext` excludes `astData` and includes correct `codeInsights`.
+- Final `ProjectContext` uses correct defaults.
+- Integration tests validate the corrected final context structure.
+
+---
+
+### Subtask 3: Create Fixture & Verify Fixes (AC10, AC13)
+
+**Status**: **Needs Fixes**
+
+**Description**: Create the test fixture file (if missing). Run all automated tests. Perform manual verification for basic functionality (AC10) using the fixture. Verify the TSK-015 blocker is resolved (AC13), confirming analysis completes without payload errors and the final context lacks raw `astData`.
+
+**Files to Create/Modify**:
+
+- `tests/fixtures/sample-ast-analysis.ts` (Create, if needed)
+- Potentially `run-analyzer.js` or a temporary script for verification.
+
+**Implementation Details**:
+
+1.  **Create/Verify Fixture File:** Ensure `tests/fixtures/sample-ast-analysis.ts` exists and contains suitable sample code (see previous plan version for example content if needed).
+2.  **Run Automated Tests:** Execute `npm test` and `npm run type-check`. Fix any failures resulting from Subtask 1 & 2.
+3.  **Manual Verification (AC10):**
+    - Run `ProjectAnalyzer.analyzeProject` targeting _only_ the fixture file.
+    - Log the resulting `ProjectContext`.
+    - Verify `codeInsights` is present and correct.
+    - **Verify `astData` is NOT present.**
+    - Document the outcome.
+4.  **Blocker Verification (AC13):**
+    - Re-run the steps known to cause the TSK-015 failure (e.g., analyzing a large project/file).
+    - Verify the payload error no longer occurs.
+    - Verify the process completes successfully.
+    - Inspect the final `ProjectContext` (if possible via logging/debugging) to confirm `astData` is absent and `codeInsights` is present.
+    - Document the verification method and outcome.
 
 **Testing Requirements**:
 
 - All automated tests must pass.
-- Manual verification step (AC10) using the fixture file must pass. Outcome of the optional full run should be documented.
+- Manual verification for AC10 must pass (correct `codeInsights`, no `astData`).
+- Verification for AC13 must pass (no payload error, analysis completes, final context structure correct).
 
-**Related Acceptance Criteria**:
-
-- AC1: Service registered for DI.
-- AC10: Basic functionality verified (should pass now).
-
-**Estimated effort**: 30 minutes (including delegation setup and review)
+**Related Acceptance Criteria**: AC10, AC13.
+**Estimated effort**: 45 minutes (including test runs and verification)
 
 **Required Delegation Components**:
 
-- Implementation components for Junior Coder: Verify/complete DI registration.
-- Testing components for Junior Tester: Execute automated tests, fix failures. Perform manual test (AC10) on the fixture file, document results. Optionally perform and document the full generator run test.
+- Implementation: Create/verify fixture file.
+- Testing: Run all automated tests, perform manual verification (AC10), perform blocker verification (AC13).
 
 **Delegation Success Criteria**:
 
-- Junior Coder components: DI registration is correct.
-- Junior Tester components: Automated tests pass. Manual test (AC10) on fixture file passes and is documented. Optional full run outcome documented.
+- Fixture file exists.
+- All automated tests pass.
+- AC10 verification passes and is documented.
+- AC13 verification passes and is documented.
 
 ---
 
-## 5. Technical Considerations (Revised)
+## 5. Technical Considerations
 
-- **Architecture Impact**: `AstAnalysisService` now includes internal condensation logic, making it slightly more complex but decoupling the LLM from the raw AST size. `ProjectAnalyzer` interaction remains the same.
-- **Dependencies**: No new dependencies beyond `zod`.
-- **Error Handling**: Condensation step might introduce new internal errors to handle within `AstAnalysisService`, returning `Result.err`.
-- **Concurrency**: Remains the same in `ProjectAnalyzer`.
-- **Scalability**: Significantly improved by addressing the primary context length blocker.
+- Focus is on minimal, targeted fixes to existing code.
+- Key change: Removal of `astData` from the final `ProjectContext` output.
 
-## 6. Testing Approach (Revised)
+## 6. Testing Approach
 
-- **Unit Tests**: `AstAnalysisService` tests now need to cover the `_condenseAst` logic thoroughly, in addition to the LLM interaction/validation logic (using condensed input).
-- **Integration Tests**: `ProjectAnalyzer` tests remain largely the same, mocking `IAstAnalysisService`, but verifying calls are made with the full `astData`.
-- **Manual Verification (AC10)**: Should now be achievable using a simple fixture file. A full run test is recommended to gauge overall improvement.
+- **Unit Tests**: Verify specific fixes in `_condenseAst`.
+- **Integration Tests**: Verify final `ProjectContext` structure (**no `astData`**, yes `codeInsights`, correct defaults).
+- **Manual/Blocker Verification**: Confirm AC10 and AC13 are met with the corrected implementation.
 
-## 7. Implementation Checklist (Revised)
+## 7. Implementation Checklist
 
-- [x] Requirements reviewed (task-description.md)
-- [x] Research report reviewed (task-description.md Section 2)
-- [x] Architecture reviewed (TechnicalArchitecture.md, DeveloperGuide.md)
-- [x] Dependencies checked (`LLMAgent`, `ILogger`, `zod` added)
-- [ ] Subtasks revised and sequenced
-- [x] Interfaces defined (`IAstAnalysisService`, `CodeInsights`, etc.)
-- [x] `ProjectContext` updated
-- [ ] `AstAnalysisService` implemented (with **condensation**)
-- [ ] `ProjectAnalyzer` integrated (DI, concurrency, result handling)
-- [x] `zod` dependency added
-- [ ] DI registration added/verified
-- [ ] Unit tests planned/implemented/updated (`AstAnalysisService` incl. condensation)
-- [ ] Integration tests planned/updated (`ProjectAnalyzer`)
-- [ ] Manual verification step planned (AC10 - revised)
-- [ ] Documentation planned (TSDoc comments)
-- [ ] Delegation strategy revised for subtasks
+- [x] Requirements reviewed (task-description.md - revised)
+- [x] Architecture reviewed
+- [x] Dependencies checked
+- [x] Subtasks defined for fixes
+- [x] Interfaces defined - Completed
+- [x] `ProjectContext` updated - Completed
+- [ ] `AstAnalysisService` fixed (`_condenseAst`) - **Subtask 1**
+- [ ] `ProjectAnalyzer` fixed (Context Assembly: **No `astData`**, Yes `codeInsights`, Defaults) - **Subtask 2**
+- [x] `zod` dependency added - Completed
+- [x] DI registration verified - Completed
+- [ ] Unit tests updated (`AstAnalysisService` fixes) - **Subtask 1**
+- [ ] Integration tests updated (`ProjectAnalyzer` final context structure) - **Subtask 2**
+- [ ] Fixture file created/verified (`tests/fixtures/sample-ast-analysis.ts`) - **Subtask 3**
+- [ ] Manual verification performed (AC10) - **Subtask 3**
+- [ ] Blocker verification performed (AC13) - **Subtask 3**
+- [ ] Documentation updated (TSDoc comments) - **Subtask 1 & 2**
+- [ ] All automated tests pass - **Subtask 3**
+
+## 8. Implementation Sequence
+
+1.  **Subtask 1:** Fix `AstAnalysisService` Condensation Logic
+2.  **Subtask 2:** Fix `ProjectAnalyzer` Context Assembly (Remove `astData`, Add `codeInsights`, Fix Defaults)
+3.  **Subtask 3:** Create Fixture & Verify Fixes (AC10, AC13)

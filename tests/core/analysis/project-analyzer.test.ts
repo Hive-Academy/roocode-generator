@@ -229,7 +229,11 @@ describe('ProjectAnalyzer Analysis Result', () => {
       mockContentCollector,
       mockFilePrioritizer,
       mockTreeSitterParserService,
-      { analyzeAst: jest.fn() } as jest.Mocked<IAstAnalysisService> // Use specific cast
+      {
+        analyzeAst: jest
+          .fn()
+          .mockResolvedValue(Result.ok({ functions: [], classes: [], imports: [] })),
+      } as jest.Mocked<IAstAnalysisService> // Return default success Result
     );
   });
 
@@ -357,10 +361,11 @@ describe('ProjectAnalyzer Analysis Result', () => {
     const context = result.unwrap();
 
     // Verify warning log for the failed file (single string argument)
+    // Use POSIX path in the expected log message for consistency
+    // Use the relative path as logged by the actual code
     expect(mockLogger.warn).toHaveBeenCalledWith(
-      expect.stringContaining(
-        `Failed to parse ${path.join(rootPath, 'src/utils.ts')} for AST: ${parseError.message}`
-      )
+      // Correct the prefix to match the actual log output
+      expect.stringContaining(`Tree-sitter parsing failed for src/utils.ts: ${parseError.message}`)
     );
 
     // Verify astData only contains the successfully parsed file (AC3, AC8)

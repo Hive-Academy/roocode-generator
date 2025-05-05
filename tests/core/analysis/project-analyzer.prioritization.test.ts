@@ -45,14 +45,20 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       // Mock readDir and isDirectory - These will be overridden in specific tests
       readDir: jest.fn().mockResolvedValue(Result.ok([])),
       isDirectory: jest.fn().mockResolvedValue(Result.ok(false)),
-    } as any;
+      // Add missing properties required by IFileOperations
+      normalizePath: jest.fn().mockImplementation((p: string) => p),
+      exists: jest.fn().mockResolvedValue(Result.ok(true)),
+      copyDirectoryRecursive: jest.fn().mockResolvedValue(Result.ok(undefined)),
+    } as jest.Mocked<IFileOperations>; // Use stricter typing
 
     mockLogger = {
       debug: jest.fn(),
       info: jest.fn(),
       warn: jest.fn(),
       error: jest.fn(),
-    } as any;
+      setLogLevel: jest.fn(), // Add missing method
+      getLogLevel: jest.fn(), // Add missing method
+    } as jest.Mocked<ILogger>;
 
     mockLLMAgent = {
       getModelContextWindow: jest.fn().mockResolvedValue(10000), // Provide default mock value
@@ -64,20 +70,28 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
           getContextWindowSize: jest.fn().mockReturnValue(10000),
           countTokens: jest.fn().mockResolvedValue(10),
           getCompletion: jest.fn(), // Include getCompletion on the mock provider if needed elsewhere
+          providerId: 'mock-provider', // Add missing property
+          modelId: 'mock-model', // Add missing property
         })
       ),
-    } as any;
+      getProviderId: jest.fn().mockReturnValue('mock-provider'), // Add missing method
+      getModelId: jest.fn().mockReturnValue('mock-model'), // Add missing method
+      // analyzeProject: jest.fn(), // Removed - LLMAgent doesn't have this; was likely a mistake
+    } as any; // Revert to 'as any' for LLMAgent
 
     mockResponseParser = {
       parseLlmResponse: jest.fn(), // Corrected method name
-    } as any;
+      // Removed properties added for stricter typing
+    } as any; // Revert to 'as any' for ResponseParser
 
     mockProgress = {
       start: jest.fn(),
       update: jest.fn(),
       fail: jest.fn(),
       succeed: jest.fn(), // Added succeed mock
-    } as any;
+      stop: jest.fn(), // Keep added stop method
+      // spinner: null, // Removed spinner property
+    } as any; // Revert to 'as any' for ProgressIndicator
 
     mockContentCollector = {
       collectContent: jest.fn(),
@@ -90,7 +104,8 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
     mockTreeSitterParserService = {
       // Initialize the mock
       initialize: jest.fn().mockResolvedValue(Result.ok(undefined)), // Added mock for initialize
-      parse: jest.fn(), // Kept basic mock for parse
+      // Ensure parse returns a Result by default
+      parse: jest.fn().mockReturnValue(Result.ok({ type: 'program', children: [] })),
       parseFile: jest.fn().mockResolvedValue(Result.ok({ type: 'program', children: [] })), // Added mock for parseFile
     } as jest.Mocked<ITreeSitterParserService>;
 

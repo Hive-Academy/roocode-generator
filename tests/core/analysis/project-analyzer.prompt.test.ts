@@ -121,7 +121,7 @@ describe('JsonSchemaHelper', () => {
           // definedFunctions: {}, // Removed
           // definedClasses: {}, // Removed
         },
-        astData: {}, // Added required property
+        // astData: {}, // Removed - Not part of the schema defined in JsonSchemaHelper
         dependencies: {
           dependencies: { react: '17.0.0' },
           devDependencies: { jest: '26.0.0' },
@@ -132,9 +132,9 @@ describe('JsonSchemaHelper', () => {
 
       const schema = jsonSchemaHelper.getProjectContextSchema();
       const result = jsonSchemaHelper.validateJson(JSON.stringify(validProjectContext), schema);
-      // Expect successful validation: result should have a 'value' property with true and no 'error'
-      expect(result.value).toBe(true);
-      expect(result.error).toBeUndefined();
+      // Expect successful validation: result should be Ok and not Err
+      expect(result.isOk()).toBe(true);
+      expect(result.isErr()).toBe(false);
     });
 
     it('should reject invalid project context JSON', () => {
@@ -161,8 +161,9 @@ describe('JsonSchemaHelper', () => {
 
       const schema = jsonSchemaHelper.getProjectContextSchema();
       const result = jsonSchemaHelper.validateJson(JSON.stringify(invalidProjectContext), schema);
-      // Expect validation failure - error should be present
-      expect(result.error).toBeInstanceOf(Error);
+      // Expect validation failure - result should be Err
+      expect(result.isErr()).toBe(true);
+      expect(result.error).toBeInstanceOf(Error); // Keep checking the error type
     });
 
     it('should provide detailed validation errors', () => {
@@ -196,12 +197,17 @@ describe('JsonSchemaHelper', () => {
 
       const schema = jsonSchemaHelper.getProjectContextSchema();
       const result = jsonSchemaHelper.validateJson(JSON.stringify(invalidProjectContext), schema);
+      expect(result.isErr()).toBe(true); // Check it's an error Result
       expect(result.error).toBeInstanceOf(Error);
-      if (result.error) {
+      if (result.isErr()) {
+        // Use type guard
         // Check for specific Zod error messages
-        expect(result.error.message).toMatch(
-          /techStack\.languages\.0 Expected string, received number/
-        );
+        if (result.error) {
+          // Add explicit check to satisfy TS
+          expect(result.error.message).toMatch(
+            /techStack\.languages\.0 Expected string, received number/
+          );
+        }
         // Removed checks for definedFunctions/definedClasses as they are no longer required
         // expect(result.error.message).toMatch(/structure\.definedFunctions Required/);
         // expect(result.error.message).toMatch(/structure\.definedClasses Required/);
@@ -294,7 +300,7 @@ describe('Integration: ProjectAnalyzer with JsonSchemaHelper', () => {
         // definedFunctions: {}, // Removed
         // definedClasses: {}, // Removed
       },
-      astData: {}, // Added required property
+      // astData: {}, // Removed - Not part of the schema defined in JsonSchemaHelper
       dependencies: {
         dependencies: { react: '17.0.0' },
         devDependencies: { jest: '26.0.0' },
@@ -305,7 +311,7 @@ describe('Integration: ProjectAnalyzer with JsonSchemaHelper', () => {
 
     const schema = jsonSchemaHelper.getProjectContextSchema();
     const validation = jsonSchemaHelper.validateJson(JSON.stringify(projectContext), schema);
-    expect(validation.value).toBe(true);
-    expect(validation.error).toBeUndefined();
+    expect(validation.isOk()).toBe(true); // Check if validation is Ok
+    expect(validation.isErr()).toBe(false); // Check if validation is not Err
   });
 });

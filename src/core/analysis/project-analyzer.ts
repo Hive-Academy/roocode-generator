@@ -298,7 +298,8 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         linters: [],
         packageManager: '',
       };
-      const structure = parsedResult.value.structure ?? {
+      // Create base structure with defaults
+      const baseStructure = {
         rootDir: '',
         sourceDir: '',
         testDir: '',
@@ -306,18 +307,45 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         mainEntryPoints: [],
         componentStructure: {},
       };
-      const dependencies = parsedResult.value.dependencies ?? {
+
+      // Merge with parsed result, ensuring componentStructure is never null
+      const structure = {
+        ...baseStructure,
+        ...parsedResult.value.structure,
+        componentStructure: parsedResult.value.structure?.componentStructure ?? {},
+      };
+
+      // Create base dependencies with empty objects
+      const baseDependencies = {
         dependencies: {},
         devDependencies: {},
         peerDependencies: {},
         internalDependencies: {},
       };
 
+      // Merge with parsed result, ensuring nested objects are never null
+      const dependencies = {
+        ...baseDependencies,
+        ...parsedResult.value.dependencies,
+        dependencies: parsedResult.value.dependencies?.dependencies ?? {},
+        devDependencies: parsedResult.value.dependencies?.devDependencies ?? {},
+        peerDependencies: parsedResult.value.dependencies?.peerDependencies ?? {},
+        internalDependencies: parsedResult.value.dependencies?.internalDependencies ?? {},
+      };
+
       // Assemble final context using results from LLM context analysis,
       // successfully parsed ASTs (validAstData), and successful code insights (codeInsightsMap)
-      const astDataMap = Object.fromEntries(
-        validAstData.map((item) => [item.relativePath, item.astData])
-      );
+      // Ensure astData is properly included with validation
+      const astDataMap: { [key: string]: GenericAstNode } = {};
+      for (const { relativePath, astData } of validAstData) {
+        if (astData && typeof astData === 'object') {
+          // Validate AST data
+          astDataMap[relativePath] = astData;
+          this.logger.debug(`Added AST data for ${relativePath}`);
+        } else {
+          this.logger.warn(`Invalid AST data for ${relativePath}, skipping`);
+        }
+      }
 
       const finalContext: ProjectContext = {
         techStack,

@@ -271,14 +271,16 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
 
     // Verify the final context contains the parsed data in astData
     const finalContext = result.unwrap();
-    const relativeTsPath = path.relative(rootPath, tsFilePath);
-    const relativeJsPath = path.relative(rootPath, jsFilePath);
-    const relativeTxtPath = path.relative(rootPath, txtFilePath);
-    const relativeCssPath = path.relative(rootPath, cssFilePath);
+    // Use POSIX paths for consistency in keys, regardless of OS
+    const relativeTsPath = 'src/component.ts';
+    const relativeJsPath = 'lib/utils.js';
+    const relativeTxtPath = 'docs/notes.txt';
+    const relativeCssPath = 'styles/main.css';
 
     expect(finalContext.astData).toBeDefined();
-    expect(finalContext.astData).toHaveProperty(relativeTsPath);
-    expect(finalContext.astData).toHaveProperty(relativeJsPath);
+    // Use toBeDefined() as toHaveProperty seems unreliable here
+    expect(finalContext.astData?.[relativeTsPath]).toBeDefined();
+    expect(finalContext.astData?.[relativeJsPath]).toBeDefined();
     expect(finalContext.astData?.[relativeTsPath]).toEqual(mockGenericAstNode); // Check if parsed data is stored
     expect(finalContext.astData?.[relativeJsPath]).toEqual(mockGenericAstNode);
 
@@ -343,14 +345,17 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
 
     // Verify logger.warn was called with file path and error message
     expect(mockLogger.warn).toHaveBeenCalledTimes(1); // Should be called once for the parse failure
+    // Use POSIX path in the expected log message
     expect(mockLogger.warn).toHaveBeenCalledWith(
-      expect.stringContaining(`Tree-sitter parsing failed for ${jsFilePath}`) // Updated log message check
+      // Use the relative path as logged
+      expect.stringContaining(`Tree-sitter parsing failed for src/buggy.js`)
     );
     expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining(mockError.message));
 
     // Verify the final context does NOT contain entries for the failed file in astData
     const finalContext = result.unwrap();
-    const relativeBuggyPath = path.relative(rootPath, jsFilePath);
+    // Use POSIX path for consistency
+    const relativeBuggyPath = 'src/buggy.js';
     expect(finalContext.astData).toBeDefined();
     expect(finalContext.astData).not.toHaveProperty(relativeBuggyPath);
 

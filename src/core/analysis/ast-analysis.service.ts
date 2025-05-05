@@ -193,20 +193,22 @@ export class AstAnalysisService implements IAstAnalysisService {
 
     const findChildByType = (
       parentNode: GenericAstNode,
-      type: string
+      type: string | string[]
     ): GenericAstNode | undefined => {
-      return parentNode.children?.find((c) => c.type === type);
+      const types = Array.isArray(type) ? type : [type];
+      return parentNode.children?.find((c) => types.includes(c.type));
     };
 
     const findDescendantByType = (
       startNode: GenericAstNode,
-      type: string
+      type: string | string[]
     ): GenericAstNode | undefined => {
+      const types = Array.isArray(type) ? type : [type];
       const queue = [...(startNode.children || [])];
       while (queue.length > 0) {
         const current = queue.shift();
         if (!current) continue;
-        if (current.type === type) {
+        if (types.includes(current.type)) {
           return current;
         }
         queue.push(...(current.children || []));
@@ -221,6 +223,29 @@ export class AstAnalysisService implements IAstAnalysisService {
         return targetNode.text.replace(/^['"`]|['"`]$/g, '');
       }
       return targetNode.text;
+    };
+
+    /**
+     * Finds the function or method name from an AST node.
+     * Handles various node types including method definitions with modifiers and decorators.
+     * @param node The AST node to extract the name from
+     * @returns The extracted function/method name or undefined if not found
+     */
+    const findFunctionName = (node: GenericAstNode): string | undefined => {
+      // Direct identifier for simple functions
+      const nameNode = findChildByType(node, ['identifier', 'property_identifier']);
+      if (nameNode) return extractText(nameNode);
+
+      // For methods with modifiers or decorators
+      const methodDefinition = findDescendantByType(node, ['method_definition', 'method']);
+      if (methodDefinition) {
+        const methodName = findChildByType(methodDefinition, ['identifier', 'property_identifier']);
+        return extractText(methodName);
+      }
+
+      // For property methods (e.g., in TypeScript)
+      const propertyIdentifier = findDescendantByType(node, ['property_identifier']);
+      return extractText(propertyIdentifier);
     };
 
     const traverse = (currentNode: GenericAstNode) => {
@@ -260,31 +285,57 @@ export class AstAnalysisService implements IAstAnalysisService {
         } else if (
           currentNode.type === 'function_definition' ||
           currentNode.type === 'function_declaration' ||
-          currentNode.type === 'method_definition'
+          currentNode.type === 'method_definition' ||
+          currentNode.type === 'method'
         ) {
-          const nameNode = findChildByType(currentNode, 'identifier');
-          const name = extractText(nameNode);
+          const name = findFunctionName(currentNode);
 
           if (name) {
-            const paramsNode =
-              findChildByType(currentNode, 'formal_parameters') ||
-              findChildByType(currentNode, 'parameters'); // JS/TS vs Python
+            const paramsNode = findChildByType(currentNode, ['formal_parameters', 'parameters']); // JS/TS vs Python
             const params: string[] = [];
+
             if (paramsNode) {
-              // Iterate through children, looking for identifiers within parameter declarations
-              paramsNode.children?.forEach((paramDecl) => {
-                // Different languages/structures might require different paths
-                const paramIdentifier =
-                  findChildByType(paramDecl, 'identifier') || // Simple identifier param
-                  findDescendantByType(paramDecl, 'identifier') || // More complex (e.g., typed param)
-                  (paramDecl.type === 'identifier' ? paramDecl : undefined); // Direct identifier (Python)
-                const paramName = extractText(paramIdentifier);
-                if (paramName && paramName !== 'self' && paramName !== 'cls') {
-                  // Exclude common conventionals
+              /**
+               * Processes a parameter node to extract its name, handling various parameter types
+               * including decorated and modified parameters.
+               * @param paramNode The parameter node to process
+               */
+              const processParam = (paramNode: GenericAstNode) => {
+                // Skip decorator nodes
+                if (paramNode.type === 'decorator') return;
+
+                // For required_parameter nodes (TypeScript)
+                if (paramNode.type === 'required_parameter') {
+                  const paramId = findDescendantByType(paramNode, ['identifier']);
+                  const paramName = extractText(paramId);
+                  if (paramName && !['self', 'cls'].includes(paramName)) {
+                    params.push(paramName);
+                  }
+                  return;
+                }
+
+                // For simple identifier parameters
+                if (paramNode.type === 'identifier') {
+                  const paramName = extractText(paramNode);
+                  if (paramName && !['self', 'cls'].includes(paramName)) {
+                    params.push(paramName);
+                  }
+                  return;
+                }
+
+                // For other parameter types, try to find the identifier
+                const paramId = findDescendantByType(paramNode, ['identifier']);
+                const paramName = extractText(paramId);
+                if (paramName && !['self', 'cls'].includes(paramName)) {
                   params.push(paramName);
                 }
-              });
+              };
+
+              // Process each parameter
+              paramsNode.children?.forEach(processParam);
             }
+
+            // Add the function info if we found a valid name
             condensed.functions.push({ name, params });
           } else {
             this.logger.debug(
