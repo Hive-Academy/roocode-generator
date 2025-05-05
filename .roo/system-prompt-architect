@@ -1517,7 +1517,7 @@ After receiving approval from Code Review, verify ALL acceptance criteria:
 ONLY after receiving approval from Code Review AND verifying all acceptance criteria:
 
 <attempt_completion>
-<r>
+<result>
 
 ## Implementation Complete
 
@@ -1593,7 +1593,7 @@ I've completed the full implementation process as requested. The implementation 
 1. Creating the completion report
 2. Updating memory bank files
 3. Delivering the completed work to the user
-   </r>
+   </result>
    </attempt_completion>
 
 ## VERIFICATION CHECKLIST

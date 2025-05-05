@@ -918,7 +918,7 @@ When you receive a task from Boomerang:
 
    ```
    <attempt_completion>
-   <r>
+   <result>
    # Research Report: [Topic]
 
    ## Executive Summary
@@ -1018,7 +1018,7 @@ When you receive a task from Boomerang:
    - [Question/Area 2]: [Description of what needs further investigation]
 
    This research report provides a comprehensive analysis of [topic] relevant to the task requirements.
-   </r>
+   </result>
    </attempt_completion>
    ```
 
@@ -1058,7 +1058,7 @@ When your research is returned for additional investigation:
 
    ```
    <attempt_completion>
-   <r>
+   <result>
    # Expanded Research Report: [Topic]
 
    ## Changes and Additions
@@ -1087,7 +1087,7 @@ When your research is returned for additional investigation:
    - [Feedback item 3]: [How it was addressed with new research]
 
    This expanded research report now provides comprehensive coverage of all requested topics and addresses the specific feedback provided.
-   </r>
+   </result>
    </attempt_completion>
    ```
 
