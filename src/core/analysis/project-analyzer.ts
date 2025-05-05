@@ -42,10 +42,10 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
 
   /**
    * Analyzes the overall project context based on the collected files.
-   * This includes collecting file content, generating ASTs, analyzing ASTs for code insights using an LLM,
+   * This includes collecting file content, analyzing ASTs for code insights using an LLM,
    * and summarizing the project's tech stack, structure, and dependencies.
    * @param paths - An array containing the root path(s) of the project to analyze.
-   * @returns A Promise resolving to a Result containing the comprehensive ProjectContext (including AST data and code insights) or an Error.
+   * @returns A Promise resolving to a Result containing the comprehensive ProjectContext (including code insights) or an Error.
    */
   async analyzeProject(paths: string[]): Promise<Result<ProjectContext, Error>> {
     if (!paths || paths.length === 0) {
@@ -333,37 +333,27 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         internalDependencies: parsedResult.value.dependencies?.internalDependencies ?? {},
       };
 
-      // Assemble final context using results from LLM context analysis,
-      // successfully parsed ASTs (validAstData), and successful code insights (codeInsightsMap)
-      // Ensure astData is properly included with validation
-      const astDataMap: { [key: string]: GenericAstNode } = {};
-      for (const { relativePath, astData } of validAstData) {
-        if (astData && typeof astData === 'object') {
-          // Validate AST data
-          astDataMap[relativePath] = astData;
-          this.logger.debug(`Added AST data for ${relativePath}`);
-        } else {
-          this.logger.warn(`Invalid AST data for ${relativePath}, skipping`);
-        }
-      }
-
+      // Assemble final context using results from LLM context analysis and code insights
       const finalContext: ProjectContext = {
         techStack,
         structure: {
           ...structure,
           rootDir: rootPath,
+          componentStructure: structure.componentStructure ?? {},
         },
         dependencies: {
           ...dependencies,
+          dependencies: dependencies.dependencies ?? {},
+          devDependencies: dependencies.devDependencies ?? {},
+          peerDependencies: dependencies.peerDependencies ?? {},
           internalDependencies: dependencies.internalDependencies ?? {},
         },
-        astData: astDataMap, // Populated from successfully parsed files (validAstData)
-        codeInsights: codeInsightsMap, // Populated from successfully analyzed ASTs
+        codeInsights: codeInsightsMap ?? {}, // Ensure codeInsights is always included with default
       };
 
       this.progress.succeed('Project context analysis completed successfully');
       this.logger.debug(
-        `Final ProjectContext (including astData and codeInsights):\n${JSON.stringify(finalContext, null, 2)}`
+        `Final ProjectContext (including codeInsights):\n${JSON.stringify(finalContext, null, 2)}`
       );
 
       // --- TEMPORARY LOGGING REMOVED ---
@@ -372,13 +362,22 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
        * Filter the assembled context to ensure it strictly adheres to the ProjectContext interface.
        * This prevents leaking intermediate data structures or properties used during analysis.
        * Creates a new object and explicitly copies only the defined properties.
+       * Note: astData is intentionally excluded as per requirements.
        */
       const filteredContext: ProjectContext = {
         techStack: finalContext.techStack,
-        structure: finalContext.structure,
-        dependencies: finalContext.dependencies,
-        astData: finalContext.astData,
-        ...(finalContext.codeInsights && { codeInsights: finalContext.codeInsights }), // Conditionally add codeInsights
+        structure: {
+          ...finalContext.structure,
+          componentStructure: finalContext.structure?.componentStructure ?? {},
+        },
+        dependencies: {
+          ...finalContext.dependencies,
+          dependencies: finalContext.dependencies?.dependencies ?? {},
+          devDependencies: finalContext.dependencies?.devDependencies ?? {},
+          peerDependencies: finalContext.dependencies?.peerDependencies ?? {},
+          internalDependencies: finalContext.dependencies?.internalDependencies ?? {},
+        },
+        codeInsights: finalContext.codeInsights ?? {}, // Always include codeInsights with default
       };
 
       return Result.ok(filteredContext); // Return the filtered context

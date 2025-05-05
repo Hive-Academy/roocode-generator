@@ -271,22 +271,23 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
 
     // Verify the final context contains the parsed data in astData
     const finalContext = result.unwrap();
-    // Use POSIX paths for consistency in keys, regardless of OS
-    const relativeTsPath = 'src/component.ts';
-    const relativeJsPath = 'lib/utils.js';
-    const relativeTxtPath = 'docs/notes.txt';
-    const relativeCssPath = 'styles/main.css';
 
-    expect(finalContext.astData).toBeDefined();
-    // Use toBeDefined() as toHaveProperty seems unreliable here
-    expect(finalContext.astData?.[relativeTsPath]).toBeDefined();
-    expect(finalContext.astData?.[relativeJsPath]).toBeDefined();
-    expect(finalContext.astData?.[relativeTsPath]).toEqual(mockGenericAstNode); // Check if parsed data is stored
-    expect(finalContext.astData?.[relativeJsPath]).toEqual(mockGenericAstNode);
+    // Verify astData is ABSENT
+    expect(finalContext).not.toHaveProperty('astData');
 
-    // Verify unsupported files are not present in astData
-    expect(finalContext.astData).not.toHaveProperty(relativeTxtPath);
-    expect(finalContext.astData).not.toHaveProperty(relativeCssPath);
+    // Verify codeInsights is PRESENT and is an object
+    expect(finalContext).toHaveProperty('codeInsights');
+    expect(typeof finalContext.codeInsights).toBe('object');
+    expect(finalContext.codeInsights).toEqual({}); // Defaults to {}
+
+    // Verify structure.componentStructure defaults to {}
+    expect(finalContext.structure.componentStructure).toEqual({});
+
+    // Verify dependencies defaults
+    expect(finalContext.dependencies.dependencies).toEqual({});
+    expect(finalContext.dependencies.devDependencies).toEqual({});
+    expect(finalContext.dependencies.peerDependencies).toEqual({});
+    expect(finalContext.dependencies.internalDependencies).toEqual({});
   });
 
   it('should log a warning if parsing fails and exclude failed file from context', async () => {
@@ -354,10 +355,6 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
 
     // Verify the final context does NOT contain entries for the failed file in astData
     const finalContext = result.unwrap();
-    // Use POSIX path for consistency
-    const relativeBuggyPath = 'src/buggy.js';
-    expect(finalContext.astData).toBeDefined();
-    expect(finalContext.astData).not.toHaveProperty(relativeBuggyPath);
 
     // Ensure other parts of the context might still exist
     expect(finalContext.techStack).toBeDefined(); // Assuming LLM part succeeded
