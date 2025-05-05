@@ -9,12 +9,294 @@ import { CodeInsights } from '../../../src/core/analysis/ast-analysis.interfaces
 import { RooCodeError } from '../../../src/core/errors';
 
 describe('AstAnalysisService', () => {
+  describe('_condenseAst method', () => {
+    let service: AstAnalysisService;
+    let mockLLMAgent: jest.Mocked<ILLMAgent>;
+    let mockLogger: jest.Mocked<ILogger>;
+
+    beforeEach(() => {
+      mockLLMAgent = {
+        analyzeProject: jest.fn(),
+        getCompletion: jest.fn(),
+        getModelContextWindow: jest.fn().mockResolvedValue(1000),
+        countTokens: jest.fn().mockResolvedValue(10),
+        getProvider: jest.fn(),
+      } as jest.Mocked<ILLMAgent>;
+
+      mockLogger = {
+        debug: jest.fn(),
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+      } as jest.Mocked<ILogger>;
+
+      service = new AstAnalysisService(mockLLMAgent, mockLogger);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+    it('should correctly handle method definitions with modifiers', () => {
+      const mockMethodAst: GenericAstNode = {
+        type: 'program',
+        children: [
+          {
+            type: 'method_definition',
+            children: [
+              {
+                type: 'decorator',
+                text: '@Injectable',
+                children: [],
+                startPosition: { row: 0, column: 0 },
+                endPosition: { row: 0, column: 0 },
+                isNamed: true,
+                fieldName: null,
+              },
+              {
+                type: 'property_identifier',
+                text: 'processData',
+                children: [],
+                startPosition: { row: 1, column: 0 },
+                endPosition: { row: 1, column: 0 },
+                isNamed: true,
+                fieldName: null,
+              },
+              {
+                text: '',
+                type: 'formal_parameters',
+
+                children: [
+                  {
+                    text: '',
+                    type: 'required_parameter',
+                    children: [
+                      {
+                        type: 'identifier',
+                        text: 'input',
+                        children: [],
+                        startPosition: { row: 1, column: 0 },
+                        endPosition: { row: 1, column: 0 },
+                        isNamed: true,
+                        fieldName: null,
+                      },
+                    ],
+                    startPosition: { row: 1, column: 0 },
+                    endPosition: { row: 1, column: 0 },
+                    isNamed: true,
+                    fieldName: null,
+                  },
+                ],
+                startPosition: { row: 1, column: 0 },
+                endPosition: { row: 1, column: 0 },
+                isNamed: true,
+                fieldName: null,
+              },
+            ],
+            startPosition: { row: 0, column: 0 },
+            endPosition: { row: 2, column: 0 },
+            isNamed: true,
+            fieldName: null,
+            text: '',
+          },
+        ],
+        startPosition: { row: 0, column: 0 },
+        endPosition: { row: 3, column: 0 },
+        isNamed: true,
+        fieldName: null,
+        text: '',
+      };
+
+      const result = (service as any)._condenseAst(mockMethodAst);
+
+      expect(result.functions).toHaveLength(1);
+      expect(result.functions[0]).toEqual({
+        name: 'processData',
+        params: ['input'],
+      });
+    });
+
+    it('should handle multiple decorated parameters', () => {
+      const mockMethodAst: GenericAstNode = {
+        type: 'program',
+        children: [
+          {
+            type: 'method_definition',
+            children: [
+              {
+                type: 'property_identifier',
+                text: 'handleRequest',
+                children: [],
+                startPosition: { row: 0, column: 0 },
+                endPosition: { row: 0, column: 0 },
+                isNamed: true,
+                fieldName: null,
+              },
+              {
+                type: 'formal_parameters',
+                text: '',
+                children: [
+                  {
+                    text: '',
+                    type: 'required_parameter',
+                    children: [
+                      {
+                        type: 'decorator',
+                        text: '@Inject',
+                        children: [],
+                        startPosition: { row: 0, column: 0 },
+                        endPosition: { row: 0, column: 0 },
+                        isNamed: true,
+                        fieldName: null,
+                      },
+                      {
+                        type: 'identifier',
+                        text: 'request',
+                        children: [],
+                        startPosition: { row: 0, column: 0 },
+                        endPosition: { row: 0, column: 0 },
+                        isNamed: true,
+                        fieldName: null,
+                      },
+                    ],
+                    startPosition: { row: 0, column: 0 },
+                    endPosition: { row: 0, column: 0 },
+                    isNamed: true,
+                    fieldName: null,
+                  },
+                  {
+                    text: '',
+                    type: 'required_parameter',
+                    children: [
+                      {
+                        type: 'decorator',
+                        text: '@Optional',
+                        children: [],
+                        startPosition: { row: 0, column: 0 },
+                        endPosition: { row: 0, column: 0 },
+                        isNamed: true,
+                        fieldName: null,
+                      },
+                      {
+                        type: 'identifier',
+                        text: 'config',
+                        children: [],
+                        startPosition: { row: 0, column: 0 },
+                        endPosition: { row: 0, column: 0 },
+                        isNamed: true,
+                        fieldName: null,
+                      },
+                    ],
+                    startPosition: { row: 0, column: 0 },
+                    endPosition: { row: 0, column: 0 },
+                    isNamed: true,
+                    fieldName: null,
+                  },
+                ],
+                startPosition: { row: 0, column: 0 },
+                endPosition: { row: 0, column: 0 },
+                isNamed: true,
+                fieldName: null,
+              },
+            ],
+            startPosition: { row: 0, column: 0 },
+            endPosition: { row: 1, column: 0 },
+            isNamed: true,
+            fieldName: null,
+            text: '',
+          },
+        ],
+        startPosition: { row: 0, column: 0 },
+        endPosition: { row: 2, column: 0 },
+        isNamed: true,
+        fieldName: null,
+        text: '',
+      };
+
+      const result = (service as any)._condenseAst(mockMethodAst);
+
+      expect(result.functions).toHaveLength(1);
+      expect(result.functions[0]).toEqual({
+        name: 'handleRequest',
+        params: ['request', 'config'],
+      });
+    });
+
+    it('should skip self and cls parameters in methods', () => {
+      const mockMethodAst: GenericAstNode = {
+        type: 'program',
+        children: [
+          {
+            type: 'method_definition',
+            children: [
+              {
+                type: 'property_identifier',
+                text: 'process',
+                children: [],
+                startPosition: { row: 0, column: 0 },
+                endPosition: { row: 0, column: 0 },
+                isNamed: true,
+                fieldName: null,
+              },
+              {
+                text: '',
+                type: 'formal_parameters',
+                children: [
+                  {
+                    type: 'identifier',
+                    text: 'self',
+                    children: [],
+                    startPosition: { row: 0, column: 0 },
+                    endPosition: { row: 0, column: 0 },
+                    isNamed: true,
+                    fieldName: null,
+                  },
+                  {
+                    type: 'identifier',
+                    text: 'data',
+                    children: [],
+                    startPosition: { row: 0, column: 0 },
+                    endPosition: { row: 0, column: 0 },
+                    isNamed: true,
+                    fieldName: null,
+                  },
+                ],
+                startPosition: { row: 0, column: 0 },
+                endPosition: { row: 0, column: 0 },
+                isNamed: true,
+                fieldName: null,
+              },
+            ],
+            startPosition: { row: 0, column: 0 },
+            endPosition: { row: 1, column: 0 },
+            isNamed: true,
+            fieldName: null,
+            text: '',
+          },
+        ],
+        startPosition: { row: 0, column: 0 },
+        endPosition: { row: 2, column: 0 },
+        isNamed: true,
+        fieldName: null,
+        text: '',
+      };
+
+      const result = (service as any)._condenseAst(mockMethodAst);
+
+      expect(result.functions).toHaveLength(1);
+      expect(result.functions[0]).toEqual({
+        name: 'process',
+        params: ['data'], // self should be excluded
+      });
+    });
+  });
+});
+
+describe('analyzeAst method', () => {
   let service: AstAnalysisService;
   let mockLLMAgent: jest.Mocked<ILLMAgent>;
   let mockLogger: jest.Mocked<ILogger>;
   let condenseAstSpy: jest.SpyInstance;
 
-  // Mock AST data (minimal structure for input, with required properties)
   const mockAstData: GenericAstNode = {
     type: 'program',
     children: [],
@@ -24,6 +306,7 @@ describe('AstAnalysisService', () => {
     isNamed: true,
     fieldName: null,
   };
+
   const mockCondensedAst = {
     imports: [{ source: 'fs' }],
     functions: [{ name: 'readFile', params: ['path'] }],
@@ -34,11 +317,11 @@ describe('AstAnalysisService', () => {
 
   beforeEach(() => {
     mockLLMAgent = {
-      analyzeProject: jest.fn(), // Added missing method
+      analyzeProject: jest.fn(),
       getCompletion: jest.fn(),
-      getModelContextWindow: jest.fn().mockResolvedValue(1000), // Added missing method with mock value
-      countTokens: jest.fn().mockResolvedValue(10), // Added missing method with mock value
-      getProvider: jest.fn(), // Added missing method
+      getModelContextWindow: jest.fn().mockResolvedValue(1000),
+      countTokens: jest.fn().mockResolvedValue(10),
+      getProvider: jest.fn(),
     } as jest.Mocked<ILLMAgent>;
 
     mockLogger = {
@@ -50,16 +333,14 @@ describe('AstAnalysisService', () => {
 
     service = new AstAnalysisService(mockLLMAgent, mockLogger);
 
-    // --- Mocking _condenseAst ---
     // Spy on the private method and control its return value
     condenseAstSpy = jest
       .spyOn(AstAnalysisService.prototype as any, '_condenseAst')
       .mockReturnValue(mockCondensedAst);
-    // --------------------------
   });
 
   afterEach(() => {
-    jest.restoreAllMocks(); // Clean up spies
+    jest.restoreAllMocks();
   });
 
   it('should call _condenseAst with the provided astData', async () => {

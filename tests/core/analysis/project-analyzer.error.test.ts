@@ -32,6 +32,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
     mockFileOps = {
       readDir: jest.fn(),
       isDirectory: jest.fn(),
+      readFile: jest.fn().mockResolvedValue(Result.ok('')), // Added mock readFile
     } as any;
 
     mockLogger = {
@@ -71,7 +72,8 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
     // Initialize the mock service
     mockTreeSitterParserService = {
       initialize: jest.fn().mockResolvedValue(Result.ok(undefined)), // Added mock for initialize
-      parse: jest.fn(), // Added basic mock for parse (if needed by interface)
+      // Ensure parse returns a Result by default
+      parse: jest.fn().mockReturnValue(Result.ok({ type: 'program', children: [] })),
       parseFile: jest.fn().mockResolvedValue(Result.ok({ type: 'program', children: [] })), // Added mock for parseFile
     } as jest.Mocked<ITreeSitterParserService>;
 

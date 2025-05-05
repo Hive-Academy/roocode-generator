@@ -9,13 +9,12 @@ import { ILogger } from '@core/services/logger-service'; // Added import
  * @param container The DI container instance.
  */
 export function registerAnalysisServices(container: Container): void {
-  // Changed from registerSingleton to registerFactory
+  // Register AstAnalysisService using the factory pattern
   container.registerFactory<IAstAnalysisService>('IAstAnalysisService', () => {
     // Resolve dependencies using the helper
     const llmAgent = resolveDependency<ILLMAgent>(container, 'LLMAgent');
     const logger = resolveDependency<ILogger>(container, 'ILogger');
     // Instantiate the service with resolved dependencies
-    // Removed fileOps as it's not a dependency of AstAnalysisService
     return new AstAnalysisService(llmAgent, logger);
   });
 }
