@@ -1,4 +1,5 @@
 import { Result } from '../result/result'; // Use existing Result type
+import { CodeInsights } from './ast-analysis.interfaces';
 
 /**
  * Defines the contract for analyzing various aspects of a project.
@@ -76,4 +77,10 @@ export interface ProjectContext {
   structure: ProjectStructure;
   dependencies: DependencyGraph;
   astData: Record<string, GenericAstNode>; // Key: relative file path -> Root AST node for the file
+  /**
+   * Optional map containing structured code insights extracted via AST analysis.
+   * The key is the relative file path, and the value is the CodeInsights object for that file.
+   * Populated by the AstAnalysisService.
+   */
+  codeInsights?: { [filePath: string]: CodeInsights };
 }
