@@ -142,7 +142,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
             // Directly add valid AST data
             // Use non-null assertion as isOk() guarantees value exists
             validAstData.push({ relativePath, astData: parseResult.value! });
-            this.logger.debug(`Successfully parsed and stored AST for ${relativePath}`); // Changed from trace
+            this.logger.trace(`Successfully parsed and stored AST for ${relativePath}`); // Changed from trace
           } else {
             // Log warning for parsing errors (Result.err)
             // Use non-null assertion as else block implies isErr() which guarantees error exists
@@ -188,7 +188,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
             if (analysisResult.isOk()) {
               // Use non-null assertion as isOk() guarantees value exists
               codeInsightsMap[relativePath] = analysisResult.value!;
-              this.logger.debug(`Successfully generated code insights for ${relativePath}`);
+              this.logger.trace(`Successfully generated code insights for ${relativePath}`);
             } else {
               // Log warning for analysis errors (Result.err)
               // Use non-null assertion as else block implies isErr() which guarantees error exists
@@ -288,7 +288,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
 
       // Log the generated ProjectContext for inspection
       this.logger.debug('Generated ProjectContext:');
-      this.logger.debug(JSON.stringify(parsedResult.value, null, 2));
+      this.logger.trace(JSON.stringify(parsedResult.value, null, 2));
 
       const techStack = parsedResult.value.techStack ?? {
         languages: [],
@@ -352,7 +352,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       };
 
       this.progress.succeed('Project context analysis completed successfully');
-      this.logger.debug(
+      this.logger.trace(
         `Final ProjectContext (including codeInsights):\n${JSON.stringify(finalContext, null, 2)}`
       );
 
