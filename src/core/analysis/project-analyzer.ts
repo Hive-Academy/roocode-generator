@@ -30,9 +30,12 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
     @Inject('IFileContentCollector') private readonly contentCollector: IFileContentCollector,
     @Inject('IFilePrioritizer') private readonly filePrioritizer: IFilePrioritizer,
     @Inject('ITreeSitterParserService')
-    private readonly treeSitterParserService: ITreeSitterParserService, // Inject the service
-    @Inject('IAstAnalysisService') // Added injection
-    private readonly astAnalysisService: IAstAnalysisService // Added property
+    private readonly treeSitterParserService: ITreeSitterParserService,
+    /**
+     * Service for analyzing AST data to extract code insights.
+     */
+    @Inject('IAstAnalysisService')
+    private readonly astAnalysisService: IAstAnalysisService
   ) {
     this.logger.debug('ProjectAnalyzer initialized');
   }
@@ -162,7 +165,10 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         this.progress.update(`Analyzing structure of ${validAstData.length} files...`);
         this.logger.debug(`Starting concurrent AST analysis for ${validAstData.length} files...`);
 
-        // Use this.astAnalysisService
+        /**
+         * Concurrently analyze the collected valid ASTs using the AstAnalysisService.
+         * Uses Promise.allSettled to ensure all analyses complete, even if some fail.
+         */
         const analysisPromises = validAstData.map(
           ({ relativePath, astData }) => this.astAnalysisService.analyzeAst(astData, relativePath) // Returns Promise<Result<CodeInsights, Error>>
         );
@@ -170,7 +176,9 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         const analysisSettledResults = await Promise.allSettled(analysisPromises);
 
         /**
-         * Processes the results of the concurrent AST analysis.
+         * Processes the settled results of the concurrent AST analysis.
+         * Populates the codeInsightsMap for successful analyses (Result.ok)
+         * and logs warnings/errors for failed analyses (Result.err or promise rejection).
          */
         analysisSettledResults.forEach((result, index) => {
           const { relativePath } = validAstData[index];
@@ -222,11 +230,13 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         this.logger.debug(`Attempt ${currentAttempt} of ${maxRetries} for LLM completion.`);
         llmResult = await this.llmAgent.getCompletion(systemPrompt, filePrompt); // Use renamed variable
 
-        if (llmResult.isOk()) { // Use renamed variable
+        if (llmResult.isOk()) {
+          // Use renamed variable
           break;
         }
 
-        if (llmResult.isErr()) { // Use renamed variable
+        if (llmResult.isErr()) {
+          // Use renamed variable
           const error = llmResult.error; // Use renamed variable
           if (error instanceof LLMProviderError && error.code === 'INVALID_RESPONSE_FORMAT') {
             this.logger.warn(
@@ -251,7 +261,8 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         }
       }
 
-      if (llmResult.isErr()) { // Use renamed variable
+      if (llmResult.isErr()) {
+        // Use renamed variable
         this.progress.fail('Project context analysis failed after multiple LLM attempts');
         return Result.err(llmResult.error as Error); // Use renamed variable
       }
@@ -329,7 +340,20 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
 
       // --- TEMPORARY LOGGING REMOVED ---
 
-      return Result.ok(finalContext);
+      /**
+       * Filter the assembled context to ensure it strictly adheres to the ProjectContext interface.
+       * This prevents leaking intermediate data structures or properties used during analysis.
+       * Creates a new object and explicitly copies only the defined properties.
+       */
+      const filteredContext: ProjectContext = {
+        techStack: finalContext.techStack,
+        structure: finalContext.structure,
+        dependencies: finalContext.dependencies,
+        astData: finalContext.astData,
+        ...(finalContext.codeInsights && { codeInsights: finalContext.codeInsights }), // Conditionally add codeInsights
+      };
+
+      return Result.ok(filteredContext); // Return the filtered context
     } catch (error) {
       this.progress.fail('Project context analysis failed');
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -345,7 +369,8 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       // Modify scanDir to return a Result for better error propagation
       const scanDir = async (dirPath: string): Promise<Result<void, Error>> => {
         const readDirResult = await this.fileOps.readDir(dirPath); // Renamed variable
-        if (readDirResult.isErr()) { // Use renamed variable
+        if (readDirResult.isErr()) {
+          // Use renamed variable
           // Return error Result instead of throwing
           return Result.err(
             new Error(
@@ -353,7 +378,8 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
             )
           );
         }
-        if (!readDirResult.value) { // Use renamed variable
+        if (!readDirResult.value) {
+          // Use renamed variable
           // Handle case where readDir succeeds but returns no value (shouldn't happen with Dirent[])
           this.logger.warn(`readDir for ${dirPath} returned ok but no value.`);
           return Result.ok(undefined); // Return ok if just warning
