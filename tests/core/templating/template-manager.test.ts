@@ -1,6 +1,7 @@
 import { TemplateManager } from '../../../src/core/template-manager/template-manager';
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
-import { ILogger } from '../../../src/core/services/logger-service';
+import { ILogger } from '../../../src/core/services/logger-service'; // Keep type import
+import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
 
 describe('TemplateManager', () => {
   // Create a subclass to expose protected method for testing
@@ -11,7 +12,7 @@ describe('TemplateManager', () => {
   }
 
   let mockFileOperations: jest.Mocked<IFileOperations>;
-  let mockLogger: jest.Mocked<ILogger>;
+  let mockLogger: jest.Mocked<ILogger>; // Keep declaration
   let templateManager: TestTemplateManager;
 
   beforeEach(() => {
@@ -35,12 +36,7 @@ describe('TemplateManager', () => {
       extname: jest.fn(),
     } as unknown as jest.Mocked<IFileOperations>;
 
-    mockLogger = {
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    } as jest.Mocked<ILogger>;
+    mockLogger = createMockLogger(); // Initialize mock logger here
 
     templateManager = new TestTemplateManager(mockFileOperations, mockLogger, {
       templateDir: 'templates',

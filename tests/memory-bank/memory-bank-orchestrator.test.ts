@@ -1,25 +1,25 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { MemoryBankOrchestrator } from '../../src/memory-bank/memory-bank-orchestrator';
+import path from 'path';
+import { MemoryBankGenerationError } from '../../src/core/errors/memory-bank-errors';
+import { Result } from '../../src/core/result/result';
+import { ILogger } from '../../src/core/services/logger-service'; // Keep ILogger type
 import {
-  IMemoryBankTemplateProcessor,
   IMemoryBankContentGenerator,
   IMemoryBankFileManager,
+  IMemoryBankTemplateProcessor,
   MemoryBankFileType,
-  // GenerationOptions, // Remove GenerationOptions
 } from '../../src/memory-bank/interfaces';
-import { ILogger } from '../../src/core/services/logger-service';
-import { Result } from '../../src/core/result/result';
-import { MemoryBankGenerationError } from '../../src/core/errors/memory-bank-errors';
+import { MemoryBankOrchestrator } from '../../src/memory-bank/memory-bank-orchestrator';
 import { ProjectConfig } from '../../types/shared';
-import { ProjectContext } from '../../src/core/analysis/types'; // Import ProjectContext
-import path from 'path';
+import { createMockLogger } from '../__mocks__/logger.mock'; // Import logger mock factory
+import { createMockProjectContext } from '../__mocks__/project-context.mock'; // Import context mock factory
 
 describe('MemoryBankOrchestrator', () => {
   let orchestrator: MemoryBankOrchestrator;
   let mockTemplateProcessor: jest.Mocked<IMemoryBankTemplateProcessor>;
   let mockContentGenerator: jest.Mocked<IMemoryBankContentGenerator>;
   let mockFileManager: jest.Mocked<IMemoryBankFileManager>;
-  let mockLogger: jest.Mocked<ILogger>;
+  let mockLogger: jest.Mocked<ILogger>; // Keep declaration
 
   // Test data
   const testConfig: ProjectConfig = {
@@ -35,8 +35,8 @@ describe('MemoryBankOrchestrator', () => {
     },
   };
 
-  // Replace testOptions with mockProjectContext
-  const mockProjectContext: ProjectContext = {
+  // Replace testOptions with mockProjectContext using the factory
+  const mockProjectContext = createMockProjectContext({
     techStack: {
       languages: ['TypeScript'],
       frameworks: ['Jest'],
@@ -52,17 +52,15 @@ describe('MemoryBankOrchestrator', () => {
       configFiles: [],
       mainEntryPoints: [],
       componentStructure: {},
-      // definedClasses: {}, // Removed
-      // definedFunctions: {}, // Removed
     },
-    astData: {}, // Added required property
     dependencies: {
       dependencies: {},
       devDependencies: {},
       peerDependencies: {},
       internalDependencies: {},
     },
-  };
+    // codeInsights: {} // Default is {}, override if specific insights needed
+  });
   const mockStringContext = JSON.stringify(mockProjectContext, null, 2); // Pre-calculate serialized context
 
   beforeEach(() => {
@@ -82,12 +80,7 @@ describe('MemoryBankOrchestrator', () => {
       copyDirectoryRecursive: jest.fn(),
     } as unknown as jest.Mocked<IMemoryBankFileManager>;
 
-    mockLogger = {
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-    } as unknown as jest.Mocked<ILogger>;
+    mockLogger = createMockLogger(); // Initialize mock logger here
 
     // Create the orchestrator with mocks
     orchestrator = new MemoryBankOrchestrator(
@@ -108,7 +101,7 @@ describe('MemoryBankOrchestrator', () => {
   describe('orchestrateGeneration', () => {
     it('should successfully orchestrate the generation process', async () => {
       // Act
-      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig);
+      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig); // Cast type
 
       // Assert
       expect(result.isOk()).toBe(true);
@@ -170,7 +163,7 @@ describe('MemoryBankOrchestrator', () => {
       mockFileManager.createMemoryBankDirectory.mockResolvedValue(Result.err(dirError));
 
       // Act
-      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig);
+      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig); // Cast type
 
       // Assert
       expect(result.isErr()).toBe(true);
@@ -201,7 +194,7 @@ describe('MemoryBankOrchestrator', () => {
       });
 
       // Act
-      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig);
+      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig); // Cast type
 
       // Assert
       expect(result.isOk()).toBe(true);
@@ -241,7 +234,7 @@ describe('MemoryBankOrchestrator', () => {
       });
 
       // Act
-      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig);
+      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig); // Cast type
 
       // Assert
       expect(result.isOk()).toBe(true);
@@ -286,7 +279,7 @@ describe('MemoryBankOrchestrator', () => {
       });
 
       // Act
-      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig);
+      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig); // Cast type
 
       // Assert
       expect(result.isOk()).toBe(true);
@@ -311,7 +304,7 @@ describe('MemoryBankOrchestrator', () => {
       mockFileManager.copyDirectoryRecursive.mockResolvedValue(Result.err(copyError));
 
       // Act
-      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig);
+      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig); // Cast type
 
       // Assert
       expect(result.isOk()).toBe(true);
@@ -336,7 +329,7 @@ describe('MemoryBankOrchestrator', () => {
       });
 
       // Act
-      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig);
+      const result = await orchestrator.orchestrateGeneration(mockProjectContext, testConfig); // Cast type
 
       // Assert
       expect(result.isErr()).toBe(true);

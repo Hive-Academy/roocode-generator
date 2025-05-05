@@ -5,17 +5,13 @@ import { JsonSchemaHelper } from '../../../src/core/analysis/json-schema-helper'
 import { Result } from '../../../src/core/result/result'; // Added import
 import { LLMAgent } from '../../../src/core/llm/llm-agent'; // Import for casting
 import { ITreeSitterParserService } from '@core/analysis/interfaces';
+import { ILogger } from '../../../src/core/services/logger-service'; // Import ILogger type
+import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
 import { IAstAnalysisService } from '@core/analysis/ast-analysis.interfaces'; // Added
 
 describe('ProjectAnalyzer Prompt Tests', () => {
   let projectAnalyzer: ProjectAnalyzer;
-  // Mock logger
-  const mockLogger = {
-    debug: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-  };
+  let mockLogger: jest.Mocked<ILogger>; // Declare with type
   // Create dummy mocks for the other 6 required constructor arguments
   const mockFileOps = {} as any; // Pos 1
   const mockLlmAgent = {
@@ -41,6 +37,7 @@ describe('ProjectAnalyzer Prompt Tests', () => {
   beforeEach(() => {
     // Reset mocks before each test
     jest.clearAllMocks();
+    mockLogger = createMockLogger(); // Initialize mock logger
     // Initialize the mock services
     mockTreeSitterParserService = {
       initialize: jest.fn().mockResolvedValue(Result.ok(undefined)),
@@ -220,13 +217,7 @@ describe('JsonSchemaHelper', () => {
 describe('Integration: ProjectAnalyzer with JsonSchemaHelper', () => {
   let projectAnalyzer: ProjectAnalyzer;
   let jsonSchemaHelper: JsonSchemaHelper;
-  // Mock logger for integration test setup
-  const mockLoggerIntegration = {
-    debug: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-  };
+  let mockLoggerIntegration: jest.Mocked<ILogger>; // Declare with type
   // Dummy mocks for other args in integration test
   const mockFileOpsInt = {} as any; // Pos 1
   const mockLlmAgentInt = {
@@ -249,6 +240,7 @@ describe('Integration: ProjectAnalyzer with JsonSchemaHelper', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockLoggerIntegration = createMockLogger(); // Initialize mock logger
     // Initialize the mock services for the integration test
     mockTreeSitterParserServiceInt = {
       initialize: jest.fn().mockResolvedValue(Result.ok(undefined)),

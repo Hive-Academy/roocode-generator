@@ -5,12 +5,13 @@ import { LLMConfigService } from '@core/config/llm-config.service';
 import { IFileOperations } from '@core/file-operations/interfaces';
 import { IModelListerService } from '@core/llm/interfaces';
 import { Result } from '@core/result/result';
-import { ILogger } from '@core/services/logger-service';
+import { ILogger } from '@core/services/logger-service'; // Keep type import
+import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
 import { LLMConfig } from 'types/shared';
 
 describe('LLMConfigService', () => {
   let mockFileOps: jest.Mocked<IFileOperations>;
-  let mockLogger: jest.Mocked<ILogger>;
+  let mockLogger: jest.Mocked<ILogger>; // Keep declaration
   let mockInquirer: jest.Mock;
   let mockModelListerService: jest.Mocked<IModelListerService>;
 
@@ -28,12 +29,7 @@ describe('LLMConfigService', () => {
       copyDirectoryRecursive: jest.fn(),
     };
 
-    mockLogger = {
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-    };
+    mockLogger = createMockLogger(); // Initialize mock logger here
 
     mockInquirer = jest.fn();
 

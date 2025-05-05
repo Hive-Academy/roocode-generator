@@ -1,18 +1,20 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { MemoryBankService } from '../../src/memory-bank/memory-bank-service';
-import { IMemoryBankOrchestrator } from '../../src/memory-bank/interfaces';
-import { ILogger } from '../../src/core/services/logger-service';
-import { Result } from '../../src/core/result/result';
-import { ProjectContext } from '../../src/core/analysis/types';
-import { ProjectConfig } from '../../types/shared';
 import { MemoryBankGenerationError } from '../../src/core/errors/memory-bank-errors';
+import { Result } from '../../src/core/result/result';
+import { ILogger } from '../../src/core/services/logger-service'; // Keep ILogger type
+import { IMemoryBankOrchestrator } from '../../src/memory-bank/interfaces';
+import { MemoryBankService } from '../../src/memory-bank/memory-bank-service';
+import { ProjectConfig } from '../../types/shared';
+import { createMockLogger } from '../__mocks__/logger.mock'; // Import logger mock factory
+import { createMockProjectContext } from '../__mocks__/project-context.mock'; // Import context mock factory
 
 describe('MemoryBankService', () => {
   let service: MemoryBankService;
   let mockOrchestrator: jest.Mocked<IMemoryBankOrchestrator>;
-  let mockLogger: jest.Mocked<ILogger>;
+  let mockLogger: jest.Mocked<ILogger>; // Keep declaration
 
-  const mockProjectContext: ProjectContext = {
+  // Use the factory to create the mock context
+  const mockProjectContext = createMockProjectContext({
     techStack: {
       languages: ['TypeScript'],
       frameworks: ['React'],
@@ -28,17 +30,15 @@ describe('MemoryBankService', () => {
       configFiles: ['tsconfig.json'],
       mainEntryPoints: ['src/index.ts'],
       componentStructure: { 'src/components': ['Button.tsx'] },
-      // definedClasses: {}, // Removed
-      // definedFunctions: {}, // Removed
     },
-    astData: {}, // Added required property
     dependencies: {
       dependencies: { react: '18.0.0' },
       devDependencies: { jest: '29.0.0' },
       peerDependencies: {},
       internalDependencies: { 'src/utils': ['src/core/result'] },
     },
-  };
+    // codeInsights: {} // Default is {}, override if specific insights needed
+  });
 
   const mockConfig: ProjectConfig = {
     name: 'Test Project',
@@ -55,19 +55,14 @@ describe('MemoryBankService', () => {
     mockOrchestrator = {
       orchestrateGeneration: jest.fn(),
     };
-    mockLogger = {
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-    };
+    mockLogger = createMockLogger(); // Initialize mock logger here
     service = new MemoryBankService(mockOrchestrator, mockLogger);
   });
 
   it('should call orchestrator.orchestrateGeneration with correct arguments on success', async () => {
     mockOrchestrator.orchestrateGeneration.mockResolvedValue(Result.ok(undefined));
 
-    const result = await service.generateMemoryBank(mockProjectContext, mockConfig);
+    const result = await service.generateMemoryBank(mockProjectContext, mockConfig); // Cast type
 
     expect(result.isOk()).toBe(true);
     expect(result.value).toBe('Memory bank generated successfully.');
@@ -89,7 +84,7 @@ describe('MemoryBankService', () => {
   });
 
   it('should return error if config is not provided', async () => {
-    const result = await service.generateMemoryBank(mockProjectContext, undefined);
+    const result = await service.generateMemoryBank(mockProjectContext, undefined); // Cast type
 
     expect(result.isErr()).toBe(true);
     expect(result.error).toBeInstanceOf(MemoryBankGenerationError);
@@ -107,7 +102,7 @@ describe('MemoryBankService', () => {
     const orchestratorError = new Error('Orchestrator failed');
     mockOrchestrator.orchestrateGeneration.mockResolvedValue(Result.err(orchestratorError));
 
-    const result = await service.generateMemoryBank(mockProjectContext, mockConfig);
+    const result = await service.generateMemoryBank(mockProjectContext, mockConfig); // Cast type
 
     expect(result.isErr()).toBe(true);
     expect(result.error).toBe(orchestratorError);
@@ -127,7 +122,7 @@ describe('MemoryBankService', () => {
     // Simulate a scenario where the Result.err doesn't contain an error object (less likely but possible)
     mockOrchestrator.orchestrateGeneration.mockResolvedValue(Result.err(undefined as any));
 
-    const result = await service.generateMemoryBank(mockProjectContext, mockConfig);
+    const result = await service.generateMemoryBank(mockProjectContext, mockConfig); // Cast type
 
     expect(result.isErr()).toBe(true);
     expect(result.error).toBeInstanceOf(Error);
@@ -143,7 +138,7 @@ describe('MemoryBankService', () => {
     const unexpectedError = new Error('Unexpected boom!');
     mockOrchestrator.orchestrateGeneration.mockRejectedValue(unexpectedError);
 
-    const result = await service.generateMemoryBank(mockProjectContext, mockConfig);
+    const result = await service.generateMemoryBank(mockProjectContext, mockConfig); // Cast type
 
     expect(result.isErr()).toBe(true);
     expect(result.error).toBe(unexpectedError);

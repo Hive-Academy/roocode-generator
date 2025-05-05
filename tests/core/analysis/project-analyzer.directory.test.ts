@@ -10,7 +10,8 @@ import { ResponseParser } from '../../../src/core/analysis/response-parser';
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
 import { LLMAgent } from '../../../src/core/llm/llm-agent';
 import { Result } from '../../../src/core/result/result';
-import { ILogger } from '../../../src/core/services/logger-service';
+import { ILogger } from '../../../src/core/services/logger-service'; // Keep type import
+import { createMockLogger } from '../../__mocks__/logger.mock'; // Add mock factory import
 import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
 
 describe('ProjectAnalyzer Directory Handling', () => {
@@ -43,12 +44,7 @@ describe('ProjectAnalyzer Directory Handling', () => {
       extname: jest.fn(),
     } as unknown as jest.Mocked<IFileOperations>;
 
-    mockLogger = {
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-    } as jest.Mocked<ILogger>;
+    mockLogger = createMockLogger();
 
     mockLLMAgent = {
       getCompletion: jest.fn(),

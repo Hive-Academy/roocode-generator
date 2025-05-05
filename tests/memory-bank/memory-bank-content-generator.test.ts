@@ -6,7 +6,8 @@ import {
   IContentProcessor, // Added import
 } from '../../src/memory-bank/interfaces';
 import { LLMAgent } from '../../src/core/llm/llm-agent';
-import { ILogger } from '../../src/core/services/logger-service';
+import { ILogger } from '../../src/core/services/logger-service'; // Keep type import
+import { createMockLogger } from '../__mocks__/logger.mock'; // Import mock factory (Corrected path)
 import { Result } from '../../src/core/result/result';
 import { MemoryBankGenerationError } from '../../src/core/errors/memory-bank-errors';
 
@@ -15,7 +16,7 @@ describe('MemoryBankContentGenerator', () => {
   let mockLlmAgent: jest.Mocked<LLMAgent>;
   let mockPromptBuilder: jest.Mocked<IPromptBuilder>;
   let mockContentProcessor: jest.Mocked<IContentProcessor>; // Added mock variable
-  let mockLogger: jest.Mocked<ILogger>;
+  let mockLogger: jest.Mocked<ILogger>; // Keep declaration
 
   beforeEach(() => {
     // Create mocks
@@ -34,12 +35,7 @@ describe('MemoryBankContentGenerator', () => {
       processTemplate: jest.fn(),
     } as jest.Mocked<IContentProcessor>;
 
-    mockLogger = {
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-    } as jest.Mocked<ILogger>;
+    mockLogger = createMockLogger(); // Initialize mock logger here
 
     // Create the content generator with mocks
     contentGenerator = new MemoryBankContentGenerator(

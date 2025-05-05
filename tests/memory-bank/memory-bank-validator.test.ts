@@ -3,7 +3,8 @@
 import path from 'path';
 import { MemoryBankValidator } from '../../src/memory-bank/memory-bank-validator';
 import { IFileOperations } from '../../src/core/file-operations/interfaces';
-import { ILogger } from '../../src/core/services/logger-service';
+import { ILogger } from '../../src/core/services/logger-service'; // Keep type import
+import { createMockLogger } from '../__mocks__/logger.mock'; // Import mock factory (Corrected path)
 import { Result } from '../../src/core/result/result';
 import { MemoryBankFileType, TemplateType } from '../../src/memory-bank/interfaces';
 import { MemoryBankValidationError } from '../../src/core/errors/memory-bank-errors';
@@ -11,7 +12,7 @@ import { MemoryBankValidationError } from '../../src/core/errors/memory-bank-err
 describe('MemoryBankValidator', () => {
   let validator: MemoryBankValidator;
   let mockFileOps: jest.Mocked<IFileOperations>;
-  let mockLogger: jest.Mocked<ILogger>;
+  let mockLogger: jest.Mocked<ILogger>; // Keep declaration
 
   const testBaseDir = '/test/project';
   const memoryBankDir = path.join(testBaseDir, 'memory-bank');
@@ -32,12 +33,7 @@ describe('MemoryBankValidator', () => {
       copyDirectoryRecursive: jest.fn().mockResolvedValue(Result.ok(undefined)),
     };
 
-    mockLogger = {
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-    };
+    mockLogger = createMockLogger(); // Initialize mock logger here
 
     validator = new MemoryBankValidator(mockFileOps, mockLogger);
 
