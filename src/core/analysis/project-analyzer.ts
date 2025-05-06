@@ -2,8 +2,9 @@ import { Injectable, Inject } from '../di/decorators';
 import { IFileOperations } from '../file-operations/interfaces';
 import { ILogger } from '../services/logger-service';
 import { Result } from '../result/result';
-import { IProjectAnalyzer, ProjectContext, GenericAstNode } from './types'; // Import GenericAstNode
+import { IProjectAnalyzer, ProjectContext, GenericAstNode, TechStackAnalysis } from './types'; // Import GenericAstNode, TechStackAnalysis
 import { CodeInsights, IAstAnalysisService } from './ast-analysis.interfaces'; // Added CodeInsights, IAstAnalysisService
+import { ITechStackAnalyzerService } from './tech-stack-analyzer'; // Added TechStackAnalyzerService import
 import { LLMAgent } from '../llm/llm-agent';
 import { LLMProviderError } from '../llm/llm-provider-errors';
 import { ResponseParser } from './response-parser';
@@ -35,7 +36,12 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
      * Service for analyzing AST data to extract code insights.
      */
     @Inject('IAstAnalysisService')
-    private readonly astAnalysisService: IAstAnalysisService
+    private readonly astAnalysisService: IAstAnalysisService,
+    /**
+     * Service for analyzing the technology stack locally.
+     */
+    @Inject('ITechStackAnalyzerService')
+    private readonly techStackAnalyzerService: ITechStackAnalyzerService
   ) {
     this.logger.trace('ProjectAnalyzer initialized');
   }
@@ -145,6 +151,19 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         this.logger.warn('fileOps.readFile for package.json returned ok but value is undefined.');
       }
       // --- End package.json processing ---
+
+      // --- Local Tech Stack Analysis ---
+      this.progress.update('Analyzing tech stack...');
+      this.logger.debug('Starting local tech stack analysis...');
+      // Note: allFiles.value is guaranteed to exist here due to earlier checks
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const localTechStackResult: TechStackAnalysis = await this.techStackAnalyzerService.analyze(
+        rootPath,
+        allFiles.value,
+        packageJsonData
+      );
+      this.logger.debug('Local tech stack analysis completed.');
+      // --- End Local Tech Stack Analysis ---
 
       // --- Tree-sitter Parsing and Analysis Step ---
       this.progress.update('Parsing supported files for structure...');
