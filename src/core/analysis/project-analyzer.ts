@@ -28,6 +28,7 @@ import {
 import { ProgressIndicator } from '../ui/progress-indicator';
 import { IFileContentCollector, FileMetadata, ITreeSitterParserService } from './interfaces'; // Import ITreeSitterParserService
 import { IFilePrioritizer } from './interfaces';
+import { parseRobustJson } from '../utils/json-utils'; // Added import
 import path from 'path';
 import { EXTENSION_LANGUAGE_MAP } from './tree-sitter.config'; // Import language map
 
@@ -186,34 +187,32 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       let tsconfigContent: any;
       const absoluteTsconfigPath = path.join(rootPath, tsconfigPath);
       const tsconfigExistsResult = await this.fileOps.exists(absoluteTsconfigPath);
+
       if (tsconfigExistsResult.isOk() && tsconfigExistsResult.value) {
-        // Using the same safeReadJsonFile logic as in structure-helpers, or ProjectAnalyzer could have its own.
-        // For now, assuming structure-helpers' safeReadJsonFile is not directly exported or we re-implement.
-        // Let's assume we read it here if needed by multiple structure helpers.
         const tsconfigFileReadResult = await this.fileOps.readFile(absoluteTsconfigPath);
         if (tsconfigFileReadResult.isOk() && tsconfigFileReadResult.value) {
-          // tsconfigFileReadResult.value is already a string based on IFileOperations.readFile signature
           const fileContentString = tsconfigFileReadResult.value;
           try {
-            const contentWithoutComments = fileContentString.replace(
-              /\/\*[\s\S]*?\*\/|\/\/.*/g,
-              ''
+            tsconfigContent = await parseRobustJson(fileContentString, this.logger);
+            this.logger.debug(
+              `Successfully parsed tsconfig.json using parseRobustJson from: ${absoluteTsconfigPath}`
             );
-            tsconfigContent = JSON.parse(contentWithoutComments);
-          } catch (e) {
+          } catch (error) {
+            // parseRobustJson already logs detailed errors, so just a general warning here.
             this.logger.warn(
-              `Failed to parse tsconfig.json (with comment removal): ${e instanceof Error ? e.message : String(e)}`
+              `Failed to robustly parse tsconfig.json from ${absoluteTsconfigPath}. Error: ${error instanceof Error ? error.message : String(error)}`
             );
-            try {
-              // Fallback to parsing the original string content
-              tsconfigContent = JSON.parse(fileContentString); // Fallback
-            } catch (e2) {
-              this.logger.warn(
-                `Failed to parse tsconfig.json (fallback): ${e2 instanceof Error ? e2.message : String(e2)}`
-              );
-            }
+            // tsconfigContent will remain undefined, and downstream logic should handle it.
           }
+        } else if (tsconfigFileReadResult.isErr()) {
+          this.logger.warn(
+            `Failed to read tsconfig.json at ${absoluteTsconfigPath}: ${tsconfigFileReadResult.error?.message ?? 'Unknown read error'}`
+          );
         }
+      } else {
+        this.logger.debug(
+          `tsconfig.json not found at ${absoluteTsconfigPath} or could not check existence.`
+        );
       }
 
       const sourceDir = await StructureHelpers.findSourceDir(rootPath, this.fileOps, tsconfigPath);
@@ -434,8 +433,30 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       this.logger.debug('Successfully assembled final ProjectContext.');
 
       this.progress.succeed('Project context analysis completed successfully');
+
+      // Enhanced logging for final ProjectContext
+      const finalContextString = JSON.stringify(finalContext, null, 2);
+      this.logger.debug(
+        `Approximate size of final ProjectContext string: ${finalContextString.length} characters.`
+      );
+      this.logger.info(`--- BEGIN FINAL PROJECT CONTEXT ---`);
+      // Log in chunks if too large for a single log entry, or consider writing to a temp file if essential for debugging large contexts.
+      // For now, attempting to log directly. If this causes issues, will revise.
+      if (finalContextString.length > 200000) {
+        // Arbitrary limit for a single log, adjust as needed
+        this.logger.info(
+          'Final ProjectContext is very large, logging first 200KB. Full context logged at TRACE level if enabled and successful.'
+        );
+        this.logger.info(
+          finalContextString.substring(0, 200000) + '\n... (TRUNCATED IN INFO LOG) ...'
+        );
+      } else {
+        this.logger.info(finalContextString);
+      }
+      this.logger.info(`--- END FINAL PROJECT CONTEXT ---`);
       this.logger.trace(
-        `Final ProjectContext (including codeInsights and packageJson):\n${JSON.stringify(finalContext, null, 2)}`
+        // Keep trace for potentially very verbose full output if stringify succeeds
+        `Final ProjectContext (TRACE - full):\n${finalContextString}`
       );
 
       // --- TEMPORARY LOGGING REMOVED ---
