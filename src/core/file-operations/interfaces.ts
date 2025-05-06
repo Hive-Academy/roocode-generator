@@ -3,8 +3,8 @@
  * Provides methods for file system interactions with type safety and error handling.
  */
 
-import { Result } from "../result/result";
-import { Dirent } from "fs";
+import { Result } from '../result/result';
+import { Dirent } from 'fs';
 
 export interface IFileOperations {
   /**
@@ -64,4 +64,12 @@ export interface IFileOperations {
    * @returns A Result containing a boolean indicating if the path is a directory, or an error on failure.
    */
   isDirectory(path: string): Promise<Result<boolean, Error>>;
+
+  /**
+   * Recursively copies a directory from source to destination.
+   * @param sourceDir - Source directory path
+   * @param destDir - Destination directory path
+   * @returns A Result indicating success or failure
+   */
+  copyDirectoryRecursive(sourceDir: string, destDir: string): Promise<Result<void, Error>>;
 }

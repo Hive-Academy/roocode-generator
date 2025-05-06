@@ -36,6 +36,17 @@ export interface ProjectConfig {
     runtime: string[];
     development: string[];
   };
+  /** Memory bank specific configuration */
+  memoryBank?: {
+    outputDir: string;
+    useTemplates?: boolean;
+    templatesDir?: string;
+    generateProjectOverview?: boolean;
+    generateTechnicalArchitecture?: boolean;
+    generateDeveloperGuide?: boolean;
+    exclusions?: string[];
+    fileTypes?: { include?: string[]; exclude?: string[] };
+  };
   /** Optional custom configuration */
   options?: Record<string, unknown>;
 }
@@ -94,13 +105,13 @@ export interface AnalysisResult {
  *   provider: "anthropic",
  *   apiKey: "sk-...",
  *   maxTokens: 2000,
- *   temperature: 0.7
+ *   temperature: 0.1
  * };
  */
 export interface LLMConfig {
   /** Model identifier */
   model: string;
-  /** LLM provider (e.g., "anthropic", "openai") */
+  /** LLM provider (e.g., "anthropic", "openai", "google-genai") */
   provider: string;
   /** API key for authentication */
   apiKey: string;
@@ -110,6 +121,12 @@ export interface LLMConfig {
   temperature: number;
   /** Optional model-specific parameters */
   modelParams?: Record<string, unknown>;
+  /** Optional API URL override */
+  apiUrl?: string;
+  /** Optional Google Cloud location for Google GenAI */
+  location?: string;
+  /** Optional Google Cloud project ID for Google GenAI */
+  projectId?: string;
 }
 
 /**

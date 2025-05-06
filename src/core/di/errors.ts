@@ -19,10 +19,11 @@ export class DependencyResolutionError extends DIError {
   constructor(
     public readonly token: string,
     message: string,
-    public readonly cause?: Error
+    public readonly cause?: Error // Restore original cause parameter
   ) {
-    super(`Failed to resolve dependency '${token}': ${message}`, "DEPENDENCY_RESOLUTION_ERROR");
+    super(`Failed to resolve dependency '${token}': ${message}`, 'DEPENDENCY_RESOLUTION_ERROR');
 
+    // Restore manual assignment of cause
     if (cause) {
       this.cause = cause;
     }
@@ -35,8 +36,8 @@ export class DependencyResolutionError extends DIError {
 export class CircularDependencyError extends DIError {
   constructor(public readonly dependencyChain: string[]) {
     super(
-      `Circular dependency detected: ${dependencyChain.join(" -> ")}`,
-      "CIRCULAR_DEPENDENCY_ERROR"
+      `Circular dependency detected: ${dependencyChain.join(' -> ')}`,
+      'CIRCULAR_DEPENDENCY_ERROR'
     );
   }
 }
@@ -49,7 +50,7 @@ export class ServiceRegistrationError extends DIError {
     public readonly token: string,
     message: string
   ) {
-    super(`Failed to register service '${token}': ${message}`, "SERVICE_REGISTRATION_ERROR");
+    super(`Failed to register service '${token}': ${message}`, 'SERVICE_REGISTRATION_ERROR');
   }
 }
 
@@ -58,6 +59,6 @@ export class ServiceRegistrationError extends DIError {
  */
 export class ContainerNotInitializedError extends DIError {
   constructor() {
-    super("Container must be initialized before use", "CONTAINER_NOT_INITIALIZED_ERROR");
+    super('Container must be initialized before use', 'CONTAINER_NOT_INITIALIZED_ERROR');
   }
 }

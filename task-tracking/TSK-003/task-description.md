@@ -1,0 +1,25 @@
+# Task Description: Fix OpenRouter Invalid Response Error in AiMagicGenerator
+
+- **Problem:** The `npm start -- generate -- --generators memory-bank` command fails with an `LLMProviderError: OpenRouter response has invalid structure: missing or empty choices array`. This occurs during project analysis by the `AiMagicGenerator`, indicating an issue with the response received from the OpenRouter API via the `OpenRouterProvider`.
+- **Goal:** Fix the `OpenRouterProvider` or `AiMagicGenerator` to correctly handle or prevent the invalid response structure from the OpenRouter API, allowing the `memory-bank` generator to complete successfully.
+- **Functional Requirements:**
+  - The `npm start -- generate -- --generators memory-bank` command should execute without the `LLMProviderError`.
+  - The `AiMagicGenerator` should successfully complete the project analysis step.
+  - The `memory-bank` generator should proceed with its intended function (generating memory bank content).
+- **Technical Requirements:**
+  - Investigate the specific API call being made to OpenRouter during project analysis.
+  - Determine why the OpenRouter API is returning a response without a `choices` array for this request. This might involve checking the prompt, model, or API parameters.
+  - Implement error handling in `OpenRouterProvider` to gracefully handle responses missing the `choices` array, potentially retrying the request or logging a more informative error.
+  - Alternatively, adjust the prompt or parameters in `AiMagicGenerator` or `ProjectAnalyzer` if they are causing the invalid response.
+  - Ensure the fix is robust and doesn't introduce regressions.
+- **Acceptance Criteria:**
+  - Running `npm start -- generate -- --generators memory-bank` completes without the `LLMProviderError: OpenRouter response has invalid structure: missing or empty choices array`.
+  - The `memory-bank` generator runs to completion (or to the next logical step if there are subsequent issues).
+  - Relevant unit or integration tests are updated or added to cover the fix.
+- **Constraints:**
+  - Maintain compatibility with the existing OpenRouter API integration.
+  - Avoid significant changes to the core `AiMagicGenerator` or `ProjectAnalyzer` logic unless necessary to fix the prompt/parameters issue.
+- **Dependencies:** None explicitly identified, but depends on the correct functioning of the OpenRouter API (though the fix should handle unexpected API behavior).
+- **Relevant Memory Bank Sections:**
+  - `memory-bank/TechnicalArchitecture.md`: Sections related to LLM integration, `OpenRouterProvider`, and generator architecture.
+  - `memory-bank/DeveloperGuide.md`: Sections on error handling, API interactions, and testing standards.

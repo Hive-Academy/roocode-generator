@@ -2,8 +2,8 @@
  * Interfaces for Template Management System
  */
 
-import { TemplateError } from "../errors";
-import { Result } from "../result/result";
+import { TemplateError } from '../errors';
+import { Result } from '../result/result';
 
 /**
  * Interface for Template metadata

@@ -1,68 +1,61 @@
----
-title: Project Overview
-version: 1.0.0
-lastUpdated: [lastUpdated]
-type: core-documentation
-category: overview
----
+# Project Overview: [Project Name]
 
-# [projectName]
+<!-- LLM: Use the overall ProjectContext (techStack, structure, dependencies, codeInsights map) to populate this overview. Note that specific project-level details like explicit goals or scope might not be directly available in the structured context and may require inference or general knowledge. -->
 
-## Overview
+## 1. Introduction
 
-[projectDescription]
+<!-- LLM: Provide a brief (1-2 sentence) high-level summary of the project's purpose. Infer this from the overall context, such as main entry points in projectContext.structure.mainEntryPoints or key dependencies in projectContext.dependencies. -->
 
-## Project Essentials
+- **Purpose**: <!-- LLM: Describe the main goal, e.g., "To automatically generate code/documentation..." based on inference from the available ProjectContext. -->
+- **Core Functionality**: <!-- LLM: Briefly list 1-3 key features inferred from projectContext.structure.componentStructure keys, prominent dependencies (projectContext.dependencies), or main entry points (projectContext.structure.mainEntryPoints). -->
 
-- **Status**: [projectStatus]
-- **Version**: [version]
-- **Phase**: [currentPhase]
-- **Start Date**: [startDate]
+## 2. Goals
 
-## Purpose and Goals
+<!-- LLM: List the primary objectives of this project. This information is likely NOT directly available in the structured ProjectContext. Describe general goals based on the inferred purpose and overall context. -->
 
-[purpose]
+- Goal 1: ...
+- Goal 2: ...
 
-## Core Features
+## 3. Scope
 
-[keyFeatures]
+<!-- LLM: Define the boundaries of the project. This information is likely NOT directly available in the structured ProjectContext. Define scope based on inferred purpose and observed structure/features from projectContext.structure and projectContext.dependencies. -->
 
-## Project Structure
+### 3.1. In Scope
 
-### Technology Overview
+<!-- LLM: List functionalities/features inferred to be included based on projectContext.structure and projectContext.dependencies. -->
 
-See [[TechnicalArchitecture#Stack]] for detailed technical specifications.
+- ...
+- ...
 
-- **Primary Stack**: [techStack]
-- **Development Flow**: [workflow]
+### 3.2. Out of Scope
 
-### Team and Organization
+<!-- LLM: List functionalities/features inferred to be excluded based on the observed context. -->
 
-- **Team Structure**: [teamStructure]
-- **Key Stakeholders**: [stakeholders]
+- ...
+- ...
 
-## Project Status
+## 4. Target Users / Audience
 
-Current state and next steps. See [[progress-tracker/task-progress.md]] for detailed progress.
+<!-- LLM: Describe the intended users of this project/tool. Infer from the project's nature (e.g., developer tool, web application) based on the overall ProjectContext. -->
 
-### Active Development
+- ...
 
-- **Current Focus**: [currentFocus]
-- **Next Milestone**: [nextMilestone]
+## 5. Key Features / Modules (High-Level)
 
-### Known Constraints
+<!-- LLM: Briefly list the main features or high-level modules. Use keys from projectContext.structure.componentStructure or infer from directory names in projectContext.structure.sourceDir and file analysis within the projectContext.codeInsights map. -->
 
-[constraints]
+- [Feature/Module 1 Name]: <!-- LLM: Brief description based on inference from ProjectContext. -->
+- [Feature/Module 2 Name]: <!-- LLM: Brief description based on inference from ProjectContext. -->
 
-## Documentation Index
+## 6. Stakeholders / Contacts
 
-### Core Documentation
+<!-- LLM: List key individuals or teams involved or main contacts. This information is likely NOT available in the structured ProjectContext. Fill in if known from other sources or leave as placeholders. -->
 
-- Technical Details: [[TechnicalArchitecture]]
-- Developer Setup: [[DeveloperGuide]]
+- [Name/Team]: [Role]
+- ...
 
-### Process Templates
+## 7. Glossary (Optional)
 
-- Implementation Plans: [[templates/implementation-plan-template]]
-- Task Descriptions: [[templates/task-description-template]]
-- Completion Reports: [[templates/completion-report-template]]
+<!-- LLM: Define any project-specific terms or acronyms identified during analysis (e.g., from projectContext.codeInsights map contents) or known conventions. -->
+
+- **Term**: Definition

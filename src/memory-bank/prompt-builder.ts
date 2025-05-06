@@ -1,11 +1,11 @@
-import { IPromptBuilder } from "./interfaces";
-import { ILogger } from "../core/services/logger-service";
-import { Result } from "../core/result/result";
-import { Injectable, Inject } from "../core/di/decorators";
+import { IPromptBuilder } from './interfaces';
+import { ILogger } from '../core/services/logger-service';
+import { Result } from '../core/result/result';
+import { Injectable, Inject } from '../core/di/decorators';
 
 @Injectable()
 export class PromptBuilder implements IPromptBuilder {
-  constructor(@Inject("ILogger") private readonly logger: ILogger) {}
+  constructor(@Inject('ILogger') private readonly logger: ILogger) {}
 
   buildPrompt(
     baseInstruction: string,

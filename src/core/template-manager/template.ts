@@ -1,6 +1,6 @@
-import { Result } from "../result/result";
-import { TemplateError, TemplateValidationError, TemplateProcessingError } from "./errors";
-import { ITemplate, ITemplateMetadata } from "./interfaces";
+import { Result } from '../result/result';
+import { TemplateError, TemplateValidationError, TemplateProcessingError } from './errors';
+import { ITemplate, ITemplateMetadata } from './interfaces';
 
 /**
  * Represents a loaded template with metadata.
@@ -25,14 +25,14 @@ export class Template implements ITemplate {
    */
   public validate(): Result<void, TemplateError> {
     if (!this.metadata.name) {
-      return Result.err(new TemplateValidationError("Template name is required", this.metadata));
+      return Result.err(new TemplateValidationError('Template name is required', this.metadata));
     }
     if (!this.metadata.version) {
-      return Result.err(new TemplateValidationError("Template version is required", this.metadata));
+      return Result.err(new TemplateValidationError('Template version is required', this.metadata));
     }
-    if (!this.content || this.content.trim() === "") {
+    if (!this.content || this.content.trim() === '') {
       return Result.err(
-        new TemplateValidationError("Template content cannot be empty", this.metadata)
+        new TemplateValidationError('Template content cannot be empty', this.metadata)
       );
     }
     // Additional validation logic can be added here
@@ -50,13 +50,13 @@ export class Template implements ITemplate {
       let output = this.content;
       for (const [key, value] of Object.entries(context)) {
         // Escape key to prevent regex injection
-        const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const pattern = new RegExp(`{{\\s*${escapedKey}\\s*}}`, "g");
+        const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const pattern = new RegExp(`{{\\s*${escapedKey}\\s*}}`, 'g');
         output = output.replace(pattern, String(value));
       }
       return Result.ok(output);
     } catch (error) {
-      return Result.err(new TemplateProcessingError("Error processing template", error));
+      return Result.err(new TemplateProcessingError('Error processing template', error));
     }
   }
 }

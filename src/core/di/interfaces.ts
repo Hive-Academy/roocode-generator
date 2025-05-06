@@ -1,6 +1,6 @@
-import { Result } from "../result/result";
-import { DIError } from "./errors";
-import { Constructor, Factory, ServiceLifetime, ServiceToken } from "./types";
+import { Result } from '../result/result';
+import { DIError } from './errors';
+import { Constructor, Factory, ServiceLifetime, ServiceToken } from './types';
 
 /**
  * Interface for dependency injection container

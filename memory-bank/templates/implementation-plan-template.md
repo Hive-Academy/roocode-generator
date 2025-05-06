@@ -6,7 +6,7 @@ status: active
 taskId: [taskId]
 ---
 
-# Implementation Plan: [taskName]
+# Implementation Plan: [taskID]/[task-percise-name]
 
 ## Overview
 

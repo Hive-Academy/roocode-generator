@@ -1,16 +1,21 @@
-import { Injectable } from "../di/decorators";
-import ora, { Ora } from "ora";
+import { Injectable } from '../di/decorators';
+import ora, { Ora } from 'ora'; // Import ora for spinner functionality
 
 @Injectable()
 export class ProgressIndicator {
   private spinner: Ora | null = null;
 
   start(message: string): void {
-    this.spinner = ora({
-      text: message,
-      spinner: "dots",
-      color: "blue",
-    }).start();
+    // Ensure ora is properly imported before using
+    if (typeof ora === 'function') {
+      this.spinner = ora({
+        text: message,
+        spinner: 'dots',
+        color: 'blue',
+      }).start();
+    } else {
+      console.log(message); // Fallback if ora isn't available
+    }
   }
 
   update(message: string): void {
