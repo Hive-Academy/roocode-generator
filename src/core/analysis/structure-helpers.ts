@@ -2,6 +2,7 @@ import { Dirent } from 'fs';
 import * as path from 'path';
 import { IFileOperations } from '../file-operations/interfaces';
 import { DirectoryNode } from './types';
+import { SKIP_DIRECTORIES } from './constants';
 
 export interface TsConfigLike {
   // Added export
@@ -46,7 +47,17 @@ export async function generateDirectoryTree(
     const itemPath = path.join(absoluteCurrentPath, item.name);
     const relativePath = path.relative(rootDir, itemPath);
 
+    // --- INSERT NEW EXCLUSION LOGIC HERE ---
     if (item.isDirectory()) {
+      // Check if it's a directory first for this exclusion logic
+      if (SKIP_DIRECTORIES.has(item.name) || item.name.startsWith('.')) {
+        continue; // Skip this directory
+      }
+    }
+    // --- END OF NEW EXCLUSION LOGIC ---
+
+    if (item.isDirectory()) {
+      // This is the existing block for recursive calls
       const children = await generateDirectoryTree(
         rootDir,
         relativePath, // Pass relative path for recursion
@@ -262,10 +273,6 @@ export async function findConfigFiles(
     'pom.xml',
     'build.gradle',
     'build.sbt',
-    '.env',
-    '.env.local',
-    '.env.development',
-    '.env.production',
     'package.json',
     'docker-compose.yml',
     'docker-compose.yaml',
