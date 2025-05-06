@@ -127,7 +127,7 @@ _Diagram showing the initialization, command handling, and generator execution f
   - `IMemoryBankValidator`: Validates generated files.
   - `IContentProcessor`: Post-processes LLM output.
 - **`@core/analysis` (Project Analysis):**
-  - `ProjectAnalyzer`: Uses `FileOperations` to gather file information, `TreeSitterParserService` to generate generic Abstract Syntax Trees (ASTs) for supported source files, and potentially `LLMAgent` to analyze project structure, tech stack, and dependencies. The results, including the AST data, are compiled into the `ProjectContext`.
+  - `ProjectAnalyzer`: Uses `FileOperations` to gather file information, `TreeSitterParserService` to generate generic Abstract Syntax Trees (ASTs) for supported source files, and potentially `LLMAgent` to analyze project structure, tech stack, and dependencies. The results, including the AST data, are compiled into the `ProjectContext`. The generation of the `ProjectContext.structure.directoryTree` component now explicitly excludes directories listed in `SKIP_DIRECTORIES` and hidden directories (names starting with a `.`) to ensure a more accurate and lean representation of the project structure.
   - `ResponseParser`: Parses JSON responses from the LLM during analysis (if LLM analysis is used).
   - `types.ts`: Defines interfaces for analysis results (`ProjectContext` including the `astData` field, `GenericAstNode`, `TechStackAnalysis`, etc.).
 - **`@core/templating` (Template System - Rules Specific):**

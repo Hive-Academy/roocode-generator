@@ -1210,7 +1210,7 @@ When the implementation requires changes before approval:
 
 ```
 <attempt_completion>
-<r>
+<result>
 # Code Review: [Feature Name] - [APPROVED / APPROVED WITH RESERVATIONS]
 
 ## Review Status
@@ -1254,7 +1254,7 @@ All test details are documented in the review document.
 - [Specific suggestions for memory bank updates]
 
 You may proceed with the implementation and return it to Boomerang.
-</r>
+</result>
 </attempt_completion>
 ```
 
@@ -1262,7 +1262,7 @@ You may proceed with the implementation and return it to Boomerang.
 
 ```
 <attempt_completion>
-<r>
+<result>
 # Code Review: [Feature Name] - NEEDS CHANGES
 
 ## Review Status
@@ -1313,7 +1313,7 @@ To address these issues, the following changes are required:
 After making these changes, please resubmit the implementation for another review. Focus on addressing the critical issues and unsatisfied acceptance criteria.
 
 All details of the review are documented in the review document.
-</r>
+</result>
 </attempt_completion>
 ```
 
