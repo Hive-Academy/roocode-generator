@@ -60,6 +60,8 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       const maxTokens =
         (await this.llmAgent.getModelContextWindow()) - (await this.getPromptOverheadTokens());
 
+      this.logger.info(`Calculated maxTokens budget for file content: ${maxTokens}`);
+
       // Collect all analyzable files
       const allFiles = await this.collectAnalyzableFiles(rootPath);
       if (allFiles.isErr()) {
@@ -107,6 +109,42 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       }
 
       this.logger.debug(`Collected ${metadata.length} files with metadata`);
+
+      // --- Read and parse package.json (Temporary for TSK-016) ---
+      // TODO: Implement robust handling for various package managers/config files in a future task.
+
+      let packageJsonData: any;
+      const packageJsonPath = path.join(rootPath, 'package.json');
+      this.logger.debug(`Attempting to read package.json from: ${packageJsonPath}`);
+      const packageJsonReadResult = await this.fileOps.readFile(packageJsonPath);
+
+      if (packageJsonReadResult.isOk() && packageJsonReadResult.value) {
+        try {
+          packageJsonData = JSON.parse(packageJsonReadResult.value);
+          this.logger.debug('Successfully read and parsed package.json');
+        } catch (parseError) {
+          this.logger.warn(
+            `Failed to parse package.json: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+          );
+          // Continue without package.json data
+        }
+      } else if (packageJsonReadResult.isErr()) {
+        // Log error if file read failed for reasons other than not found
+        if (!packageJsonReadResult.error?.message.includes('ENOENT')) {
+          this.logger.warn(
+            `Failed to read package.json: ${packageJsonReadResult.error?.message ?? 'Unknown read error'}`
+          );
+        } else {
+          this.logger.debug(
+            `package.json not found at ${packageJsonPath}. Analysis will proceed without it.`
+          );
+        }
+        // Continue without package.json data
+      } else {
+        // Handle case where read is ok but value is undefined (shouldn't happen with readFile)
+        this.logger.warn('fileOps.readFile for package.json returned ok but value is undefined.');
+      }
+      // --- End package.json processing ---
 
       // --- Tree-sitter Parsing and Analysis Step ---
       this.progress.update('Parsing supported files for structure...');
@@ -268,7 +306,8 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       }
 
       this.progress.update('Processing analysis results...');
-      const parsedResult = this.responseParser.parseLlmResponse<ProjectContext>(
+      // Await the async parseLlmResponse call
+      const parsedResult = await this.responseParser.parseLlmResponse<ProjectContext>(
         llmResult.value as string // Use renamed variable
       );
 
@@ -349,11 +388,12 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
           internalDependencies: dependencies.internalDependencies ?? {},
         },
         codeInsights: codeInsightsMap ?? {}, // Ensure codeInsights is always included with default
+        packageJson: packageJsonData, // Include package.json data
       };
 
       this.progress.succeed('Project context analysis completed successfully');
       this.logger.trace(
-        `Final ProjectContext (including codeInsights):\n${JSON.stringify(finalContext, null, 2)}`
+        `Final ProjectContext (including codeInsights and packageJson):\n${JSON.stringify(finalContext, null, 2)}`
       );
 
       // --- TEMPORARY LOGGING REMOVED ---
@@ -378,6 +418,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
           internalDependencies: finalContext.dependencies?.internalDependencies ?? {},
         },
         codeInsights: finalContext.codeInsights ?? {}, // Always include codeInsights with default
+        packageJson: finalContext.packageJson, // Include packageJson in filtered context
       };
 
       return Result.ok(filteredContext); // Return the filtered context
@@ -576,6 +617,8 @@ The response MUST strictly follow this JSON schema:
   }
 
   private async getPromptOverheadTokens(): Promise<number> {
+    const MAX_REASONABLE_OVERHEAD = 20000; // Safeguard against faulty tokenizers
+
     const basePromptTemplate = this.buildSystemPrompt();
     const providerResult = await this.llmAgent.getProvider();
     if (providerResult.isErr() || !providerResult.value) {
@@ -587,9 +630,21 @@ The response MUST strictly follow this JSON schema:
 
     // Include version, schema, and warnings in overhead calculation
     const templateWithoutContent = basePromptTemplate.replace('[FILE CONTENTS GO HERE]', '');
-    const overhead: number = await providerResult.value.countTokens(templateWithoutContent);
+    const rawOverhead: number = await providerResult.value.countTokens(templateWithoutContent);
+    this.logger.debug(`Raw token count for prompt overhead (excluding content): ${rawOverhead}`);
 
     // Add safety margin for schema validation and version info
-    return Math.ceil(overhead * 1.1);
+    const calculatedOverhead = Math.ceil(rawOverhead * 1.1);
+    this.logger.debug(`Calculated overhead with 10% margin: ${calculatedOverhead}`);
+
+    // Apply safeguard cap
+    const finalOverhead = Math.min(calculatedOverhead, MAX_REASONABLE_OVERHEAD);
+    if (finalOverhead < calculatedOverhead) {
+      this.logger.warn(
+        `Calculated overhead (${calculatedOverhead}) exceeded safeguard limit (${MAX_REASONABLE_OVERHEAD}). Capping overhead.`
+      );
+    }
+
+    return finalOverhead;
   }
 }
