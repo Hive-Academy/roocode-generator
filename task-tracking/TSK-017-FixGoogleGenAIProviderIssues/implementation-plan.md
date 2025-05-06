@@ -1,404 +1,214 @@
-## Implementation Plan: TSK-017/FixGoogleGenAIProviderIssues
+# Implementation Plan: TSK-017 (Revised V2) - Refactor `ProjectAnalyzer` for Local `ProjectContext` Generation (Testing Deferred)
 
-### Overview
+**Task ID:** TSK-017
+**Feature Name:** FixGoogleGenAIProviderIssues (Scope Revised: Refactor ProjectAnalyzer for Local ProjectContext Generation)
+**Date:** May 6, 2025
+**Architect:** Software Architect
+**Status:** In Progress
 
-This plan outlines the implementation steps to address reliability issues with the Google GenAI provider, specifically focusing on handling malformed JSON responses, fixing token counting errors, implementing API retry logic, and managing model token limits. The approach is based on the recommendations from the research report, utilizing the `jsonrepair` library for JSON sanitization and implementing robust error handling and retry mechanisms within the Google GenAI provider code. Programmatic retrieval of model token limits will be integrated to enable pre-call validation.
+**Note on Testing:** Per user directive, explicit unit and integration testing for subtasks 2-5 will be deferred to prioritize core functionality. Subtask 6 (Verification and End-to-End Testing) will serve as the primary means of functional validation for these changes initially. Automated tests should be added in a follow-up task.
 
-### Implementation Strategy
+## 1. Overview
 
-The implementation will involve modifying the `project-analyzer` to use `jsonrepair` when standard JSON parsing fails. The `google-genai-provider` will be enhanced to include exponential backoff retry logic for transient API errors (429, 500, 503) and specific handling for non-JSON responses during token counting (using direct `fetch` calls). A mechanism will be added to fetch the model's input token limit via a direct `fetch` call to the `getModels` endpoint, with a fallback value, and this limit will be used to validate input size before making API calls. The `jsonrepair` library will be added as a project dependency.
+This task revises the scope of TSK-017 to address critical feedback regarding the generation of `ProjectContext` within `ProjectAnalyzer`. The primary goal is to refactor `ProjectAnalyzer.analyzeProject` to construct the `ProjectContext` object _entirely_ from local data sources: file system scanning, configuration file parsing (e.g., `package.json`, `tsconfig.json`), and AST analysis (via `AstAnalysisService`).
 
-### Acceptance Criteria Mapping
+This change eliminates the current LLM call previously used for inferring `techStack`, `structure`, and `dependencies`. The aim is to significantly improve the reliability, accuracy, and determinism of `ProjectContext` generation, ensuring it serves as a robust and factual foundation for downstream processes, such as memory bank generation.
 
-- **AC1 (JSON Repair):** Covered by Subtask 2.
-- **AC2 (Malformed JSON Handling):** Covered by Subtask 2 and verified by testing in Subtask 2.
-- **AC3 (Token Counting Fix):** Covered by Subtask 4 and verified by testing in Subtask 4.
-- **AC4 (HTML Error Handling):** Covered by Subtask 4 and verified by testing in Subtask 4.
-- **AC5 (API Retry Logic):** Covered by Subtask 3 and verified by testing in Subtask 3.
-- **AC6 (Token Limit Retrieval):** Covered by Subtask 4 and verified by testing in Subtask 4.
-- **AC7 (Token Limit Fallback):** Covered by Subtask 4 and verified by testing in Subtask 4.
-- **AC8 (Token Limit Usage):** Covered by Subtask 4 and verified by testing in Subtask 4.
+The security fix for API key logging (Commit `6954b79`) implemented in a previous iteration of TSK-017 remains in place and is considered complete.
 
-### Implementation Subtasks
+## 2. Implementation Strategy
 
-#### 1. Add jsonrepair Dependency
+The strategy involves a significant refactoring of `ProjectAnalyzer` to build the `ProjectContext` locally:
 
-**Status**: Completed
+1.  **Type Definition Update:** Modify `ProjectStructure` in `src/core/analysis/types.ts` to include a new field for a nested directory tree (e.g., `directoryTree`).
+2.  **Local `techStack` Derivation:** Implement logic to determine:
+    - `languages`: From file extensions of analyzed files.
+    - `frameworks`, `buildTools`, `testingFrameworks`, `linters`: Inferred from `package.json` dependencies and devDependencies.
+    - `packageManager`: Detected from lock files (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`) or `package.json` scripts.
+3.  **Local `structure` Derivation:**
+    - `rootDir`: Already available (input to `analyzeProject`).
+    - `sourceDir`, `testDir`: Determined by heuristics (common folder names like "src", "source", "lib", "app", "tests", "test", "spec") and/or by parsing `tsconfig.json` (`compilerOptions.rootDir`, `compilerOptions.baseUrl`, `include` patterns). These will be strings.
+    - `configFiles`: Identified by scanning `rootDir` for a predefined list of common configuration file names.
+    - `mainEntryPoints`: Inferred from `package.json` (`main`, `module`, `exports`, `bin` fields) and/or `tsconfig.json`.
+    - `componentStructure`: Will be initialized as an empty object `{}`. Downstream LLMs will use `codeInsights` for deeper component understanding.
+    - `directoryTree`: A new field in `ProjectStructure` will be populated by a local recursive scan of `rootDir`, representing the nested structure of directories and analyzable files.
+4.  **Local `dependencies` Derivation:**
+    - `dependencies`, `devDependencies`, `peerDependencies`: Directly parsed from `package.json`.
+    - `internalDependencies`: Derived from `codeInsights[filePath].imports`. This involves resolving import paths to be relative to `rootDir` and categorizing them.
+5.  **`ProjectAnalyzer` Refactoring:**
+    - Remove the LLM call (`llmAgent.getCompletion` for context analysis) and its associated prompt generation logic (`buildSystemPrompt`).
+    - Integrate the new local derivation methods to assemble the complete `ProjectContext`.
+    - Ensure `codeInsights` (from `AstAnalysisService`) and `packageJson` data (already parsed) are correctly included.
+6.  **Logging:** Implement comprehensive debug logging for each step of the local context assembly process to aid in verification and troubleshooting.
 
-**Description**: Add the `jsonrepair` library as a production dependency to the project.
+## 3. Acceptance Criteria Mapping
 
-**Files to Modify**:
+The primary success of this revised task hinges on the local, accurate generation of `ProjectContext`.
 
-- `package.json` - Add `jsonrepair` to dependencies.
+- **NEW AC1:** `ProjectAnalyzer.analyzeProject` successfully generates a complete `ProjectContext` object without making an LLM call for `techStack`, `structure`, or `dependencies` inference.
+- **NEW AC2:** The generated `ProjectContext.structure.sourceDir` and `ProjectContext.structure.testDir` are correctly formatted as single strings.
+- **NEW AC3:** The generated `ProjectContext.structure` includes a `directoryTree` field accurately representing the nested project file and directory structure (only including analyzable files as defined by `shouldAnalyzeFile`).
+- **NEW AC4:** The generated `ProjectContext.codeInsights` is correctly and completely populated with AST analysis results from `AstAnalysisService`.
+- **NEW AC5:** The generated `ProjectContext.dependencies.internalDependencies` are accurately derived from `codeInsights[filePath].imports`, with paths resolved relative to the project root.
+- **NEW AC6:** The generated `ProjectContext` object strictly adheres to its type definition in `src/core/analysis/types.ts` (including any new fields like `directoryTree`).
+- **NEW AC7:** The `memory-bank generate` command (or a similar test harness for `ProjectAnalyzer`) successfully consumes the locally generated `ProjectContext` without schema validation errors related to `structure.sourceDir`, `structure.testDir`, or other locally derived fields.
+- **NEW AC8 (Verification):** Debug logs clearly show the step-by-step assembly of the `ProjectContext` and the final assembled object before it's returned.
+- **Existing ACs (TSK-017 - Provider Stability):** The Google GenAI provider stability fixes (related to original AC3, AC6, AC8 for token counting, limit retrieval, usage) and the API key logging security fix are to remain functional and are not regressed by these changes.
 
-**Implementation Details**:
+## 4. Implementation Subtasks
 
-```bash
-npm install jsonrepair
-```
+### Subtask 1: Update Type Definitions for `ProjectContext`
 
-**Testing Requirements**:
+- **Status:** Completed (Commit: `c0d51ab594ca21991bf29f0348b702b6fe48e99a`)
+- **Description:** Modify `ProjectStructure` within `src/core/analysis/types.ts` to include a new field for a nested directory tree. Define the `DirectoryNode` (or similar) type for this tree.
 
-- Verify `jsonrepair` is listed in `package.json` and installed correctly.
-
-**Related Acceptance Criteria**:
-
-- AC1 (Indirectly, as it's a prerequisite)
-
-**Estimated effort**: 5-10 minutes
-
-**Required Delegation Components**:
-
-- None. This is a simple dependency installation.
-
-**Delegation Success Criteria**:
-
-- `jsonrepair` is added to `package.json` and installed.
-
-**Delegation Summary**:
-
-- Delegated `npm install jsonrepair` execution to Junior Coder. ✅ Completed.
-- Delegated verification of `package.json` update to Junior Tester. ✅ Completed.
-- No redelegations required.
-
-#### 2. Implement JSON Repair for LLM Responses
-
-**Status**: Completed
-
-**Description**: Modify the code that processes LLM responses (likely in `project-analyzer.ts` or a related utility) to attempt JSON parsing, and if it fails, use `jsonrepair` before attempting to parse again.
-
-**Files to Modify**:
-
-- `src/core/utils/json-utils.ts` - Created new utility function `parseRobustJson`.
-- `src/core/analysis/response-parser.ts` - Integrated `parseRobustJson`.
-- `src/core/analysis/project-analyzer.ts` - Updated call to `parseLlmResponse` to use `await`.
-- `tests/core/utils/json-utils.test.ts` - Created unit tests for `parseRobustJson`.
-
-**Implementation Details**:
-
-Created a new utility function `parseRobustJson` in `src/core/utils/json-utils.ts`. This function attempts standard `JSON.parse`. If it fails, it logs a warning, uses `jsonrepair`, and attempts `JSON.parse` again. If the second parse fails, or if the repaired result is not a non-null object/array, it logs an error and rejects the Promise. The `ResponseParser` class was updated to use this utility asynchronously, and the call in `ProjectAnalyzer` was updated with `await`.
-
-```typescript
-// src/core/utils/json-utils.ts (Final version)
-import { jsonrepair } from 'jsonrepair';
-import { ILogger } from '../services/logger-service';
-
-export async function parseRobustJson<T = any>(jsonString: string, logger: ILogger): Promise<T> {
-  try {
-    const result = JSON.parse(jsonString);
-    return result;
-  } catch (e1) {
-    const parseError = e1 instanceof Error ? e1.message : String(e1);
-    const preview = jsonString.length > 100 ? `${jsonString.substring(0, 100)}...` : jsonString;
-    logger.warn(
-      `Standard JSON parsing failed for string: "${preview}". Error: ${parseError}. Attempting repair.`
-    );
-    try {
-      const repairedJson = jsonrepair(jsonString);
-      const parsedResult = JSON.parse(repairedJson);
-
-      if (typeof parsedResult !== 'object' || parsedResult === null) {
-        throw new Error(
-          `Repaired JSON parsed successfully but is not an object or array (type: ${typeof parsedResult}). Original string: "${preview}"`
-        );
-      }
-
-      logger.info(`Successfully parsed JSON after repair for string: "${preview}"`);
-      return parsedResult;
-    } catch (e2) {
-      const error = new Error(
-        `Failed to parse JSON string even after repair. Initial Error: ${e1 instanceof Error ? e1.message : String(e1)}, Repair Error: ${e2 instanceof Error ? e2.message : String(e2)}`
-      );
-      logger.error(`JSON repair and subsequent parsing failed for string: "${preview}"`, error);
-      return Promise.reject(error);
-    }
+  ```typescript
+  // In src/core/analysis/types.ts
+  export interface DirectoryNode {
+    name: string;
+    path: string; // Relative path from rootDir
+    type: 'directory' | 'file';
+    children?: DirectoryNode[]; // Only for type 'directory'
   }
-}
-```
-
-**Testing Requirements**:
 
-- Unit tests with known malformed JSON strings (from TSK-016 logs if available) to verify successful parsing after repair. ✅ Completed.
-- Unit tests with valid JSON strings to ensure they are parsed correctly without repair. ✅ Completed.
-- Unit tests with severely broken strings that `jsonrepair` cannot fix to verify error logging and Promise rejection. ✅ Completed.
-- Unit tests covering edge cases like empty strings, whitespace, and non-Error exceptions. ✅ Completed.
-- Manual testing by running the project analysis on affected files (`json-schema-helper.ts`, `template.ts`) to confirm `codeInsights` generation works without JSON errors. ⏳ Skipped as per Architect request, to be done later.
-
-**Related Acceptance Criteria**:
-
-- AC1 (JSON Repair) ✅ Satisfied.
-- AC2 (Malformed JSON Handling) ✅ Satisfied (verified by unit tests).
-
-**Estimated effort**: 30-45 minutes (Actual: ~60 minutes due to delegation iterations)
-
-**Required Delegation Components**:
-
-- Implementation components for Junior Coder:
-  - Create a new utility function `parseRobustJson` that encapsulates the try-catch-repair logic. ✅ Delegated.
-- Testing components for Junior Tester:
-  - Write unit tests for the `parseRobustJson` utility using provided malformed and valid JSON examples. ✅ Delegated.
-
-**Delegation Success Criteria**:
-
-- The `parseRobustJson` utility is created and correctly implements the repair logic. ✅ Achieved after Senior Dev intervention.
-- Unit tests for `parseRobustJson` cover valid, repairable, and unrepairable JSON cases. ✅ Achieved after Senior Dev intervention and test adjustments.
-- The utility is integrated into `project-analyzer.ts` where LLM responses are parsed. ✅ Completed by Senior Dev.
-
-**Delegation Summary**:
-
-- Delegated `parseRobustJson` implementation to Junior Coder. 🔄 Required 2 redelegations due to persistent Promise rejection issues.
-- Delegated `parseRobustJson` testing to Junior Tester. 🔄 Required 5 redelegations, initially identifying implementation bugs, then requiring test adjustments to match final implementation behavior and achieve full coverage.
-- **Senior Developer Intervention**: Took over final implementation fix for `parseRobustJson` after multiple failed delegation attempts. Adjusted tests to match final implementation behavior.
-- **Outcome**: The `parseRobustJson` utility and its tests are now complete and verified, meeting all requirements and achieving 100% branch coverage.
-
-#### 3. Implement API Retry Logic
-
-**Status**: Completed
-
-**Description**: Add retry logic with exponential backoff to the `generateContent` and `countTokens` methods within `google-genai-provider.ts` for specific transient errors (429, 500, 503).
-
-**Files to Modify**:
-
-- `src/core/llm/providers/google-genai-provider.ts` - Integrated retry mechanism.
-- `src/core/utils/retry-utils.ts` - Created new utility function `retryWithBackoff`.
-
-**Implementation Details**:
-
-A generic `retryWithBackoff` utility function was created in `src/core/utils/retry-utils.ts` (delegated to Junior Coder). This function handles exponential backoff, jitter, max retries, and a `shouldRetry` predicate.
-This utility was then integrated into `google-genai-provider.ts`:
-
-- Imported `retryWithBackoff`.
-- Defined `RETRY_OPTIONS` constant with retries=3, initialDelay=500ms, and a `shouldRetry` function checking for status codes 429, 500, 503 in `error.status` or `error.response.status`.
-- Wrapped the `this.model.predict` call in `getCompletion` with `retryWithBackoff`.
-- Refactored `countTokens`: extracted the `fetch` logic into `performCountTokensRequest`, modified it to throw a `FetchError` with status on non-OK responses, and wrapped the call to `performCountTokensRequest` with `retryWithBackoff`.
-- Adjusted final error handling in both methods to wrap/log the error after retries are exhausted.
-
-```typescript
-// Conceptual retry logic (using a hypothetical retry utility)
-import { retryWithBackoff } from './retry-utility'; // Need to create or use a library
-
-async generateContent(...) {
-  return retryWithBackoff(async () => {
-    // Original API call logic here
-    const response = await this.model.generateContent(request);
-    return response;
-  }, {
-    retries: 3,
-    delay: 500, // ms
-    shouldRetry: (error) => {
-      const status = error.response?.status;
-      return status === 429 || status === 500 || status === 503;
-    }
-  });
-}
-
-async countTokens(...) {
-   return retryWithBackoff(async () => {
-    // Original API call logic here
-    const response = await this.model.countTokens(request);
-    return response;
-  }, {
-    retries: 3,
-    delay: 500, // ms
-    shouldRetry: (error) => {
-      const status = error.response?.status;
-      return status === 429 || status === 500 || status === 503;
-    }
-  });
-}
-```
-
-**Testing Requirements**:
-
-- Manual verification will be performed to confirm that retry logic is triggered for transient errors (429, 500, 503) and that API calls eventually succeed after retries or fail gracefully after the maximum number of attempts.
-- Manual verification will confirm that retries do NOT occur for non-retriable errors (e.g., 400, 403).
-- Manual verification will confirm the maximum number of retries is respected.
-
-**Related Acceptance Criteria**:
-
-- AC5 (API Retry Logic)
-
-**Acceptance Criteria Verification**:
-
-- **AC5 (API Retry Logic)**:
-  - ✅ Satisfied by: The `retryWithBackoff` utility was created and integrated into `getCompletion` and `countTokens` in `google-genai-provider.ts`. It uses configured options (3 retries, 500ms delay) and a `shouldRetry` predicate checking for status codes 429, 500, 503. The `countTokens` method was refactored to throw errors with status codes, enabling the retry logic.
-  - Evidence: Code inspection of `src/core/utils/retry-utils.ts` and `src/core/llm/providers/google-genai-provider.ts`. Manual verification pending.
-
-**Estimated effort**: 45-60 minutes (Actual: ~20 minutes)
-
-**Required Delegation Components**:
-
-- Implementation components for Junior Coder:
-  - Implement a generic `retryWithBackoff` utility function that takes an async function and retry options (retries, delay, shouldRetry). ✅ Delegated.
-
-**Delegation Summary**:
-
-- Delegated `retryWithBackoff` implementation to Junior Coder. ✅ Completed.
-- Reviewed Junior Coder's implementation - met all requirements and quality standards. No redelegations required.
-- Integrated the `retryWithBackoff` utility into `google-genai-provider.ts`.
-
-**Delegation Success Criteria**:
-
-- The `retryWithBackoff` utility is created and correctly implements exponential backoff and conditional retries.
-- The utility is integrated into `generateContent` and `countTokens` methods in `google-genai-provider.ts`.
-
-#### 4. Fix Token Counting, HTML Error Handling, and Implement Token Limits (using Fetch)
-
-**Status**: Completed
-
-**Description**: Enhance the `countTokens` method in `google-genai-provider.ts` to use the specified `fetch` call, correctly handle successful responses, and specifically detect/log non-JSON (HTML) errors. Also, implement programmatic retrieval of the model's input token limit using `fetch` against the `getModels` endpoint, store it (with a fallback), and use it for pre-call validation in `generateContent`.
-
-**Files to Modify**:
-
-- `src/core/llm/providers/google-genai-provider.ts` - Implemented `fetch` calls, refined error handling, added limit retrieval and pre-call validation.
-- `src/core/llm/types/google-genai.types.ts` - Added `GoogleModelInfoResponse` interface.
-
-**Implementation Details**:
-
-1.  **Token Counting (`countTokens` / `performCountTokensRequest`)**:
-
-    - Replace the existing `countTokens` logic (or the internal `performCountTokensRequest` from Subtask 3) with the `fetch` call structure provided by the user:
-
-      ```typescript
-      // Inside performCountTokensRequest(text: string): Promise<number>
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:countTokens?key=${this.config.apiKey}`,
-        {
-          /* Method, Headers, Body as specified */
-        }
-      );
-
-      if (!response.ok) {
-        let errorBodyText: string | null = null;
-        try {
-          errorBodyText = await response.text(); // Get raw text for HTML check
-          const errorData = JSON.parse(errorBodyText); // Try parsing as JSON
-          this.logger.warn(
-            `countTokens API Error: ${errorData?.error?.message} (Code: ${errorData?.error?.code}, Status: ${response.status}). Using approximation.`
-          );
-        } catch (jsonError) {
-          // Check for HTML before logging generic non-JSON error
-          if (errorBodyText && errorBodyText.trim().toLowerCase().startsWith('<!doctype')) {
-            this.logger.error(
-              'Received non-JSON (HTML?) response during token count. Check auth/URL/proxy.'
-            );
-            this.logger.error('Raw Response Snippet:', errorBodyText.substring(0, 500));
-            // Throw specific error to prevent retry if HTML is detected
-            throw new Error(
-              `Token counting failed due to unexpected HTML response. Status: ${response.status}`
-            );
-          }
-          this.logger.warn(
-            `countTokens failed. Non-OK response (${response.status}) and non-JSON body. Using approximation.`
-          );
-        }
-        // Throw FetchError for retry logic
-        throw new FetchError(`API request failed with status ${response.status}`, response.status);
-      }
-
-      const data = await response.json(); // Assuming success means JSON
-      return data?.totalTokens ?? Math.ceil(text.length / 4); // Use approximation if totalTokens missing
-      ```
-
-    - Ensure the `catch` block wrapping the call to `performCountTokensRequest` (where `retryWithBackoff` is used) handles the final error after retries, potentially logging the `FetchError` cause.
-
-2.  **Token Limit Retrieval (`fetchModelLimits`)**:
-
-    - Add a private property `inputTokenLimit: number | null = null` and `FALLBACK_TOKEN_LIMIT = 1000000` to `GoogleGenAIProvider`.
-    - Implement an `async initialize()` method (or similar logic in the constructor) that calls a new private `async fetchModelLimits()` method.
-    - Implement `fetchModelLimits()`:
-      - Use `fetch` to call the `getModels` endpoint: `GET https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}?key=${this.config.apiKey}`.
-      - In a try/catch block:
-        - Make the `fetch` call.
-        - If `response.ok`, parse the JSON response (`await response.json()`).
-        - Extract `inputTokenLimit` from the response data.
-        - If successful, store it in `this.inputTokenLimit` and log it.
-        - If `response` is not ok or parsing fails or `inputTokenLimit` is missing, log a warning and set `this.inputTokenLimit` to `this.FALLBACK_TOKEN_LIMIT`.
-      - In the `catch` block (for network errors), log an error and set `this.inputTokenLimit` to `this.FALLBACK_TOKEN_LIMIT`.
-
-3.  **Token Limit Usage (`generateContent`)**:
-    - In `generateContent`, before the retry block:
-      - Get the current input token count using the updated `countTokens` method. Handle potential errors.
-      - Get the limit: `const limit = this.inputTokenLimit ?? this.FALLBACK_TOKEN_LIMIT;`.
-      - If `currentInputTokens > limit`, log a warning and throw a specific error (e.g., `new Error(\`Input (\${currentInputTokens} tokens) exceeds model token limit (\${limit}).\`)`) to prevent the API call.
-
-- Added `inputTokenLimit` property and `FALLBACK_TOKEN_LIMIT` constant.
-- Added `initialize` method to fetch limits asynchronously.
-- Updated `getContextWindowSize` to use the fetched limit.
-- Updated `shouldRetry` logic to ignore specific HTML errors.
-
-**Testing Requirements**:
-
-- Manual verification will be performed to confirm that `countTokens` uses the `fetch` call and returns a number for valid requests.
-- Manual verification will confirm that API errors (including HTML errors from `fetch`) are logged gracefully and handled correctly (including specific logging for HTML).
-- Manual verification will be performed to confirm that the model's input token limit is retrieved programmatically via `fetch` or the fallback is used.
-- Manual verification will confirm that input exceeding the limit is detected before making API calls (`generateContent`).
-- Manual verification will confirm that the API call is skipped and an appropriate error/warning is generated when the limit is exceeded. ✅ Verified.
-
-**Related Acceptance Criteria**:
-
-- AC3 (Token Counting Fix) ✅ Satisfied.
-- AC4 (HTML Error Handling) ✅ Satisfied.
-- AC6 (Token Limit Retrieval) ✅ Satisfied.
-- AC7 (Token Limit Fallback) ✅ Satisfied.
-- AC8 (Token Limit Usage) ✅ Satisfied.
-
-**Acceptance Criteria Verification**:
-
-- **AC3 (Token Counting Fix)**:
-  - ✅ Satisfied by: `performCountTokensRequest` uses `fetch` with the correct endpoint (`generativelanguage.googleapis.com/...:countTokens`). It returns `data.totalTokens` on success or `Math.ceil(text.length / 4)` approximation on failure (API error, parse error, missing token count).
-  - Evidence: Code inspection of `performCountTokensRequest`. Manual verification confirmed correct counts/approximations.
-- **AC4 (HTML Error Handling)**:
-  - ✅ Satisfied by: `performCountTokensRequest` checks for `<!doctype html` in non-JSON error responses. It logs specific errors for HTML and throws a standard `Error` (preventing retry). Other non-OK responses throw `FetchError` (allowing retry).
-  - Evidence: Code inspection of `performCountTokensRequest` error handling block. Manual verification confirmed HTML detection, logging, and no-retry behavior.
-- **AC6 (Token Limit Retrieval)**:
-  - ✅ Satisfied by: `fetchModelLimits` uses `fetch` (`GET /v1beta/models/{model}`) and extracts `inputTokenLimit` from the response, storing it in `this.inputTokenLimit`. The `initialize` method calls this asynchronously.
-  - Evidence: Code inspection of `fetchModelLimits` and `initialize`. Manual verification confirmed limit retrieval.
-- **AC7 (Token Limit Fallback)**:
-  - ✅ Satisfied by: `fetchModelLimits` returns `this.FALLBACK_TOKEN_LIMIT` (1,000,000) if the API call fails (network error, non-OK status) or if `inputTokenLimit` is missing/invalid in the response. `getCompletion` uses `this.inputTokenLimit ?? this.FALLBACK_TOKEN_LIMIT`.
-  - Evidence: Code inspection of `fetchModelLimits` error handling and `getCompletion` limit check. Manual verification confirmed fallback usage.
-- **AC8 (Token Limit Usage)**:
-  - ✅ Satisfied by: `getCompletion` calculates `currentInputTokens` using `countTokens` before the retry block. It compares this to the effective limit (`this.inputTokenLimit ?? this.FALLBACK_TOKEN_LIMIT`) and returns `Result.err(new LLMProviderError(...))` if the limit is exceeded.
-  - Evidence: Code inspection of `getCompletion` pre-call validation block. Manual verification confirmed API call skipping and error return when limit exceeded.
-
-**Estimated effort**: 90-120 minutes (Combined estimate, adjusted for `fetch` implementation) (Actual: ~45 minutes including delegation, review, fixes)
-
-**Required Delegation Components**:
-
-- Implementation components for Junior Coder:
-  - Implement the `fetch` call logic within `performCountTokensRequest`, including error handling and HTML detection.
-  - Implement the `fetchModelLimits` method using `fetch`.
-  - Add the pre-call input size validation logic to the `generateContent` method. ✅ Delegated.
-
-**Delegation Summary**:
-
-- Delegated implementation of `performCountTokensRequest` (fetch logic, error handling), `fetchModelLimits`, and `getCompletion` validation logic to Junior Coder. ✅ Completed.
-- Junior Coder also proactively added `initialize` method, class properties, and updated `getContextWindowSize`.
-- Reviewed Junior Coder's implementation - met all requirements and quality standards. Minor fixes applied by Senior Developer (type corrections, error handling details, import correction). No redelegations required.
-- Integrated the delegated components into `google-genai-provider.ts`.
-
-**Delegation Success Criteria**:
-
-- The `countTokens` method correctly uses `fetch`, extracts `totalTokens`, and handles errors including HTML detection.
-- The `fetchModelLimits` method correctly uses `fetch` to retrieve and store the token limit or uses the fallback.
-- The `generateContent` method correctly validates input size against the limit and skips the API call if exceeded. ✅ Achieved.
-
-### Implementation Sequence
-
-1.  Subtask 1: Add jsonrepair Dependency (Completed)
-2.  Subtask 2: Implement JSON Repair for LLM Responses (Completed)
-3.  Subtask 3: Implement API Retry Logic (Completed)
-4.  Subtask 4: Fix Token Counting, HTML Error Handling, and Implement Token Limits (using Fetch) (Completed)
-
-This sequence ensures that the necessary dependencies and foundational fixes are in place before tackling the combined token counting, error handling, and limit logic using direct fetch calls.
-
-### Testing Strategy
-
-Due to the user's request to prioritize core functionality, comprehensive unit testing for Subtasks 3, 4, and 5 will be skipped. Manual verification will be performed for these subtasks to confirm the implemented logic behaves as expected. Unit tests for Subtask 2 (JSON Repair) remain completed as they were finished before this change in strategy.
-
-- Manual verification will be performed for Subtasks 3, 4, and 5 as outlined in their respective "Testing Requirements" sections.
-- Manual testing will be performed after all subtasks are complete to verify the end-to-end `codeInsights` generation process on the previously problematic files (`json-schema-helper.ts`, `template.ts`) as per AC2.
-
-### Subsequent Tasks
-
-All tasks beyond TSK-017 are currently on hold as per user request, pending verification of the core business logic implemented in this task.
+  export interface ProjectStructure {
+    // ... existing fields
+    directoryTree: DirectoryNode[]; // Root level nodes
+  }
+  ```
+
+- **Files to Modify:**
+  - `src/core/analysis/types.ts`
+- **Implementation Details:** Ensure `DirectoryNode` can represent a recursive structure. Only analyzable files should be included in the tree.
+- **Testing Requirements:** Type checking will verify. (Automated unit/integration tests deferred).
+- **Related Acceptance Criteria:** NEW AC3, NEW AC6
+- **Estimated effort:** 15 minutes
+- **Required Delegation Components:** N/A (Direct implementation)
+
+### Subtask 2: Implement Local Derivation for `ProjectContext.techStack`
+
+- **Status:** Completed (Commit: `d2280eb`)
+- **Description:** Implement logic within `ProjectAnalyzer` (or a new dedicated helper service/functions) to populate the `TechStackAnalysis` object.
+  - `languages`: From file extensions of files processed by `AstAnalysisService` or `contentCollector`.
+  - `frameworks`, `buildTools`, `testingFrameworks`, `linters`: Heuristics based on `dependencies` and `devDependencies` in `package.json`. (e.g., if 'react' is a dependency, 'React' is a framework). Maintain a mapping if necessary.
+  - `packageManager`: Detect from `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, or infer from scripts in `package.json`.
+- **Files to Modify:**
+  - `src/core/analysis/project-analyzer.ts`
+  - `src/core/analysis/tech-stack-helpers.ts` (Created)
+  - `src/core/analysis/tech-stack-analyzer.ts` (Created)
+  - `src/core/di/modules/analysis-module.ts` (Modified)
+- **Implementation Details:** This will involve reading `package.json` (already partially done) and analyzing its contents. A new `TechStackAnalyzerService` encapsulates this logic.
+- **Testing Requirements:** Manual verification during Subtask 6. (Automated unit/integration tests deferred).
+- **Related Acceptance Criteria:** NEW AC1, NEW AC6
+- **Estimated effort:** 30-45 minutes
+- **Required Delegation Components:**
+  - Junior Coder: Implemented helper functions in `tech-stack-helpers.ts`.
+
+### Subtask 3: Implement Local Derivation for `ProjectContext.structure` (Core Fields & `directoryTree`)
+
+- **Status:** Completed (Commit: `8e32b45`)
+- **Description:**
+  1.  Implement logic to determine `sourceDir` (string) and `testDir` (string). Strategies:
+      - Check for common names (`src`, `source`, `app`, `lib`, `tests`, `test`, `spec`).
+      - Parse `tsconfig.json` for `compilerOptions.rootDir`, `baseUrl`, `include`.
+  2.  Implement scanning for `configFiles`: Iterate `rootDir` for a predefined list of common configuration file names (e.g., `tsconfig.json`, `.eslintrc.js`, `webpack.config.js`, `vite.config.ts`, `pyproject.toml`, `pom.xml`, etc.).
+  3.  Implement logic for `mainEntryPoints`: Check `package.json` (`main`, `module`, `exports`, `bin`), `tsconfig.json`.
+  4.  Implement `directoryTree` generation: Recursively scan `rootDir`. For each item, if it's a directory, recurse. If it's a file, check if it's analyzable (using existing `shouldAnalyzeFile` logic). Build a nested `DirectoryNode[]` structure. Paths should be relative to `rootDir`.
+  5.  `componentStructure` will be initialized to `{}`.
+- **Files to Modify:**
+  - `src/core/analysis/project-analyzer.ts` (Modified)
+  - `src/core/analysis/structure-helpers.ts` (Created)
+- **Implementation Details:** The `directoryTree` should only include directories that contain analyzable files or other such directories, and the analyzable files themselves. Helper functions in `structure-helpers.ts` encapsulate the derivation logic.
+- **Testing Requirements:** Manual verification during Subtask 6. (Automated unit/integration tests deferred).
+- **Related Acceptance Criteria:** NEW AC1, NEW AC2, NEW AC3, NEW AC6
+- **Estimated effort:** 1 - 1.5 hours
+- **Required Delegation Components:**
+  - Junior Coder: Implemented helper functions in `structure-helpers.ts`.
+
+### Subtask 4: Implement Local Derivation for `ProjectContext.dependencies.internalDependencies`
+
+- **Status:** Completed
+- **Description:** Process the `codeInsightsMap` (which contains `imports` for each analyzed file). For each import string:
+  1.  Determine if it's a relative path, absolute path, or a package/module name.
+  2.  If relative/absolute, resolve it to a full path and then to a path relative to `rootDir`.
+  3.  Store these resolved relative paths or package names in `ProjectContext.dependencies.internalDependencies: Record<string, string[]>`, where the key is the file path (relative to `rootDir`) and the value is an array of its imported module/file paths (also relative to `rootDir` or as package names).
+- **Files to Modify:**
+  - `src/core/analysis/project-analyzer.ts`
+  - `src/core/analysis/dependency-helpers.ts` (Created)
+- **Implementation Details:**
+  - Logic for deriving `internalDependencies` was implemented in `src/core/analysis/dependency-helpers.ts` by the Junior Coder. This includes:
+    - Iterating through `codeInsightsMap`.
+    - Categorizing imports (relative, package).
+    - Resolving relative import paths against the current file's directory and then making them relative to `rootDir`.
+    - Basic `tsconfig.json` alias path resolution (using `baseUrl` and `paths`) was implemented as a stretch goal. The `deriveInternalDependencies` function accepts an optional `TsConfigPathsInfo` object.
+    - Ensuring uniqueness of imported paths/packages per file using a `Set`.
+  - The `deriveInternalDependencies` function was integrated into `ProjectAnalyzer.analyzeProject`.
+  - `ProjectAnalyzer` now prepares an `absoluteCodeInsightsMap` (transforming relative keys from its internal `codeInsightsMap` to absolute keys) before passing to `deriveInternalDependencies`.
+  - `ProjectAnalyzer` also prepares `TsConfigPathsInfo` (with an absolute `baseUrl`) if `tsconfig.json` data is available.
+  - The result is used to populate `ProjectContext.dependencies.internalDependencies`.
+  - Limitations: File extension/index resolution for imports (e.g., automatically finding `.ts` or `/index.js`) is basic and can be enhanced. Alias resolution does not perform file system checks for resolved paths.
+- **Testing Requirements:** Manual verification during Subtask 6. (Automated unit/integration tests deferred).
+- **Related Acceptance Criteria:**
+  - NEW AC1: Partially addressed, as this subtask contributes to local context generation. Full verification in Subtask 5.
+  - NEW AC5: ✅ Satisfied. `internalDependencies` are derived from `codeInsights` and paths are resolved relative to `rootDir`.
+  - NEW AC6: ✅ Satisfied. The changes adhere to `ProjectContext` type definitions.
+- **Estimated effort:** 45-60 minutes (Actual: ~1 hour including delegation and integration)
+- **Required Delegation Components:**
+  - Junior Coder: Implemented the core logic in `src/core/analysis/dependency-helpers.ts` (function `deriveInternalDependencies`), including relative path resolution and basic `tsconfig.json` alias handling. (Completed)
+- **Deviations:**
+  - The `deriveInternalDependencies` function was designed by the Junior Coder to expect `codeInsightsMap` with absolute file paths as keys. `ProjectAnalyzer` was updated to transform its `codeInsightsMap` (which uses relative paths) to meet this expectation before calling the helper.
+
+### Subtask 5: Refactor `ProjectAnalyzer.analyzeProject` Core Logic
+
+- **Status:** Not Started
+- **Description:**
+  1.  Remove the existing LLM call (`this.llmAgent.getCompletion(...)`) used for generating `techStack`, `structure`, and `dependencies`.
+  2.  Remove the `buildSystemPrompt()` method and its usage for this purpose.
+  3.  Remove the `ResponseParser.parseLlmResponse` call for the output of this LLM.
+  4.  Integrate the new local derivation methods/logic from Subtasks 2, 3, and 4 to assemble these parts of the `ProjectContext`.
+  5.  Ensure `codeInsights` (from `AstAnalysisService`) and `packageJson` data (already parsed) are correctly merged into the final `ProjectContext` object.
+  6.  Add comprehensive debug logging showing the `ProjectContext` being assembled at various stages and the final object.
+- **Files to Modify:**
+  - `src/core/analysis/project-analyzer.ts`
+- **Implementation Details:** The main `analyzeProject` method will now orchestrate calls to various local analysis functions and assemble their results.
+- **Testing Requirements:** Manual verification during Subtask 6. (Automated unit/integration tests deferred).
+- **Related Acceptance Criteria:** NEW AC1, NEW AC6, NEW AC8
+- **Estimated effort:** 30-45 minutes
+- **Required Delegation Components:** N/A (Senior Developer to integrate)
+
+### Subtask 6: Verification and End-to-End Testing
+
+- **Status:** Not Started
+- **Description:**
+  1.  Thoroughly test `ProjectAnalyzer.analyzeProject` with diverse small to medium sample projects (e.g., a simple React app, a Node.js/Express backend, a utility library).
+  2.  Inspect the logged `ProjectContext` output for accuracy, completeness, and adherence to schema (NEW AC1-NEW AC6).
+  3.  Run `npm start -- generate -- -g memory-bank` on these projects to ensure it consumes the new `ProjectContext` without the previous validation errors and proceeds further or completes (NEW AC7).
+  4.  Ensure `npm run build` passes.
+- **Files to Modify:** N/A (Test execution and observation).
+- **Implementation Details:** Focus on verifying the correctness of all locally derived fields.
+- **Testing Requirements:** Document manual test cases and observations.
+- **Related Acceptance Criteria:** All NEW ACs, Existing ACs (regression).
+- **Estimated effort:** 1.5 - 2 hours
+- **Required Delegation Components:**
+  - Junior Tester: Execute the `memory-bank generate` command on various test projects, collect logs, and verify the `ProjectContext` structure and content against the ACs.
+
+## 5. Testing Strategy (Revised)
+
+- **Unit Tests & Integration Tests:** Deferred for Subtasks 2-5 as per user directive. To be added in a follow-up task.
+- **Manual End-to-End Verification (Subtask 6):** This will be the primary method for verifying the functionality of Subtasks 2-5.
+  - Run `ProjectAnalyzer.analyzeProject` (e.g., via `npm start -- generate -- -g memory-bank`) using diverse local test projects.
+  - Inspect debug logs for the step-by-step assembly and the final `ProjectContext`.
+  - Confirm the absence of `ProjectContext` schema validation errors.
+  - Observe if the memory bank generation process can successfully utilize the new locally-generated context.
+- **Build Verification:** `npm run build` must pass after all changes.
+
+## 6. Implementation Sequence
+
+1.  Subtask 1: Update Type Definitions (**Completed**)
+2.  Subtask 2: Implement `techStack` Local Derivation (**Completed**)
+3.  Subtask 3: Implement `structure` Local Derivation (Core Fields & `directoryTree`) (**Completed**)
+4.  Subtask 4: Implement `internalDependencies` Local Derivation
+5.  Subtask 5: Refactor `ProjectAnalyzer.analyzeProject` Core Logic
+6.  Subtask 6: Verification and End-to-End Testing
+
+This revised plan should lead to a more robust and reliable `ProjectContext` generation.

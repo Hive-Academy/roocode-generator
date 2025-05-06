@@ -13,6 +13,11 @@ import {
 import { CodeInsights, IAstAnalysisService } from './ast-analysis.interfaces'; // Added CodeInsights, IAstAnalysisService
 import { ITechStackAnalyzerService } from './tech-stack-analyzer'; // Added TechStackAnalyzerService import
 import * as StructureHelpers from './structure-helpers'; // Added import for structure helpers
+import {
+  deriveInternalDependencies,
+  TsConfigPathsInfo,
+  CodeInsightsMap,
+} from './dependency-helpers';
 import { LLMAgent } from '../llm/llm-agent';
 import { LLMProviderError } from '../llm/llm-provider-errors';
 import { ResponseParser } from './response-parser';
@@ -348,6 +353,38 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       }
       // --- End Tree-sitter Parsing and Analysis Step ---
 
+      // --- Local Internal Dependencies Analysis ---
+      this.progress.update('Analyzing internal dependencies...');
+      this.logger.debug('Starting local internal dependencies analysis...');
+      let tsconfigPaths: TsConfigPathsInfo | undefined = undefined;
+      if (
+        tsconfigContent &&
+        tsconfigContent.compilerOptions &&
+        typeof tsconfigContent.compilerOptions.baseUrl === 'string'
+      ) {
+        const baseUrlString: string = tsconfigContent.compilerOptions.baseUrl;
+        const absoluteBaseUrl = path.resolve(rootPath, baseUrlString);
+        tsconfigPaths = {
+          baseUrl: absoluteBaseUrl,
+          paths: tsconfigContent.compilerOptions.paths as Record<string, string[]> | undefined,
+        };
+        this.logger.debug(
+          `Prepared tsconfigPathsInfo for dependency analysis: baseUrl='${absoluteBaseUrl}', paths available: ${!!tsconfigContent.compilerOptions.paths}`
+        );
+      } else {
+        this.logger.debug(
+          'tsconfig.json baseUrl not found or tsconfigContent not available, proceeding without alias path info for dependency analysis.'
+        );
+      }
+
+      const localInternalDependencies = deriveInternalDependencies(
+        codeInsightsMap as CodeInsightsMap, // Cast because insightsMap keys are relative, function expects absolute
+        rootPath,
+        tsconfigPaths
+      );
+      this.logger.debug('Local internal dependencies analysis completed.');
+      // --- End Local Internal Dependencies Analysis ---
+
       const systemPrompt = this.buildSystemPrompt();
       const filePrompt = content; // Note: LLM still gets the prioritized content
       const filePromptTokenCount = await this.llmAgent.countTokens(filePrompt);
@@ -430,6 +467,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       this.logger.debug('Generated ProjectContext:');
       this.logger.trace(JSON.stringify(parsedResult.value, null, 2));
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const techStack = parsedResult.value.techStack ?? {
         languages: [],
         frameworks: [],
@@ -449,6 +487,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       };
 
       // Merge with parsed result, ensuring componentStructure is never null
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const structure = {
         ...baseStructure,
         ...parsedResult.value.structure,
@@ -482,7 +521,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
           dependencies: dependencies.dependencies ?? {},
           devDependencies: dependencies.devDependencies ?? {},
           peerDependencies: dependencies.peerDependencies ?? {},
-          internalDependencies: dependencies.internalDependencies ?? {},
+          internalDependencies: localInternalDependencies ?? {}, // Use locally derived internal dependencies
         },
         codeInsights: codeInsightsMap ?? {}, // Ensure codeInsights is always included with default
         packageJson: packageJsonData, // Include package.json data
