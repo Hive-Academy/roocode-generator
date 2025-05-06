@@ -19,8 +19,6 @@ import {
   CodeInsightsMap,
 } from './dependency-helpers';
 import { LLMAgent } from '../llm/llm-agent';
-import { LLMProviderError } from '../llm/llm-provider-errors';
-import { ResponseParser } from './response-parser';
 import {
   BINARY_EXTENSIONS,
   SKIP_DIRECTORIES,
@@ -39,7 +37,6 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
     @Inject('IFileOperations') private readonly fileOps: IFileOperations,
     @Inject('ILogger') private readonly logger: ILogger,
     @Inject('LLMAgent') private readonly llmAgent: LLMAgent,
-    @Inject('ResponseParser') private readonly responseParser: ResponseParser,
     @Inject('ProgressIndicator') private readonly progress: ProgressIndicator,
     @Inject('IFileContentCollector') private readonly contentCollector: IFileContentCollector,
     @Inject('IFilePrioritizer') private readonly filePrioritizer: IFilePrioritizer,
@@ -76,10 +73,13 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       this.progress.start('Collecting project files for analysis...'); // Explicitly ignore promise
 
       // Calculate available tokens for file content
-      const maxTokens =
-        (await this.llmAgent.getModelContextWindow()) - (await this.getPromptOverheadTokens());
-
-      this.logger.info(`Calculated maxTokens budget for file content: ${maxTokens}`);
+      // Use the model's context window as the budget for file content collection.
+      // This is a general budget, not tied to a specific LLM prompt within this method,
+      // as the direct LLM call for context generation is being removed.
+      const maxTokens = await this.llmAgent.getModelContextWindow();
+      this.logger.info(
+        `Using model context window as maxTokens budget for file content collection: ${maxTokens}`
+      );
 
       // Collect all analyzable files
       const allFiles = await this.collectAnalyzableFiles(rootPath);
@@ -377,155 +377,61 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         );
       }
 
+      this.logger.debug(
+        'Transforming codeInsightsMap keys to absolute paths for internal dependency analysis...'
+      );
+      const absoluteCodeInsightsMap: CodeInsightsMap = {};
+      for (const relativeKey in codeInsightsMap) {
+        if (Object.prototype.hasOwnProperty.call(codeInsightsMap, relativeKey)) {
+          const absoluteKey = path.resolve(rootPath, relativeKey);
+          absoluteCodeInsightsMap[absoluteKey] = codeInsightsMap[relativeKey];
+        }
+      }
+      this.logger.debug(
+        `Transformed ${Object.keys(absoluteCodeInsightsMap).length} code insight keys to absolute paths.`
+      );
+
       const localInternalDependencies = deriveInternalDependencies(
-        codeInsightsMap as CodeInsightsMap, // Cast because insightsMap keys are relative, function expects absolute
+        absoluteCodeInsightsMap, // Use the new map with absolute keys
         rootPath,
         tsconfigPaths
       );
       this.logger.debug('Local internal dependencies analysis completed.');
       // --- End Local Internal Dependencies Analysis ---
 
-      const systemPrompt = this.buildSystemPrompt();
-      const filePrompt = content; // Note: LLM still gets the prioritized content
-      const filePromptTokenCount = await this.llmAgent.countTokens(filePrompt);
-      const systemPromptTokenCount = await this.llmAgent.countTokens(systemPrompt);
-
-      this.progress.update(
-        `Collected file content (${filePromptTokenCount} tokens). Analyzing project context...`
+      // LLM-based context generation, parsing, and merging has been removed.
+      // All context components are now derived locally.
+      this.progress.update('Assembling final project context from local data...');
+      this.logger.debug('Assembling final ProjectContext from local data sources...');
+      this.logger.trace(
+        `Using localTechStackResult: ${JSON.stringify(localTechStackResult, null, 2)}`
+      );
+      this.logger.trace(
+        `Using localProjectStructure: ${JSON.stringify(localProjectStructure, null, 2)}`
+      );
+      this.logger.trace(
+        `Using packageJsonData for external dependencies: ${packageJsonData ? JSON.stringify(packageJsonData, null, 2) : 'not available'}`
+      );
+      this.logger.trace(
+        `Using localInternalDependencies: ${JSON.stringify(localInternalDependencies, null, 2)}`
+      );
+      this.logger.trace(
+        `Using codeInsightsMap: ${Object.keys(codeInsightsMap ?? {}).length} entries`
       );
 
-      this.logger.debug(`File prompt token count: ${filePromptTokenCount}`);
-      this.logger.debug(`System prompt token count: ${systemPromptTokenCount}`);
-
-      let llmResult: Result<string, Error> = Result.err(new Error('Initial error before LLM call')); // Renamed variable
-      const maxRetries = 3;
-      let currentAttempt = 0;
-
-      while (currentAttempt < maxRetries) {
-        currentAttempt++;
-        this.logger.debug(`Attempt ${currentAttempt} of ${maxRetries} for LLM completion.`);
-        llmResult = await this.llmAgent.getCompletion(systemPrompt, filePrompt); // Use renamed variable
-
-        if (llmResult.isOk()) {
-          // Use renamed variable
-          break;
-        }
-
-        if (llmResult.isErr()) {
-          // Use renamed variable
-          const error = llmResult.error; // Use renamed variable
-          if (error instanceof LLMProviderError && error.code === 'INVALID_RESPONSE_FORMAT') {
-            this.logger.warn(
-              `LLM returned invalid response format on attempt ${currentAttempt}. Retrying...`
-            );
-            if (currentAttempt < maxRetries) {
-              const delay = Math.pow(2, currentAttempt) * 100;
-              await new Promise((resolve) => setTimeout(resolve, delay));
-            } else {
-              this.logger.error(
-                `LLM call failed after ${maxRetries} attempts due to invalid response format.`
-              );
-              break;
-            }
-          } else {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            this.logger.error(
-              `LLM call failed on attempt ${currentAttempt} with unexpected error: ${errorMessage}`
-            );
-            break;
-          }
-        }
-      }
-
-      if (llmResult.isErr()) {
-        // Use renamed variable
-        this.progress.fail('Project context analysis failed after multiple LLM attempts');
-        return Result.err(llmResult.error as Error); // Use renamed variable
-      }
-
-      this.progress.update('Processing analysis results...');
-      // Await the async parseLlmResponse call
-      const parsedResult = await this.responseParser.parseLlmResponse<ProjectContext>(
-        llmResult.value as string // Use renamed variable
-      );
-
-      if (parsedResult.isErr()) {
-        this.progress.fail('Failed to parse analysis results from LLM');
-        this.logger.error(`Failed to parse LLM response: ${llmResult.value}`, parsedResult.error); // Use renamed variable
-        return parsedResult;
-      }
-
-      if (!parsedResult.value) {
-        this.progress.fail('Parsed analysis result value is undefined');
-        this.logger.error(
-          'Parsed analysis result value is undefined, though parsing was successful.'
-        );
-        return Result.err(new Error('Parsed analysis result value is undefined'));
-      }
-
-      // Log the generated ProjectContext for inspection
-      this.logger.debug('Generated ProjectContext:');
-      this.logger.trace(JSON.stringify(parsedResult.value, null, 2));
-
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const techStack = parsedResult.value.techStack ?? {
-        languages: [],
-        frameworks: [],
-        buildTools: [],
-        testingFrameworks: [],
-        linters: [],
-        packageManager: '',
-      };
-      // Create base structure with defaults
-      const baseStructure = {
-        rootDir: '',
-        sourceDir: '',
-        testDir: '',
-        configFiles: [],
-        mainEntryPoints: [],
-        componentStructure: {},
-      };
-
-      // Merge with parsed result, ensuring componentStructure is never null
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const structure = {
-        ...baseStructure,
-        ...parsedResult.value.structure,
-        componentStructure: parsedResult.value.structure?.componentStructure ?? {},
-      };
-
-      // Create base dependencies with empty objects
-      const baseDependencies = {
-        dependencies: {},
-        devDependencies: {},
-        peerDependencies: {},
-        internalDependencies: {},
-      };
-
-      // Merge with parsed result, ensuring nested objects are never null
-      const dependencies = {
-        ...baseDependencies,
-        ...parsedResult.value.dependencies,
-        dependencies: parsedResult.value.dependencies?.dependencies ?? {},
-        devDependencies: parsedResult.value.dependencies?.devDependencies ?? {},
-        peerDependencies: parsedResult.value.dependencies?.peerDependencies ?? {},
-        internalDependencies: parsedResult.value.dependencies?.internalDependencies ?? {},
-      };
-
-      // Assemble final context using results from LLM context analysis and code insights
       const finalContext: ProjectContext = {
-        techStack: localTechStackResult, // Use locally derived tech stack
-        structure: localProjectStructure, // Use locally derived structure
+        techStack: localTechStackResult,
+        structure: localProjectStructure,
         dependencies: {
-          ...dependencies,
-          dependencies: dependencies.dependencies ?? {},
-          devDependencies: dependencies.devDependencies ?? {},
-          peerDependencies: dependencies.peerDependencies ?? {},
-          internalDependencies: localInternalDependencies ?? {}, // Use locally derived internal dependencies
+          dependencies: packageJsonData?.dependencies ?? {},
+          devDependencies: packageJsonData?.devDependencies ?? {},
+          peerDependencies: packageJsonData?.peerDependencies ?? {},
+          internalDependencies: localInternalDependencies ?? {},
         },
-        codeInsights: codeInsightsMap ?? {}, // Ensure codeInsights is always included with default
-        packageJson: packageJsonData, // Include package.json data
+        codeInsights: codeInsightsMap ?? {},
+        packageJson: packageJsonData,
       };
+      this.logger.debug('Successfully assembled final ProjectContext.');
 
       this.progress.succeed('Project context analysis completed successfully');
       this.logger.trace(
@@ -694,90 +600,5 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
 
     this.logger.trace(`Skipping file by default: ${fileName}`);
     return false;
-  }
-
-  private readonly PROMPT_VERSION = 'v1.1.0'; // Incremented for TSK-007
-
-  private buildSystemPrompt(): string {
-    return `Prompt Version: ${this.PROMPT_VERSION}
-
-IMPORTANT NOTICE:
-- This analysis is based on a PARTIAL codebase view.
-- Focus ONLY on the provided files. Do not make assumptions about files not shown.
-- If uncertain about any aspect, return null or empty arrays/objects as appropriate.
-- Keys for file-specific information (internalDependencies) MUST be relative paths from the project root.
-
-Analyze the provided project files to determine its overall context.
-Return a single JSON object containing the tech stack, project structure, and dependencies.
-
-Instructions for specific fields:
-- dependencies.internalDependencies: For each file provided, identify imported modules/files (both package imports like 'react' and relative project imports like './utils') and list them as strings under this field, keyed by the relative file path.
-
-The response MUST strictly follow this JSON schema:
-        {
-          "techStack": {
-            "languages": string[], // e.g., ["TypeScript", "JavaScript", "Python"]
-            "frameworks": string[], // e.g., ["React", "Express", "FastAPI"]
-            "buildTools": string[], // e.g., ["Webpack", "tsc", "pip"]
-            "testingFrameworks": string[], // e.g., ["Jest", "pytest"]
-            "linters": string[], // e.g., ["ESLint", "Prettier", "Flake8"]
-            "packageManager": string // e.g., "npm", "yarn", "pip", "maven", "gradle", "cargo"
-          },
-          "structure": {
-            "rootDir": string, // The absolute root path provided (already filled)
-            "sourceDir": string, // Relative path(s) from rootDir to main source code (e.g., "src", "app")
-            "testDir": string, // Relative path(s) from rootDir to main test code (e.g., "tests", "spec")
-            "configFiles": string[], // Relative paths from rootDir to key config files (e.g., "tsconfig.json", "pyproject.toml")
-            "mainEntryPoints": string[], // Relative paths from rootDir to main application entry points (e.g., "src/index.ts", "app/main.py")
-            "componentStructure": Record<string, string[]> // Optional: Map of component types/locations if identifiable
-          },
-          "dependencies": {
-            "dependencies": Record<string, string>, // { "react": "^18.0.0" }
-            "devDependencies": Record<string, string>, // { "jest": "^29.0.0" }
-            "peerDependencies": Record<string, string>, // { "react": ">=17.0.0" }
-            "internalDependencies": Record<string, string[]> // Key: relative file path, Value: List of imported module/file paths (e.g., ["react", "./utils"])
-          }
-   
-        }
-        Important Reminders:
-        - Analyze based *only* on the provided file contents.
-        - Infer fields like 'sourceDir', 'testDir', 'mainEntryPoints' based on common conventions and file contents.
-        - If a field cannot be determined, return an empty array [], empty object {}, or null as appropriate for the type.
-        - Return ONLY the JSON object without any surrounding text, explanations, markdown formatting, or code fences.
-
-        Provided file contents:
-        [FILE CONTENTS GO HERE]`;
-  }
-
-  private async getPromptOverheadTokens(): Promise<number> {
-    const MAX_REASONABLE_OVERHEAD = 20000; // Safeguard against faulty tokenizers
-
-    const basePromptTemplate = this.buildSystemPrompt();
-    const providerResult = await this.llmAgent.getProvider();
-    if (providerResult.isErr() || !providerResult.value) {
-      this.logger.warn(
-        'LLM Provider or countTokens method not available for prompt overhead token estimation. Using default overhead.'
-      );
-      return 1000; // Default overhead estimation for safety
-    }
-
-    // Include version, schema, and warnings in overhead calculation
-    const templateWithoutContent = basePromptTemplate.replace('[FILE CONTENTS GO HERE]', '');
-    const rawOverhead: number = await providerResult.value.countTokens(templateWithoutContent);
-    this.logger.debug(`Raw token count for prompt overhead (excluding content): ${rawOverhead}`);
-
-    // Add safety margin for schema validation and version info
-    const calculatedOverhead = Math.ceil(rawOverhead * 1.1);
-    this.logger.debug(`Calculated overhead with 10% margin: ${calculatedOverhead}`);
-
-    // Apply safeguard cap
-    const finalOverhead = Math.min(calculatedOverhead, MAX_REASONABLE_OVERHEAD);
-    if (finalOverhead < calculatedOverhead) {
-      this.logger.warn(
-        `Calculated overhead (${calculatedOverhead}) exceeded safeguard limit (${MAX_REASONABLE_OVERHEAD}). Capping overhead.`
-      );
-    }
-
-    return finalOverhead;
   }
 }
