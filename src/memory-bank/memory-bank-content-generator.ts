@@ -99,10 +99,39 @@ export class MemoryBankContentGenerator implements IMemoryBankContentGenerator {
         this.logger.error(`Content stripping returned undefined for ${fileType}`, undefinedError);
         return Result.err(undefinedError);
       }
-
       // Now TS should be certain value is string
       this.logger.debug(`Successfully stripped markdown for ${fileType}`);
-      return Result.ok(strippedContentResult.value);
+
+      // Strip HTML comments (<!-- ... -->)
+      const contentWithoutCommentsResult = this.contentProcessor.stripHtmlComments(
+        strippedContentResult.value
+      );
+
+      if (contentWithoutCommentsResult.isErr()) {
+        const commentStripError = new MemoryBankGenerationError(
+          `Failed to strip HTML comments from ${fileType} content`,
+          { operation: 'stripHtmlComments', fileType },
+          contentWithoutCommentsResult.error
+        );
+        this.logger.error(`Failed to strip HTML comments for ${fileType}`, commentStripError);
+        return Result.err(commentStripError);
+      }
+
+      // Explicit check for undefined after comment stripping
+      if (contentWithoutCommentsResult.value === undefined) {
+        const undefinedError = new MemoryBankGenerationError(
+          `Content stripping (comments) unexpectedly returned undefined for ${fileType}`,
+          { operation: 'stripHtmlComments', fileType }
+        );
+        this.logger.error(
+          `Content stripping (comments) returned undefined for ${fileType}`,
+          undefinedError
+        );
+        return Result.err(undefinedError);
+      }
+
+      this.logger.debug(`Successfully stripped markdown and comments for ${fileType}`);
+      return Result.ok(contentWithoutCommentsResult.value);
     } catch (error) {
       const wrappedError = new MemoryBankGenerationError(
         `Unexpected error generating content for ${fileType}`,
@@ -135,111 +164,16 @@ export class MemoryBankContentGenerator implements IMemoryBankContentGenerator {
     let instructions = '';
     let contextDataString = 'PROJECT CONTEXT DATA:\n\n';
 
-    // Helper function to format a section of context data into a Markdown JSON block
-    // Skips empty or null data to keep the prompt clean.
-    const formatContextSection = (title: string, data: unknown): string => {
-      if (
-        !data ||
-        (Array.isArray(data) && data.length === 0) ||
-        (typeof data === 'object' && data !== null && Object.keys(data).length === 0)
-      ) {
-        return ''; // Don't include empty sections
-      }
-      try {
-        // Ensure complex objects are stringified correctly
-        const jsonData = JSON.stringify(data, null, 2);
-        return `**${title}:**\n\`\`\`json\n${jsonData}\n\`\`\`\n\n`;
-      } catch (error) {
-        this.logger.error(`Failed to stringify context section "${title}": ${String(error)}`);
-        return `**${title}:**\n\`\`\`json\n${JSON.stringify({ error: 'Failed to serialize data' }, null, 2)}\n\`\`\`\n\n`;
-      }
-    };
+    // Instructions for the LLM when provided with the full context
+    instructions = `Generate the content for the ${String(fileType)} document. You have been provided with the full structured PROJECT CONTEXT DATA for the project. Use this data as directed by the \`<!-- LLM: ... -->\` instructions embedded within the TEMPLATE section. Carefully select and utilize the relevant information from the PROJECT CONTEXT DATA to populate the template sections. Adhere to the template's structure and formatting. Aim for detailed and informative content based on the available context.`;
 
-    // Select and format context based on the file type
-    switch (fileType) {
-      case MemoryBankFileType.ProjectOverview:
-        instructions = `Generate the content for the Project Overview document. Use the structured PROJECT CONTEXT data provided below as directed by the \`<!-- LLM: ... -->\` comments found within the TEMPLATE section. Strictly adhere to the template structure and the embedded comments. Focus on high-level information suitable for a project overview.`;
-        // Select high-level context relevant for an overview
-        contextDataString += formatContextSection(
-          'Project Summary (from codeInsights)',
-          (context.codeInsights as any)?.projectSummary
-        );
-        contextDataString += formatContextSection(
-          'Key Components (Summaries)',
-          (context.codeInsights as any)?.components?.map(
-            (c: { name: string; summary: string }) => ({
-              name: c.name,
-              summary: c.summary,
-            })
-          ) || []
-        );
-        contextDataString += formatContextSection('Tech Stack (Languages/Frameworks)', {
-          languages: context.techStack?.languages,
-          frameworks: context.techStack?.frameworks,
-        });
-        // Removed access to context.structure.overview as it doesn't exist in the type definition
-        break;
-
-      case MemoryBankFileType.TechnicalArchitecture: {
-        instructions = `Generate the content for the Technical Architecture document. Use the structured PROJECT CONTEXT data provided below as directed by the \`<!-- LLM: ... -->\` comments found within the TEMPLATE section. Strictly adhere to the template structure and the embedded comments. Focus on technical details, components, interactions, and dependencies.`;
-        // Select detailed technical context
-        contextDataString += formatContextSection('Tech Stack (Detailed)', context.techStack);
-        contextDataString += formatContextSection('Project Structure', context.structure);
-        contextDataString += formatContextSection('Dependencies', context.dependencies);
-        // Extract functions and classes from all files for Technical Architecture
-        const allFunctions = Object.values(context.codeInsights || {})
-          .flatMap((insight) => insight.functions || [])
-          .filter((f) => f.name); // Ensure functions have names
-        const allClassNames = Object.values(context.codeInsights || {})
-          .flatMap((insight) => insight.classes || [])
-          .map((c) => c.name)
-          .filter(Boolean); // Ensure class names exist
-
-        contextDataString += formatContextSection(
-          'Identified Functions (Across Project)',
-          allFunctions.map((f) => ({ name: f.name, params: f.parameters.length })) // Simplified view
-        );
-        contextDataString += formatContextSection(
-          'Identified Classes (Names Across Project)',
-          allClassNames
-        );
-        break;
-      }
-
-      case MemoryBankFileType.DeveloperGuide:
-        instructions = `Generate the content for the Developer Guide document. Use the structured PROJECT CONTEXT data provided below as directed by the \`<!-- LLM: ... -->\` comments found within the TEMPLATE section. Strictly adhere to the template structure and the embedded comments. Focus on setup, development workflows, coding standards, and component usage.`;
-        // Select context relevant for developers
-        contextDataString += formatContextSection('Tech Stack (for Setup)', context.techStack);
-        contextDataString += formatContextSection(
-          'Project Structure (Detailed)',
-          context.structure
-        );
-        contextDataString += formatContextSection(
-          'Dependencies (for Setup/Build)',
-          context.dependencies
-        );
-        contextDataString += formatContextSection(
-          'Key Components (Usage & Details from codeInsights)',
-          (context.codeInsights as any)?.components
-        ); // Focus on components
-        // Consider adding context.codeInsights.codingStandards or similar if available in the future
-        break;
-
-      default:
-        // Fallback for safety, though enums should prevent this
-        this.logger.warn(
-          `Unexpected MemoryBankFileType encountered: ${String(fileType)}. Using generic prompt structure.`
-        );
-        instructions = `Generate the content for the document. Use the structured PROJECT CONTEXT data provided below as directed by the \`<!-- LLM: ... -->\` comments found within the TEMPLATE section. Strictly adhere to the template structure and the embedded comments.`;
-        // Include broader context for fallback
-        contextDataString += formatContextSection('Full Project Context', context); // Less selective for unknown types
-        break;
-    }
-
-    // Add a note if no specific context was selected or available
-    if (contextDataString === 'PROJECT CONTEXT DATA:\n\n') {
-      contextDataString =
-        'PROJECT CONTEXT DATA:\n\n*(No specific context data selected or available for this file type)*\n\n';
+    // Format the entire ProjectContext object
+    try {
+      const fullContextJson = JSON.stringify(context, null, 2);
+      contextDataString += `Full Project Context:\n\`\`\`json\n${fullContextJson}\n\`\`\`\n\n`;
+    } catch (error) {
+      this.logger.error(`Failed to stringify full ProjectContext: ${String(error)}`);
+      contextDataString += `Full Project Context:\n\`\`\`json\n${JSON.stringify({ error: 'Failed to serialize full context' }, null, 2)}\n\`\`\`\n\n`;
     }
 
     // Construct the final user prompt

@@ -102,7 +102,7 @@
         [
           "edit",
           {
-            "fileRegex": "\\.(test|spec)\\.(js|ts|jsx|tsx)$",
+            "fileRegex": "\\.(test|spec|mock)\\.(js|ts|jsx|tsx)$",
             "description": "Test files only"
           }
         ],

@@ -39,15 +39,15 @@ The strategy involves a significant refactoring of `ProjectAnalyzer` to build th
     - Remove the LLM call (`llmAgent.getCompletion` for context analysis) and its associated prompt generation logic (`buildSystemPrompt`).
     - Integrate the new local derivation methods to assemble the complete `ProjectContext`.
     - Ensure `codeInsights` (from `AstAnalysisService`) and `packageJson` data (already parsed) are correctly included.
-6.  **Logging:** Implement comprehensive debug logging for each step of the local context assembly process to aid in verification and troubleshooting.
+6.  **Logging:** Implement comprehensive debug logging for each step of the local context assembly process to aid in verification and troubleshooting. Enhanced INFO level logging for final ProjectContext added.
 
 ## 3. Acceptance Criteria Mapping
 
 The primary success of this revised task hinges on the local, accurate generation of `ProjectContext`.
 
-- **NEW AC1:** `ProjectAnalyzer.analyzeProject` successfully generates a complete `ProjectContext` object without making an LLM call for `techStack`, `structure`, or `dependencies` inference.
+- **NEW AC1:** `ProjectAnalyzer.analyzeProject` successfully generates a complete `ProjectContext` object without making an LLM call for `techStack`, `structure`, or `dependencies` inference. (Clarified: LLM use by `AstAnalysisService` for `codeInsights` is acceptable under this AC).
 - **NEW AC2:** The generated `ProjectContext.structure.sourceDir` and `ProjectContext.structure.testDir` are correctly formatted as single strings.
-- **NEW AC3:** The generated `ProjectContext.structure` includes a `directoryTree` field accurately representing the nested project file and directory structure (only including analyzable files as defined by `shouldAnalyzeFile`).
+- **NEW AC3:** The generated `ProjectContext.structure` includes a `directoryTree` field accurately representing the nested project file and directory structure (only including analyzable files as defined by `shouldAnalyzeFile`, and excluding `SKIP_DIRECTORIES`).
 - **NEW AC4:** The generated `ProjectContext.codeInsights` is correctly and completely populated with AST analysis results from `AstAnalysisService`.
 - **NEW AC5:** The generated `ProjectContext.dependencies.internalDependencies` are accurately derived from `codeInsights[filePath].imports`, with paths resolved relative to the project root.
 - **NEW AC6:** The generated `ProjectContext` object strictly adheres to its type definition in `src/core/analysis/types.ts` (including any new fields like `directoryTree`).
@@ -60,155 +60,84 @@ The primary success of this revised task hinges on the local, accurate generatio
 ### Subtask 1: Update Type Definitions for `ProjectContext`
 
 - **Status:** Completed (Commit: `c0d51ab594ca21991bf29f0348b702b6fe48e99a`)
-- **Description:** Modify `ProjectStructure` within `src/core/analysis/types.ts` to include a new field for a nested directory tree. Define the `DirectoryNode` (or similar) type for this tree.
-
-  ```typescript
-  // In src/core/analysis/types.ts
-  export interface DirectoryNode {
-    name: string;
-    path: string; // Relative path from rootDir
-    type: 'directory' | 'file';
-    children?: DirectoryNode[]; // Only for type 'directory'
-  }
-
-  export interface ProjectStructure {
-    // ... existing fields
-    directoryTree: DirectoryNode[]; // Root level nodes
-  }
-  ```
-
-- **Files to Modify:**
-  - `src/core/analysis/types.ts`
-- **Implementation Details:** Ensure `DirectoryNode` can represent a recursive structure. Only analyzable files should be included in the tree.
-- **Testing Requirements:** Type checking will verify. (Automated unit/integration tests deferred).
-- **Related Acceptance Criteria:** NEW AC3, NEW AC6
-- **Estimated effort:** 15 minutes
-- **Required Delegation Components:** N/A (Direct implementation)
+- **Files to Modify:** `src/core/analysis/types.ts`
 
 ### Subtask 2: Implement Local Derivation for `ProjectContext.techStack`
 
 - **Status:** Completed (Commit: `d2280eb`)
-- **Description:** Implement logic within `ProjectAnalyzer` (or a new dedicated helper service/functions) to populate the `TechStackAnalysis` object.
-  - `languages`: From file extensions of files processed by `AstAnalysisService` or `contentCollector`.
-  - `frameworks`, `buildTools`, `testingFrameworks`, `linters`: Heuristics based on `dependencies` and `devDependencies` in `package.json`. (e.g., if 'react' is a dependency, 'React' is a framework). Maintain a mapping if necessary.
-  - `packageManager`: Detect from `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, or infer from scripts in `package.json`.
-- **Files to Modify:**
-  - `src/core/analysis/project-analyzer.ts`
-  - `src/core/analysis/tech-stack-helpers.ts` (Created)
-  - `src/core/analysis/tech-stack-analyzer.ts` (Created)
-  - `src/core/di/modules/analysis-module.ts` (Modified)
-- **Implementation Details:** This will involve reading `package.json` (already partially done) and analyzing its contents. A new `TechStackAnalyzerService` encapsulates this logic.
-- **Testing Requirements:** Manual verification during Subtask 6. (Automated unit/integration tests deferred).
-- **Related Acceptance Criteria:** NEW AC1, NEW AC6
-- **Estimated effort:** 30-45 minutes
-- **Required Delegation Components:**
-  - Junior Coder: Implemented helper functions in `tech-stack-helpers.ts`.
+- **Files to Modify:** `src/core/analysis/project-analyzer.ts`, `src/core/analysis/tech-stack-helpers.ts` (Created), `src/core/analysis/tech-stack-analyzer.ts` (Created), `src/core/di/modules/analysis-module.ts` (Modified)
 
 ### Subtask 3: Implement Local Derivation for `ProjectContext.structure` (Core Fields & `directoryTree`)
 
 - **Status:** Completed (Commit: `8e32b45`)
-- **Description:**
-  1.  Implement logic to determine `sourceDir` (string) and `testDir` (string). Strategies:
-      - Check for common names (`src`, `source`, `app`, `lib`, `tests`, `test`, `spec`).
-      - Parse `tsconfig.json` for `compilerOptions.rootDir`, `baseUrl`, `include`.
-  2.  Implement scanning for `configFiles`: Iterate `rootDir` for a predefined list of common configuration file names (e.g., `tsconfig.json`, `.eslintrc.js`, `webpack.config.js`, `vite.config.ts`, `pyproject.toml`, `pom.xml`, etc.).
-  3.  Implement logic for `mainEntryPoints`: Check `package.json` (`main`, `module`, `exports`, `bin`), `tsconfig.json`.
-  4.  Implement `directoryTree` generation: Recursively scan `rootDir`. For each item, if it's a directory, recurse. If it's a file, check if it's analyzable (using existing `shouldAnalyzeFile` logic). Build a nested `DirectoryNode[]` structure. Paths should be relative to `rootDir`.
-  5.  `componentStructure` will be initialized to `{}`.
-- **Files to Modify:**
-  - `src/core/analysis/project-analyzer.ts` (Modified)
-  - `src/core/analysis/structure-helpers.ts` (Created)
-- **Implementation Details:** The `directoryTree` should only include directories that contain analyzable files or other such directories, and the analyzable files themselves. Helper functions in `structure-helpers.ts` encapsulate the derivation logic.
-- **Testing Requirements:** Manual verification during Subtask 6. (Automated unit/integration tests deferred).
-- **Related Acceptance Criteria:** NEW AC1, NEW AC2, NEW AC3, NEW AC6
-- **Estimated effort:** 1 - 1.5 hours
-- **Required Delegation Components:**
-  - Junior Coder: Implemented helper functions in `structure-helpers.ts`.
+- **Files to Modify:** `src/core/analysis/project-analyzer.ts` (Modified), `src/core/analysis/structure-helpers.ts` (Created)
 
 ### Subtask 4: Implement Local Derivation for `ProjectContext.dependencies.internalDependencies`
 
-- **Status:** Completed
-- **Description:** Process the `codeInsightsMap` (which contains `imports` for each analyzed file). For each import string:
-  1.  Determine if it's a relative path, absolute path, or a package/module name.
-  2.  If relative/absolute, resolve it to a full path and then to a path relative to `rootDir`.
-  3.  Store these resolved relative paths or package names in `ProjectContext.dependencies.internalDependencies: Record<string, string[]>`, where the key is the file path (relative to `rootDir`) and the value is an array of its imported module/file paths (also relative to `rootDir` or as package names).
-- **Files to Modify:**
-  - `src/core/analysis/project-analyzer.ts`
-  - `src/core/analysis/dependency-helpers.ts` (Created)
-- **Implementation Details:**
-  - Logic for deriving `internalDependencies` was implemented in `src/core/analysis/dependency-helpers.ts` by the Junior Coder. This includes:
-    - Iterating through `codeInsightsMap`.
-    - Categorizing imports (relative, package).
-    - Resolving relative import paths against the current file's directory and then making them relative to `rootDir`.
-    - Basic `tsconfig.json` alias path resolution (using `baseUrl` and `paths`) was implemented as a stretch goal. The `deriveInternalDependencies` function accepts an optional `TsConfigPathsInfo` object.
-    - Ensuring uniqueness of imported paths/packages per file using a `Set`.
-  - The `deriveInternalDependencies` function was integrated into `ProjectAnalyzer.analyzeProject`.
-  - `ProjectAnalyzer` now prepares an `absoluteCodeInsightsMap` (transforming relative keys from its internal `codeInsightsMap` to absolute keys) before passing to `deriveInternalDependencies`.
-  - `ProjectAnalyzer` also prepares `TsConfigPathsInfo` (with an absolute `baseUrl`) if `tsconfig.json` data is available.
-  - The result is used to populate `ProjectContext.dependencies.internalDependencies`.
-  - Limitations: File extension/index resolution for imports (e.g., automatically finding `.ts` or `/index.js`) is basic and can be enhanced. Alias resolution does not perform file system checks for resolved paths.
-- **Testing Requirements:** Manual verification during Subtask 6. (Automated unit/integration tests deferred).
-- **Related Acceptance Criteria:**
-  - NEW AC1: Partially addressed, as this subtask contributes to local context generation. Full verification in Subtask 5.
-  - NEW AC5: ✅ Satisfied. `internalDependencies` are derived from `codeInsights` and paths are resolved relative to `rootDir`.
-  - NEW AC6: ✅ Satisfied. The changes adhere to `ProjectContext` type definitions.
-- **Estimated effort:** 45-60 minutes (Actual: ~1 hour including delegation and integration)
-- **Required Delegation Components:**
-  - Junior Coder: Implemented the core logic in `src/core/analysis/dependency-helpers.ts` (function `deriveInternalDependencies`), including relative path resolution and basic `tsconfig.json` alias handling. (Completed)
-- **Deviations:**
-  - The `deriveInternalDependencies` function was designed by the Junior Coder to expect `codeInsightsMap` with absolute file paths as keys. `ProjectAnalyzer` was updated to transform its `codeInsightsMap` (which uses relative paths) to meet this expectation before calling the helper.
+- **Status:** Completed (Commit: `1593e52`)
+- **Files to Modify:** `src/core/analysis/project-analyzer.ts` (Modified), `src/core/analysis/dependency-helpers.ts` (Created).
 
 ### Subtask 5: Refactor `ProjectAnalyzer.analyzeProject` Core Logic
 
-- **Status:** Not Started
+- **Status:** Completed (Commit: `f205317`)
 - **Description:**
-  1.  Remove the existing LLM call (`this.llmAgent.getCompletion(...)`) used for generating `techStack`, `structure`, and `dependencies`.
-  2.  Remove the `buildSystemPrompt()` method and its usage for this purpose.
-  3.  Remove the `ResponseParser.parseLlmResponse` call for the output of this LLM.
-  4.  Integrate the new local derivation methods/logic from Subtasks 2, 3, and 4 to assemble these parts of the `ProjectContext`.
-  5.  Ensure `codeInsights` (from `AstAnalysisService`) and `packageJson` data (already parsed) are correctly merged into the final `ProjectContext` object.
-  6.  Add comprehensive debug logging showing the `ProjectContext` being assembled at various stages and the final object.
-- **Files to Modify:**
-  - `src/core/analysis/project-analyzer.ts`
-- **Implementation Details:** The main `analyzeProject` method will now orchestrate calls to various local analysis functions and assemble their results.
+  1.  Removed the LLM call previously used for `techStack`, `structure`, `dependencies`.
+  2.  Removed `buildSystemPrompt()` and related LLM overhead logic.
+  3.  Integrated `localTechStackResult`, `localProjectStructure`, `localInternalDependencies`.
+  4.  Populated external dependencies from `packageJsonData`.
+  5.  Implemented `codeInsightsMap` key transformation (relative to absolute) before calling `deriveInternalDependencies`.
+  6.  Ensured `codeInsightsMap` (with relative keys) and `packageJsonData` are in `finalContext`.
+  7.  Enhanced debug logging for local assembly.
+- **Files to Modify:** `src/core/analysis/project-analyzer.ts`
 - **Testing Requirements:** Manual verification during Subtask 6. (Automated unit/integration tests deferred).
-- **Related Acceptance Criteria:** NEW AC1, NEW AC6, NEW AC8
-- **Estimated effort:** 30-45 minutes
-- **Required Delegation Components:** N/A (Senior Developer to integrate)
+- **Related Acceptance Criteria:** NEW AC1, NEW AC6, NEW AC8.
+- **Estimated effort:** 45-60 minutes
+- **Required Delegation Components:** N/A (Senior Developer direct implementation)
 
 ### Subtask 6: Verification and End-to-End Testing
 
-- **Status:** Not Started
+- **Status:** Partially Completed - Issues Found
 - **Description:**
-  1.  Thoroughly test `ProjectAnalyzer.analyzeProject` with diverse small to medium sample projects (e.g., a simple React app, a Node.js/Express backend, a utility library).
+  1.  Thoroughly test `ProjectAnalyzer.analyzeProject` with diverse small to medium sample projects (e.g., a simple React app, a Node.js/Express backend, a utility library). Tested with `roocode-generator`.
   2.  Inspect the logged `ProjectContext` output for accuracy, completeness, and adherence to schema (NEW AC1-NEW AC6).
   3.  Run `npm start -- generate -- -g memory-bank` on these projects to ensure it consumes the new `ProjectContext` without the previous validation errors and proceeds further or completes (NEW AC7).
-  4.  Ensure `npm run build` passes.
-- **Files to Modify:** N/A (Test execution and observation).
+  4.  Ensure `npm run build` passes. (Build passes after fixes).
+- **Files to Modify:** N/A (Test execution and observation). Fixes applied to `project-analyzer.ts`, `structure-helpers.ts`, DI modules, and test files to enable build and testing. Commits: `b4c8362`, `d3b4a33`, `f89b924`.
 - **Implementation Details:** Focus on verifying the correctness of all locally derived fields.
-- **Testing Requirements:** Document manual test cases and observations.
+- **Testing Requirements:** Document manual test cases and observations. (Junior Tester report received for `roocode-generator`).
 - **Related Acceptance Criteria:** All NEW ACs, Existing ACs (regression).
 - **Estimated effort:** 1.5 - 2 hours
 - **Required Delegation Components:**
-  - Junior Tester: Execute the `memory-bank generate` command on various test projects, collect logs, and verify the `ProjectContext` structure and content against the ACs.
+  - Junior Tester: Executed the `memory-bank generate` command on `roocode-generator`, collected logs, and verified `ProjectContext` structure and content against ACs.
+- **Deviations and Findings:**
+  - **Build Failures:** Initial test runs blocked by build failures in test files and DI module due to `ProjectAnalyzer` constructor changes. These were fixed (Commit: `b4c8362`).
+  - **`tsconfig.json` Parsing:**
+    - Initial attempts to use `parseRobustJson` in `ProjectAnalyzer` did not resolve warnings, suggesting stale code execution or issues in helper functions.
+    - `structure-helpers.ts` was modified to accept pre-parsed `tsconfigContent` from `ProjectAnalyzer` for `findSourceDir` and `findTestDir`. `ProjectAnalyzer` updated to pass this. (Commit: `f89b924`).
+    - **Current Status (Attempt 5):** Junior Tester reports `tsconfig.json` parsing warnings _still persist_ in the logs, despite `parseRobustJson` in `ProjectAnalyzer` appearing to succeed. This indicates the warnings likely originate from `safeReadJsonFile` still being called, possibly by the `StructureHelpers` if the pre-parsed content isn't correctly utilized or if the execution is still using stale code for `structure-helpers.ts`. This needs further investigation.
+  - **Directory Exclusions (NEW AC3):** **FAIL.** Critical issue. `node_modules`, `dist`, `coverage`, `bin` are **NOT** excluded from `ProjectContext.structure.directoryTree` when testing `roocode-generator`. `.git` is correctly excluded. This significantly impacts context size and correctness.
+  - **LLM Token Limits (Existing ACs - Stability):** **NEW ISSUE.** The `ProjectContext` for `roocode-generator` is too large for `gemini-2.5-flash-preview-04-17`, causing `MemoryBankContentGenerator` to fail. This blocks end-to-end generation for this project.
+  - **`codeInsights` Generation (NEW AC4):** The previous "Malformed LLM JSON response" for `src/core/types/common.ts` was **NOT** observed in the latest test run (Attempt 5), with logs indicating successful analysis for that file. This is an improvement.
+  - **`ProjectContext` Logging (NEW AC8):** Enhanced INFO level logging for `ProjectContext` was successfully implemented and captured by the Junior Tester.
+  - **CLI Command:** Junior tester identified correct command for local testing: `$env:LOG_LEVEL="trace"; node ./bin/roocode-generator.js generate -g memory-bank`.
 
 ## 5. Testing Strategy (Revised)
 
 - **Unit Tests & Integration Tests:** Deferred for Subtasks 2-5 as per user directive. To be added in a follow-up task.
 - **Manual End-to-End Verification (Subtask 6):** This will be the primary method for verifying the functionality of Subtasks 2-5.
-  - Run `ProjectAnalyzer.analyzeProject` (e.g., via `npm start -- generate -- -g memory-bank`) using diverse local test projects.
-  - Inspect debug logs for the step-by-step assembly and the final `ProjectContext`.
-  - Confirm the absence of `ProjectContext` schema validation errors.
-  - Observe if the memory bank generation process can successfully utilize the new locally-generated context.
-- **Build Verification:** `npm run build` must pass after all changes.
+  - Run `ProjectAnalyzer.analyzeProject` (e.g., via `npm start -- generate -- -g memory-bank`) using diverse local test projects. (Tested with `roocode-generator`).
+  - Inspect debug/trace logs for the step-by-step assembly and the final `ProjectContext`. (Done, `ProjectContext` captured).
+  - Confirm the absence of `ProjectContext` schema validation errors. (Confirmed for `sourceDir`/`testDir` types).
+  - Observe if the memory bank generation process can successfully utilize the new locally-generated context. (Blocked by token limits for `roocode-generator`).
+- **Build Verification:** `npm run build` must pass after all changes. (Passes).
 
 ## 6. Implementation Sequence
 
 1.  Subtask 1: Update Type Definitions (**Completed**)
 2.  Subtask 2: Implement `techStack` Local Derivation (**Completed**)
 3.  Subtask 3: Implement `structure` Local Derivation (Core Fields & `directoryTree`) (**Completed**)
-4.  Subtask 4: Implement `internalDependencies` Local Derivation
-5.  Subtask 5: Refactor `ProjectAnalyzer.analyzeProject` Core Logic
-6.  Subtask 6: Verification and End-to-End Testing
+4.  Subtask 4: Implement `internalDependencies` Local Derivation (**Completed**)
+5.  Subtask 5: Refactor `ProjectAnalyzer.analyzeProject` Core Logic (**Completed**)
+6.  Subtask 6: Verification and End-to-End Testing (**Partially Completed - Issues Found**)
 
 This revised plan should lead to a more robust and reliable `ProjectContext` generation.

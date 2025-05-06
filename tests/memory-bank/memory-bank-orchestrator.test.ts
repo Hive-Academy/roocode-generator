@@ -107,8 +107,9 @@ describe('MemoryBankOrchestrator', () => {
 
       // Verify directory creation
 
-      // Updated expectation to match actual behavior (using current directory)
-      expect(mockFileManager.createMemoryBankDirectory).toHaveBeenCalledWith('.');
+      expect(mockFileManager.createMemoryBankDirectory).toHaveBeenCalledWith(
+        testConfig.memoryBank?.outputDir
+      ); // Use configured output dir
 
       // Verify template processing for each file type
       Object.values(MemoryBankFileType).forEach((fileType) => {
@@ -248,8 +249,10 @@ describe('MemoryBankOrchestrator', () => {
 
       // Verify TechnicalArchitecture file was not written
       Object.values(MemoryBankFileType).forEach((fileType) => {
-        // Updated expectation to match actual relative path behavior
-        const expectedFilePath = path.join('memory-bank', `${String(fileType)}.md`);
+        const expectedFilePath = path.join(
+          testConfig.memoryBank!.outputDir, // Use configured output dir
+          `${String(fileType)}.md`
+        );
         if (fileType === MemoryBankFileType.TechnicalArchitecture) {
           expect(mockFileManager.writeMemoryBankFile).not.toHaveBeenCalledWith(
             expectedFilePath,

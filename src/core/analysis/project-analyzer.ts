@@ -13,6 +13,7 @@ import {
 import { CodeInsights, IAstAnalysisService } from './ast-analysis.interfaces'; // Added CodeInsights, IAstAnalysisService
 import { ITechStackAnalyzerService } from './tech-stack-analyzer'; // Added TechStackAnalyzerService import
 import * as StructureHelpers from './structure-helpers'; // Added import for structure helpers
+import { TsConfigLike } from './structure-helpers'; // Import TsConfigLike
 import {
   deriveInternalDependencies,
   TsConfigPathsInfo,
@@ -184,7 +185,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       this.logger.debug('Starting local project structure analysis...');
 
       const tsconfigPath = 'tsconfig.json'; // Assuming tsconfig.json is at the root
-      let tsconfigContent: any;
+      let tsconfigContent: TsConfigLike | undefined; // Typed tsconfigContent
       const absoluteTsconfigPath = path.join(rootPath, tsconfigPath);
       const tsconfigExistsResult = await this.fileOps.exists(absoluteTsconfigPath);
 
@@ -373,7 +374,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         const absoluteBaseUrl = path.resolve(rootPath, baseUrlString);
         tsconfigPaths = {
           baseUrl: absoluteBaseUrl,
-          paths: tsconfigContent.compilerOptions.paths as Record<string, string[]> | undefined,
+          paths: tsconfigContent.compilerOptions.paths,
         };
         this.logger.debug(
           `Prepared tsconfigPathsInfo for dependency analysis: baseUrl='${absoluteBaseUrl}', paths available: ${!!tsconfigContent.compilerOptions.paths}`
