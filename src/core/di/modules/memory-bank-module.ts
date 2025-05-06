@@ -95,13 +95,11 @@ export function registerMemoryBankModule(container: Container): void {
   container.registerFactory<IMemoryBankContentGenerator>('IMemoryBankContentGenerator', () => {
     const llmAgent = resolveDependency<LLMAgent>(container, 'LLMAgent');
     assertIsDefined(llmAgent, 'LLMAgent dependency not found');
-    const promptBuilder = resolveDependency<IPromptBuilder>(container, 'IPromptBuilder');
-    assertIsDefined(promptBuilder, 'IPromptBuilder dependency not found');
     const contentProcessor = resolveDependency<IContentProcessor>(container, 'IContentProcessor'); // Resolve new dependency
     assertIsDefined(contentProcessor, 'IContentProcessor dependency not found');
     const logger = resolveDependency<ILogger>(container, 'ILogger');
     assertIsDefined(logger, 'ILogger dependency not found');
-    return new MemoryBankContentGenerator(llmAgent, promptBuilder, contentProcessor, logger); // Pass new dependency
+    return new MemoryBankContentGenerator(llmAgent, contentProcessor, logger); // Pass new dependency
   });
 
   // Register MemoryBankOrchestrator

@@ -6,6 +6,7 @@ import { IProjectAnalyzer } from '@core/analysis/types'; // Remove unused Projec
 import { ILogger } from '@core/services/logger-service'; // Keep ILogger type
 import { createMockLogger } from '../__mocks__/logger.mock'; // Correct path
 import { createMockProjectContext } from '../__mocks__/project-context.mock'; // Correct path
+import { mockContentProcessor } from '../__mocks__/content-processor.mock'; // Import the shared mock instance
 import { IFileOperations } from '@core/file-operations/interfaces';
 import { LLMAgent } from '@core/llm/llm-agent';
 import { LLMProviderError } from '@core/llm/llm-provider-errors'; // Import LLMProviderError
@@ -13,7 +14,7 @@ import { Result } from '@core/result/result';
 import { IServiceContainer } from '@core/di/interfaces';
 import { ProjectConfig } from '../../types/shared'; // Corrected import path
 import { IRulesPromptBuilder } from '@generators/rules/interfaces'; // Import for mock
-import { IContentProcessor } from '@memory-bank/interfaces'; // Import for mock
+// import { IContentProcessor } from '@memory-bank/interfaces'; // Commented out: No longer needed for local mock type
 
 // Mock dependencies
 let mockLogger: jest.Mocked<ILogger>; // Declare logger
@@ -62,11 +63,8 @@ const mockRulesPromptBuilder: jest.Mocked<IRulesPromptBuilder> = {
   buildPrompt: jest.fn(),
 };
 
-// Mock for ContentProcessor
-const mockContentProcessor: jest.Mocked<IContentProcessor> = {
-  stripMarkdownCodeBlock: jest.fn(),
-  processTemplate: jest.fn(), // Add missing mock method
-};
+// Removed local mock definition for ContentProcessor (lines 65-69)
+// Using shared mock 'mockContentProcessor' imported above
 
 describe('AiMagicGenerator Integration Tests', () => {
   let aiMagicGenerator: AiMagicGenerator;

@@ -80,8 +80,8 @@ export class MemoryBankOrchestrator implements IMemoryBankOrchestrator {
     try {
       // Create the memory-bank directory structure using the resolved path
       this.logger.info('Creating memory bank directory structure...');
-      // Pass the resolved output directory to the file manager
-      const dirResult = await this.fileManager.createMemoryBankDirectory(resolvedOutputDir);
+      // Pass the project base directory to the file manager for creating the structure
+      const dirResult = await this.fileManager.createMemoryBankDirectory(config.baseDir || '.');
 
       if (dirResult.isErr()) {
         // Update error context to use the resolved path
@@ -194,7 +194,7 @@ export class MemoryBankOrchestrator implements IMemoryBankOrchestrator {
         this.logger.info('Copying template files...');
         // Use configured templatesDir, fallback to default
         const sourceTemplatesDir =
-          config.memoryBank?.templatesDir || path.join('templates', 'memory-bank', 'templates');
+          config.memoryBank?.templatesDir || path.join('memory-bank', 'templates');
         // Use the fixed output directory path for the destination
         const destTemplatesDir = path.join(resolvedOutputDir, 'templates');
 
