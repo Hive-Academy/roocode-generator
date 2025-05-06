@@ -12,6 +12,7 @@ import { LLMAgent } from '../../../src/core/llm/llm-agent';
 import { Result } from '../../../src/core/result/result';
 import { ILogger } from '../../../src/core/services/logger-service'; // Keep type import
 import { createMockLogger } from '../../__mocks__/logger.mock'; // Add mock factory import
+import { createMockFileOperations } from '../../__mocks__/file-operations.mock'; // Added import for mock factory
 import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
 
 describe('ProjectAnalyzer Directory Handling', () => {
@@ -25,24 +26,7 @@ describe('ProjectAnalyzer Directory Handling', () => {
   let mockAstAnalysisService: jest.Mocked<IAstAnalysisService>; // Added
 
   beforeEach(() => {
-    mockFileOps = {
-      readFile: jest.fn(),
-      writeFile: jest.fn(),
-      exists: jest.fn(),
-      isDirectory: jest.fn(),
-      readDir: jest.fn(),
-      copyFile: jest.fn(),
-      copyDirectoryRecursive: jest.fn(),
-      deleteFile: jest.fn(),
-      deleteDirectory: jest.fn(),
-      createDirectory: jest.fn(),
-      getRelativePath: jest.fn(),
-      getAbsolutePath: jest.fn(),
-      joinPaths: jest.fn(),
-      dirname: jest.fn(),
-      basename: jest.fn(),
-      extname: jest.fn(),
-    } as unknown as jest.Mocked<IFileOperations>;
+    mockFileOps = createMockFileOperations(); // Use the factory
 
     mockLogger = createMockLogger();
 
@@ -137,18 +121,19 @@ describe('ProjectAnalyzer Directory Handling', () => {
     });
   });
 
-  describe('collectProjectFiles', () => {
+  describe('collectAnalyzableFiles', () => {
     // Access the private method using type assertion
-    const collectProjectFiles = (rootDir: string) => {
-      return (projectAnalyzer as any).collectProjectFiles(rootDir);
+    const collectAnalyzableFiles = (rootDir: string) => {
+      return (projectAnalyzer as any).collectAnalyzableFiles(rootDir);
     };
 
     it('should handle empty directories', async () => {
       mockFileOps.readDir.mockResolvedValue(Result.ok([]));
 
-      const files = await collectProjectFiles('/empty/dir');
+      const result = await collectAnalyzableFiles('/empty/dir');
 
-      expect(files).toEqual([]);
+      expect(result.isOk()).toBe(true);
+      expect(result.value).toEqual([]);
       expect(mockFileOps.readDir).toHaveBeenCalledWith('/empty/dir');
     });
 
@@ -205,11 +190,24 @@ describe('ProjectAnalyzer Directory Handling', () => {
           },
         ])
       );
+      // Mock specific behaviors for this test case
+      mockFileOps.isDirectory.mockImplementation((p: string) => {
+        // Removed async
+        // Check if path ends with any of the excluded directory names
+        if (['node_modules', 'dist', '.git', 'coverage'].some((excluded) => p.endsWith(excluded))) {
+          return Promise.resolve(Result.ok(true)); // Wrap in Promise.resolve
+        }
+        // Default behavior for other paths in this test
+        return Promise.resolve(Result.ok(false)); // Wrap in Promise.resolve
+      });
+      // joinPaths is already mocked in beforeEach, no need to re-mock unless specific behavior needed
 
-      const files = await collectProjectFiles('/root');
+      const result = await collectAnalyzableFiles('/root');
 
-      expect(files).toEqual([]);
-      expect(mockLogger.debug).toHaveBeenCalledWith(
+      expect(result.isOk()).toBe(true);
+      expect(result.value).toEqual([]);
+      // Check if logger was called for skipping
+      expect(mockLogger.trace).toHaveBeenCalledWith(
         expect.stringContaining('Skipping excluded directory')
       );
     });
@@ -217,12 +215,10 @@ describe('ProjectAnalyzer Directory Handling', () => {
     it('should handle directory read errors', async () => {
       mockFileOps.readDir.mockResolvedValue(Result.err(new Error('Permission denied')));
 
-      const files = await collectProjectFiles('/root');
+      const result = await collectAnalyzableFiles('/root');
 
-      expect(files).toEqual([]);
-      expect(mockLogger.debug).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to read directory')
-      );
+      expect(result.isErr()).toBe(true);
+      expect(result.error?.message).toContain('Read directory failed: Permission denied');
     });
   });
 });
