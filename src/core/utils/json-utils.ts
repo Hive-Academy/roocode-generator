@@ -30,7 +30,7 @@ export async function parseRobustJson<T = any>( // Added async keyword
       `Standard JSON parsing failed for string: "${preview}". Error: ${parseError}. Attempting repair.`
     );
     try {
-      const repairedJson = jsonrepair(jsonString);
+      const repairedJson: string = jsonrepair(jsonString);
       // Attempt parsing the repaired string
       const parsedResult = JSON.parse(repairedJson);
 
