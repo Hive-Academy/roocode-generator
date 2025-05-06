@@ -1,4 +1,5 @@
 import { IAstAnalysisService } from '../../../src/core/analysis/ast-analysis.interfaces';
+import { ITechStackAnalyzerService } from '../../../src/core/analysis/tech-stack-analyzer'; // Added
 import {
   FileContentResult,
   IFileContentCollector,
@@ -24,6 +25,7 @@ import { createMockFileContentCollector } from '../../__mocks__/file-content-col
 import { createMockFilePrioritizer } from '../../__mocks__/file-prioritizer.mock';
 import { createMockTreeSitterParserService } from '../../__mocks__/tree-sitter-parser.service.mock';
 import { createMockAstAnalysisService } from '../../__mocks__/ast-analysis.service.mock';
+import { createMockTechStackAnalyzerService } from '../../__mocks__/tech-stack-analyzer.mock'; // Added
 
 describe('ProjectAnalyzer Error Handling Tests', () => {
   let projectAnalyzer: ProjectAnalyzer;
@@ -36,6 +38,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
   let mockFilePrioritizer: jest.Mocked<IFilePrioritizer>;
   let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>;
   let mockAstAnalysisService: jest.Mocked<IAstAnalysisService>;
+  let mockTechStackAnalyzerService: jest.Mocked<ITechStackAnalyzerService>; // Added
 
   beforeEach(() => {
     // Use mock factories for all dependencies
@@ -48,6 +51,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
     mockFilePrioritizer = createMockFilePrioritizer();
     mockTreeSitterParserService = createMockTreeSitterParserService();
     mockAstAnalysisService = createMockAstAnalysisService();
+    mockTechStackAnalyzerService = createMockTechStackAnalyzerService(); // Added
 
     // Set default return values for mocks used in multiple tests if needed
     mockFileOps.readFile.mockResolvedValue(Result.ok(''));
@@ -70,18 +74,27 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
     mockAstAnalysisService.analyzeAst.mockResolvedValue(
       Result.ok({ functions: [], classes: [], imports: [] })
     );
+    mockTechStackAnalyzerService.analyze.mockResolvedValue({
+      // Default mock
+      languages: ['typescript'],
+      frameworks: ['jest'],
+      buildTools: ['npm'],
+      testingFrameworks: ['jest'],
+      linters: ['eslint'],
+      packageManager: 'npm',
+    });
 
     // Ensure correct constructor order
     projectAnalyzer = new ProjectAnalyzer(
       mockFileOps,
       mockLogger,
       mockLlmAgent,
-      mockResponseParser,
-      mockProgress,
+      mockProgress, // Corrected: 4th arg
       mockContentCollector,
       mockFilePrioritizer,
       mockTreeSitterParserService,
-      mockAstAnalysisService
+      mockAstAnalysisService,
+      mockTechStackAnalyzerService // Added: 9th arg
     );
   });
 

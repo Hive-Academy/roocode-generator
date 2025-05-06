@@ -9,25 +9,27 @@ import {
   FileMetadata, // Import FileMetadata
 } from '../../../src/core/analysis/interfaces';
 import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
-import { ResponseParser } from '../../../src/core/analysis/response-parser';
+// import { ResponseParser } from '../../../src/core/analysis/response-parser'; // No longer a direct dependency
+import { ITechStackAnalyzerService } from '../../../src/core/analysis/tech-stack-analyzer'; // Added
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
 import { LLMAgent } from '../../../src/core/llm/llm-agent';
 import { Result } from '../../../src/core/result/result';
 import { ILogger } from '../../../src/core/services/logger-service';
 import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
 import { Dirent } from 'fs'; // Import Dirent
-import { ProjectContext, GenericAstNode } from '../../../src/core/analysis/types'; // Import ProjectContext and GenericAstNode
+import { /* ProjectContext, */ GenericAstNode } from '../../../src/core/analysis/types'; // Import ProjectContext and GenericAstNode
 
 // Import all mock factories
 import { createMockLogger } from '../../__mocks__/logger.mock';
 import { createMockFileOperations } from '../../__mocks__/file-operations.mock';
 import { createMockLLMAgent } from '../../__mocks__/llm-agent.mock';
-import { createMockResponseParser } from '../../__mocks__/response-parser.mock';
+// import { createMockResponseParser } from '../../__mocks__/response-parser.mock'; // Unused
 import { createMockProgressIndicator } from '../../__mocks__/progress-indicator.mock';
 import { createMockFileContentCollector } from '../../__mocks__/file-content-collector.mock';
 import { createMockFilePrioritizer } from '../../__mocks__/file-prioritizer.mock';
 import { createMockTreeSitterParserService } from '../../__mocks__/tree-sitter-parser.service.mock';
 import { createMockAstAnalysisService } from '../../__mocks__/ast-analysis.service.mock';
+import { createMockTechStackAnalyzerService } from '../../__mocks__/tech-stack-analyzer.mock'; // Added
 
 // Removed unused: type TestFileMetadata = { path: string; size: number };
 
@@ -36,24 +38,26 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
   let mockFileOps: jest.Mocked<IFileOperations>;
   let mockLogger: jest.Mocked<ILogger>;
   let mockLLMAgent: jest.Mocked<LLMAgent>;
-  let mockResponseParser: jest.Mocked<ResponseParser>;
+  // let mockResponseParser: jest.Mocked<ResponseParser>; // Removed
   let mockProgress: jest.Mocked<ProgressIndicator>;
   let mockContentCollector: jest.Mocked<IFileContentCollector>;
   let mockFilePrioritizer: jest.Mocked<IFilePrioritizer>;
   let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>;
   let mockAstAnalysisService: jest.Mocked<IAstAnalysisService>;
+  let mockTechStackAnalyzerService: jest.Mocked<ITechStackAnalyzerService>; // Added
 
   beforeEach(() => {
     // Use mock factories for all dependencies
     mockFileOps = createMockFileOperations();
     mockLogger = createMockLogger();
     mockLLMAgent = createMockLLMAgent();
-    mockResponseParser = createMockResponseParser();
+    // mockResponseParser = createMockResponseParser(); // Removed
     mockProgress = createMockProgressIndicator();
     mockContentCollector = createMockFileContentCollector();
     mockFilePrioritizer = createMockFilePrioritizer();
     mockTreeSitterParserService = createMockTreeSitterParserService();
     mockAstAnalysisService = createMockAstAnalysisService();
+    mockTechStackAnalyzerService = createMockTechStackAnalyzerService(); // Added
 
     // Set default return values for mocks used in multiple tests if needed
     // eslint-disable-next-line @typescript-eslint/require-await
@@ -95,44 +99,26 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       Result.ok({ functions: [], classes: [], imports: [] })
     );
 
-    // Default successful parse for ResponseParser
-    const defaultProjectContext: ProjectContext = {
-      techStack: {
-        languages: [],
-        frameworks: [],
-        buildTools: [],
-        testingFrameworks: [],
-        linters: [],
-        packageManager: '',
-      },
-      structure: {
-        rootDir: '',
-        sourceDir: '',
-        testDir: '',
-        configFiles: [],
-        mainEntryPoints: [],
-        componentStructure: {},
-      },
-      dependencies: {
-        dependencies: {},
-        devDependencies: {},
-        peerDependencies: {},
-        internalDependencies: {},
-      },
-      codeInsights: {},
-    };
-    mockResponseParser.parseLlmResponse.mockResolvedValue(Result.ok(defaultProjectContext)); // Default success
+    mockTechStackAnalyzerService.analyze.mockResolvedValue({
+      // Default mock
+      languages: ['typescript'],
+      frameworks: ['jest'],
+      buildTools: ['npm'],
+      testingFrameworks: ['jest'],
+      linters: ['eslint'],
+      packageManager: 'npm',
+    });
 
     projectAnalyzer = new ProjectAnalyzer(
       mockFileOps,
       mockLogger,
       mockLLMAgent,
-      mockResponseParser,
-      mockProgress,
+      mockProgress, // Corrected: 4th arg
       mockContentCollector,
       mockFilePrioritizer,
       mockTreeSitterParserService,
-      mockAstAnalysisService
+      mockAstAnalysisService,
+      mockTechStackAnalyzerService // Added: 9th arg
     );
   });
 

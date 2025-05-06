@@ -4,8 +4,9 @@ import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
 import { ILogger } from '../../../src/core/services/logger-service';
 import { LLMAgent } from '../../../src/core/llm/llm-agent';
-import { ResponseParser } from '../../../src/core/analysis/response-parser';
+// import { ResponseParser } from '../../../src/core/analysis/response-parser'; // No longer a direct dependency
 import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
+import { ITechStackAnalyzerService } from '../../../src/core/analysis/tech-stack-analyzer'; // Added
 import {
   IFileContentCollector,
   IFilePrioritizer,
@@ -20,6 +21,7 @@ import { ProjectContext, GenericAstNode } from '../../../src/core/analysis/types
 import { Result } from '../../../src/core/result/result';
 import { EXTENSION_LANGUAGE_MAP } from '../../../src/core/analysis/tree-sitter.config';
 import { Dirent } from 'fs'; // Import Dirent for mock
+import { createMockTechStackAnalyzerService } from '../../__mocks__/tech-stack-analyzer.mock'; // Added
 
 // Mock data
 const mockAstNode: GenericAstNode = {
@@ -62,6 +64,7 @@ const mockBasicProjectContext: Partial<ProjectContext> = {
     configFiles: [],
     mainEntryPoints: [],
     componentStructure: {},
+    directoryTree: [], // Added missing required property
   },
   dependencies: {
     dependencies: {},
@@ -76,12 +79,13 @@ let projectAnalyzer: ProjectAnalyzer;
 let mockFileOps: jest.Mocked<IFileOperations>;
 let mockLogger: jest.Mocked<ILogger>;
 let mockLLMAgent: jest.Mocked<LLMAgent>;
-let mockResponseParser: jest.Mocked<ResponseParser>;
+// let mockResponseParser: jest.Mocked<ResponseParser>; // Removed
 let mockProgress: jest.Mocked<ProgressIndicator>;
 let mockContentCollector: jest.Mocked<IFileContentCollector>;
 let mockFilePrioritizer: jest.Mocked<IFilePrioritizer>;
 let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>;
 let mockAstAnalysisService: jest.Mocked<IAstAnalysisService>;
+let mockTechStackAnalyzerService: jest.Mocked<ITechStackAnalyzerService>; // Added
 
 const rootPath = '/mock/project';
 const file1Path = path.join(rootPath, 'src/file1.ts');
@@ -146,13 +150,17 @@ describe('ProjectAnalyzer - IAstAnalysisService Integration', () => {
       handleLLMError: jest.fn(),
     } as any as jest.Mocked<LLMAgent>; // Cast to Mocked<LLMAgent>
 
-    mockResponseParser = {
-      parseLlmResponse: jest.fn().mockReturnValue(Result.ok(mockBasicProjectContext)),
-      // logger is private, cannot be assigned directly in mock object literal
-      jsonSchemaHelper: { validate: jest.fn().mockReturnValue({ valid: true, errors: [] }) } as any,
-      cleanResponse: jest.fn((text) => text),
-      applyProjectContextDefaults: jest.fn((ctx) => ctx),
-    } as any as jest.Mocked<ResponseParser>; // Cast to Mocked<ResponseParser>
+    // mockResponseParser removed
+    mockTechStackAnalyzerService = createMockTechStackAnalyzerService(); // Added
+    mockTechStackAnalyzerService.analyze.mockResolvedValue({
+      // Default mock
+      languages: ['typescript'],
+      frameworks: ['jest'],
+      buildTools: ['npm'],
+      testingFrameworks: ['jest'],
+      linters: ['eslint'],
+      packageManager: 'npm',
+    });
 
     mockProgress = {
       start: jest.fn(),
@@ -288,12 +296,12 @@ describe('ProjectAnalyzer - IAstAnalysisService Integration', () => {
       mockFileOps,
       mockLogger,
       mockLLMAgent,
-      mockResponseParser,
-      mockProgress,
+      mockProgress, // Corrected: 4th arg
       mockContentCollector,
       mockFilePrioritizer,
       mockTreeSitterParserService,
-      mockAstAnalysisService // Inject the specific mock
+      mockAstAnalysisService,
+      mockTechStackAnalyzerService // Added: 9th arg
     );
   });
 
