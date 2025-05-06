@@ -2,12 +2,13 @@
 import { GeneratorOrchestrator } from '../../../src/core/application/generator-orchestrator';
 import { IGenerator } from '../../../src/core/generators/base-generator';
 import { IProjectConfigService } from '../../../src/core/config/interfaces';
-import { ILogger } from '../../../src/core/services/logger-service';
+import { ILogger } from '../../../src/core/services/logger-service'; // Keep type import
+import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
 import { Result } from '../../../src/core/result/result';
 
 describe('GeneratorOrchestrator (Unit)', () => {
   let mockProjectConfigService: jest.Mocked<IProjectConfigService>;
-  let mockLogger: jest.Mocked<ILogger>;
+  let mockLogger: jest.Mocked<ILogger>; // Keep declaration
   let mockAiMagicGenerator: jest.Mocked<IGenerator<any>>;
   let mockOtherGenerator: jest.Mocked<IGenerator<any>>;
   let orchestrator: GeneratorOrchestrator;
@@ -18,12 +19,7 @@ describe('GeneratorOrchestrator (Unit)', () => {
       saveConfig: jest.fn(),
       validateConfig: jest.fn(), // Corrected mock
     };
-    mockLogger = {
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    };
+    mockLogger = createMockLogger(); // Initialize mock logger here
 
     mockAiMagicGenerator = {
       name: 'AiMagicGenerator',

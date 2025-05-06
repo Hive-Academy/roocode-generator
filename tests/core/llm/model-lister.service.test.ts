@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import 'reflect-metadata';
 import { ModelListerService } from '@core/llm/model-lister.service';
-import { ILogger } from '@core/services/logger-service';
+import { ILogger } from '@core/services/logger-service'; // Keep type import
+import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
 import { LLMProviderFactory } from '@core/llm/interfaces';
 import { Result } from '@core/result/result';
 import { LLMProviderError } from '@core/llm/llm-provider-errors';
@@ -10,7 +11,7 @@ import { LLMConfig } from 'types/shared';
 describe('ModelListerService', () => {
   let service: ModelListerService;
   let mockProviderFactories: Record<string, LLMProviderFactory>;
-  let mockLogger: jest.Mocked<ILogger>;
+  let mockLogger: jest.Mocked<ILogger>; // Keep declaration
   let mockProvider: any;
   let mockProviderFactory: jest.Mock;
 
@@ -29,12 +30,7 @@ describe('ModelListerService', () => {
     };
 
     // Set up mock logger
-    mockLogger = {
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-    };
+    mockLogger = createMockLogger(); // Initialize mock logger here
 
     // Create service instance
     service = new ModelListerService(mockProviderFactories, mockLogger);

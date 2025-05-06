@@ -1,106 +1,124 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
-import path from 'path'; // Added path import
+import { IAstAnalysisService } from '../../../src/core/analysis/ast-analysis.interfaces'; // Corrected path
+import path from 'path';
 import {
+  // Removed unused: FileContentResult,
   IFileContentCollector,
   IFilePrioritizer,
   ITreeSitterParserService,
-} from '../../../src/core/analysis/interfaces'; // Added FileMetadata import
+  FileMetadata, // Import FileMetadata
+} from '../../../src/core/analysis/interfaces';
 import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
-import { ResponseParser } from '../../../src/core/analysis/response-parser';
-import { ParsedCodeInfo } from '../../../src/core/analysis/types'; // Import ParsedCodeInfo from types.ts
+// import { ResponseParser } from '../../../src/core/analysis/response-parser'; // No longer a direct dependency
+import { ITechStackAnalyzerService } from '../../../src/core/analysis/tech-stack-analyzer'; // Added
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
 import { LLMAgent } from '../../../src/core/llm/llm-agent';
 import { Result } from '../../../src/core/result/result';
 import { ILogger } from '../../../src/core/services/logger-service';
 import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
+import { Dirent } from 'fs'; // Import Dirent
+import { /* ProjectContext, */ GenericAstNode } from '../../../src/core/analysis/types'; // Import ProjectContext and GenericAstNode
 
-// Define a type for the metadata objects used frequently in tests
-type TestFileMetadata = { path: string; size: number };
+// Import all mock factories
+import { createMockLogger } from '../../__mocks__/logger.mock';
+import { createMockFileOperations } from '../../__mocks__/file-operations.mock';
+import { createMockLLMAgent } from '../../__mocks__/llm-agent.mock';
+// import { createMockResponseParser } from '../../__mocks__/response-parser.mock'; // Unused
+import { createMockProgressIndicator } from '../../__mocks__/progress-indicator.mock';
+import { createMockFileContentCollector } from '../../__mocks__/file-content-collector.mock';
+import { createMockFilePrioritizer } from '../../__mocks__/file-prioritizer.mock';
+import { createMockTreeSitterParserService } from '../../__mocks__/tree-sitter-parser.service.mock';
+import { createMockAstAnalysisService } from '../../__mocks__/ast-analysis.service.mock';
+import { createMockTechStackAnalyzerService } from '../../__mocks__/tech-stack-analyzer.mock'; // Added
+
+// Removed unused: type TestFileMetadata = { path: string; size: number };
 
 describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
   let projectAnalyzer: ProjectAnalyzer;
   let mockFileOps: jest.Mocked<IFileOperations>;
   let mockLogger: jest.Mocked<ILogger>;
   let mockLLMAgent: jest.Mocked<LLMAgent>;
-  let mockResponseParser: jest.Mocked<ResponseParser>;
+  // let mockResponseParser: jest.Mocked<ResponseParser>; // Removed
   let mockProgress: jest.Mocked<ProgressIndicator>;
   let mockContentCollector: jest.Mocked<IFileContentCollector>;
   let mockFilePrioritizer: jest.Mocked<IFilePrioritizer>;
-  let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>; // Added TreeSitter mock
+  let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>;
+  let mockAstAnalysisService: jest.Mocked<IAstAnalysisService>;
+  let mockTechStackAnalyzerService: jest.Mocked<ITechStackAnalyzerService>; // Added
 
   beforeEach(() => {
-    // Mocks for the 'File Prioritization and Token Limiting' tests
-    mockFileOps = {
-      // Add a default readFile mock here again
-      // eslint-disable-next-line @typescript-eslint/require-await
-      readFile: jest.fn().mockImplementation(async (filePath: string) => {
-        return Result.ok(`Mock content for ${path.basename(filePath)}`);
-      }),
-      writeFile: jest.fn(),
-      createDirectory: jest.fn(),
-      validatePath: jest.fn(),
-      getFiles: jest.fn(), // This might not be directly used if collectAnalyzableFiles is mocked indirectly
-      // Mock readDir and isDirectory - These will be overridden in specific tests
-      readDir: jest.fn().mockResolvedValue(Result.ok([])),
-      isDirectory: jest.fn().mockResolvedValue(Result.ok(false)),
-    } as any;
+    // Use mock factories for all dependencies
+    mockFileOps = createMockFileOperations();
+    mockLogger = createMockLogger();
+    mockLLMAgent = createMockLLMAgent();
+    // mockResponseParser = createMockResponseParser(); // Removed
+    mockProgress = createMockProgressIndicator();
+    mockContentCollector = createMockFileContentCollector();
+    mockFilePrioritizer = createMockFilePrioritizer();
+    mockTreeSitterParserService = createMockTreeSitterParserService();
+    mockAstAnalysisService = createMockAstAnalysisService();
+    mockTechStackAnalyzerService = createMockTechStackAnalyzerService(); // Added
 
-    mockLogger = {
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-    } as any;
+    // Set default return values for mocks used in multiple tests if needed
+    // eslint-disable-next-line @typescript-eslint/require-await
+    mockFileOps.readFile.mockImplementation(async (filePath: string) => {
+      return Result.ok(`Mock content for ${path.basename(filePath)}`);
+    });
+    mockFileOps.readDir.mockResolvedValue(Result.ok([]));
+    mockFileOps.isDirectory.mockResolvedValue(Result.ok(false));
+    mockFileOps.normalizePath.mockImplementation((p: string) => p);
+    mockFileOps.exists.mockResolvedValue(Result.ok(true));
+    mockFileOps.copyDirectoryRecursive.mockResolvedValue(Result.ok(undefined));
 
-    mockLLMAgent = {
-      getModelContextWindow: jest.fn().mockResolvedValue(10000), // Provide default mock value
-      countTokens: jest.fn().mockResolvedValue(10), // Provide default mock value
-      getCompletion: jest.fn(),
-      // Add getProvider mock, returning a mock provider with necessary methods
-      getProvider: jest.fn().mockResolvedValue(
-        Result.ok({
-          getContextWindowSize: jest.fn().mockReturnValue(10000),
-          countTokens: jest.fn().mockResolvedValue(10),
-          getCompletion: jest.fn(), // Include getCompletion on the mock provider if needed elsewhere
-        })
-      ),
-    } as any;
+    mockLLMAgent.getModelContextWindow.mockResolvedValue(10000);
+    mockLLMAgent.countTokens.mockResolvedValue(10);
+    mockLLMAgent.getProvider.mockResolvedValue(
+      Result.ok({
+        getContextWindowSize: jest.fn().mockReturnValue(10000),
+        countTokens: jest.fn().mockResolvedValue(10),
+        getCompletion: jest.fn(),
+        providerId: 'mock-provider',
+        modelId: 'mock-model',
+      } as any) // Keep 'any' for simplicity in test setup
+    );
+    // getProviderId and getModelId might not be needed if LLMAgent mock is sufficient
 
-    mockResponseParser = {
-      parseLlmResponse: jest.fn(), // Corrected method name
-    } as any;
+    // Provide a valid default GenericAstNode
+    const defaultAstNode: GenericAstNode = {
+      type: 'program',
+      text: '',
+      startPosition: { row: 0, column: 0 },
+      endPosition: { row: 0, column: 0 },
+      isNamed: true,
+      fieldName: null,
+      children: [],
+    };
+    mockTreeSitterParserService.initialize.mockReturnValue(Result.ok(undefined));
+    mockTreeSitterParserService.parse.mockReturnValue(Result.ok(defaultAstNode));
+    mockAstAnalysisService.analyzeAst.mockResolvedValue(
+      Result.ok({ functions: [], classes: [], imports: [] })
+    );
 
-    mockProgress = {
-      start: jest.fn(),
-      update: jest.fn(),
-      fail: jest.fn(),
-      succeed: jest.fn(), // Added succeed mock
-    } as any;
-
-    mockContentCollector = {
-      collectContent: jest.fn(),
-    } as unknown as jest.Mocked<IFileContentCollector>;
-
-    mockFilePrioritizer = {
-      prioritizeFiles: jest.fn(),
-    } as unknown as jest.Mocked<IFilePrioritizer>;
-
-    mockTreeSitterParserService = {
-      // Initialize the mock
-      parse: jest.fn(),
-    } as any;
+    mockTechStackAnalyzerService.analyze.mockResolvedValue({
+      // Default mock
+      languages: ['typescript'],
+      frameworks: ['jest'],
+      buildTools: ['npm'],
+      testingFrameworks: ['jest'],
+      linters: ['eslint'],
+      packageManager: 'npm',
+    });
 
     projectAnalyzer = new ProjectAnalyzer(
       mockFileOps,
       mockLogger,
       mockLLMAgent,
-      mockResponseParser,
-      mockProgress,
+      mockProgress, // Corrected: 4th arg
       mockContentCollector,
       mockFilePrioritizer,
-      mockTreeSitterParserService // Pass the new mock
+      mockTreeSitterParserService,
+      mockAstAnalysisService,
+      mockTechStackAnalyzerService // Added: 9th arg
     );
   });
 
@@ -111,12 +129,16 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
 
       // --- Test-specific Mocks for collectAnalyzableFiles ---
       (mockFileOps.readDir as jest.Mock).mockImplementation((dirPath: string) => {
-        if (dirPath === rootPath) return Result.ok(['src', 'package.json', 'tsconfig.json']);
-        if (dirPath === srcPath) return Result.ok(['app.ts', 'utils.ts']);
-        return Result.ok([]);
+        if (dirPath === rootPath)
+          return Promise.resolve(
+            Result.ok(['src', 'package.json', 'tsconfig.json'] as unknown as Dirent[])
+          ); // Mock Dirent structure
+        if (dirPath === srcPath)
+          return Promise.resolve(Result.ok(['app.ts', 'utils.ts'] as unknown as Dirent[]));
+        return Promise.resolve(Result.ok([] as Dirent[]));
       });
       (mockFileOps.isDirectory as jest.Mock).mockImplementation((filePath: string) => {
-        return Result.ok(filePath === srcPath); // Only srcPath is a directory
+        return Promise.resolve(Result.ok(filePath === srcPath)); // Only srcPath is a directory
       });
       // --- End Test-specific Mocks ---
 
@@ -127,13 +149,15 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
         path.join(srcPath, 'app.ts'), // Use joined path
         path.join(srcPath, 'utils.ts'), // Use joined path
       ];
-      const expectedFileMetadata: TestFileMetadata[] = expectedCollectedPaths.map((p: string) => ({
+      const expectedFileMetadata: FileMetadata[] = expectedCollectedPaths.map((p: string) => ({
+        // Use FileMetadata
         path: p,
-        size: 0,
+        size: 0, // Size is updated by collector, initial is 0
       }));
 
       // Mock prioritizeFiles return value based on test logic (using full paths)
-      const prioritizedFilesMockReturn: TestFileMetadata[] = [
+      const prioritizedFilesMockReturn: FileMetadata[] = [
+        // Use FileMetadata
         { path: path.join(rootPath, 'package.json'), size: 100 },
         { path: path.join(rootPath, 'tsconfig.json'), size: 200 },
         { path: path.join(srcPath, 'app.ts'), size: 300 },
@@ -145,23 +169,15 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       mockContentCollector.collectContent.mockResolvedValue(
         Result.ok({
           content: prioritizedFilesMockReturn
-            .map((f: TestFileMetadata) => `${path.basename(f.path)} content`)
+            .map((f: FileMetadata) => `Mock content for ${path.basename(f.path)}`) // Use FileMetadata
             .join('\n'),
           metadata: prioritizedFilesMockReturn,
         })
       );
 
       // Mock later stages to allow successful completion
-      mockLLMAgent.getCompletion.mockResolvedValue(Result.ok('{}'));
-      mockResponseParser.parseLlmResponse.mockReturnValue(
-        Result.ok({ techStack: {}, structure: {}, dependencies: {} })
-      );
-      mockLLMAgent.getModelContextWindow.mockResolvedValue(1000);
-      mockLLMAgent.countTokens.mockResolvedValue(10); // Ensure countTokens is mocked
-      // Mock TreeSitter parse for this test case (assuming successful parse for all)
-      mockTreeSitterParserService.parse.mockReturnValue(
-        Result.ok<ParsedCodeInfo>({ functions: [], classes: [] }) // Corrected explicit typing
-      );
+      mockLLMAgent.getCompletion.mockResolvedValue(Result.ok('{}')); // Simple valid JSON
+      // mockResponseParser uses default success mock from beforeEach
 
       // Execute
       const result = await projectAnalyzer.analyzeProject([rootPath]);
@@ -173,7 +189,9 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       // Check that prioritizeFiles was called with the correctly collected FileMetadata
       expect(mockFilePrioritizer.prioritizeFiles as jest.Mock).toHaveBeenCalledWith(
         expect.arrayContaining(
-          expectedFileMetadata.map((m: TestFileMetadata) => expect.objectContaining(m))
+          expectedFileMetadata.map((m: FileMetadata) =>
+            expect.objectContaining({ path: m.path, size: m.size })
+          ) // Use FileMetadata
         ),
         rootPath
       );
@@ -190,12 +208,16 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
 
       // --- Test-specific Mocks ---
       (mockFileOps.readDir as jest.Mock).mockImplementation((dirPath: string) => {
-        if (dirPath === rootPath) return Result.ok(['src', 'package.json', 'webpack.config.js']);
-        if (dirPath === srcPath) return Result.ok(['styles.css', 'index.ts']);
-        return Result.ok([]);
+        if (dirPath === rootPath)
+          return Promise.resolve(
+            Result.ok(['src', 'package.json', 'webpack.config.js'] as unknown as Dirent[])
+          );
+        if (dirPath === srcPath)
+          return Promise.resolve(Result.ok(['styles.css', 'index.ts'] as unknown as Dirent[]));
+        return Promise.resolve(Result.ok([] as Dirent[]));
       });
       (mockFileOps.isDirectory as jest.Mock).mockImplementation((filePath: string) => {
-        return Result.ok(filePath === srcPath);
+        return Promise.resolve(Result.ok(filePath === srcPath));
       });
       // --- End Test-specific Mocks ---
 
@@ -205,13 +227,15 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
         path.join(rootPath, 'webpack.config.js'),
         path.join(srcPath, 'index.ts'),
       ];
-      const expectedFileMetadata: TestFileMetadata[] = expectedCollectedPaths.map((p: string) => ({
+      const expectedFileMetadata: FileMetadata[] = expectedCollectedPaths.map((p: string) => ({
+        // Use FileMetadata
         path: p,
         size: 0,
       }));
 
       // Mock prioritizeFiles return value
-      const prioritizedFilesMockReturn: TestFileMetadata[] = [
+      const prioritizedFilesMockReturn: FileMetadata[] = [
+        // Use FileMetadata
         { path: path.join(rootPath, 'package.json'), size: 100 },
         { path: path.join(rootPath, 'webpack.config.js'), size: 150 },
         { path: path.join(srcPath, 'index.ts'), size: 200 },
@@ -223,7 +247,7 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       mockContentCollector.collectContent.mockResolvedValue(
         Result.ok({
           content: prioritizedFilesMockReturn
-            .map((f: TestFileMetadata) => `${path.basename(f.path)} content`)
+            .map((f: FileMetadata) => `Mock content for ${path.basename(f.path)}`) // Use FileMetadata
             .join('\n'),
           metadata: prioritizedFilesMockReturn,
         })
@@ -231,14 +255,7 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
 
       // Mock later stages
       mockLLMAgent.getCompletion.mockResolvedValue(Result.ok('{}'));
-      mockResponseParser.parseLlmResponse.mockReturnValue(
-        Result.ok({ techStack: {}, structure: {}, dependencies: {} })
-      );
-      mockLLMAgent.getModelContextWindow.mockResolvedValue(1000);
-      mockLLMAgent.countTokens.mockResolvedValue(10);
-      mockTreeSitterParserService.parse.mockReturnValue(
-        Result.ok<ParsedCodeInfo>({ functions: [], classes: [] }) // Corrected explicit typing
-      );
+      // mockResponseParser uses default success mock from beforeEach
 
       // Execute
       const result = await projectAnalyzer.analyzeProject([rootPath]);
@@ -249,14 +266,16 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
 
       expect(mockFilePrioritizer.prioritizeFiles as jest.Mock).toHaveBeenCalledWith(
         expect.arrayContaining(
-          expectedFileMetadata.map((m: TestFileMetadata) => expect.objectContaining(m))
+          expectedFileMetadata.map((m: FileMetadata) =>
+            expect.objectContaining({ path: m.path, size: m.size })
+          ) // Use FileMetadata
         ),
         rootPath
       );
 
       const prioritizedFilesResult = mockFilePrioritizer.prioritizeFiles.mock.results[0].value;
-      expect(prioritizedFilesResult.map((f: TestFileMetadata) => f.path)).toEqual([
-        // Added type here
+      expect(prioritizedFilesResult.map((f: FileMetadata) => f.path)).toEqual([
+        // Use FileMetadata
         path.join(rootPath, 'package.json'),
         path.join(rootPath, 'webpack.config.js'),
         path.join(srcPath, 'index.ts'), // Use joined path
@@ -271,22 +290,24 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
 
       // --- Test-specific Mocks ---
       (mockFileOps.readDir as jest.Mock).mockImplementation((dirPath: string) => {
-        if (dirPath === rootPath) return Result.ok(['src']);
-        if (dirPath === srcPath) return Result.ok(files);
-        return Result.ok([]);
+        if (dirPath === rootPath) return Promise.resolve(Result.ok(['src'] as unknown as Dirent[]));
+        if (dirPath === srcPath) return Promise.resolve(Result.ok(files as unknown as Dirent[]));
+        return Promise.resolve(Result.ok([] as Dirent[]));
       });
       (mockFileOps.isDirectory as jest.Mock).mockImplementation((filePath: string) => {
-        return Result.ok(filePath === srcPath);
+        return Promise.resolve(Result.ok(filePath === srcPath));
       });
       // --- End Test-specific Mocks ---
 
       const expectedCollectedPaths = files.map((f: string) => path.join(srcPath, f));
-      const expectedFileMetadata: TestFileMetadata[] = expectedCollectedPaths.map((p: string) => ({
+      const expectedFileMetadata: FileMetadata[] = expectedCollectedPaths.map((p: string) => ({
+        // Use FileMetadata
         path: p,
         size: 0,
       }));
 
-      const prioritizedFilesMockReturn: TestFileMetadata[] = expectedCollectedPaths.map(
+      const prioritizedFilesMockReturn: FileMetadata[] = expectedCollectedPaths.map(
+        // Use FileMetadata
         (p: string) => ({
           path: p,
           size: 300,
@@ -297,7 +318,7 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       mockContentCollector.collectContent.mockResolvedValue(
         Result.ok({
           content: prioritizedFilesMockReturn
-            .map((f: TestFileMetadata) => `${path.basename(f.path)} content`)
+            .map((f: FileMetadata) => `Mock content for ${path.basename(f.path)}`) // Use FileMetadata
             .join('\n'),
           metadata: prioritizedFilesMockReturn,
         })
@@ -305,15 +326,7 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
 
       // Mock later stages
       mockLLMAgent.getCompletion.mockResolvedValue(Result.ok('{}'));
-      mockResponseParser.parseLlmResponse.mockReturnValue(
-        Result.ok({ techStack: {}, structure: {}, dependencies: {} })
-      );
-      mockLLMAgent.getModelContextWindow.mockResolvedValue(1000);
-      mockLLMAgent.countTokens.mockResolvedValue(10);
-      mockTreeSitterParserService.parse.mockReturnValue(
-        // Changed to mockReturnValue
-        Result.ok<ParsedCodeInfo>({ functions: [], classes: [] }) // Corrected explicit typing
-      );
+      // mockResponseParser uses default success mock from beforeEach
 
       // Execute
       const result = await projectAnalyzer.analyzeProject([rootPath]);
@@ -324,14 +337,16 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
 
       expect(mockFilePrioritizer.prioritizeFiles as jest.Mock).toHaveBeenCalledWith(
         expect.arrayContaining(
-          expectedFileMetadata.map((m: TestFileMetadata) => expect.objectContaining(m))
+          expectedFileMetadata.map((m: FileMetadata) =>
+            expect.objectContaining({ path: m.path, size: m.size })
+          ) // Use FileMetadata
         ),
         rootPath
       );
 
       const prioritizedFilesResult = mockFilePrioritizer.prioritizeFiles.mock.results[0].value;
-      expect(prioritizedFilesResult.map((f: TestFileMetadata) => f.path)).toEqual(
-        // Added type here
+      expect(prioritizedFilesResult.map((f: FileMetadata) => f.path)).toEqual(
+        // Use FileMetadata
         expect.arrayContaining(expectedCollectedPaths)
       );
     });
@@ -344,17 +359,20 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
 
       // --- Test-specific Mocks ---
       (mockFileOps.readDir as jest.Mock).mockImplementation((dirPath: string) => {
-        if (dirPath === rootPath) return Result.ok(['src', 'package.json']);
-        if (dirPath === srcPath) return Result.ok(['app.ts', 'utils.ts']);
-        return Result.ok([]);
+        if (dirPath === rootPath)
+          return Promise.resolve(Result.ok(['src', 'package.json'] as unknown as Dirent[]));
+        if (dirPath === srcPath)
+          return Promise.resolve(Result.ok(['app.ts', 'utils.ts'] as unknown as Dirent[]));
+        return Promise.resolve(Result.ok([] as Dirent[]));
       });
       (mockFileOps.isDirectory as jest.Mock).mockImplementation((filePath: string) => {
-        return Result.ok(filePath === srcPath);
+        return Promise.resolve(Result.ok(filePath === srcPath));
       });
       // --- End Test-specific Mocks ---
 
       // Mock prioritizeFiles to return files in order
-      const prioritizedFilesMockReturn: TestFileMetadata[] = [
+      const prioritizedFilesMockReturn: FileMetadata[] = [
+        // Use FileMetadata
         { path: path.join(rootPath, 'package.json'), size: 100 },
         { path: path.join(srcPath, 'app.ts'), size: 200 },
         { path: path.join(srcPath, 'utils.ts'), size: 300 }, // Size increases
@@ -367,30 +385,24 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
 
       // Mock contentCollector to respect token limit (it should be called with prioritized list)
       const expectedContentCollectorInputPaths = prioritizedFilesMockReturn.map(
-        (f: TestFileMetadata) => f.path
+        (f: FileMetadata) => f.path // Use FileMetadata
       );
-      const contentCollectorResultMetadata: TestFileMetadata[] = [
+      const contentCollectorResultMetadata: FileMetadata[] = [
+        // Use FileMetadata
         // Only first two files fit
         { path: path.join(rootPath, 'package.json'), size: 100 },
         { path: path.join(srcPath, 'app.ts'), size: 200 },
       ];
       mockContentCollector.collectContent.mockResolvedValue(
         Result.ok({
-          content: 'package.json content\napp.ts content', // Corrected content
+          content: 'Mock content for package.json\nMock content for app.ts', // Corrected content based on readFile mock
           metadata: contentCollectorResultMetadata,
         })
       );
 
       // Mock later stages
       mockLLMAgent.getCompletion.mockResolvedValue(Result.ok('{}'));
-      mockResponseParser.parseLlmResponse.mockReturnValue(
-        Result.ok({ techStack: {}, structure: {}, dependencies: {} })
-      );
-      mockLLMAgent.countTokens.mockResolvedValue(10); // Mock token counting
-      mockTreeSitterParserService.parse.mockReturnValue(
-        // Changed to mockReturnValue
-        Result.ok<ParsedCodeInfo>({ functions: [], classes: [] }) // Corrected explicit typing
-      );
+      // mockResponseParser uses default success mock from beforeEach
 
       // Execute
       const result = await projectAnalyzer.analyzeProject([rootPath]);
@@ -413,8 +425,10 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       if (collectContentMockResult.isOk()) {
         expect(collectContentMockResult.value.metadata).toEqual(contentCollectorResultMetadata);
         expect(
-          collectContentMockResult.value.metadata.find((m: TestFileMetadata) =>
-            m.path.endsWith('utils.ts')
+          collectContentMockResult.value.metadata.find(
+            (
+              m: FileMetadata // Use FileMetadata
+            ) => m.path.endsWith('utils.ts')
           )
         ).toBeUndefined();
       }
@@ -426,17 +440,22 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
 
       // --- Test-specific Mocks ---
       (mockFileOps.readDir as jest.Mock).mockImplementation((dirPath: string) => {
-        if (dirPath === rootPath) return Result.ok(['src', 'package.json', 'tsconfig.json']);
-        if (dirPath === srcPath) return Result.ok(['large-file.ts']);
-        return Result.ok([]);
+        if (dirPath === rootPath)
+          return Promise.resolve(
+            Result.ok(['src', 'package.json', 'tsconfig.json'] as unknown as Dirent[])
+          );
+        if (dirPath === srcPath)
+          return Promise.resolve(Result.ok(['large-file.ts'] as unknown as Dirent[]));
+        return Promise.resolve(Result.ok([] as Dirent[]));
       });
       (mockFileOps.isDirectory as jest.Mock).mockImplementation((filePath: string) => {
-        return Result.ok(filePath === srcPath);
+        return Promise.resolve(Result.ok(filePath === srcPath));
       });
       // --- End Test-specific Mocks ---
 
       // Mock prioritizeFiles to return high-priority first
-      const prioritizedFilesMockReturn: TestFileMetadata[] = [
+      const prioritizedFilesMockReturn: FileMetadata[] = [
+        // Use FileMetadata
         { path: path.join(rootPath, 'package.json'), size: 100 },
         { path: path.join(rootPath, 'tsconfig.json'), size: 200 },
         { path: path.join(srcPath, 'large-file.ts'), size: 1000 },
@@ -449,30 +468,24 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
 
       // Mock contentCollector to respect limit
       const expectedContentCollectorInputPaths = prioritizedFilesMockReturn.map(
-        (f: TestFileMetadata) => f.path
+        (f: FileMetadata) => f.path // Use FileMetadata
       );
-      const contentCollectorResultMetadata: TestFileMetadata[] = [
+      const contentCollectorResultMetadata: FileMetadata[] = [
+        // Use FileMetadata
         // Only first two (high-priority) files fit
         { path: path.join(rootPath, 'package.json'), size: 100 },
         { path: path.join(rootPath, 'tsconfig.json'), size: 200 },
       ];
       mockContentCollector.collectContent.mockResolvedValue(
         Result.ok({
-          content: 'package.json content\ntsconfig.json content',
+          content: 'Mock content for package.json\nMock content for tsconfig.json', // Corrected content
           metadata: contentCollectorResultMetadata,
         })
       );
 
       // Mock later stages
       mockLLMAgent.getCompletion.mockResolvedValue(Result.ok('{}'));
-      mockResponseParser.parseLlmResponse.mockReturnValue(
-        Result.ok({ techStack: {}, structure: {}, dependencies: {} })
-      );
-      mockLLMAgent.countTokens.mockResolvedValue(5);
-      mockTreeSitterParserService.parse.mockReturnValue(
-        // Changed to mockReturnValue
-        Result.ok<ParsedCodeInfo>({ functions: [], classes: [] }) // Corrected explicit typing
-      );
+      // mockResponseParser uses default success mock from beforeEach
 
       // Execute
       const result = await projectAnalyzer.analyzeProject([rootPath]);
@@ -495,8 +508,10 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       if (collectContentMockResult.isOk()) {
         expect(collectContentMockResult.value.metadata).toEqual(contentCollectorResultMetadata);
         expect(
-          collectContentMockResult.value.metadata.find((m: TestFileMetadata) =>
-            m.path.endsWith('large-file.ts')
+          collectContentMockResult.value.metadata.find(
+            (
+              m: FileMetadata // Use FileMetadata
+            ) => m.path.endsWith('large-file.ts')
           )
         ).toBeUndefined();
       }
@@ -504,55 +519,58 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
 
     it('should handle empty or invalid files gracefully', async () => {
       const rootPath = 'root/path';
+      const srcPath = path.join(rootPath, 'src');
 
       // --- Test-specific Mocks ---
       (mockFileOps.readDir as jest.Mock).mockImplementation((dirPath: string) => {
         if (dirPath === rootPath)
-          return Result.ok(['package.json', 'empty-file.ts', 'invalid-file.ts']);
-        return Result.ok([]);
+          return Promise.resolve(
+            Result.ok(['src', 'empty.txt', 'invalid.bin'] as unknown as Dirent[])
+          );
+        if (dirPath === srcPath)
+          return Promise.resolve(Result.ok(['app.ts'] as unknown as Dirent[]));
+        return Promise.resolve(Result.ok([] as Dirent[]));
       });
-      (mockFileOps.isDirectory as jest.Mock).mockImplementation((_filePath: string) => {
-        return Result.ok(false); // Assume no directories
+      (mockFileOps.isDirectory as jest.Mock).mockImplementation((filePath: string) => {
+        return Promise.resolve(Result.ok(filePath === srcPath));
+      });
+      // Mock readFile to return error for invalid.bin and empty for empty.txt
+      (mockFileOps.readFile as jest.Mock).mockImplementation((filePath: string) => {
+        // Removed async
+        if (filePath.endsWith('invalid.bin')) return Result.err(new Error('Cannot read binary'));
+        if (filePath.endsWith('empty.txt')) return Result.ok('');
+        return Result.ok(`Mock content for ${path.basename(filePath)}`);
       });
       // --- End Test-specific Mocks ---
 
-      // Mock prioritizeFiles (order doesn't matter much here)
-      const prioritizedFilesMockReturn: TestFileMetadata[] = [
-        path.join(rootPath, 'package.json'),
-        path.join(rootPath, 'empty-file.ts'),
-        path.join(rootPath, 'invalid-file.ts'),
-      ].map((p: string) => ({
+      const expectedCollectedPaths = [
+        // Only analyzable files
+        path.join(srcPath, 'app.ts'),
+        path.join(rootPath, 'empty.txt'), // empty.txt is analyzable but empty
+      ];
+      const expectedFileMetadata: FileMetadata[] = expectedCollectedPaths.map((p: string) => ({
+        // Use FileMetadata
         path: p,
-        size: 100,
+        size: 0,
       }));
+
+      const prioritizedFilesMockReturn: FileMetadata[] = [
+        // Use FileMetadata
+        { path: path.join(srcPath, 'app.ts'), size: 100 },
+        { path: path.join(rootPath, 'empty.txt'), size: 0 },
+      ];
       mockFilePrioritizer.prioritizeFiles.mockReturnValue(prioritizedFilesMockReturn);
 
-      // Simulate contentCollector skipping 'invalid-file.ts' (e.g., by returning metadata without it)
-      const expectedContentCollectorInputPaths = prioritizedFilesMockReturn.map(
-        (f: TestFileMetadata) => f.path
-      );
-      const contentCollectorResultMetadata: TestFileMetadata[] = [
-        { path: path.join(rootPath, 'package.json'), size: 100 },
-        { path: path.join(rootPath, 'empty-file.ts'), size: 100 },
-      ];
       mockContentCollector.collectContent.mockResolvedValue(
         Result.ok({
-          content: 'package.json content\nempty-file.ts content',
-          metadata: contentCollectorResultMetadata,
+          content: 'Mock content for app.ts\n', // Content for empty.txt is just newline
+          metadata: prioritizedFilesMockReturn,
         })
       );
 
       // Mock later stages
       mockLLMAgent.getCompletion.mockResolvedValue(Result.ok('{}'));
-      mockResponseParser.parseLlmResponse.mockReturnValue(
-        Result.ok({ techStack: {}, structure: {}, dependencies: {} })
-      );
-      mockLLMAgent.getModelContextWindow.mockResolvedValue(1000);
-      mockLLMAgent.countTokens.mockResolvedValue(10);
-      mockTreeSitterParserService.parse.mockReturnValue(
-        // Changed to mockReturnValue
-        Result.ok<ParsedCodeInfo>({ functions: [], classes: [] }) // Corrected explicit typing
-      );
+      // mockResponseParser uses default success mock from beforeEach
 
       // Execute
       const result = await projectAnalyzer.analyzeProject([rootPath]);
@@ -561,20 +579,27 @@ describe('ProjectAnalyzer File Prioritization and Token Limiting', () => {
       if (result.isErr()) console.error('analyzeProject failed:', result.error);
       expect(result.isOk()).toBe(true);
 
-      // Verify contentCollector was called correctly
+      // Verify prioritizeFiles was called only with analyzable files
+      expect(mockFilePrioritizer.prioritizeFiles).toHaveBeenCalledWith(
+        expect.arrayContaining(
+          expectedFileMetadata.map((m: FileMetadata) =>
+            expect.objectContaining({ path: m.path, size: m.size })
+          ) // Use FileMetadata
+        ),
+        rootPath
+      );
+      expect(mockFilePrioritizer.prioritizeFiles).not.toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ path: expect.stringContaining('invalid.bin') }),
+        ])
+      );
+
+      // Verify contentCollector was called with prioritized analyzable files
       expect(mockContentCollector.collectContent).toHaveBeenCalledWith(
-        expectedContentCollectorInputPaths,
+        prioritizedFilesMockReturn.map((f) => f.path),
         rootPath,
         expect.any(Number)
       );
-
-      // Verify the *mocked return value* of collectContent reflects the limit
-      const collectContentMockResult =
-        await mockContentCollector.collectContent.mock.results[0].value;
-      expect(collectContentMockResult.isOk()).toBe(true);
-      if (collectContentMockResult.isOk()) {
-        expect(collectContentMockResult.value.metadata).toEqual(contentCollectorResultMetadata);
-      }
     });
   });
 });

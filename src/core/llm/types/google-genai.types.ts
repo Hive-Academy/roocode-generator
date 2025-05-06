@@ -18,3 +18,15 @@ export interface GoogleGenAIErrorResponse {
     status: string;
   };
 }
+
+/**
+ * Response type for Google GenAI getModel API
+ */
+export interface GoogleModelInfoResponse {
+  /** The maximum number of tokens that can be sent in a prompt */
+  inputTokenLimit?: number;
+  /** The maximum number of tokens that can be generated in a response */
+  outputTokenLimit?: number;
+  /** Other model properties */
+  [key: string]: any;
+}

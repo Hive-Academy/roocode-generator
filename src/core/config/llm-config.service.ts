@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { LLMConfig } from '../../../types/shared';
 import type { IModelListerService } from '../llm/interfaces';
 import { Inject, Injectable } from '../di/decorators';

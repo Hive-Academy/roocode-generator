@@ -1,4 +1,5 @@
 import { Result } from '../result/result'; // Use existing Result type
+import { CodeInsights } from './ast-analysis.interfaces';
 
 /**
  * Defines the contract for analyzing various aspects of a project.
@@ -13,12 +14,24 @@ export interface IProjectAnalyzer {
 }
 
 /**
- * Represents basic information about a defined code element (function, class, etc.).
+ * Represents a position in the source code.
  */
-export interface CodeElementInfo {
-  name: string;
-  startLine: number; // Add start line number
-  endLine: number; // Add end line number
+export interface CodePosition {
+  row: number;
+  column: number;
+}
+
+/**
+ * Represents a generic node in the Abstract Syntax Tree (AST).
+ */
+export interface GenericAstNode {
+  type: string;
+  text: string;
+  startPosition: CodePosition;
+  endPosition: CodePosition;
+  isNamed: boolean;
+  fieldName: string | null; // Field name in the parent node
+  children: GenericAstNode[];
 }
 
 /**
@@ -34,6 +47,16 @@ export interface TechStackAnalysis {
 }
 
 /**
+ * Represents a node in the directory tree structure.
+ */
+export interface DirectoryNode {
+  name: string;
+  path: string; // Relative path from rootDir
+  type: 'directory' | 'file';
+  children?: DirectoryNode[]; // Only for type 'directory'
+}
+
+/**
  * Represents the identified structure of a project.
  */
 export interface ProjectStructure {
@@ -43,8 +66,7 @@ export interface ProjectStructure {
   configFiles: string[]; // Relative paths from rootDir to key config files (e.g., 'tsconfig.json', '.eslintrc.js')
   mainEntryPoints: string[]; // Relative paths from rootDir to main application entry points
   componentStructure: Record<string, string[]>; // Map of component types/locations to file paths (e.g., { 'ui': ['src/components/ui/Button.tsx'] }) - Structure might need refinement based on analysis capabilities
-  definedFunctions: Record<string, CodeElementInfo[]>; // Key: relative file path -> List of functions defined in that file
-  definedClasses: Record<string, CodeElementInfo[]>; // Key: relative file path -> List of classes defined in that file
+  directoryTree: DirectoryNode[]; // Represents the root level nodes of the project's directory structure
 }
 
 /**
@@ -65,13 +87,15 @@ export interface ProjectContext {
   techStack: TechStackAnalysis;
   structure: ProjectStructure;
   dependencies: DependencyGraph;
-}
+  /**
+   * Optional map containing structured code insights extracted via AST analysis.
+   * The key is the relative file path, and the value is the CodeInsights object for that file.
+   * Populated by the AstAnalysisService.
+   */
+  codeInsights: { [filePath: string]: CodeInsights }; // Made required as per new requirements
 
-/**
- * Represents the structured information extracted from parsed code.
- * Placeholder structure for now.
- */
-export interface ParsedCodeInfo {
-  functions: CodeElementInfo[];
-  classes: CodeElementInfo[];
+  /**
+   * Optional property to hold the parsed content of the project's package.json file.
+   */
+  packageJson?: any;
 }

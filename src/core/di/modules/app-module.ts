@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 import { createPromptModule } from 'inquirer';
 
 import { Container } from '@core/di/container';

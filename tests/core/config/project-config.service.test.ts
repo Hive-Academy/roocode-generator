@@ -3,12 +3,13 @@ import { ProjectConfigService } from '../../../src/core/config/project-config.se
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
 import { Result } from '../../../src/core/result/result';
 import type { ProjectConfig } from '../../../types/shared';
-import { ILogger } from '@core/services/logger-service'; // Added missing import
+import { ILogger } from '@core/services/logger-service'; // Keep type import
+import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
 
 describe('ProjectConfigService', () => {
   let service: ProjectConfigService;
   let mockFileOps: jest.Mocked<IFileOperations>;
-  let mockLogger: jest.Mocked<ILogger>; // Added missing declaration
+  let mockLogger: jest.Mocked<ILogger>; // Keep declaration
   let configPath: string;
 
   // Renamed to expectedDefaultConfig for clarity in tests
@@ -38,13 +39,8 @@ describe('ProjectConfigService', () => {
       copyDirectoryRecursive: jest.fn().mockResolvedValue(Result.ok(undefined)),
     };
 
-    // Mock the logger - Corrected initialization
-    mockLogger = {
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-    };
+    // Mock the logger
+    mockLogger = createMockLogger(); // Initialize mock logger here
 
     // Instantiate service with mocked dependencies - Corrected instantiation
     service = new ProjectConfigService(mockFileOps, mockLogger);
