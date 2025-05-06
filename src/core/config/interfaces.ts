@@ -1,5 +1,5 @@
-import { LLMConfig, ProjectConfig } from "../../../types/shared";
-import { Result } from "../result/result";
+import { LLMConfig, ProjectConfig } from '../../../types/shared';
+import { Result } from '../result/result';
 
 export interface ILLMConfigService {
   loadConfig(): Promise<Result<LLMConfig>>;
@@ -9,7 +9,7 @@ export interface ILLMConfigService {
 }
 
 export interface IProjectConfigService {
-  loadConfig(): Promise<Result<ProjectConfig, Error>>;
+  loadConfig(): Result<ProjectConfig, Error>;
   saveConfig(config: ProjectConfig): Promise<Result<void, Error>>;
   validateConfig(config: ProjectConfig): string | null;
 }

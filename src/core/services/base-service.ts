@@ -2,10 +2,10 @@
  * Base service class providing common functionality for all services
  * Includes dependency injection and validation support
  */
-import { IServiceContainer } from "../di/interfaces";
-import { Result } from "../result/result"; // Updated import path
-import { isObject, getErrorMessage } from "../types/common"; // Added getErrorMessage
-import { ServiceToken } from "../di/types";
+import { IServiceContainer } from '../di/interfaces';
+import { Result } from '../result/result'; // Updated import path
+import { isObject, getErrorMessage } from '../types/common'; // Added getErrorMessage
+import { ServiceToken } from '../di/types';
 
 export abstract class BaseService {
   /**
@@ -31,7 +31,7 @@ export abstract class BaseService {
     const validationResult = this.validateDependencies();
     // Use isErr() and Result.err()
     if (validationResult.isErr()) {
-      const errorMsg = validationResult.error?.message ?? "Unknown validation error";
+      const errorMsg = validationResult.error?.message ?? 'Unknown validation error';
       return Result.err(new Error(`Service initialization failed: ${errorMsg}`));
     }
     // Use Result.ok()

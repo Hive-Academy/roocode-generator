@@ -1,5 +1,5 @@
-import "reflect-metadata";
-import { ServiceToken } from "./types";
+import 'reflect-metadata';
+import { ServiceToken } from './types';
 
 /**
  * Interface for injection metadata
@@ -14,7 +14,7 @@ interface InjectionMetadata {
  */
 export function Injectable(): ClassDecorator {
   return function (target: object): void {
-    Reflect.defineMetadata("injectable", true, target);
+    Reflect.defineMetadata('injectable', true, target);
   };
 }
 
@@ -24,7 +24,7 @@ export function Injectable(): ClassDecorator {
  */
 export function Inject(token: ServiceToken): ParameterDecorator {
   return function (target: object, _: string | symbol | undefined, parameterIndex: number): void {
-    const existingInjections: InjectionMetadata[] = Reflect.getMetadata("injections", target) || [];
+    const existingInjections: InjectionMetadata[] = Reflect.getMetadata('injections', target) || [];
 
     existingInjections.push({
       token,
@@ -34,7 +34,7 @@ export function Inject(token: ServiceToken): ParameterDecorator {
     // Sort by parameter index to ensure correct order
     existingInjections.sort((a, b) => a.index - b.index);
 
-    Reflect.defineMetadata("injections", existingInjections, target);
+    Reflect.defineMetadata('injections', existingInjections, target);
   };
 }
 
@@ -43,7 +43,7 @@ export function Inject(token: ServiceToken): ParameterDecorator {
  * @param target The class to check
  */
 export function isInjectable(target: object): boolean {
-  return Reflect.getMetadata("injectable", target) === true;
+  return Reflect.getMetadata('injectable', target) === true;
 }
 
 /**
@@ -51,6 +51,6 @@ export function isInjectable(target: object): boolean {
  * @param target The class to get injections for
  */
 export function getInjectionTokens(target: object): ServiceToken[] {
-  const injections: InjectionMetadata[] = Reflect.getMetadata("injections", target) || [];
+  const injections: InjectionMetadata[] = Reflect.getMetadata('injections', target) || [];
   return injections.map((injection) => injection.token);
 }

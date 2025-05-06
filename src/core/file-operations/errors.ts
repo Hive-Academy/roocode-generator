@@ -12,9 +12,9 @@ export class FileOperationError extends Error {
     public readonly cause?: Error
   ) {
     super(message);
-    this.name = "FileOperationError";
+    this.name = 'FileOperationError';
     if (cause) {
-      this.stack += "\\nCaused by: " + cause.stack;
+      this.stack += '\\nCaused by: ' + cause.stack;
     }
   }
 }
@@ -25,7 +25,7 @@ export class FileOperationError extends Error {
 export class FileNotFoundError extends FileOperationError {
   constructor(path: string, cause?: Error) {
     super(`File not found: ${path}`, cause);
-    this.name = "FileNotFoundError";
+    this.name = 'FileNotFoundError';
   }
 }
 
@@ -35,7 +35,7 @@ export class FileNotFoundError extends FileOperationError {
 export class DirectoryCreationError extends FileOperationError {
   constructor(path: string, cause?: Error) {
     super(`Failed to create directory: ${path}`, cause);
-    this.name = "DirectoryCreationError";
+    this.name = 'DirectoryCreationError';
   }
 }
 
@@ -45,7 +45,7 @@ export class DirectoryCreationError extends FileOperationError {
 export class InvalidPathError extends FileOperationError {
   constructor(path: string) {
     super(`Invalid path: ${path}`);
-    this.name = "InvalidPathError";
+    this.name = 'InvalidPathError';
   }
 }
 
@@ -55,7 +55,7 @@ export class InvalidPathError extends FileOperationError {
 export class FileReadError extends FileOperationError {
   constructor(path: string, cause?: Error) {
     super(`Failed to read file: ${path}`, cause);
-    this.name = "FileReadError";
+    this.name = 'FileReadError';
   }
 }
 
@@ -65,6 +65,6 @@ export class FileReadError extends FileOperationError {
 export class FileWriteError extends FileOperationError {
   constructor(path: string, cause?: Error) {
     super(`Failed to write file: ${path}`, cause);
-    this.name = "FileWriteError";
+    this.name = 'FileWriteError';
   }
 }

@@ -1,11 +1,10 @@
-import { LLMConfig } from "../../../types/shared";
-import { MemoryBankCommandHandler } from "../../commands/memory-bank-command-handler";
-import { ILLMConfigService } from "../config/interfaces";
-import { Container } from "../di/container";
-import { Inject, Injectable } from "../di/decorators";
-import { Result } from "../result/result";
-import { ILogger } from "../services/logger-service";
-import { ICliInterface, IGeneratorOrchestrator, IProjectManager } from "./interfaces";
+import { LLMConfig } from '../../../types/shared';
+import { ILLMConfigService } from '../config/interfaces';
+import { Inject, Injectable } from '../di/decorators';
+import { Result } from '../result/result';
+import { ILogger } from '../services/logger-service';
+import { ProgressIndicator } from '../ui/progress-indicator';
+import { ICliInterface, IGeneratorOrchestrator, IProjectManager } from './interfaces';
 
 type ParsedArgs = {
   command: string | null;
@@ -15,66 +14,40 @@ type ParsedArgs = {
 @Injectable()
 export class ApplicationContainer {
   constructor(
-    @Inject("IGeneratorOrchestrator")
+    @Inject('IGeneratorOrchestrator')
     private readonly generatorOrchestrator: IGeneratorOrchestrator,
-    @Inject("IProjectManager") private readonly projectManager: IProjectManager,
-    @Inject("ICliInterface") private readonly cliInterface: ICliInterface,
-    @Inject("ILogger") private readonly logger: ILogger
+    @Inject('IProjectManager') private readonly projectManager: IProjectManager,
+    @Inject('ICliInterface') private readonly cliInterface: ICliInterface,
+    @Inject('ILogger') private readonly logger: ILogger,
+    @Inject('ProgressIndicator') private readonly progressIndicator: ProgressIndicator,
+    @Inject('ILLMConfigService') private readonly llmConfigService: ILLMConfigService // Inject service
   ) {}
 
   private async executeGenerateCommand(options: Record<string, any>): Promise<Result<void, Error>> {
+    const progress = this.progressIndicator;
+    progress.start('Generating...');
+
     try {
-      const selectedGenerators = options.generators as string[];
-      if (!selectedGenerators || selectedGenerators.length === 0) {
-        return Result.err(
-          new Error(
-            "No generators specified. Use 'generate memory-bank' for memory bank generation."
-          )
-        );
+      // The generator type will be in options.generatorType after CLI parsing refactoring (Subtask 2)
+      // The GeneratorOrchestrator will now handle routing to AiMagicGenerator based on command and options
+      this.logger.info(`Executing 'generate' command via GeneratorOrchestrator.`);
+      const result = await this.generatorOrchestrator.execute('generate', options); // Pass command and options
+
+      if (result.isErr()) {
+        const errorMessage = result.error?.message ?? 'Unknown generator execution error.';
+        this.logger.error(`Generator execution failed: ${errorMessage}`);
+        progress.fail(`Generator execution failed: ${errorMessage}`);
+        return Result.err(result.error ?? new Error(errorMessage));
       }
-      const modes = (options.modes as string[]) || [
-        "architect",
-        "boomerang",
-        "code",
-        "code-review",
-      ];
-      this.logger.info(
-        `Executing 'generate' command with generators: ${selectedGenerators?.join(", ") || "All (default)"}`
-      );
-      await this.generatorOrchestrator.execute(selectedGenerators, { modes });
+
       this.logger.debug("Generator orchestrator execution completed for 'generate' command.");
+      progress.succeed('Generation completed successfully.');
       return Result.ok(undefined);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Generator execution failed: ${errorMessage}`);
+      progress.fail(`Generator execution failed: ${errorMessage}`);
       return Result.err(new Error(`Generator execution failed: ${errorMessage}`));
-    }
-  }
-
-  private async handleConfigCreation(): Promise<Result<LLMConfig | null, Error>> {
-    try {
-      const answer = await this.cliInterface.prompt<{ createConfig: boolean }>({
-        type: "confirm",
-        name: "createConfig",
-        message: "LLM config file not found. Would you like to create it now?",
-        default: true,
-      });
-
-      if (!answer.createConfig) {
-        this.logger.info("LLM config creation declined by user. Exiting.");
-        return Result.ok(null);
-      }
-
-      return Result.ok({
-        provider: "",
-        apiKey: "",
-        model: "",
-        maxTokens: 2048,
-        temperature: 0.7,
-      });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      return Result.err(new Error(`Config creation failed: ${errorMessage}`));
     }
   }
 
@@ -83,104 +56,101 @@ export class ApplicationContainer {
     options: Record<string, any>,
     baseConfig: LLMConfig
   ): Promise<Result<void, Error>> {
+    // Progress is started before calling this method
+    const progress = this.progressIndicator;
     try {
       const updatedConfig: LLMConfig = {
         ...baseConfig,
         provider: options.provider ? String(options.provider) : baseConfig.provider,
         apiKey: options.apiKey ? String(options.apiKey) : baseConfig.apiKey,
         model: options.model ? String(options.model) : baseConfig.model,
+        // Retain default maxTokens and temperature if not provided
+        maxTokens: baseConfig.maxTokens,
+        temperature: baseConfig.temperature,
       };
 
       const validationError = llmConfigService.validateConfig(updatedConfig);
       if (validationError) {
-        return Result.err(
-          new Error(`Invalid LLM configuration after applying CLI options: ${validationError}`)
-        );
+        const errorMsg = `Invalid LLM configuration via CLI options: ${validationError}`;
+        this.logger.error(errorMsg);
+        progress.fail(errorMsg);
+        return Result.err(new Error(errorMsg));
       }
 
       const saveResult = await llmConfigService.saveConfig(updatedConfig);
       if (saveResult.isErr()) {
-        return Result.err(saveResult.error ?? new Error("Unknown error saving LLM config."));
+        const error = saveResult.error ?? new Error('Unknown error saving LLM config via CLI.');
+        this.logger.error(`CLI config save failed: ${error.message}`);
+        progress.fail(`CLI config save failed: ${error.message}`);
+        return Result.err(error);
       }
 
-      this.logger.info("LLM configuration updated successfully via CLI flags.");
+      progress.succeed('LLM configuration updated successfully via CLI flags.');
+      this.logger.info('LLM configuration updated successfully via CLI flags.');
       return Result.ok(undefined);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        `CLI config update failed unexpectedly: ${errorMessage}`,
+        error instanceof Error ? error : undefined
+      );
+      progress.fail(`CLI config update failed unexpectedly: ${errorMessage}`);
       return Result.err(new Error(`CLI config update failed: ${errorMessage}`));
+    } finally {
+      // Ensure progress stops even if an unexpected error occurred before succeed/fail
+      // stop() is safe to call even if not active
+      progress.stop();
     }
   }
 
   private async executeConfigCommand(options: Record<string, any>): Promise<Result<void, Error>> {
+    const progress = this.progressIndicator;
     try {
       this.logger.info("Executing 'config' command.");
-      const llmConfigResult =
-        Container.getInstance().resolve<ILLMConfigService>("ILLMConfigService");
-      if (llmConfigResult.isErr()) {
-        return Result.err(
-          new Error(`Failed to resolve ILLMConfigService: ${llmConfigResult.error?.message}`)
-        );
-      }
-      const llmConfigService = llmConfigResult.value;
-      if (!llmConfigService) {
-        return Result.err(new Error("ILLMConfigService is undefined after resolution"));
-      }
 
       const hasCliOptions = options.provider || options.apiKey || options.model;
-      const configResult = await llmConfigService.loadConfig();
-      let currentConfig: LLMConfig | null = null;
-
-      if (configResult.isOk() && configResult.value) {
-        currentConfig = configResult.value;
-        if (llmConfigService.validateConfig(currentConfig)) {
-          this.logger.warn(
-            "Existing LLM config is invalid. Will overwrite with provided/default values."
-          );
-          currentConfig = null;
-        }
-      } else if (configResult.isErr()) {
-        const error = configResult.error;
-        const isFileNotFound = error instanceof Error && (error as any).code === "ENOENT";
-        if (isFileNotFound) {
-          const createResult = await this.handleConfigCreation();
-          if (createResult.isErr()) {
-            return Result.err(createResult.error ?? new Error("Config creation failed"));
-          }
-          if (createResult.value === null) {
-            return Result.ok(undefined);
-          }
-          currentConfig = createResult.value as LLMConfig;
-        } else {
-          this.logger.error(
-            `Error loading existing LLM config: ${error?.message}. Proceeding with defaults/CLI args.`
-          );
-        }
-      }
-
-      const baseConfig: LLMConfig = currentConfig ?? {
-        provider: "",
-        apiKey: "",
-        model: "",
-        maxTokens: 2048,
-        temperature: 0.7,
+      // Always start with default config, removing the load/check logic
+      const baseConfig: LLMConfig = {
+        provider: '',
+        apiKey: '',
+        model: '',
+        maxTokens: 80000, // Default value
+        temperature: 0.1, // Default value
       };
 
       if (hasCliOptions) {
-        return await this.handleCliConfigUpdate(llmConfigService, options, baseConfig);
+        progress.start('Updating configuration with CLI options...');
+        const result = await this.handleCliConfigUpdate(this.llmConfigService, options, baseConfig);
+        // Progress handled within handleCliConfigUpdate
+        return result;
       } else {
-        this.logger.debug("No config options provided via CLI flags, starting interactive edit.");
-        const editResult = await llmConfigService.interactiveEditConfig(baseConfig);
-        if (editResult.isErr()) {
-          const error =
-            editResult.error ?? new Error("Unknown error during interactive LLM config edit.");
-          this.logger.error(`Config edit failed: ${error.message}`);
+        progress.start('Starting interactive configuration...');
+        progress.stop(); // Stop spinner before interactive prompt
+        const result = await this.llmConfigService.interactiveEditConfig(baseConfig);
+
+        if (result.isErr()) {
+          const error = result.error ?? new Error('Unknown error during interactive configuration');
+          this.logger.error(`Interactive config update failed: ${error.message}`);
+          // Ensure progress stops if interactiveEditConfig failed before stopping it
+          // fail() is safe to call even if not active
+          progress.fail(`Interactive config update failed: ${error.message}`);
           return Result.err(error);
         }
-        this.logger.info("LLM configuration updated successfully via interactive mode.");
+
+        // Success message and progress handled within interactiveEditConfig
+        // progress.succeed('Configuration updated successfully via interactive mode.');
+        this.logger.info('Configuration updated successfully via interactive mode.');
         return Result.ok(undefined);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      // Ensure progress stops on unexpected errors
+      // fail() is safe to call even if not active
+      progress.fail(`Config command failed unexpectedly: ${errorMessage}`);
+      this.logger.error(
+        `Config command failed: ${errorMessage}`,
+        error instanceof Error ? error : undefined
+      );
       return Result.err(new Error(`Config command failed: ${errorMessage}`));
     }
   }
@@ -188,41 +158,18 @@ export class ApplicationContainer {
   private async executeCommand(parsedArgs: ParsedArgs): Promise<Result<void, Error>> {
     this.logger.debug(`DEBUG: Received command string: "${parsedArgs.command}"`);
     switch (parsedArgs.command) {
-      case "generate":
+      case 'generate':
         return await this.executeGenerateCommand(parsedArgs.options);
-
-      case "memory-bank-suite": {
-        const handlerResult = Container.getInstance().resolve<MemoryBankCommandHandler>(
-          "MemoryBankCommandHandler"
-        );
-        if (handlerResult.isErr()) {
-          return Result.err(new Error("Failed to resolve MemoryBankCommandHandler"));
-        }
-        const handler = handlerResult.value;
-        if (!handler) {
-          return Result.err(new Error("MemoryBankCommandHandler is undefined after resolution"));
-        }
-
-        try {
-          await handler.execute(parsedArgs.options);
-          return Result.ok(undefined);
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          this.logger.error(`Memory bank command execution failed: ${errorMessage}`);
-          return Result.err(new Error(`Memory bank command execution failed: ${errorMessage}`));
-        }
-      }
-
-      case "config":
+      case 'config':
         return await this.executeConfigCommand(parsedArgs.options);
 
       default:
         this.logger.warn(
-          "No command specified or command not recognized. Use --help for usage information."
+          'No command specified or command not recognized. Use --help for usage information.'
         );
         return Result.err(
           new Error(
-            "No command specified or command not recognized. Use --help for usage information."
+            'No command specified or command not recognized. Use --help for usage information.'
           )
         );
     }
@@ -237,11 +184,11 @@ export class ApplicationContainer {
         return result;
       }
 
-      this.logger.debug("Application run sequence completed successfully.");
+      this.logger.debug('Application run sequence completed successfully.');
       return Result.ok(undefined);
     } catch (error) {
       this.logger.error(
-        "Application run sequence failed.",
+        'Application run sequence failed.',
         error instanceof Error ? error : undefined
       );
       this.logger.debug(error instanceof Error ? (error.stack ?? String(error)) : String(error));
@@ -250,7 +197,7 @@ export class ApplicationContainer {
   }
 
   private async getParsedArgs(): Promise<ParsedArgs> {
-    this.logger.debug("Starting application run sequence.");
+    this.logger.debug('Starting application run sequence.');
 
     await this.cliInterface.parseArgs();
     const parsedArgs = this.cliInterface.getParsedArgs();
@@ -259,10 +206,10 @@ export class ApplicationContainer {
     );
 
     await this.projectManager.loadProjectConfig();
-    this.logger.debug("Project configuration loaded.");
+    this.logger.debug('Project configuration loaded.');
 
     await this.generatorOrchestrator.initialize();
-    this.logger.debug("Generator orchestrator initialized.");
+    this.logger.debug('Generator orchestrator initialized.');
     return parsedArgs;
   }
 }

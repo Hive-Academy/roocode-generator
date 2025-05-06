@@ -1,8 +1,8 @@
 /**
  * Base interfaces and classes for code generation functionality
  */
-import { BaseService } from "../services/base-service";
-import { Result } from "../result/result";
+import { BaseService } from '../services/base-service';
+import { Result } from '../result/result';
 
 /**
  * Interface defining core generator functionality
@@ -55,7 +55,7 @@ export abstract class BaseGenerator<T> extends BaseService implements IGenerator
     if (initResult.isErr()) {
       return Result.err(
         new Error(
-          `Generator initialization failed: ${initResult.error?.message ?? "Unknown error"}`
+          `Generator initialization failed: ${initResult.error?.message ?? 'Unknown error'}`
         )
       );
     }
@@ -64,7 +64,7 @@ export abstract class BaseGenerator<T> extends BaseService implements IGenerator
     if (validationResult.isErr()) {
       return Result.err(
         new Error(
-          `Generator validation failed: ${validationResult.error?.message ?? "Unknown error"}`
+          `Generator validation failed: ${validationResult.error?.message ?? 'Unknown error'}`
         )
       );
     }

@@ -1,29 +1,37 @@
-import { Result } from "../result/result"; // Use existing Result type
+import { Result } from '../result/result'; // Use existing Result type
+import { CodeInsights } from './ast-analysis.interfaces';
 
 /**
  * Defines the contract for analyzing various aspects of a project.
  */
 export interface IProjectAnalyzer {
   /**
-   * Analyzes the technology stack used in the project based on specified paths.
-   * @param paths - An array of file or directory paths to analyze.
-   * @returns A Result containing the TechStackAnalysis or an Error.
+   * Analyzes the overall project context, including tech stack, structure, and dependencies.
+   * @param paths - An array of file or directory paths to analyze (typically the project root).
+   * @returns A Promise resolving to a Result containing the comprehensive ProjectContext or an Error.
    */
-  analyzeTechStack(paths: string[]): Promise<Result<TechStackAnalysis, Error>>;
+  analyzeProject(paths: string[]): Promise<Result<ProjectContext, Error>>;
+}
 
-  /**
-   * Analyzes the directory structure and key file locations of the project.
-   * @param paths - An array of file or directory paths to analyze.
-   * @returns A Promise resolving to a Result containing the ProjectStructure or an Error.
-   */
-  analyzeProjectStructure(paths: string[]): Promise<Result<ProjectStructure, Error>>; // Make return type Promise
+/**
+ * Represents a position in the source code.
+ */
+export interface CodePosition {
+  row: number;
+  column: number;
+}
 
-  /**
-   * Analyzes the project's dependencies, both external and internal.
-   * @param paths - An array of file or directory paths to analyze (e.g., package.json, source files).
-   * @returns A Result containing the DependencyGraph or an Error.
-   */
-  analyzeDependencies(paths: string[]): Promise<Result<DependencyGraph, Error>>;
+/**
+ * Represents a generic node in the Abstract Syntax Tree (AST).
+ */
+export interface GenericAstNode {
+  type: string;
+  text: string;
+  startPosition: CodePosition;
+  endPosition: CodePosition;
+  isNamed: boolean;
+  fieldName: string | null; // Field name in the parent node
+  children: GenericAstNode[];
 }
 
 /**
@@ -39,6 +47,16 @@ export interface TechStackAnalysis {
 }
 
 /**
+ * Represents a node in the directory tree structure.
+ */
+export interface DirectoryNode {
+  name: string;
+  path: string; // Relative path from rootDir
+  type: 'directory' | 'file';
+  children?: DirectoryNode[]; // Only for type 'directory'
+}
+
+/**
  * Represents the identified structure of a project.
  */
 export interface ProjectStructure {
@@ -48,6 +66,7 @@ export interface ProjectStructure {
   configFiles: string[]; // Relative paths from rootDir to key config files (e.g., 'tsconfig.json', '.eslintrc.js')
   mainEntryPoints: string[]; // Relative paths from rootDir to main application entry points
   componentStructure: Record<string, string[]>; // Map of component types/locations to file paths (e.g., { 'ui': ['src/components/ui/Button.tsx'] }) - Structure might need refinement based on analysis capabilities
+  directoryTree: DirectoryNode[]; // Represents the root level nodes of the project's directory structure
 }
 
 /**
@@ -68,4 +87,15 @@ export interface ProjectContext {
   techStack: TechStackAnalysis;
   structure: ProjectStructure;
   dependencies: DependencyGraph;
+  /**
+   * Optional map containing structured code insights extracted via AST analysis.
+   * The key is the relative file path, and the value is the CodeInsights object for that file.
+   * Populated by the AstAnalysisService.
+   */
+  codeInsights: { [filePath: string]: CodeInsights }; // Made required as per new requirements
+
+  /**
+   * Optional property to hold the parsed content of the project's package.json file.
+   */
+  packageJson?: any;
 }
