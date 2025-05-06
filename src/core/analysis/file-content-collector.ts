@@ -23,6 +23,7 @@ export class FileContentCollector implements IFileContentCollector {
     tokenLimit: number
   ): Promise<Result<FileContentResult, Error>> {
     try {
+      // TEMPORARY: Override tokenLimit for testing purposes (TSK-016)
       let totalContent = '';
       let currentTokenCount = 0;
       const metadata: FileMetadata[] = [];

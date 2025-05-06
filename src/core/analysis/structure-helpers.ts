@@ -3,10 +3,12 @@ import * as path from 'path';
 import { IFileOperations } from '../file-operations/interfaces';
 import { DirectoryNode } from './types';
 
-interface TsConfigLike {
+export interface TsConfigLike {
+  // Added export
   compilerOptions?: {
     rootDir?: string;
     baseUrl?: string;
+    paths?: Record<string, string[]>;
     // Potentially other options if needed by helpers
   };
   include?: string[];
