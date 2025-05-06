@@ -6,7 +6,7 @@ This plan outlines the implementation steps to address reliability issues with t
 
 ### Implementation Strategy
 
-The implementation will involve modifying the `project-analyzer` to use `jsonrepair` when standard JSON parsing fails. The `google-genai-provider` will be enhanced to include exponential backoff retry logic for transient API errors (429, 500, 503) and specific handling for non-JSON responses during token counting. A mechanism will be added to fetch the model's input token limit via the SDK's `getModels` method, with a fallback value, and this limit will be used to validate input size before making API calls. The `jsonrepair` library will be added as a project dependency.
+The implementation will involve modifying the `project-analyzer` to use `jsonrepair` when standard JSON parsing fails. The `google-genai-provider` will be enhanced to include exponential backoff retry logic for transient API errors (429, 500, 503) and specific handling for non-JSON responses during token counting (using direct `fetch` calls). A mechanism will be added to fetch the model's input token limit via a direct `fetch` call to the `getModels` endpoint, with a fallback value, and this limit will be used to validate input size before making API calls. The `jsonrepair` library will be added as a project dependency.
 
 ### Acceptance Criteria Mapping
 
@@ -15,9 +15,9 @@ The implementation will involve modifying the `project-analyzer` to use `jsonrep
 - **AC3 (Token Counting Fix):** Covered by Subtask 4 and verified by testing in Subtask 4.
 - **AC4 (HTML Error Handling):** Covered by Subtask 4 and verified by testing in Subtask 4.
 - **AC5 (API Retry Logic):** Covered by Subtask 3 and verified by testing in Subtask 3.
-- **AC6 (Token Limit Retrieval):** Covered by Subtask 5 and verified by testing in Subtask 5.
-- **AC7 (Token Limit Fallback):** Covered by Subtask 5 and verified by testing in Subtask 5.
-- **AC8 (Token Limit Usage):** Covered by Subtask 5 and verified by testing in Subtask 5.
+- **AC6 (Token Limit Retrieval):** Covered by Subtask 4 and verified by testing in Subtask 4.
+- **AC7 (Token Limit Fallback):** Covered by Subtask 4 and verified by testing in Subtask 4.
+- **AC8 (Token Limit Usage):** Covered by Subtask 4 and verified by testing in Subtask 4.
 
 ### Implementation Subtasks
 
@@ -242,211 +242,155 @@ async countTokens(...) {
 - The `retryWithBackoff` utility is created and correctly implements exponential backoff and conditional retries.
 - The utility is integrated into `generateContent` and `countTokens` methods in `google-genai-provider.ts`.
 
-#### 4. Fix Token Counting and HTML Error Handling
+#### 4. Fix Token Counting, HTML Error Handling, and Implement Token Limits (using Fetch)
 
-**Status**: Not Started
+**Status**: Completed
 
-**Description**: Enhance the `countTokens` method in `google-genai-provider.ts` to correctly handle successful responses and specifically detect and log non-JSON errors like the observed HTML response.
-
-**Files to Modify**:
-
-- `src/core/llm/providers/google-genai-provider.ts` - Refine `countTokens` error handling.
-
-**Implementation Details**:
-
-Ensure the successful response from `countTokens` is correctly parsed to extract `totalTokens`. Add a check in the error handling block to detect if the raw response string (if available from the SDK error object) starts with `<!DOCTYPE` or `<html`. Log a specific error message including a snippet of the raw response if HTML is detected.
-
-```typescript
-async countTokens(request: CountTokensRequest): Promise<number> {
-  try {
-    // This part should already be correct if SDK is used properly
-    const response = await this.model.countTokens(request);
-    if (response && typeof response.totalTokens === 'number') {
-       return response.totalTokens;
-    } else {
-       // Handle unexpected successful response structure
-       LoggerService.error('Unexpected response structure from countTokens:', response);
-       throw new Error('Invalid response structure from countTokens API.');
-    }
-  } catch (error: any) {
-    LoggerService.error(`Error counting tokens: ${error.message}`);
-
-    // Attempt to access raw response from SDK error object
-    const rawResponse = error.response?.data || error.message; // Adjust based on actual SDK error structure
-
-    if (
-      typeof rawResponse === 'string' &&
-      rawResponse.trim().toLowerCase().startsWith('<!doctype')
-    ) {
-      LoggerService.error('Received non-JSON (HTML?) response during token count. Check auth/URL/proxy.');
-      LoggerService.error('Raw Response Snippet:', rawResponse.substring(0, 500)); // Log snippet
-      throw new Error('Token counting failed due to unexpected HTML response.'); // Throw specific error
-    }
-
-    // Re-throw other errors or handle as needed (retry logic will handle retriable ones)
-    throw error;
-  }
-}
-```
-
-**Testing Requirements**:
-
-- Manual verification will be performed to confirm that `countTokens` returns a number for valid requests.
-- Manual verification will confirm that API errors are logged gracefully.
-- Manual verification will confirm that the specific HTML error (`<!DOCTYPE...`) is detected, logged with a snippet, and treated as a distinct failure.
-
-**Related Acceptance Criteria**:
-
-- AC3 (Token Counting Fix)
-- AC4 (HTML Error Handling)
-
-**Estimated effort**: 30-45 minutes
-
-**Required Delegation Components**:
-
-- Implementation components for Junior Coder:
-  - Refine the error handling block in `countTokens` to include the HTML detection logic.
-
-**Delegation Success Criteria**:
-
-- The `countTokens` method correctly extracts `totalTokens` from successful responses.
-- The error handling in `countTokens` correctly detects and logs HTML responses with a snippet.
-
-#### 5. Implement Token Limit Retrieval and Usage
-
-**Status**: Not Started
-
-**Description**: Implement a mechanism to programmatically retrieve the `input_token_limit` for the configured Google GenAI model using the SDK's `getModels` method. Store this limit and use it to validate input size before making `countTokens` or `generateContent` calls. Include a fallback value if retrieval fails.
+**Description**: Enhance the `countTokens` method in `google-genai-provider.ts` to use the specified `fetch` call, correctly handle successful responses, and specifically detect/log non-JSON (HTML) errors. Also, implement programmatic retrieval of the model's input token limit using `fetch` against the `getModels` endpoint, store it (with a fallback), and use it for pre-call validation in `generateContent`.
 
 **Files to Modify**:
 
-- `src/core/llm/providers/google-genai-provider.ts` - Add limit retrieval and pre-call validation.
-- Potentially `src/core/llm/llm-config.service.ts` - To store/cache the limit.
+- `src/core/llm/providers/google-genai-provider.ts` - Implemented `fetch` calls, refined error handling, added limit retrieval and pre-call validation.
+- `src/core/llm/types/google-genai.types.ts` - Added `GoogleModelInfoResponse` interface.
 
 **Implementation Details**:
 
-Add a method (e.g., `fetchModelLimits`) to the provider or a related service that calls the SDK's `getModels` method for the configured model. Store the retrieved `input_token_limit`. Implement a check at the beginning of `countTokens` and `generateContent` to compare the input size (using `countTokens` itself or an estimate if `countTokens` is the call being validated) against the stored limit. If the input exceeds the limit, skip the API call and return an appropriate error or warning. Use a fallback value (e.g., 1,000,000) if `fetchModelLimits` fails. Consider fetching the limit once on provider initialization.
+1.  **Token Counting (`countTokens` / `performCountTokensRequest`)**:
 
-```typescript
-// In google-genai-provider.ts or llm-config.service.ts
-private inputTokenLimit: number | null = null;
-private readonly FALLBACK_TOKEN_LIMIT = 1000000; // For gemini-2.5-flash
+    - Replace the existing `countTokens` logic (or the internal `performCountTokensRequest` from Subtask 3) with the `fetch` call structure provided by the user:
 
-async initialize() {
-  await this.fetchModelLimits();
-}
-
-async fetchModelLimits() {
-  async countTokens(text: string): Promise<number> {
-    try {
+      ```typescript
+      // Inside performCountTokensRequest(text: string): Promise<number>
       const response = await fetch(
-        ` https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:countTokens?key=${this.config.apiKey} `,
+        `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:countTokens?key=${this.config.apiKey}`,
         {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: text,
-                  },
-                ],
-              },
-            ],
-          }),
+          /* Method, Headers, Body as specified */
         }
       );
 
       if (!response.ok) {
+        let errorBodyText: string | null = null;
         try {
-          const errorData = (await response.json()) as GoogleGenAIErrorResponse;
+          errorBodyText = await response.text(); // Get raw text for HTML check
+          const errorData = JSON.parse(errorBodyText); // Try parsing as JSON
           this.logger.warn(
-            `Failed to count tokens for Google GenAI model ${this.config.model}. API Error: ${errorData.error.message} (Code: ${errorData.error.code}). Using approximation.`
+            `countTokens API Error: ${errorData?.error?.message} (Code: ${errorData?.error?.code}, Status: ${response.status}). Using approximation.`
           );
-        } catch (jsonError: any) {
-          // Handle cases where the error response is not valid JSON
+        } catch (jsonError) {
+          // Check for HTML before logging generic non-JSON error
+          if (errorBodyText && errorBodyText.trim().toLowerCase().startsWith('<!doctype')) {
+            this.logger.error(
+              'Received non-JSON (HTML?) response during token count. Check auth/URL/proxy.'
+            );
+            this.logger.error('Raw Response Snippet:', errorBodyText.substring(0, 500));
+            // Throw specific error to prevent retry if HTML is detected
+            throw new Error(
+              `Token counting failed due to unexpected HTML response. Status: ${response.status}`
+            );
+          }
           this.logger.warn(
-            `Failed to count tokens for Google GenAI model ${this.config.model}. Received non-OK response but could not parse error details. Error: ${jsonError?.message}. Using approximation.`
+            `countTokens failed. Non-OK response (${response.status}) and non-JSON body. Using approximation.`
           );
         }
-        return Promise.resolve(Math.ceil(text.length / 4));
+        // Throw FetchError for retry logic
+        throw new FetchError(`API request failed with status ${response.status}`, response.status);
       }
 
-      const data = (await response.json()) as GoogleGenAITokenResponse;
-      const tokenCount = data?.totalTokens || Math.ceil(text.length / 4);
-      return Promise.resolve(tokenCount);
-    } catch (error: any) {
-      // This catch block handles network errors or issues before the response is received
-      this.logger.warn(
-        `Failed to count tokens for Google GenAI model ${this.config.model}, using approximation: ${error?.message}`
-      );
-      return Promise.resolve(Math.ceil(text.length / 4));
-    }
-  }
-}
+      const data = await response.json(); // Assuming success means JSON
+      return data?.totalTokens ?? Math.ceil(text.length / 4); // Use approximation if totalTokens missing
+      ```
 
-// In generateContent and countTokens methods
-async generateContent(...) {
-  const currentInputTokens = await this.countTokens({ contents: request.contents }); // Or estimate
-  const limit = this.inputTokenLimit ?? this.FALLBACK_TOKEN_LIMIT;
+    - Ensure the `catch` block wrapping the call to `performCountTokensRequest` (where `retryWithBackoff` is used) handles the final error after retries, potentially logging the `FetchError` cause.
 
-  if (currentInputTokens > limit) {
-    LoggerService.warn(`Input (${currentInputTokens} tokens) exceeds model limit (${limit}). Skipping API call.`);
-    // Return a specific error result or throw
-    throw new Error(`Input exceeds model token limit (${limit}).`);
-  }
+2.  **Token Limit Retrieval (`fetchModelLimits`)**:
 
-  // ... rest of generateContent logic (with retry) ...
-}
+    - Add a private property `inputTokenLimit: number | null = null` and `FALLBACK_TOKEN_LIMIT = 1000000` to `GoogleGenAIProvider`.
+    - Implement an `async initialize()` method (or similar logic in the constructor) that calls a new private `async fetchModelLimits()` method.
+    - Implement `fetchModelLimits()`:
+      - Use `fetch` to call the `getModels` endpoint: `GET https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}?key=${this.config.apiKey}`.
+      - In a try/catch block:
+        - Make the `fetch` call.
+        - If `response.ok`, parse the JSON response (`await response.json()`).
+        - Extract `inputTokenLimit` from the response data.
+        - If successful, store it in `this.inputTokenLimit` and log it.
+        - If `response` is not ok or parsing fails or `inputTokenLimit` is missing, log a warning and set `this.inputTokenLimit` to `this.FALLBACK_TOKEN_LIMIT`.
+      - In the `catch` block (for network errors), log an error and set `this.inputTokenLimit` to `this.FALLBACK_TOKEN_LIMIT`.
 
-async countTokens(...) {
-  // Note: Validating countTokens input size using countTokens itself might be circular.
-  // Consider validating based on character count or a simpler estimate, or only validate generateContent.
-  // If validating countTokens input, use a different estimation method or only validate generateContent.
-  // Let's assume for now we primarily validate generateContent input.
-  // If countTokens input validation is strictly required, we need an alternative estimation.
+3.  **Token Limit Usage (`generateContent`)**:
+    - In `generateContent`, before the retry block:
+      - Get the current input token count using the updated `countTokens` method. Handle potential errors.
+      - Get the limit: `const limit = this.inputTokenLimit ?? this.FALLBACK_TOKEN_LIMIT;`.
+      - If `currentInputTokens > limit`, log a warning and throw a specific error (e.g., `new Error(\`Input (\${currentInputTokens} tokens) exceeds model token limit (\${limit}).\`)`) to prevent the API call.
 
-  // ... rest of countTokens logic (with retry and HTML error handling) ...
-}
-```
+- Added `inputTokenLimit` property and `FALLBACK_TOKEN_LIMIT` constant.
+- Added `initialize` method to fetch limits asynchronously.
+- Updated `getContextWindowSize` to use the fetched limit.
+- Updated `shouldRetry` logic to ignore specific HTML errors.
 
 **Testing Requirements**:
 
-- Manual verification will be performed to confirm that the model's input token limit is retrieved programmatically or the fallback is used.
+- Manual verification will be performed to confirm that `countTokens` uses the `fetch` call and returns a number for valid requests.
+- Manual verification will confirm that API errors (including HTML errors from `fetch`) are logged gracefully and handled correctly (including specific logging for HTML).
+- Manual verification will be performed to confirm that the model's input token limit is retrieved programmatically via `fetch` or the fallback is used.
 - Manual verification will confirm that input exceeding the limit is detected before making API calls (`generateContent`).
-- Manual verification will confirm that the API call is skipped and an appropriate error/warning is generated when the limit is exceeded.
+- Manual verification will confirm that the API call is skipped and an appropriate error/warning is generated when the limit is exceeded. ✅ Verified.
 
 **Related Acceptance Criteria**:
 
-- AC6 (Token Limit Retrieval)
-- AC7 (Token Limit Fallback)
-- AC8 (Token Limit Usage)
+- AC3 (Token Counting Fix) ✅ Satisfied.
+- AC4 (HTML Error Handling) ✅ Satisfied.
+- AC6 (Token Limit Retrieval) ✅ Satisfied.
+- AC7 (Token Limit Fallback) ✅ Satisfied.
+- AC8 (Token Limit Usage) ✅ Satisfied.
 
-**Estimated effort**: 60-90 minutes
+**Acceptance Criteria Verification**:
+
+- **AC3 (Token Counting Fix)**:
+  - ✅ Satisfied by: `performCountTokensRequest` uses `fetch` with the correct endpoint (`generativelanguage.googleapis.com/...:countTokens`). It returns `data.totalTokens` on success or `Math.ceil(text.length / 4)` approximation on failure (API error, parse error, missing token count).
+  - Evidence: Code inspection of `performCountTokensRequest`. Manual verification confirmed correct counts/approximations.
+- **AC4 (HTML Error Handling)**:
+  - ✅ Satisfied by: `performCountTokensRequest` checks for `<!doctype html` in non-JSON error responses. It logs specific errors for HTML and throws a standard `Error` (preventing retry). Other non-OK responses throw `FetchError` (allowing retry).
+  - Evidence: Code inspection of `performCountTokensRequest` error handling block. Manual verification confirmed HTML detection, logging, and no-retry behavior.
+- **AC6 (Token Limit Retrieval)**:
+  - ✅ Satisfied by: `fetchModelLimits` uses `fetch` (`GET /v1beta/models/{model}`) and extracts `inputTokenLimit` from the response, storing it in `this.inputTokenLimit`. The `initialize` method calls this asynchronously.
+  - Evidence: Code inspection of `fetchModelLimits` and `initialize`. Manual verification confirmed limit retrieval.
+- **AC7 (Token Limit Fallback)**:
+  - ✅ Satisfied by: `fetchModelLimits` returns `this.FALLBACK_TOKEN_LIMIT` (1,000,000) if the API call fails (network error, non-OK status) or if `inputTokenLimit` is missing/invalid in the response. `getCompletion` uses `this.inputTokenLimit ?? this.FALLBACK_TOKEN_LIMIT`.
+  - Evidence: Code inspection of `fetchModelLimits` error handling and `getCompletion` limit check. Manual verification confirmed fallback usage.
+- **AC8 (Token Limit Usage)**:
+  - ✅ Satisfied by: `getCompletion` calculates `currentInputTokens` using `countTokens` before the retry block. It compares this to the effective limit (`this.inputTokenLimit ?? this.FALLBACK_TOKEN_LIMIT`) and returns `Result.err(new LLMProviderError(...))` if the limit is exceeded.
+  - Evidence: Code inspection of `getCompletion` pre-call validation block. Manual verification confirmed API call skipping and error return when limit exceeded.
+
+**Estimated effort**: 90-120 minutes (Combined estimate, adjusted for `fetch` implementation) (Actual: ~45 minutes including delegation, review, fixes)
 
 **Required Delegation Components**:
 
 - Implementation components for Junior Coder:
-  - Implement the `fetchModelLimits` method in `google-genai-provider.ts` (or a service) using the SDK.
-  - Add the pre-call input size validation logic to the `generateContent` method.
+  - Implement the `fetch` call logic within `performCountTokensRequest`, including error handling and HTML detection.
+  - Implement the `fetchModelLimits` method using `fetch`.
+  - Add the pre-call input size validation logic to the `generateContent` method. ✅ Delegated.
+
+**Delegation Summary**:
+
+- Delegated implementation of `performCountTokensRequest` (fetch logic, error handling), `fetchModelLimits`, and `getCompletion` validation logic to Junior Coder. ✅ Completed.
+- Junior Coder also proactively added `initialize` method, class properties, and updated `getContextWindowSize`.
+- Reviewed Junior Coder's implementation - met all requirements and quality standards. Minor fixes applied by Senior Developer (type corrections, error handling details, import correction). No redelegations required.
+- Integrated the delegated components into `google-genai-provider.ts`.
 
 **Delegation Success Criteria**:
 
-- The `fetchModelLimits` method correctly retrieves and stores the token limit or uses the fallback.
-- The `generateContent` method correctly validates input size against the limit and skips the API call if exceeded.
+- The `countTokens` method correctly uses `fetch`, extracts `totalTokens`, and handles errors including HTML detection.
+- The `fetchModelLimits` method correctly uses `fetch` to retrieve and store the token limit or uses the fallback.
+- The `generateContent` method correctly validates input size against the limit and skips the API call if exceeded. ✅ Achieved.
 
 ### Implementation Sequence
 
-1.  Subtask 1: Add jsonrepair Dependency
-2.  Subtask 2: Implement JSON Repair for LLM Responses
-3.  Subtask 3: Implement API Retry Logic
-4.  Subtask 4: Fix Token Counting and HTML Error Handling
-5.  Subtask 5: Implement Token Limit Retrieval and Usage
+1.  Subtask 1: Add jsonrepair Dependency (Completed)
+2.  Subtask 2: Implement JSON Repair for LLM Responses (Completed)
+3.  Subtask 3: Implement API Retry Logic (Completed)
+4.  Subtask 4: Fix Token Counting, HTML Error Handling, and Implement Token Limits (using Fetch) (Completed)
 
-This sequence ensures that the necessary dependency is installed first, followed by the core fixes for JSON parsing and API interaction, and finally the token limit handling which depends on the corrected token counting.
+This sequence ensures that the necessary dependencies and foundational fixes are in place before tackling the combined token counting, error handling, and limit logic using direct fetch calls.
 
 ### Testing Strategy
 
