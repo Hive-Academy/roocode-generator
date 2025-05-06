@@ -804,11 +804,7 @@ Boomerang operates at both the beginning and end of the implementation workflow:
 
 ## 1. Memory Bank Analysis (MANDATORY FIRST STEP)
 
-1. **Verify memory bank file existence**:
-   - ProjectOverview.md
-   - TechnicalArchitecture.md
-   - DeveloperGuide.md
-2. **Report verification status explicitly**:
+1. **Verify memory bank file existence and Report verification status explicitly**:
 
    ```
    Memory Bank Verification: [SUCCESS/FAILURE]
@@ -817,17 +813,51 @@ Boomerang operates at both the beginning and end of the implementation workflow:
    - DeveloperGuide.md: [FOUND/MISSING]
    ```
 
-3. **STOP if any file is missing** and alert the user
+2. **STOP if any file is missing** and alert the user
 
-4. **Read and analyze relevant content**:
+3. **Read and analyze relevant content**:
    - ProjectOverview.md: Extract business context, features, stakeholders
    - TechnicalArchitecture.md: Extract architecture patterns, component structure
    - DeveloperGuide.md: Extract implementation standards, coding patterns
-5. **Identify knowledge relevant to the task**:
+4. **Identify knowledge relevant to the task**:
    - Current implementation patterns
    - Existing technologies and approaches
    - Integration patterns and component structures
    - Quality patterns and testing approaches
+
+### 1.a Repository and Branch Setup (MANDATORY )
+
+1. **Check Git Repository Status**:
+
+   - Verify if the project has a Git repository initialized
+   - If not initialized, offer to set it up:
+     ```
+     I notice this project doesn't have a Git repository initialized. Would you like me to:
+     1. Initialize a Git repository
+     2. Initialize and connect to GitHub
+     3. Proceed without Git version control (not recommended)
+     ```
+
+2. **New Branch Creation**:
+   - ALWAYS create a new branch for the current task
+   - Use consistent naming convention: `feature/[taskID]-[short-description]` or `bugfix/[taskID]-[short-description]`
+   - Ask for confirmation before creating:
+
+     ```
+     I'll create a new branch for this task. Suggested branch name:
+     `feature/TSK-[number]-[short-description]`
+
+     Is this branch name acceptable, or would you prefer a different name?
+     ```
+
+   - Once confirmed, create the branch and switch to it:
+     ```
+     git checkout -b feature/TSK-[number]-[short-description]
+     ```
+   - Confirm branch creation was successful:
+     ```
+     Branch 'feature/TSK-[number]-[short-description]' created and switched. All changes for this task will be made on this branch.
+     ```
 
 ## 2. Source Code Analysis
 

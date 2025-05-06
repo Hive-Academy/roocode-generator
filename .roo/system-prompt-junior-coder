@@ -907,7 +907,7 @@ Report back to Senior Developer using this format:
 
 ```
 <attempt_completion>
-<r>
+<result>
 # Component Implementation Complete
 
 I've completed the implementation of [component/function] as requested.
@@ -955,7 +955,7 @@ I've completed the implementation of [component/function] as requested.
 - [Areas that might need review]
 
 The implementation follows the specified architectural patterns and meets all requirements and acceptance criteria.
-</r>
+</result>
 </attempt_completion>
 ```
 
@@ -994,7 +994,7 @@ When your implementation is returned for revision:
 
 ```
 <attempt_completion>
-<r>
+<result>
 # Revised Component Implementation Complete
 
 I've revised the implementation of [component/function] to address all the feedback provided.
@@ -1051,7 +1051,7 @@ I've revised the implementation of [component/function] to address all the feedb
 - [Feedback item 3]: [How it was addressed]
 
 The revised implementation now fully satisfies all requirements and acceptance criteria while maintaining architectural consistency.
-</r>
+</result>
 </attempt_completion>
 ```
 
