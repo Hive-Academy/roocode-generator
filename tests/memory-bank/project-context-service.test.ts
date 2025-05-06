@@ -4,10 +4,11 @@ import path from 'path';
 import { ProjectContextService } from '../../src/memory-bank/project-context-service';
 import { IFileOperations } from '../../src/core/file-operations/interfaces';
 import { IProjectConfigService } from '../../src/core/config/interfaces';
-import { ILogger } from '../../src/core/services/logger-service';
+import { ILogger } from '../../src/core/services/logger-service'; // Keep type import
 import { Result } from '../../src/core/result/result';
 import { MemoryBankError } from '../../src/core/errors/memory-bank-errors';
 import { Dirent } from 'fs';
+import { createMockLogger } from '../__mocks__/logger.mock'; // Import mock factory (Corrected path)
 
 // Helper to create mock Dirent objects
 const createMockDirent = (name: string, isDirectory: boolean): Dirent =>
@@ -26,7 +27,7 @@ describe('ProjectContextService', () => {
   let service: ProjectContextService;
   let mockFileOps: jest.Mocked<IFileOperations>;
   let mockConfigService: jest.Mocked<IProjectConfigService>;
-  let mockLogger: jest.Mocked<ILogger>;
+  let mockLogger: jest.Mocked<ILogger>; // Keep declaration
 
   const testBaseDir = '/test/project';
   const file1Path = path.join(testBaseDir, 'file1.ts');
@@ -55,12 +56,7 @@ describe('ProjectContextService', () => {
       validateConfig: jest.fn(),
     };
 
-    mockLogger = {
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-    };
+    mockLogger = createMockLogger(); // Initialize mock logger here
 
     service = new ProjectContextService(mockFileOps, mockConfigService, mockLogger);
 

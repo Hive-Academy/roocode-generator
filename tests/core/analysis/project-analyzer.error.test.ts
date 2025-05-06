@@ -1,20 +1,31 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { IAstAnalysisService } from '../../../src/core/analysis/ast-analysis.interfaces';
+import { ITechStackAnalyzerService } from '../../../src/core/analysis/tech-stack-analyzer'; // Added
 import {
   FileContentResult,
   IFileContentCollector,
   IFilePrioritizer,
-  ITreeSitterParserService, // Import the missing interface
+  ITreeSitterParserService,
 } from '../../../src/core/analysis/interfaces';
-import { ProjectContext } from '../../../src/core/analysis/types'; // Re-added ProjectContext import
+import { ProjectContext, GenericAstNode } from '../../../src/core/analysis/types'; // Import GenericAstNode
 import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
-import { ResponseParser } from '../../../src/core/analysis/response-parser';
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
 import { LLMAgent } from '../../../src/core/llm/llm-agent';
 import { LLMProviderError } from '../../../src/core/llm/llm-provider-errors';
 import { Result } from '../../../src/core/result/result';
 import { ILogger } from '../../../src/core/services/logger-service';
 import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
-import { Dirent } from 'fs'; // Added Dirent import
+import { Dirent } from 'fs';
+import { createMockResponseParser } from '../../__mocks__/response-parser.mock';
+import { createMockLogger } from '../../__mocks__/logger.mock';
+import { createMockLLMAgent } from '../../__mocks__/llm-agent.mock';
+import { createMockProgressIndicator } from '../../__mocks__/progress-indicator.mock';
+import { ResponseParser } from '../../../src/core/analysis/response-parser';
+import { createMockFileOperations } from '../../__mocks__/file-operations.mock';
+import { createMockFileContentCollector } from '../../__mocks__/file-content-collector.mock';
+import { createMockFilePrioritizer } from '../../__mocks__/file-prioritizer.mock';
+import { createMockTreeSitterParserService } from '../../__mocks__/tree-sitter-parser.service.mock';
+import { createMockAstAnalysisService } from '../../__mocks__/ast-analysis.service.mock';
+import { createMockTechStackAnalyzerService } from '../../__mocks__/tech-stack-analyzer.mock'; // Added
 
 describe('ProjectAnalyzer Error Handling Tests', () => {
   let projectAnalyzer: ProjectAnalyzer;
@@ -25,62 +36,65 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
   let mockProgress: jest.Mocked<ProgressIndicator>;
   let mockContentCollector: jest.Mocked<IFileContentCollector>;
   let mockFilePrioritizer: jest.Mocked<IFilePrioritizer>;
-  let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>; // Declare the mock variable
+  let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>;
+  let mockAstAnalysisService: jest.Mocked<IAstAnalysisService>;
+  let mockTechStackAnalyzerService: jest.Mocked<ITechStackAnalyzerService>; // Added
 
   beforeEach(() => {
-    mockFileOps = {
-      readDir: jest.fn(),
-      isDirectory: jest.fn(),
-    } as any;
+    // Use mock factories for all dependencies
+    mockFileOps = createMockFileOperations();
+    mockLogger = createMockLogger();
+    mockLlmAgent = createMockLLMAgent();
+    mockResponseParser = createMockResponseParser();
+    mockProgress = createMockProgressIndicator();
+    mockContentCollector = createMockFileContentCollector();
+    mockFilePrioritizer = createMockFilePrioritizer();
+    mockTreeSitterParserService = createMockTreeSitterParserService();
+    mockAstAnalysisService = createMockAstAnalysisService();
+    mockTechStackAnalyzerService = createMockTechStackAnalyzerService(); // Added
 
-    mockLogger = {
-      debug: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-    } as any;
+    // Set default return values for mocks used in multiple tests if needed
+    mockFileOps.readFile.mockResolvedValue(Result.ok(''));
+    mockLlmAgent.getModelContextWindow.mockResolvedValue(8000);
+    mockLlmAgent.getProvider.mockResolvedValue(
+      Result.ok({ countTokens: jest.fn().mockResolvedValue(10) } as any) // Keep 'any' here as LLMProvider type is complex
+    );
+    mockTreeSitterParserService.initialize.mockReturnValue(Result.ok(undefined));
+    // Provide a valid default GenericAstNode
+    const defaultAstNode: GenericAstNode = {
+      type: 'program',
+      text: '',
+      startPosition: { row: 0, column: 0 },
+      endPosition: { row: 0, column: 0 },
+      isNamed: true,
+      fieldName: null,
+      children: [],
+    };
+    mockTreeSitterParserService.parse.mockReturnValue(Result.ok(defaultAstNode));
+    mockAstAnalysisService.analyzeAst.mockResolvedValue(
+      Result.ok({ functions: [], classes: [], imports: [] })
+    );
+    mockTechStackAnalyzerService.analyze.mockResolvedValue({
+      // Default mock
+      languages: ['typescript'],
+      frameworks: ['jest'],
+      buildTools: ['npm'],
+      testingFrameworks: ['jest'],
+      linters: ['eslint'],
+      packageManager: 'npm',
+    });
 
-    mockLlmAgent = {
-      getCompletion: jest.fn(),
-      getModelContextWindow: jest.fn().mockResolvedValue(8000), // Add default mock
-      countTokens: jest.fn(),
-      getProvider: jest
-        .fn()
-        .mockResolvedValue(Result.ok({ countTokens: jest.fn().mockResolvedValue(10) } as any)), // Add default mock
-    } as any;
-
-    mockResponseParser = {
-      parseLlmResponse: jest.fn(),
-    } as any;
-
-    mockProgress = {
-      start: jest.fn(),
-      update: jest.fn(),
-      succeed: jest.fn(),
-      fail: jest.fn(),
-    } as any;
-
-    mockContentCollector = {
-      collectContent: jest.fn(),
-    } as any;
-
-    mockFilePrioritizer = {
-      prioritizeFiles: jest.fn(),
-    } as any;
-
-    // Initialize the mock service
-    mockTreeSitterParserService = {
-      parse: jest.fn().mockResolvedValue(Result.ok({ functions: [], classes: [] })), // Default mock
-    } as any;
-
+    // Ensure correct constructor order
     projectAnalyzer = new ProjectAnalyzer(
       mockFileOps,
       mockLogger,
       mockLlmAgent,
-      mockResponseParser,
-      mockProgress,
+      mockProgress, // Corrected: 4th arg
       mockContentCollector,
       mockFilePrioritizer,
-      mockTreeSitterParserService // Pass the mock service
+      mockTreeSitterParserService,
+      mockAstAnalysisService,
+      mockTechStackAnalyzerService // Added: 9th arg
     );
   });
 
@@ -230,8 +244,8 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
       const errorResult: Result<ProjectContext | undefined, Error> = Result.err(
         new Error('Failed to parse JSON response')
       );
-      // Ensure the mock returns the correctly typed Result object
-      mockResponseParser.parseLlmResponse.mockReturnValueOnce(errorResult);
+      // Ensure the mock returns the correctly typed Result object asynchronously
+      mockResponseParser.parseLlmResponse.mockResolvedValueOnce(errorResult);
 
       const result = await projectAnalyzer.analyzeProject(['/valid/path']);
       expect(result.isErr()).toBe(true);
@@ -265,8 +279,8 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
       mockLlmAgent.getCompletion.mockResolvedValueOnce(Result.ok('valid json'));
       // Mock parser returning undefined value
       const undefinedResult: Result<ProjectContext | undefined, Error> = Result.ok(undefined);
-      // Ensure the mock returns the correctly typed Result object - reverting to mockReturnValueOnce
-      mockResponseParser.parseLlmResponse.mockReturnValueOnce(undefinedResult);
+      // Ensure the mock returns the correctly typed Result object asynchronously
+      mockResponseParser.parseLlmResponse.mockResolvedValueOnce(undefinedResult);
 
       const result = await projectAnalyzer.analyzeProject(['/valid/path']);
       expect(result.isErr()).toBe(true);
@@ -509,23 +523,12 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
           { name: 'file.ts', isDirectory: () => false, isFile: () => true } as Dirent,
         ])
       );
-      mockFileOps.isDirectory.mockResolvedValue(Result.ok(false));
-      mockFilePrioritizer.prioritizeFiles.mockImplementation((files) => files);
-      mockContentCollector.collectContent.mockResolvedValue(
-        Result.ok<FileContentResult>({
-          content: 'content',
-          metadata: [{ path: 'file.ts', size: 10 }],
-        })
-      );
-      mockLlmAgent.getModelContextWindow.mockResolvedValue(8000);
-      mockLlmAgent.countTokens.mockResolvedValue(100);
-      mockLlmAgent.getProvider.mockResolvedValue(
-        Result.ok({ countTokens: jest.fn().mockResolvedValue(10) } as any)
-      );
-      // Mock getCompletion throwing timeout
+      // ... other mocks ...
       mockLlmAgent.getCompletion.mockImplementation(() => {
-        // Removed async
-        throw new Error('Connection timeout after 30 seconds');
+        // Simulate timeout
+        return new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Connection timeout')), 10)
+        );
       });
 
       const result = await projectAnalyzer.analyzeProject(['/valid/path']);
@@ -537,10 +540,9 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
 
     it('should handle LLM rate limit errors', async () => {
       const error = new LLMProviderError(
-        'API rate limit exceeded',
+        'Rate limit exceeded',
         'RATE_LIMIT_EXCEEDED',
-        'LLM_ERROR',
-        {}
+        'LLM_ERROR'
       ) as Error;
       // Need preceding steps to succeed
       mockFileOps.readDir.mockResolvedValue(
@@ -548,21 +550,8 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
           { name: 'file.ts', isDirectory: () => false, isFile: () => true } as Dirent,
         ])
       );
-      mockFileOps.isDirectory.mockResolvedValue(Result.ok(false));
-      mockFilePrioritizer.prioritizeFiles.mockImplementation((files) => files);
-      mockContentCollector.collectContent.mockResolvedValue(
-        Result.ok<FileContentResult>({
-          content: 'content',
-          metadata: [{ path: 'file.ts', size: 10 }],
-        })
-      );
-      mockLlmAgent.getModelContextWindow.mockResolvedValue(8000);
-      mockLlmAgent.countTokens.mockResolvedValue(100);
-      mockLlmAgent.getProvider.mockResolvedValue(
-        Result.ok({ countTokens: jest.fn().mockResolvedValue(10) } as any)
-      );
-      // Mock getCompletion returning rate limit error
-      mockLlmAgent.getCompletion.mockResolvedValueOnce(Result.err<Error>(error));
+      // ... other mocks ...
+      mockLlmAgent.getCompletion.mockResolvedValue(Result.err<Error>(error)); // Mock LLM call failing with rate limit
 
       const result = await projectAnalyzer.analyzeProject(['/valid/path']);
       expect(result.isErr()).toBe(true);
@@ -575,9 +564,8 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
     it('should handle LLM authentication errors', async () => {
       const error = new LLMProviderError(
         'Invalid API key',
-        'AUTHENTICATION_FAILED',
-        'LLM_ERROR',
-        {}
+        'AUTHENTICATION_ERROR',
+        'LLM_ERROR'
       ) as Error;
       // Need preceding steps to succeed
       mockFileOps.readDir.mockResolvedValue(
@@ -585,21 +573,8 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
           { name: 'file.ts', isDirectory: () => false, isFile: () => true } as Dirent,
         ])
       );
-      mockFileOps.isDirectory.mockResolvedValue(Result.ok(false));
-      mockFilePrioritizer.prioritizeFiles.mockImplementation((files) => files);
-      mockContentCollector.collectContent.mockResolvedValue(
-        Result.ok<FileContentResult>({
-          content: 'content',
-          metadata: [{ path: 'file.ts', size: 10 }],
-        })
-      );
-      mockLlmAgent.getModelContextWindow.mockResolvedValue(8000);
-      mockLlmAgent.countTokens.mockResolvedValue(100);
-      mockLlmAgent.getProvider.mockResolvedValue(
-        Result.ok({ countTokens: jest.fn().mockResolvedValue(10) } as any)
-      );
-      // Mock getCompletion returning auth error
-      mockLlmAgent.getCompletion.mockResolvedValueOnce(Result.err<Error>(error));
+      // ... other mocks ...
+      mockLlmAgent.getCompletion.mockResolvedValue(Result.err<Error>(error)); // Mock LLM call failing with auth error
 
       const result = await projectAnalyzer.analyzeProject(['/valid/path']);
       expect(result.isErr()).toBe(true);

@@ -3,13 +3,14 @@ import { ILLMConfigService } from '@core/config/interfaces';
 import { Result } from '@core/result/result';
 import { OpenRouterProvider } from '@core/llm/providers/open-router-provider';
 import { LLMConfig } from 'types/shared';
-import { ILogger } from '@core/services/logger-service';
+import { ILogger } from '@core/services/logger-service'; // Keep type import
+import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
 import { LLMProviderFactory, ILLMProvider } from '@core/llm/interfaces';
 import { LLMProviderError } from '@core/llm/llm-provider-errors';
 
 describe('LLMProviderRegistry', () => {
   let mockConfigService: jest.Mocked<ILLMConfigService>;
-  let mockLogger: jest.Mocked<ILogger>;
+  let mockLogger: jest.Mocked<ILogger>; // Keep declaration
   let registry: LLMProviderRegistry;
   let openRouterFactory: LLMProviderFactory;
   let genericFactory1: LLMProviderFactory;
@@ -20,12 +21,7 @@ describe('LLMProviderRegistry', () => {
       loadConfig: jest.fn(),
     } as any;
 
-    mockLogger = {
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-    };
+    mockLogger = createMockLogger(); // Initialize mock logger here
 
     // Create the OpenRouter provider factory
     openRouterFactory = (config: LLMConfig): Result<ILLMProvider, Error> => {

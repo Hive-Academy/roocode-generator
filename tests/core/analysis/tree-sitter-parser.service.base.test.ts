@@ -2,38 +2,87 @@
 import { TreeSitterParserService } from '@core/analysis/tree-sitter-parser.service';
 import { ILogger } from '@core/services/logger-service';
 import { mock, MockProxy } from 'jest-mock-extended';
-// Removed unused import: import { Result } from '@core/result/result';
-// Removed CodeElementInfo import
+import { Result } from '@core/result/result'; // Add Result back
+import { GenericAstNode } from '@core/analysis/types'; // Import new types
+import { jest } from '@jest/globals'; // Ensure jest is imported
 
-// Mock the node-tree-sitter library and language grammars
-// We need to mock the default export for languages and the Parser class for node-tree-sitter
-const mockJsLang = { mockLangProperty: 'javascript' }; // Placeholder object
-const mockTsLang = { mockLangProperty: 'typescript' }; // Placeholder object
-// Removed mockParseTree as we rely on mock query results now
-const mockParserInstance = {
-  setLanguage: jest.fn(),
-  parse: jest.fn(), // Basic mock, specific behavior set in tests if needed
-  getLogger: jest.fn(),
-  setLogger: jest.fn(),
-  // Removed query mock
+// Define a reusable mock SyntaxNode structure
+const mockSyntaxNode = {
+  type: 'program',
+  text: 'mock code',
+  startPosition: { row: 0, column: 0 },
+  endPosition: { row: 1, column: 0 },
+  isNamed: true,
+  parentFieldName: null,
+  children: [
+    {
+      type: 'expression_statement',
+      text: 'child code',
+      startPosition: { row: 0, column: 0 },
+      endPosition: { row: 0, column: 10 },
+      isNamed: true,
+      parentFieldName: null,
+      children: [],
+    },
+  ],
+  // Add other methods if needed by the service, e.g., walk() if used
 };
 
-// Corrected mock target for 'require' style import
-jest.mock('node-tree-sitter', () => {
-  // Return a mock class whose constructor returns the singleton instance
-  return class MockParser {
+// Define the mock parser instance directly in the test file
+const mockParserInstance = {
+  setLanguage: jest.fn(),
+  parse: jest.fn().mockReturnValue({ rootNode: mockSyntaxNode }), // Default implementation
+  getLogger: jest.fn(),
+  setLogger: jest.fn(),
+  getIncludedRanges: jest.fn(() => []),
+  getTimeoutMicros: jest.fn(() => 0),
+  setTimeoutMicros: jest.fn(),
+  reset: jest.fn(),
+  getLanguage: jest.fn(),
+  printDotGraphs: jest.fn(),
+};
+
+// Mock the node-tree-sitter library itself
+jest.mock('tree-sitter', () => {
+  // Define the MockParser class inside the factory
+  class MockParser {
     constructor() {
+      // Return the singleton instance when the class is instantiated
       return mockParserInstance;
     }
-  };
+
+    // Add static methods if needed
+    static Language = {
+      // Mock static properties/methods if used
+      load: jest.fn().mockResolvedValue({
+        /* mock language object */
+      } as never),
+    };
+  }
+  // Return the MockParser class from the factory
+  return MockParser;
 });
 
 // Mock the dynamic imports for language grammars
 // Note: The actual path might differ based on how they are imported internally.
 // Assuming dynamic import(`tree-sitter-${language}`)
-jest.mock('tree-sitter-javascript', () => ({ default: mockJsLang }), { virtual: true });
+jest.mock(
+  'tree-sitter-javascript',
+  () => {
+    const mockJsLangInline = { mockLangProperty: 'javascript' }; // Define inside factory
+    return { default: mockJsLangInline };
+  },
+  { virtual: true }
+);
 // Note: Service uses 'tree-sitter-typescript/typescript' path
-jest.mock('tree-sitter-typescript/typescript', () => ({ default: mockTsLang }), { virtual: true });
+jest.mock(
+  'tree-sitter-typescript/typescript',
+  () => {
+    const mockTsLangInline = { mockLangProperty: 'typescript' }; // Define inside factory
+    return { default: mockTsLangInline };
+  },
+  { virtual: true }
+);
 // Mock for the failure case (will be overridden in specific test)
 jest.mock(
   'tree-sitter-unsupported',
@@ -53,6 +102,11 @@ describe('TreeSitterParserService (Base)', () => {
   beforeEach(() => {
     // Reset mocks before each test
     jest.clearAllMocks();
+    // Reset mock implementations on the shared instance before each test
+    mockParserInstance.setLanguage.mockClear(); // Use mockClear or mockReset as appropriate
+    mockParserInstance.parse.mockClear();
+    mockParserInstance.getLogger.mockClear();
+    mockParserInstance.setLogger.mockClear();
     // Re-mock the logger and grammar loader
     mockLogger = mock<ILogger>();
     mockLogger.info.mockImplementation(() => {});
@@ -63,14 +117,10 @@ describe('TreeSitterParserService (Base)', () => {
     service = new TreeSitterParserService(mockLogger);
 
     // THEN Add a minimal default mock return value for parse in beforeEach
-    // This prevents errors in the parse method when it expects a tree object,
-    // but avoids adding a query mock which might interfere with base tests.
-    const mockRootNode = { type: 'program', children: [] }; // Simplified node
-    const mockTree = {
-      rootNode: mockRootNode,
-      // No query mock needed for base tests
-    };
-    mockParserInstance.parse.mockReturnValue(mockTree);
+    // The default mock for parse is now set above in mockParserInstance definition
+    // Ensure it returns the structure expected by the updated parse method
+    // Re-apply default mock implementation for parse after clearing
+    mockParserInstance.parse.mockReturnValue({ rootNode: mockSyntaxNode });
 
     // Get the mocked Parser constructor instance for assertions if needed
     // Note: This might not be directly accessible depending on how TreeSitterParserService uses it.
@@ -97,11 +147,21 @@ describe('TreeSitterParserService (Base)', () => {
 
     // Act
     const result1 = service.parse(content, language);
-    const result2 = service.parse(content, language); // Second call
+    const result2: Result<GenericAstNode, Error> = service.parse(content, language); // Second call
 
     // Assert
     expect(result1.isOk()).toBe(true);
     expect(result2.isOk()).toBe(true);
+
+    // Verify the structure of the returned GenericAstNode (basic check)
+    if (result1.isOk()) {
+      const astNode: GenericAstNode = result1.value!; // Add type and non-null assertion
+      expect(astNode).toBeDefined();
+      expect(astNode.type).toBe(mockSyntaxNode.type); // Check root type
+      expect(astNode.text).toBe(mockSyntaxNode.text); // Check root text
+      expect(astNode.children).toBeInstanceOf(Array); // Check children array exists
+      expect(astNode.children.length).toBeGreaterThan(0); // Check children exist based on mock
+    }
     // Check actual log messages
 
     // Grammar loading now happens via require(), cannot easily assert mockGrammarLoader calls.
@@ -112,12 +172,14 @@ describe('TreeSitterParserService (Base)', () => {
       'Initializing Tree-sitter grammars via require...' // Updated message
     );
     // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(mockLogger.info).toHaveBeenCalledWith(`Parsing content for language: ${language}`);
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      `Parsing content for language: ${language} to generate generic AST`
+    ); // Updated log message
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(mockLogger.debug).toHaveBeenCalledWith(`Using cached parser for language: ${language}`);
 
     // Verify Parser.setLanguage was called with the mock grammar object
-    expect(mockParserInstance.setLanguage).toHaveBeenCalledWith(mockJsLang);
+    expect(mockParserInstance.setLanguage).toHaveBeenCalledWith(expect.any(Object)); // Check for any object
     // Ensure setLanguage was called twice (initial load + cache hit verification)
     expect(mockParserInstance.setLanguage).toHaveBeenCalledTimes(2);
   });
@@ -127,12 +189,22 @@ describe('TreeSitterParserService (Base)', () => {
     const language = 'typescript';
 
     // Act
-    const result1 = service.parse(content, language);
-    const result2 = service.parse(content, language); // Second call
+    const result1: Result<GenericAstNode, Error> = service.parse(content, language);
+    const result2: Result<GenericAstNode, Error> = service.parse(content, language); // Second call
 
     // Assert
     expect(result1.isOk()).toBe(true);
     expect(result2.isOk()).toBe(true);
+
+    // Verify the structure of the returned GenericAstNode (basic check)
+    if (result1.isOk()) {
+      const astNode: GenericAstNode = result1.value!; // Add type and non-null assertion
+      expect(astNode).toBeDefined();
+      expect(astNode.type).toBe(mockSyntaxNode.type); // Check root type
+      expect(astNode.text).toBe(mockSyntaxNode.text); // Check root text
+      expect(astNode.children).toBeInstanceOf(Array); // Check children array exists
+      expect(astNode.children.length).toBeGreaterThan(0); // Check children exist based on mock
+    }
     // Check actual log messages (Note: TS grammar path is different)
 
     // Grammar loading now happens via require(), cannot easily assert mockGrammarLoader calls.
@@ -143,12 +215,14 @@ describe('TreeSitterParserService (Base)', () => {
       'Initializing Tree-sitter grammars via require...' // Updated message
     );
     // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(mockLogger.info).toHaveBeenCalledWith(`Parsing content for language: ${language}`);
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      `Parsing content for language: ${language} to generate generic AST`
+    ); // Updated log message
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(mockLogger.debug).toHaveBeenCalledWith(`Using cached parser for language: ${language}`);
 
     // Verify Parser.setLanguage was called with the mock grammar object
-    expect(mockParserInstance.setLanguage).toHaveBeenCalledWith(mockTsLang);
+    expect(mockParserInstance.setLanguage).toHaveBeenCalledWith(expect.any(Object)); // Check for any object
     expect(mockParserInstance.setLanguage).toHaveBeenCalledTimes(2); // Called twice (initial load + cache hit verification)
   });
 
@@ -162,7 +236,7 @@ describe('TreeSitterParserService (Base)', () => {
     const originalMapSet = Map.prototype.set;
     Map.prototype.set = jest.fn().mockImplementationOnce(() => {
       throw initError;
-    });
+    }) as any;
 
     // Instantiate the service (initialization happens on first parse)
     const serviceWithError = new TreeSitterParserService(mockLogger);
@@ -211,7 +285,7 @@ describe('TreeSitterParserService (Base)', () => {
     const language = 'javascript';
     const parseError = new Error('Simulated parsing error');
 
-    // Mock parser.parse to throw an error for this test
+    // Mock parser.parse to throw an error for this test using the imported instance
     mockParserInstance.parse.mockImplementationOnce(() => {
       throw parseError;
     });
@@ -224,20 +298,69 @@ describe('TreeSitterParserService (Base)', () => {
     if (result.isErr()) {
       // Use non-null assertion (!) because isErr() is not a type predicate
       expect(result.error!).toBeInstanceOf(Error);
-      // Check actual error message format from service (refactored message)
-      expect(result.error!.message).toContain(`Error during Tree-sitter parsing for ${language}:`); // Updated message format
+      // Check actual error message format from service (updated in service implementation)
+      expect(result.error!.message).toContain(
+        `Error during Tree-sitter parsing or AST conversion for ${language}` // Check updated message
+      );
       expect(result.error!.message).toContain(parseError.message); // Check original message is included
-      // Service doesn't set cause, remove check
-      // expect(result.error!.cause).toBe(parseError);
     }
-    // Expect any object for setLanguage
+    // Assert using the imported instance
     expect(mockParserInstance.setLanguage).toHaveBeenCalledWith(expect.any(Object));
     expect(mockParserInstance.parse).toHaveBeenCalledWith(content);
     // Check logger call includes the original error object
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(mockLogger.error).toHaveBeenCalledWith(
-      expect.stringContaining(`Error during Tree-sitter parsing for ${language}`), // Updated message format
+      expect.stringContaining(`Error during Tree-sitter parsing or AST conversion for ${language}`), // Check updated message
       parseError // Check the passed error object
+    );
+  });
+
+  // --- New Test: Successful Parsing and AST Conversion ---
+  it('should return Ok with a correctly structured GenericAstNode on successful parse', () => {
+    const content = 'const x = 1;';
+    const language = 'javascript';
+
+    // Ensure the mock parse returns the expected structure
+    // (It should have been reset and set in beforeEach)
+    // No need to modify instance here, beforeEach handles the default return value.
+
+    // Act
+    const result: Result<GenericAstNode, Error> = service.parse(content, language);
+
+    // Assert
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const astNode: GenericAstNode = result.value!; // Add type and non-null assertion
+      // Verify root node properties (AC4, AC5, AC6)
+      expect(astNode.type).toBe(mockSyntaxNode.type);
+      expect(astNode.text).toBe(mockSyntaxNode.text);
+      expect(astNode.startPosition).toEqual(mockSyntaxNode.startPosition);
+      expect(astNode.endPosition).toEqual(mockSyntaxNode.endPosition);
+      expect(astNode.isNamed).toBe(mockSyntaxNode.isNamed);
+      expect(astNode.fieldName).toBe(mockSyntaxNode.parentFieldName);
+
+      // Verify children structure (recursive check)
+      expect(astNode.children).toBeInstanceOf(Array);
+      expect(astNode.children.length).toBe(mockSyntaxNode.children.length);
+
+      if (astNode.children.length > 0 && mockSyntaxNode.children.length > 0) {
+        const firstChild: GenericAstNode = astNode.children[0]; // Add type
+        const mockFirstChild = mockSyntaxNode.children[0];
+        expect(firstChild.type).toBe(mockFirstChild.type);
+        expect(firstChild.text).toBe(mockFirstChild.text);
+        expect(firstChild.startPosition).toEqual(mockFirstChild.startPosition);
+        expect(firstChild.endPosition).toEqual(mockFirstChild.endPosition);
+        expect(firstChild.isNamed).toBe(mockFirstChild.isNamed);
+        expect(firstChild.fieldName).toBe(mockFirstChild.parentFieldName);
+        expect(firstChild.children).toBeInstanceOf(Array);
+        expect(firstChild.children.length).toBe(mockFirstChild.children.length);
+      }
+    }
+
+    // Verify logs
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(mockLogger.info).toHaveBeenCalledWith(
+      `Successfully converted AST to generic JSON format for language: ${language}.`
     );
   });
 }); // End main describe

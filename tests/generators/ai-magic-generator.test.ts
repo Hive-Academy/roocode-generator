@@ -191,9 +191,11 @@ describe('AiMagicGenerator (Unit Tests)', () => {
       const result = await generator.generate(options, contextPaths);
 
       expect(result.isOk()).toBe(true);
+      // Check for the actual log message from handleCursorGenerationPlaceholder
       expect(mockLoggerService.info).toHaveBeenCalledWith(
-        'Cursor generation requested (placeholder)...'
+        'Cursor generation functionality will be implemented in a future task.'
       );
+      // Also check for the initial log message
       expect(mockLoggerService.info).toHaveBeenCalledWith(
         'Starting AI Magic generation process...'
       );

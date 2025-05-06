@@ -3,11 +3,12 @@ import { ILogger } from '../core/services/logger-service';
 import { Result } from '../core/result/result';
 import { LLMAgent } from '../core/llm/llm-agent';
 import {
-  IPromptBuilder,
   IMemoryBankContentGenerator,
   MemoryBankFileType,
   IContentProcessor, // Added import
 } from './interfaces';
+// Import ProjectContext from the core analysis types
+import { ProjectContext } from '../core/analysis/types';
 import { MemoryBankGenerationError } from '../core/errors/memory-bank-errors';
 
 /**
@@ -17,7 +18,6 @@ import { MemoryBankGenerationError } from '../core/errors/memory-bank-errors';
 export class MemoryBankContentGenerator implements IMemoryBankContentGenerator {
   constructor(
     @Inject('LLMAgent') private readonly llmAgent: LLMAgent,
-    @Inject('IPromptBuilder') private readonly promptBuilder: IPromptBuilder,
     @Inject('IContentProcessor') private readonly contentProcessor: IContentProcessor, // Added dependency
     @Inject('ILogger') private readonly logger: ILogger
   ) {}
@@ -31,36 +31,25 @@ export class MemoryBankContentGenerator implements IMemoryBankContentGenerator {
    */
   async generateContent(
     fileType: MemoryBankFileType,
-    context: string,
+    context: ProjectContext, // Updated context type
     template: string
   ): Promise<Result<string, Error>> {
     try {
       this.logger.debug(`Generating content for ${fileType} memory bank file`);
 
-      // Build system prompt based on file type
-      const systemPrompt = this.buildSystemPrompt(fileType);
-
-      // Build user prompt with context and template
-      const userPromptResult = this.promptBuilder.buildPrompt(
-        this.buildUserInstruction(fileType),
+      // TODO: Implement new prompt building logic here (delegated to Junior Coder)
+      // This logic should call internal methods based on fileType
+      // and return { systemPrompt: string, userPrompt: string }
+      const { systemPrompt: newSystemPrompt, userPrompt: newUserPrompt } = this.buildPrompts(
+        fileType,
         context,
         template
-      );
-
-      if (userPromptResult.isErr()) {
-        const error = new MemoryBankGenerationError(
-          `Failed to build prompt for ${fileType}`,
-          { operation: 'buildPrompt', fileType },
-          userPromptResult.error
-        );
-        this.logger.error(`Failed to build prompt for ${fileType}`, error);
-        return Result.err(error);
-      }
+      ); // Placeholder call
 
       // Get completion from LLM
       const completionResult = await this.llmAgent.getCompletion(
-        systemPrompt,
-        userPromptResult.value as string
+        newSystemPrompt, // Use the newly built system prompt
+        newUserPrompt // Use the newly built user prompt
       );
 
       if (completionResult.isErr()) {
@@ -110,10 +99,39 @@ export class MemoryBankContentGenerator implements IMemoryBankContentGenerator {
         this.logger.error(`Content stripping returned undefined for ${fileType}`, undefinedError);
         return Result.err(undefinedError);
       }
-
       // Now TS should be certain value is string
       this.logger.debug(`Successfully stripped markdown for ${fileType}`);
-      return Result.ok(strippedContentResult.value);
+
+      // Strip HTML comments (<!-- ... -->)
+      const contentWithoutCommentsResult = this.contentProcessor.stripHtmlComments(
+        strippedContentResult.value
+      );
+
+      if (contentWithoutCommentsResult.isErr()) {
+        const commentStripError = new MemoryBankGenerationError(
+          `Failed to strip HTML comments from ${fileType} content`,
+          { operation: 'stripHtmlComments', fileType },
+          contentWithoutCommentsResult.error
+        );
+        this.logger.error(`Failed to strip HTML comments for ${fileType}`, commentStripError);
+        return Result.err(commentStripError);
+      }
+
+      // Explicit check for undefined after comment stripping
+      if (contentWithoutCommentsResult.value === undefined) {
+        const undefinedError = new MemoryBankGenerationError(
+          `Content stripping (comments) unexpectedly returned undefined for ${fileType}`,
+          { operation: 'stripHtmlComments', fileType }
+        );
+        this.logger.error(
+          `Content stripping (comments) returned undefined for ${fileType}`,
+          undefinedError
+        );
+        return Result.err(undefinedError);
+      }
+
+      this.logger.debug(`Successfully stripped markdown and comments for ${fileType}`);
+      return Result.ok(contentWithoutCommentsResult.value);
     } catch (error) {
       const wrappedError = new MemoryBankGenerationError(
         `Unexpected error generating content for ${fileType}`,
@@ -126,44 +144,41 @@ export class MemoryBankContentGenerator implements IMemoryBankContentGenerator {
   }
 
   /**
-   * Builds the system prompt for the LLM based on file type
+   * Builds the system and user prompts for the LLM based on file type, context, and template.
+   * Selects relevant context data and formats it appropriately for the user prompt.
    * @param fileType - Type of memory bank file
-   * @returns System prompt string
+   * @param context - Project context information
+   * @param template - Template content with embedded LLM instructions
+   * @returns An object containing the system and user prompts
    */
-  private buildSystemPrompt(fileType: MemoryBankFileType): string {
-    switch (fileType) {
-      case MemoryBankFileType.ProjectOverview:
-        return 'You are a technical documentation expert specializing in creating clear, concise project overviews. Your task is to analyze the provided project context and create a comprehensive project overview document following the template structure.';
+  private buildPrompts(
+    fileType: MemoryBankFileType,
+    context: ProjectContext,
+    template: string
+  ): { systemPrompt: string; userPrompt: string } {
+    this.logger.debug(`Building prompts for ${fileType}`);
 
-      case MemoryBankFileType.TechnicalArchitecture:
-        return 'You are a software architect with expertise in documenting technical architectures. Your task is to analyze the provided project context and create a detailed technical architecture document following the template structure.';
+    // Consistent system prompt defining the role and core task
+    const systemPrompt = `You are an expert technical writer specializing in software documentation. Your task is to populate the provided Markdown template using the structured PROJECT CONTEXT data provided in the user prompt. You MUST strictly follow the instructions embedded in HTML comments (\`<!-- LLM: ... -->\`) within the template to guide content generation and data selection. Adhere precisely to the template's structure and formatting.`;
 
-      case MemoryBankFileType.DeveloperGuide:
-        return 'You are a senior developer with expertise in creating developer documentation. Your task is to analyze the provided project context and create a comprehensive developer guide following the template structure.';
+    let instructions = '';
+    let contextDataString = 'PROJECT CONTEXT DATA:\n\n';
 
-      default:
-        return 'You are a technical documentation expert. Your task is to analyze the provided project context and create documentation following the template structure.';
+    // Instructions for the LLM when provided with the full context
+    instructions = `Generate the content for the ${String(fileType)} document. You have been provided with the full structured PROJECT CONTEXT DATA for the project. Use this data as directed by the \`<!-- LLM: ... -->\` instructions embedded within the TEMPLATE section. Carefully select and utilize the relevant information from the PROJECT CONTEXT DATA to populate the template sections. Adhere to the template's structure and formatting. Aim for detailed and informative content based on the available context.`;
+
+    // Format the entire ProjectContext object
+    try {
+      const fullContextJson = JSON.stringify(context, null, 2);
+      contextDataString += `Full Project Context:\n\`\`\`json\n${fullContextJson}\n\`\`\`\n\n`;
+    } catch (error) {
+      this.logger.error(`Failed to stringify full ProjectContext: ${String(error)}`);
+      contextDataString += `Full Project Context:\n\`\`\`json\n${JSON.stringify({ error: 'Failed to serialize full context' }, null, 2)}\n\`\`\`\n\n`;
     }
-  }
 
-  /**
-   * Builds the user instruction based on file type
-   * @param fileType - Type of memory bank file
-   * @returns User instruction string
-   */
-  private buildUserInstruction(fileType: MemoryBankFileType): string {
-    switch (fileType) {
-      case MemoryBankFileType.ProjectOverview:
-        return 'Create a project overview document that explains the purpose, goals, and key features of the project. Include information about the target audience, business value, and high-level functionality.';
+    // Construct the final user prompt
+    const userPrompt = `${instructions}\n\n${contextDataString}TEMPLATE:\n${template}`;
 
-      case MemoryBankFileType.TechnicalArchitecture:
-        return 'Create a technical architecture document that describes the system design, components, data flow, and technical decisions. Include information about technologies used, architectural patterns, and system boundaries.';
-
-      case MemoryBankFileType.DeveloperGuide:
-        return 'Create a developer guide that explains how to work with the codebase, including setup instructions, coding standards, and key workflows. Include information about the project structure, important APIs, and development best practices.';
-
-      default:
-        return 'Create a documentation file based on the provided context and template.';
-    }
+    return { systemPrompt, userPrompt };
   }
 }

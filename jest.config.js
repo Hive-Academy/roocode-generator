@@ -17,6 +17,7 @@ module.exports = {
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
   moduleNameMapper: {
     '^@(core|generators|memory-bank|commands|types)/(.*)$': '<rootDir>/src/$1/$2',
+    // Removed tree-sitter mapping, will use jest.mock in the test file
   },
   // Update transformIgnorePatterns: Only ignore node_modules *except* the ones we need to transform
   // This pattern ensures that only the specified modules are *not* ignored.
@@ -35,14 +36,5 @@ module.exports = {
       statements: 80,
     },
   },
-  // Temporarily ignore test suites failing due to ESM module issues (ora/chalk)
-  testPathIgnorePatterns: [
-    // '<rootDir>/tests/core/di/container.test.ts', // Re-enabled
-    '<rootDir>/tests/core/di/modules/memory-bank-module.test.ts',
-    '<rootDir>/tests/memory-bank/memory-bank-content-generator.test.ts',
-    '<rootDir>/tests/memory-bank/memory-bank-orchestrator.test.ts',
-    '<rootDir>/tests/core/services/base-service.test.ts',
-    '<rootDir>/tests/core/templating/rules-template-manager.test.ts',
-    '<rootDir>/tests/core/analysis/project-analyzer.directory.test.ts',
-  ],
+  testPathIgnorePatterns: [],
 };

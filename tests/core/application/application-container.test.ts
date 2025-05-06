@@ -8,7 +8,8 @@ import {
 } from '../../../src/core/application/interfaces';
 import { ILLMConfigService } from '../../../src/core/config/interfaces';
 import { Result } from '../../../src/core/result/result';
-import { ILogger } from '../../../src/core/services/logger-service';
+import { ILogger } from '../../../src/core/services/logger-service'; // Keep type import
+import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
 import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
 import { LLMConfig } from '../../../types/shared';
 
@@ -31,12 +32,7 @@ const mockCliInterface: jest.Mocked<ICliInterface> = {
   prompt: jest.fn(), // Added missing method
 };
 
-const mockLogger: jest.Mocked<ILogger> = {
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn(),
-};
+let mockLogger: jest.Mocked<ILogger>; // Change to let
 
 // Use the actual ProgressIndicator mock from tests/__mocks__
 jest.mock('../../../src/core/ui/progress-indicator');
@@ -55,6 +51,7 @@ describe('ApplicationContainer', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockLogger = createMockLogger(); // Initialize mock logger here
     // Reset mock implementations if needed, e.g., mockProgressIndicatorInstance.start.mockClear(); etc.
     mockProgressIndicatorInstance.start.mockClear();
     mockProgressIndicatorInstance.succeed.mockClear();

@@ -7,11 +7,12 @@ import { FileNotFoundError, FileOperationError } from '../../../src/core/file-op
 import { FileOperations } from '../../../src/core/file-operations/file-operations';
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
 import { Result } from '../../../src/core/result/result';
-import { ILogger } from '../../../src/core/services/logger-service';
+import { ILogger } from '../../../src/core/services/logger-service'; // Keep type import
+import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
 
 describe('FileOperations DI integration', () => {
   let container: Container;
-  let mockLogger: ILogger;
+  let mockLogger: jest.Mocked<ILogger>; // Use jest.Mocked type
 
   beforeEach(() => {
     // Reset the container singleton for each test
@@ -19,12 +20,7 @@ describe('FileOperations DI integration', () => {
     container = Container.getInstance();
 
     // Create a mock logger for testing
-    mockLogger = {
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-    };
+    mockLogger = createMockLogger(); // Initialize mock logger here
 
     // Register the mock logger
     container.registerFactory('ILogger', () => mockLogger);

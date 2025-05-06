@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roocode Custom Modes: Workflow Visualization</title>
+    <!-- Include Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Include Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="max-w-6xl mx-auto bg-white rounded-lg shadow-md p-6">
+        <h1 class="text-2xl font-bold mb-4 text-center">Roocode Custom Modes Workflow</h1>
+        
+        <div class="flex justify-between mb-4">
+            <div class="flex space-x-2">
+                <button id="showDocFlow" class="px-3 py-1 rounded text-sm bg-blue-600 text-white">
+                    Show Document Flow
+                </button>
+                <button id="hideDocFlow" class="px-3 py-1 rounded text-sm bg-gray-200">
+                    Hide Document Flow
+                </button>
+            </div>
+        </div>
+        
+        <div class="w-full overflow-auto p-4">
+            <div id="workflow-diagram" class="relative mx-auto" style="width: 800px; height: 800px;">
+                <!-- SVG will be inserted here by JavaScript -->
+            </div>
+        </div>
+        
+        <!-- Legend -->
+        <div class="mt-6 border rounded-lg p-4 bg-white w-full">
+            <h3 class="text-lg font-bold mb-3">Workflow Legend</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <h4 class="font-bold text-sm mb-2">Roocode Modes:</h4>
+                    <div id="modes-legend" class="space-y-2">
+                        <!-- Mode legend items will be inserted here by JavaScript -->
+                    </div>
+                </div>
+                <div>
+                    <h4 class="font-bold text-sm mb-2">Document Flow:</h4>
+                    <div id="docs-legend" class="space-y-2">
+                        <!-- Document flow legend items will be inserted here by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Workflow Benefits -->
+        <div class="mt-6 border rounded-lg p-4 bg-white w-full">
+            <h3 class="text-lg font-bold mb-3">Key Benefits of This Workflow</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="border rounded p-3 bg-blue-50">
+                    <h4 class="font-bold text-blue-800 mb-2">Efficiency Improvements</h4>
+                    <ul class="text-sm space-y-1">
+                        <li class="flex items-start">
+                            <span class="text-green-600 mr-1">✓</span>
+                            <span>Specialized expertise focus</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-600 mr-1">✓</span>
+                            <span>Parallel processing capabilities</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-600 mr-1">✓</span>
+                            <span>Reduced context switching</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-600 mr-1">✓</span>
+                            <span>Streamlined handoffs</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="border rounded p-3 bg-green-50">
+                    <h4 class="font-bold text-green-800 mb-2">Quality Improvements</h4>
+                    <ul class="text-sm space-y-1">
+                        <li class="flex items-start">
+                            <span class="text-green-600 mr-1">✓</span>
+                            <span>Multiple review layers</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-600 mr-1">✓</span>
+                            <span>Specialized testing focus</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-600 mr-1">✓</span>
+                            <span>Explicit acceptance criteria</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-600 mr-1">✓</span>
+                            <span>Architectural consistency</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="border rounded p-3 bg-purple-50">
+                    <h4 class="font-bold text-purple-800 mb-2">Knowledge Management</h4>
+                    <ul class="text-sm space-y-1">
+                        <li class="flex items-start">
+                            <span class="text-green-600 mr-1">✓</span>
+                            <span>Systematic documentation</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-600 mr-1">✓</span>
+                            <span>Knowledge capture patterns</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-600 mr-1">✓</span>
+                            <span>Pattern recognition</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="text-green-600 mr-1">✓</span>
+                            <span>Process improvement</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Instructions -->
+        <div class="mt-6 text-sm text-gray-600 w-full text-center">
+            <p class="italic">Click on any mode in the diagram to see its detailed responsibilities</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mode data
+            const modes = [
+                {
+                    id: 'boomerang',
+                    name: 'Boomerang',
+                    icon: 'workflow',
+                    color: '#FF9966',
+                    description: 'Task coordinator and verification specialist',
+                    responsibilities: [
+                        'Initial task intake and analysis',
+                        'Research evaluation and delegation',
+                        'Final verification against acceptance criteria',
+                        'Knowledge management and documentation'
+                    ],
+                    input: 'User task request',
+                    output: 'Task Description Document',
+                    outputTo: 'architect',
+                    receiveFrom: ['codereview'],
+                    position: { x: 2, y: 0 }
+                },
+                {
+                    id: 'architect',
+                    name: 'Architect',
+                    icon: 'file-text',
+                    color: '#6699FF',
+                    description: 'Planning and design specialist',
+                    responsibilities: [
+                        'Creating implementation plans',
+                        'Breaking down tasks into subtasks',
+                        'Defining component interfaces',
+                        'Ensuring architectural consistency'
+                    ],
+                    input: 'Task Description Document',
+                    output: 'Implementation Plan',
+                    outputTo: 'seniordev',
+                    receiveFrom: ['boomerang'],
+                    position: { x: 2, y: 2 }
+                },
+                {
+                    id: 'seniordev',
+                    name: 'Senior Developer',
+                    icon: 'code',
+                    color: '#99CC66',
+                    description: 'Implementation coordinator and code quality guardian',
+                    responsibilities: [
+                        'Implementing subtasks according to plan',
+                        'Delegating components to Junior roles',
+                        'Integrating components into cohesive solution',
+                        'Verifying implementation quality'
+                    ],
+                    input: 'Implementation Plan',
+                    output: 'Completed Implementation',
+                    outputTo: 'codereview',
+                    receiveFrom: ['architect', 'juniorcoder', 'juniortester'],
+                    position: { x: 2, y: 4 }
+                },
+                {
+                    id: 'juniorcoder',
+                    name: 'Junior Coder',
+                    icon: 'code',
+                    color: '#66CC99',
+                    description: 'Implementation specialist focused on coding components',
+                    responsibilities: [
+                        'Implementing specific code components',
+                        'Following established patterns and standards',
+                        'Creating high-quality, maintainable code',
+                        'Verifying implementation against requirements'
+                    ],
+                    input: 'Component Specifications',
+                    output: 'Implemented Components',
+                    outputTo: 'seniordev',
+                    receiveFrom: ['seniordev'],
+                    position: { x: 0, y: 6 }
+                },
+                {
+                    id: 'juniortester',
+                    name: 'Junior Tester',
+                    icon: 'test-tube',
+                    color: '#CC99CC',
+                    description: 'Testing specialist focused on verification',
+                    responsibilities: [
+                        'Creating comprehensive test suites',
+                        'Identifying edge cases and potential issues',
+                        'Verifying implementation against criteria',
+                        'Documenting test coverage and results'
+                    ],
+                    input: 'Testing Requirements',
+                    output: 'Completed Tests',
+                    outputTo: 'seniordev',
+                    receiveFrom: ['seniordev'],
+                    position: { x: 4, y: 6 }
+                },
+                {
+                    id: 'codereview',
+                    name: 'Code Review',
+                    icon: 'git-pull-request',
+                    color: '#FF6666',
+                    description: 'Quality control and standards enforcement specialist',
+                    responsibilities: [
+                        'Evaluating code quality and standards compliance',
+                        'Verifying implementation against criteria',
+                        'Identifying potential issues and improvements',
+                        'Providing constructive feedback'
+                    ],
+                    input: 'Completed Implementation',
+                    output: 'Review Documentation',
+                    outputTo: 'boomerang',
+                    receiveFrom: ['seniordev'],
+                    position: { x: 2, y: 8 }
+                }
+            ];
+            
+            // Document flow data
+            const documents = [
+                {
+                    name: 'Task Description',
+                    from: 'boomerang',
+                    to: 'architect',
+                    description: 'Detailed requirements and acceptance criteria'
+                },
+                {
+                    name: 'Implementation Plan',
+                    from: 'architect',
+                    to: 'seniordev',
+                    description: 'Technical approach and subtask breakdown'
+                },
+                {
+                    name: 'Component Specs',
+                    from: 'seniordev',
+                    to: 'juniorcoder',
+                    description: 'Detailed implementation specifications'
+                },
+                {
+                    name: 'Testing Requirements',
+                    from: 'seniordev',
+                    to: 'juniortester',
+                    description: 'Test cases and coverage requirements'
+                },
+                {
+                    name: 'Implemented Components',
+                    from: 'juniorcoder',
+                    to: 'seniordev',
+                    description: 'Completed code components'
+                },
+                {
+                    name: 'Completed Tests',
+                    from: 'juniortester',
+                    to: 'seniordev',
+                    description: 'Test suites and results'
+                },
+                {
+                    name: 'Complete Implementation',
+                    from: 'seniordev',
+                    to: 'codereview',
+                    description: 'Full solution ready for review'
+                },
+                {
+                    name: 'Review Documentation',
+                    from: 'codereview',
+                    to: 'boomerang',
+                    description: 'Quality assessment and verification'
+                }
+            ];
+
+            // Document arrows data
+            const docArrows = [
+                { from: 'boomerang', to: 'architect', label: 'Task Description' },
+                { from: 'architect', to: 'seniordev', label: 'Implementation Plan' },
+                { from: 'seniordev', to: 'juniorcoder', label: 'Component Specs' },
+                { from: 'seniordev', to: 'juniortester', label: 'Testing Requirements' },
+                { from: 'juniorcoder', to: 'seniordev', label: 'Components' },
+                { from: 'juniortester', to: 'seniordev', label: 'Tests' },
+                { from: 'seniordev', to: 'codereview', label: 'Implementation' },
+                { from: 'codereview', to: 'boomerang', label: 'Review Results' },
+                { from: 'codereview', to: 'seniordev', label: 'Revision Needed', style: 'dashed' }
+            ];
+
+            // Initialize variables
+            let activeMode = null;
+            let showDocuments = true;
+            
+            // Get DOM elements
+            const workflowDiagram = document.getElementById('workflow-diagram');
+            const showDocFlowBtn = document.getElementById('showDocFlow');
+            const hideDocFlowBtn = document.getElementById('hideDocFlow');
+            const modesLegend = document.getElementById('modes-legend');
+            const docsLegend = document.getElementById('docs-legend');
+            
+            // Event listeners for buttons
+            showDocFlowBtn.addEventListener('click', function() {
+                showDocuments = true;
+                showDocFlowBtn.classList.add('bg-blue-600', 'text-white');
+                showDocFlowBtn.classList.remove('bg-gray-200');
+                hideDocFlowBtn.classList.add('bg-gray-200');
+                hideDocFlowBtn.classList.remove('bg-blue-600', 'text-white');
+                renderDiagram();
+            });
+            
+            hideDocFlowBtn.addEventListener('click', function() {
+                showDocuments = false;
+                hideDocFlowBtn.classList.add('bg-blue-600', 'text-white');
+                hideDocFlowBtn.classList.remove('bg-gray-200');
+                showDocFlowBtn.classList.add('bg-gray-200');
+                showDocFlowBtn.classList.remove('bg-blue-600', 'text-white');
+                renderDiagram();
+            });
+            
+            // Helper function to get arrow path
+            function getArrowPath(from, to, isFeedback = false) {
+                const fromMode = modes.find(m => m.id === from);
+                const toMode = modes.find(m => m.id === to);
+                
+                if (!fromMode || !toMode) return '';
+                
+                const fromPos = fromMode.position;
+                const toPos = toMode.position;
+                
+                // Scale factors for positioning
+                const scaleX = 120;
+                const scaleY = 90;
+                
+                // Calculate midpoints for curved paths
+                const midX = (fromPos.x + toPos.x) / 2;
+                const midY = (fromPos.y + toPos.y) / 2;
+                
+                if (from === 'seniordev' && to === 'juniorcoder') {
+                    // Left-side arrow from Senior Dev to Junior Coder
+                    return `M${fromPos.x * scaleX + 60} ${fromPos.y * scaleY + 80} 
+                            L${fromPos.x * scaleX - 60} ${fromPos.y * scaleY + 120} 
+                            L${toPos.x * scaleX + 60} ${toPos.y * scaleY}`;
+                } else if (from === 'seniordev' && to === 'juniortester') {
+                    // Right-side arrow from Senior Dev to Junior Tester
+                    return `M${fromPos.x * scaleX + 60} ${fromPos.y * scaleY + 80} 
+                            L${fromPos.x * scaleX + 180} ${fromPos.y * scaleY + 120} 
+                            L${toPos.x * scaleX + 60} ${toPos.y * scaleY}`;
+                } else if (from === 'juniorcoder' && to === 'seniordev') {
+                    // Left-side arrow back to Senior Dev
+                    return `M${fromPos.x * scaleX + 60} ${fromPos.y * scaleY} 
+                            L${fromPos.x * scaleX + 120} ${midY * scaleY} 
+                            L${toPos.x * scaleX + 20} ${toPos.y * scaleY + 80}`;
+                } else if (from === 'juniortester' && to === 'seniordev') {
+                    // Right-side arrow back to Senior Dev
+                    return `M${fromPos.x * scaleX + 60} ${fromPos.y * scaleY} 
+                            L${fromPos.x * scaleX} ${midY * scaleY} 
+                            L${toPos.x * scaleX + 100} ${toPos.y * scaleY + 80}`;
+                } else if (from === 'codereview' && to === 'seniordev' && isFeedback) {
+                    // Feedback path from Code Review to Senior Dev
+                    return `M${fromPos.x * scaleX + 20} ${fromPos.y * scaleY + 10} 
+                            L${fromPos.x * scaleX - 120} ${midY * scaleY + 40} 
+                            L${toPos.x * scaleX - 40} ${toPos.y * scaleY + 80}`;
+                } else {
+                    // Standard vertical path
+                    return `M${fromPos.x * scaleX + 60} ${fromPos.y * scaleY + 80} 
+                            L${toPos.x * scaleX + 60} ${toPos.y * scaleY}`;
+                }
+            }
+            
+            // Helper function to get arrow label position
+            function getArrowLabelPos(from, to) {
+                const arrow = docArrows.find(a => a.from === from && a.to === to);
+                if (!arrow) return null;
+                
+                const fromMode = modes.find(m => m.id === from);
+                const toMode = modes.find(m => m.id === to);
+                
+                if (!fromMode || !toMode) return null;
+                
+                const fromPos = fromMode.position;
+                const toPos = toMode.position;
+                
+                // Scale factors for positioning
+                const scaleX = 120;
+                const scaleY = 90;
+                
+                // Calculate label position
+                let labelX, labelY;
+                
+                if (from === 'seniordev' && to === 'juniorcoder') {
+                    labelX = (fromPos.x * scaleX - 60 + toPos.x * scaleX + 60) / 2 - 40;
+                    labelY = (fromPos.y * scaleY + 120 + toPos.y * scaleY) / 2;
+                } else if (from === 'seniordev' && to === 'juniortester') {
+                    labelX = (fromPos.x * scaleX + 180 + toPos.x * scaleX + 60) / 2 - 40;
+                    labelY = (fromPos.y * scaleY + 120 + toPos.y * scaleY) / 2;
+                } else if (from === 'juniorcoder' && to === 'seniordev') {
+                    labelX = (fromPos.x * scaleX + 120 + toPos.x * scaleX + 20) / 2 - 40;
+                    labelY = (fromPos.y * scaleY + toPos.y * scaleY + 80) / 2 - 10;
+                } else if (from === 'juniortester' && to === 'seniordev') {
+                    labelX = (fromPos.x * scaleX + toPos.x * scaleX + 100) / 2 - 40;
+                    labelY = (fromPos.y * scaleY + toPos.y * scaleY + 80) / 2 - 10;
+                } else if (from === 'codereview' && to === 'seniordev') {
+                    labelX = (fromPos.x * scaleX - 100 + toPos.x * scaleX - 40) / 2 - 40;
+                    labelY = (fromPos.y * scaleY + 10 + toPos.y * scaleY + 80) / 2;
+                } else {
+                    labelX = fromPos.x * scaleX + 70;
+                    labelY = (fromPos.y * scaleY + 80 + toPos.y * scaleY) / 2;
+                }
+                
+                return { x: labelX, y: labelY, label: arrow.label, style: arrow.style };
+            }
+
+            // Function to build the SVG diagram
+            function renderDiagram() {
+                // Clear the diagram container
+                workflowDiagram.innerHTML = '';
+                
+                // Create the SVG element
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('width', '600');
+                svg.setAttribute('height', '800');
+                svg.setAttribute('viewBox', '0 0 600 800');
+                workflowDiagram.appendChild(svg);
+                
+                // Create arrow marker definition
+                const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+                svg.appendChild(defs);
+                
+                const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+                marker.setAttribute('id', 'arrowhead');
+                marker.setAttribute('markerWidth', '10');
+                marker.setAttribute('markerHeight', '7');
+                marker.setAttribute('refX', '9');
+                marker.setAttribute('refY', '3.5');
+                marker.setAttribute('orient', 'auto');
+                defs.appendChild(marker);
+                
+                const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
+                polygon.setAttribute('fill', '#888');
+                marker.appendChild(polygon);
+                
+                // Render workflow paths if documents are shown
+                if (showDocuments) {
+                    docArrows.forEach((arrow, index) => {
+                        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        path.setAttribute('d', getArrowPath(arrow.from, arrow.to, arrow.style === 'dashed'));
+                        path.setAttribute('fill', 'none');
+                        path.setAttribute('stroke', arrow.style === 'dashed' ? '#FF6666' : '#888');
+                        path.setAttribute('stroke-width', '2');
+                        if (arrow.style === 'dashed') {
+                            path.setAttribute('stroke-dasharray', '5,5');
+                        }
+                        path.setAttribute('marker-end', 'url(#arrowhead)');
+                        svg.appendChild(path);
+                        
+                        // Add arrow label
+                        const labelPos = getArrowLabelPos(arrow.from, arrow.to);
+                        if (labelPos) {
+                            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                            text.setAttribute('x', labelPos.x);
+                            text.setAttribute('y', labelPos.y);
+                            text.setAttribute('fill', labelPos.style === 'dashed' ? '#FF6666' : '#555');
+                            text.setAttribute('font-size', '12');
+                            text.setAttribute('text-anchor', 'middle');
+                            text.textContent = labelPos.label;
+                            svg.appendChild(text);
+                        }
+                    });
+                }
+                
+                // Render mode boxes
+                modes.forEach(mode => {
+                    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                    g.setAttribute('transform', `translate(${mode.position.x * 120}, ${mode.position.y * 90})`);
+                    g.style.cursor = 'pointer';
+                    g.addEventListener('click', () => {
+                        if (activeMode === mode.id) {
+                            activeMode = null;
+                        } else {
+                            activeMode = mode.id;
+                        }
+                        renderDiagram(); // Re-render to update active state
+                    });
+                    svg.appendChild(g);
+                    
+                    // Box
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('width', '120');
+                    rect.setAttribute('height', '80');
+                    rect.setAttribute('rx', '10');
+                    rect.setAttribute('fill', mode.color);
+                    rect.setAttribute('stroke', activeMode === mode.id ? '#000' : mode.color);
+                    rect.setAttribute('stroke-width', activeMode === mode.id ? '3' : '1');
+                    rect.setAttribute('opacity', activeMode === mode.id ? '1' : '0.85');
+                    g.appendChild(rect);
+                    
+                    // Icon circle
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('cx', '25');
+                    circle.setAttribute('cy', '25');
+                    circle.setAttribute('r', '18');
+                    circle.setAttribute('fill', 'white');
+                    g.appendChild(circle);
+                    
+                    // Add a placeholder for the icon (you'll need to manually add icons or use a library)
+                    const iconText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    iconText.setAttribute('x', '25');
+                    iconText.setAttribute('y', '30');
+                    iconText.setAttribute('text-anchor', 'middle');
+                    iconText.setAttribute('font-size', '14');
+                    iconText.textContent = mode.icon.charAt(0).toUpperCase();
+                    g.appendChild(iconText);
+                    
+                    // Text
+                    const nameText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    nameText.setAttribute('x', '60');
+                    nameText.setAttribute('y', '30');
+                    nameText.setAttribute('text-anchor', 'middle');
+                    nameText.setAttribute('font-weight', 'bold');
+                    nameText.setAttribute('fill', 'white');
+                    nameText.textContent = mode.name;
+                    g.appendChild(nameText);
+                    
+                    const descText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    descText.setAttribute('x', '60');
+                    descText.setAttribute('y', '45');
+                    descText.setAttribute('text-anchor', 'middle');
+                    descText.setAttribute('font-size', '10');
+                    descText.setAttribute('fill', 'white');
+                    descText.textContent = mode.description;
+                    g.appendChild(descText);
+                    
+                    // Expanded view when selected
+                    if (activeMode === mode.id) {
+                        // Expanded box
+                        const expRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        expRect.setAttribute('x', '-40');
+                        expRect.setAttribute('y', '90');
+                        expRect.setAttribute('width', '200');
+                        expRect.setAttribute('height', mode.responsibilities.length * 20 + 70);
+                        expRect.setAttribute('rx', '10');
+                        expRect.setAttribute('fill', 'white');
+                        expRect.setAttribute('stroke', mode.color);
+                        expRect.setAttribute('stroke-width', '2');
+                        g.appendChild(expRect);
+                        
+                        const titleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                        titleText.setAttribute('x', '60');
+                        titleText.setAttribute('y', '110');
+                        titleText.setAttribute('text-anchor', 'middle');
+                        titleText.setAttribute('font-weight', 'bold');
+                        titleText.setAttribute('fill', mode.color);
+                        titleText.textContent = `${mode.name} Responsibilities`;
+                        g.appendChild(titleText);
+                        
+                        // Responsibilities list
+                        mode.responsibilities.forEach((resp, i) => {
+                            const respText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                            respText.setAttribute('x', '10');
+                            respText.setAttribute('y', 135 + i * 20);
+                            respText.setAttribute('font-size', '12');
+                            respText.setAttribute('fill', '#333');
+                            respText.textContent = `• ${resp}`;
+                            g.appendChild(respText);
+                        });
+                        
+                        // Input/Output info
+                        const infoRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        infoRect.setAttribute('x', '10');
+                        infoRect.setAttribute('y', 135 + mode.responsibilities.length * 20 + 10);
+                        infoRect.setAttribute('width', '100');
+                        infoRect.setAttribute('height', '20');
+                        infoRect.setAttribute('fill', mode.color);
+                        infoRect.setAttribute('rx', '5');
+                        g.appendChild(infoRect);
+                        
+                        const infoText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                        infoText.setAttribute('x', '60');
+                        infoText.setAttribute('y', 135 + mode.responsibilities.length * 20 + 23);
+                        infoText.setAttribute('text-anchor', 'middle');
+                        infoText.setAttribute('font-size', '12');
+                        infoText.setAttribute('fill', 'white');
+                        infoText.textContent = showDocuments ? "See Document Flow" : "I/O Flow Hidden";
+                        g.appendChild(infoText);
+                    }
+                });
+                
+                // Populate legends
+                populateLegends();
+            }
+            
+            // Function to populate the legends
+            function populateLegends() {
+                // Clear legends
+                modesLegend.innerHTML = '';
+                docsLegend.innerHTML = '';
+                
+                // Populate modes legend
+                modes.forEach(mode => {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center';
+                    
+                    const colorBox = document.createElement('div');
+                    colorBox.className = 'w-4 h-4 rounded mr-2';
+                    colorBox.style.backgroundColor = mode.color;
+                    
+                    const span = document.createElement('span');
+                    span.className = 'text-sm';
+                    span.innerHTML = `<strong>${mode.name}</strong>: ${mode.description}`;
+                    
+                    div.appendChild(colorBox);
+                    div.appendChild(span);
+                    modesLegend.appendChild(div);
+                });
+                
+                // Populate documents legend
+                documents.forEach(doc => {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center text-sm';
+                    
+                    const arrow = document.createElement('span');
+                    arrow.className = 'mr-1';
+                    arrow.innerHTML = '→';
+                    
+                    const span = document.createElement('span');
+                    span.innerHTML = `<strong>${doc.name}</strong>: ${doc.from} → ${doc.to}`;
+                    
+                    div.appendChild(arrow);
+                    div.appendChild(span);
+                    docsLegend.appendChild(div);
+                });
+                
+                // Add revision needed to docs legend
+                const revisionDiv = document.createElement('div');
+                revisionDiv.className = 'flex items-center text-sm text-red-600';
+                
+                const revArrow = document.createElement('span');
+                revArrow.className = 'mr-1';
+                revArrow.innerHTML = '→';
+                
+                const revSpan = document.createElement('span');
+                revSpan.innerHTML = `<strong>Revision Needed</strong>: Code Review → Senior Dev (when changes required)`;
+                
+                revisionDiv.appendChild(revArrow);
+                revisionDiv.appendChild(revSpan);
+                docsLegend.appendChild(revisionDiv);
+            }
+            
+            // Initialize icons
+            lucide.createIcons();
+            
+            // Initial render
+            renderDiagram();
+        });
+    </script>
+</body>
+</html>

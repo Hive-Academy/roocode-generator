@@ -38,6 +38,26 @@ export class ContentProcessor implements IContentProcessor {
     }
   }
 
+  /**
+   * Removes HTML comments (<!-- ... -->) from the content.
+   * @param content - The input string content.
+   * @returns A Result containing the content with comments removed or an Error.
+   */
+  stripHtmlComments(content: string): Result<string, Error> {
+    try {
+      // Regex to match HTML comments: <!-- ... -->
+      // [\s\S]*? matches any character (including newline) non-greedily
+      const processed = content.replace(/<!--[\s\S]*?-->/g, '');
+      return Result.ok(processed);
+    } catch (error) {
+      return this._wrapProcessingError(
+        'Content processing failed during HTML comment stripping',
+        'stripHtmlComments',
+        error
+      );
+    }
+  }
+
   async processTemplate(template: string, data: Record<string, unknown>): Promise<Result<string>> {
     await Promise.resolve();
     try {

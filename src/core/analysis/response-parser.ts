@@ -2,6 +2,7 @@ import { Inject, Injectable } from '../di';
 import { Result } from '../result/result';
 import { ILogger } from '../services/logger-service';
 import { IJsonSchemaHelper } from './json-schema-helper';
+import { parseRobustJson } from '../utils/json-utils'; // Import the new utility
 
 @Injectable()
 export class ResponseParser {
@@ -13,7 +14,8 @@ export class ResponseParser {
   /**
    * Parses and validates JSON from LLM response against projectContextSchema
    */
-  parseLlmResponse<T>(response: string): Result<T, Error> {
+  async parseLlmResponse<T>(response: string): Promise<Result<T, Error>> {
+    // Make async
     try {
       // Pre-process and clean the response
       const cleaned = this.cleanResponse(response);
@@ -25,22 +27,12 @@ export class ResponseParser {
         return Result.err(new Error('No JSON structure found in response'));
       }
 
-      let jsonStr = jsonMatch[0];
+      const jsonStr = jsonMatch[0];
 
-      // Attempt to repair common JSON issues
-      const repairResult = this.jsonSchemaHelper.repairJson(jsonStr);
-      if (repairResult.isErr()) {
-        const errorMsg =
-          repairResult.error instanceof Error ? repairResult.error.message : 'Unknown repair error';
-        this.logger.warn(`JSON repair failed: ${errorMsg}`);
-        // Continue with original JSON if repair fails
-      } else if (repairResult.value) {
-        jsonStr = repairResult.value;
-        this.logger.debug('JSON successfully repaired');
-      }
+      // REMOVED redundant repair logic using jsonSchemaHelper
 
-      // Parse JSON
-      const parsed = JSON.parse(jsonStr);
+      // Parse JSON robustly using the new utility
+      const parsed = await parseRobustJson<T>(jsonStr, this.logger); // Use await and pass logger
 
       // Apply defaults before validation to handle potential nulls from LLM
       this.applyProjectContextDefaults(parsed);

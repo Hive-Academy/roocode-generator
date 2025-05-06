@@ -76,7 +76,7 @@ export class SystemPromptsGenerator extends BaseGenerator<string> implements IGe
    * @returns {Promise<Result<void, Error>>} A result indicating success or failure.
    */
   protected async executeGeneration(): Promise<Result<string, Error>> {
-    const configResult = await this.projectConfigService.loadConfig();
+    const configResult = this.projectConfigService.loadConfig(); // Removed await
     if (configResult.isErr()) {
       const error = new GeneratorError(
         'Failed to load project configuration for generation.',
@@ -158,7 +158,7 @@ export class SystemPromptsGenerator extends BaseGenerator<string> implements IGe
   public override async validate(): Promise<Result<void, Error>> {
     this.logger.debug(`Validating SystemPromptsGenerator prerequisites...`);
 
-    const configResult = await this.projectConfigService.loadConfig();
+    const configResult = this.projectConfigService.loadConfig(); // Removed await
     if (configResult.isErr()) {
       const error = new GeneratorError(
         'Failed to load project configuration for validation.',

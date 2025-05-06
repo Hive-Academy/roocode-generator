@@ -2,8 +2,11 @@
 import path from 'path'; // Add missing import
 import { AiMagicGenerator } from '@generators/ai-magic-generator';
 import { MemoryBankService } from '@memory-bank/memory-bank-service';
-import { IProjectAnalyzer, ProjectContext } from '@core/analysis/types';
-import { ILogger } from '@core/services/logger-service';
+import { IProjectAnalyzer } from '@core/analysis/types'; // Remove unused ProjectContext type
+import { ILogger } from '@core/services/logger-service'; // Keep ILogger type
+import { createMockLogger } from '../__mocks__/logger.mock'; // Correct path
+import { createMockProjectContext } from '../__mocks__/project-context.mock'; // Correct path
+import { mockContentProcessor } from '../__mocks__/content-processor.mock'; // Import the shared mock instance
 import { IFileOperations } from '@core/file-operations/interfaces';
 import { LLMAgent } from '@core/llm/llm-agent';
 import { LLMProviderError } from '@core/llm/llm-provider-errors'; // Import LLMProviderError
@@ -11,15 +14,10 @@ import { Result } from '@core/result/result';
 import { IServiceContainer } from '@core/di/interfaces';
 import { ProjectConfig } from '../../types/shared'; // Corrected import path
 import { IRulesPromptBuilder } from '@generators/rules/interfaces'; // Import for mock
-import { IContentProcessor } from '@memory-bank/interfaces'; // Import for mock
+// import { IContentProcessor } from '@memory-bank/interfaces'; // Commented out: No longer needed for local mock type
 
 // Mock dependencies
-const mockLogger: ILogger = {
-  debug: jest.fn(),
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-};
+let mockLogger: jest.Mocked<ILogger>; // Declare logger
 
 // Mock only the methods defined in IFileOperations
 const mockFileOps: jest.Mocked<IFileOperations> = {
@@ -65,17 +63,15 @@ const mockRulesPromptBuilder: jest.Mocked<IRulesPromptBuilder> = {
   buildPrompt: jest.fn(),
 };
 
-// Mock for ContentProcessor
-const mockContentProcessor: jest.Mocked<IContentProcessor> = {
-  stripMarkdownCodeBlock: jest.fn(),
-  processTemplate: jest.fn(), // Add missing mock method
-};
+// Removed local mock definition for ContentProcessor (lines 65-69)
+// Using shared mock 'mockContentProcessor' imported above
 
 describe('AiMagicGenerator Integration Tests', () => {
   let aiMagicGenerator: AiMagicGenerator;
 
   // Define mock context at describe level for reuse
-  const mockProjectContext: ProjectContext = {
+  // Use the factory, astData is removed, codeInsights is added by default
+  const mockProjectContext = createMockProjectContext({
     techStack: {
       languages: ['ts'],
       frameworks: ['react'],
@@ -91,8 +87,6 @@ describe('AiMagicGenerator Integration Tests', () => {
       configFiles: ['tsconfig.json'],
       mainEntryPoints: ['src/index.ts'],
       componentStructure: {},
-      definedClasses: {},
-      definedFunctions: {}, // Add any other required properties here
     },
     dependencies: {
       dependencies: { react: '18.0.0' },
@@ -100,11 +94,13 @@ describe('AiMagicGenerator Integration Tests', () => {
       peerDependencies: {},
       internalDependencies: {},
     },
-  };
+    // codeInsights: {} // Default is {}, override if specific insights needed
+  });
 
   beforeEach(() => {
     // Reset mocks before each test
     jest.clearAllMocks();
+    mockLogger = createMockLogger(); // Initialize logger mock
 
     // Instantiate the generator with mocked dependencies
     aiMagicGenerator = new AiMagicGenerator(
@@ -249,33 +245,8 @@ describe('AiMagicGenerator Integration Tests', () => {
       generators: ['ai-magic'],
     };
     const memoryBankError = new Error('Memory bank generation failed');
-    // Corrected mockProjectContext with all required fields
-    const mockProjectContext: ProjectContext = {
-      techStack: {
-        languages: ['ts'],
-        frameworks: ['react'],
-        buildTools: ['webpack'],
-        testingFrameworks: ['jest'],
-        linters: ['eslint'],
-        packageManager: 'npm',
-      },
-      structure: {
-        rootDir: '/path/to/project',
-        sourceDir: 'src',
-        testDir: 'tests',
-        configFiles: ['tsconfig.json'],
-        mainEntryPoints: ['src/index.ts'],
-        componentStructure: {},
-        definedClasses: {},
-        definedFunctions: {}, // Add any other required properties here
-      },
-      dependencies: {
-        dependencies: { react: '18.0.0' },
-        devDependencies: { jest: '29.0.0' },
-        peerDependencies: {},
-        internalDependencies: {},
-      },
-    };
+    // Use the factory-created mock context defined at the describe level
+    // No need to redefine it here
 
     // Arrange: Mock analyzeProject to succeed
     mockProjectAnalyzer.analyzeProject.mockResolvedValue(Result.ok(mockProjectContext));

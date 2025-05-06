@@ -1,17 +1,12 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import path from 'path';
 import { Inject, Injectable } from '../di/decorators';
 import { Result } from '../result/result';
 import { ILogger } from '../services/logger-service';
 import { ITreeSitterParserService } from './interfaces';
-import {
-  EXTENSION_LANGUAGE_MAP,
-  LANGUAGE_QUERIES_MAP,
-  LanguageQueries,
-  SupportedLanguage,
-} from './tree-sitter.config'; // Import from the new config file
-import { CodeElementInfo, ParsedCodeInfo } from './types';
+import { EXTENSION_LANGUAGE_MAP, SupportedLanguage } from './tree-sitter.config'; // Import from the new config file
+import { GenericAstNode } from './types'; // Added for generic AST
 
 // Use require based on documentation and user feedback
 const Parser = require('tree-sitter');
@@ -209,197 +204,103 @@ export class TreeSitterParserService implements ITreeSitterParserService {
     return this._createAndCacheParser(language);
   }
 
-  // --- Querying & Extraction ---
+  // --- Querying & Extraction (Removed) ---
+  // Removed private methods: getQueriesForLanguage, processQueryMatch, extractElements
+  // --- AST Conversion ---
 
-  private getQueriesForLanguage(language: SupportedLanguage): LanguageQueries | undefined {
-    return LANGUAGE_QUERIES_MAP[language];
-  }
-
-  private processQueryMatch(
-    match: any, // Use 'any' for QueryMatch type
-    elementType: 'function' | 'class'
-  ): CodeElementInfo | null {
-    let nameNode: any;
-    let definitionNode: any;
-    let defaultDefinitionNode: any;
-
-    // Assuming match.captures is an array
-    if (Array.isArray(match.captures)) {
-      for (const capture of match.captures) {
-        // Add safety checks for capture object and name property
-        if (capture && typeof capture.name === 'string') {
-          switch (capture.name) {
-            case 'name':
-              nameNode = capture.node;
-              break;
-            case 'definition':
-              definitionNode = capture.node;
-              break;
-            case 'default_definition':
-              defaultDefinitionNode = capture.node;
-              break;
-          }
-        }
-      }
+  /**
+   * Recursively converts a Tree-sitter SyntaxNode to a GenericAstNode.
+   * Includes an optional depth limit to prevent excessive recursion.
+   * @param node The Tree-sitter node to convert.
+   * @param currentDepth The current recursion depth.
+   * @param maxDepth The maximum recursion depth allowed (null for no limit).
+   * @returns The converted GenericAstNode.
+   * @private
+   */
+  private _convertNodeToGenericAst(
+    node: any, // Changed from SyntaxNode to 'any' due to TS errors with fieldName/parentFieldName
+    currentDepth: number = 0,
+    maxDepth: number | null = null // Optional depth limit
+  ): GenericAstNode {
+    if (maxDepth !== null && currentDepth > maxDepth) {
+      // Return a minimal node if depth limit is exceeded
+      return {
+        type: node.type,
+        text: '... [Max Depth Reached]', // Indicate truncation
+        startPosition: { row: node.startPosition.row, column: node.startPosition.column },
+        endPosition: { row: node.endPosition.row, column: node.endPosition.column },
+        isNamed: node.isNamed,
+        fieldName: node.fieldName || null, // Corrected property name
+        children: [], // No children beyond max depth
+      };
     }
 
-    if (definitionNode) {
-      let name: string;
-      if (nameNode) {
-        name = nameNode.text;
-      } else if (defaultDefinitionNode) {
-        name = `[default_${elementType}]`;
-      } else {
-        name = `[anonymous_${elementType}]`;
-      }
+    // Ensure children is an array, default to empty array if null/undefined
+    const children = node.children ?? [];
 
-      // Add safety checks for position properties
-      const startRow = definitionNode.startPosition?.row;
-      const endRow = definitionNode.endPosition?.row;
-
-      if (typeof startRow !== 'number' || typeof endRow !== 'number') {
-        this.logger.warn(`Invalid position data for node in processQueryMatch`);
-        return null;
-      }
-
-      const startLine = startRow + 1;
-      const endLine = endRow + 1;
-
-      if (startLine > 0 && endLine >= startLine) {
-        this.logger.debug(`Extracted ${elementType}: ${name} (Lines ${startLine}-${endLine})`);
-        return { name, startLine, endLine };
-      } else {
-        this.logger.warn(
-          `Invalid line numbers for extracted ${elementType} '${name}': Start ${startLine}, End ${endLine}. Node type: ${definitionNode.type}`
-        );
-        return null;
-      }
-    } else {
-      // Add safety check for match.captures before mapping
-      const capturesString = Array.isArray(match.captures)
-        ? JSON.stringify(
-            match.captures.map((c: any) => ({
-              // Use 'any' for QueryCapture type
-              name: c?.name,
-              text: c?.node?.text,
-              type: c?.node?.type,
-            }))
-          )
-        : '[]';
-      this.logger.warn(
-        `Query match found for ${elementType} but missing '@definition' capture. Match pattern index: ${match.pattern}, Captures: ${capturesString}`
-      );
-      return null;
-    }
-  }
-
-  private extractElements(
-    parser: any, // Use 'any' for Parser instance type
-    tree: any, // Use 'any' for Tree type
-    queryStr: string,
-    elementType: 'function' | 'class'
-  ): CodeElementInfo[] {
-    try {
-      if (!parser) {
-        this.logger.error('Parser instance is undefined in extractElements.');
-        return [];
-      }
-      const language = parser.getLanguage();
-      if (!language) {
-        this.logger.error(
-          `Parser has no language object set before executing ${elementType} query.`
-        );
-        return [];
-      }
-
-      // Create query using the Parser.Query constructor
-      // Use 'any' to bypass potential type issues with accessing Query via require'd Parser
-      const query = new Parser.Query(language, queryStr);
-
-      // Add safety check for tree.rootNode
-      if (!tree?.rootNode) {
-        this.logger.error('Tree or rootNode is undefined in extractElements.');
-        return [];
-      }
-      const matches = query.matches(tree.rootNode);
-      this.logger.debug(`Found ${matches.length} potential ${elementType} matches.`);
-
-      const elements = matches
-        .map((match: any) => this.processQueryMatch(match, elementType)) // Use 'any' for QueryMatch type
-        .filter((element: CodeElementInfo | null): element is CodeElementInfo => element !== null);
-
-      return elements;
-    } catch (error: unknown) {
-      this._handleAndLogError(`Error executing Tree-sitter query for ${elementType}`, error);
-      return [];
-    }
+    return {
+      type: node.type,
+      text: node.text, // Be mindful of large text nodes, potential optimization later if needed
+      startPosition: { row: node.startPosition.row, column: node.startPosition.column },
+      endPosition: { row: node.endPosition.row, column: node.endPosition.column },
+      isNamed: node.isNamed,
+      fieldName: node.fieldName || null, // Corrected property name
+      children: children.map(
+        (
+          child: any // Explicitly type child as any
+        ) => this._convertNodeToGenericAst(child, currentDepth + 1, maxDepth)
+      ),
+    };
   }
 
   // --- Public API ---
 
-  parse(
-    // Synchronous
-    content: string,
-    language: SupportedLanguage
-  ): Result<ParsedCodeInfo, Error> {
-    // Synchronous return
-    this.logger.info(`Parsing content for language: ${language}`);
+  parse(content: string, language: SupportedLanguage): Result<GenericAstNode, Error> {
+    // Updated return type
+    this.logger.info(`Parsing content for language: ${language} to generate generic AST`); // Updated log
 
-    const initResult = this.initialize(); // Call synchronous initialize
+    const initResult = this.initialize();
     if (initResult.isErr()) {
       return Result.err(initResult.error!);
     }
 
-    const parserResult = this.getOrCreateParser(language); // Call synchronous method
+    const parserResult = this.getOrCreateParser(language);
     if (parserResult.isErr()) {
       return Result.err(parserResult.error!);
     }
     const parser = parserResult.value;
 
-    let tree: any; // Use 'any' for Tree type
+    let tree: any; // Use 'any' for Tree type or import if possible
     try {
-      // Ensure parser is not null before calling parse
       if (!parser) {
         throw new Error('Parser instance is null or undefined before parsing.');
       }
       tree = parser.parse(content);
-      // Add safety check for tree.rootNode before accessing properties
       if (!tree?.rootNode) {
         throw new Error('Parsing resulted in an undefined tree or rootNode.');
       }
       this.logger.debug(
         `Successfully created syntax tree for language: ${language}. Root node type: ${tree.rootNode.type}`
       );
+
+      // --- NEW: Convert tree to generic AST ---
+      // Consider passing a maxDepth from config or keep it null/hardcoded for now
+      const genericAstRoot = this._convertNodeToGenericAst(tree.rootNode, 0, null);
+      this.logger.info(
+        `Successfully converted AST to generic JSON format for language: ${language}.`
+      ); // Updated log
+      return Result.ok(genericAstRoot);
+      // --- END NEW ---
     } catch (error: unknown) {
       return Result.err(
-        this._handleAndLogError(`Error during Tree-sitter parsing for ${language}`, error)
-      );
-    }
-
-    const queries = this.getQueriesForLanguage(language);
-    if (!queries) {
-      return Result.err(
         this._handleAndLogError(
-          `No queries defined for language: ${language}`,
-          new Error(`Missing queries for ${language}`)
-        )
+          `Error during Tree-sitter parsing or AST conversion for ${language}`,
+          error
+        ) // Updated log context
       );
     }
 
-    // Ensure parser is not null before passing to extractElements
-    if (!parser) {
-      return Result.err(
-        new Error('Parser instance became null or undefined before element extraction.')
-      );
-    }
-    const functions = this.extractElements(parser, tree, queries.functionQuery, 'function');
-    const classes = this.extractElements(parser, tree, queries.classQuery, 'class');
-
-    const parsedInfo: ParsedCodeInfo = { functions, classes };
-    this.logger.info(
-      `Parsing complete for language: ${language}. Found ${functions.length} functions, ${classes.length} classes.`
-    );
-    return Result.ok(parsedInfo);
+    // Old query execution logic removed
   }
 
   /**
