@@ -171,6 +171,15 @@ Understanding the basic flow of command execution is helpful for adding new comm
 
 For a more detailed step-by-step breakdown and diagram, see the [System Design section](./TechnicalArchitecture.md#system-design) in the Technical Architecture document.
 
+### 2.2. Project Analysis: Directory Exclusion
+
+When analyzing the project structure (e.g., by `ProjectAnalyzer` via `StructureHelpers.generateDirectoryTree`), directory exclusion is handled by:
+
+- Checking directory names against a predefined `SKIP_DIRECTORIES` set (defined in `src/core/analysis/constants.ts`).
+- Skipping directories whose names start with a dot (`.`) (hidden directories).
+
+This ensures common build artifacts, dependency folders, and version control directories are not included in the structural analysis output (`ProjectContext.structure.directoryTree`), leading to a more accurate and lean project context.
+
 ## 3. Development Workflow
 
 ### 3.1. Process Overview
