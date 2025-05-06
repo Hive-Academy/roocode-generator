@@ -3,6 +3,17 @@ import * as path from 'path';
 import { IFileOperations } from '../file-operations/interfaces';
 import { DirectoryNode } from './types';
 
+interface TsConfigLike {
+  compilerOptions?: {
+    rootDir?: string;
+    baseUrl?: string;
+    // Potentially other options if needed by helpers
+  };
+  include?: string[];
+  files?: string[];
+  // We can add more specific types from tsconfig schema if needed
+}
+
 // Placeholder for IFileOperations for now, will be passed as an argument
 // const fileOps: IFileOperations = {} as any;
 
@@ -70,98 +81,72 @@ export async function generateDirectoryTree(
   return nodes;
 }
 
-// Helper function to safely parse JSON
-async function safeReadJsonFile<T>(
-  filePath: string,
-  fileOps: IFileOperations
-): Promise<T | undefined> {
-  const fileContentResult = await fileOps.readFile(filePath);
-  if (fileContentResult.isOk()) {
-    const content = fileContentResult.value!; // content is string if isOk()
-    try {
-      // Attempt to remove comments before parsing (basic implementation)
-      const contentWithoutComments = content.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
-      return JSON.parse(contentWithoutComments) as T;
-    } catch (error) {
-      console.warn(
-        `Warning: Could not parse JSON file at ${filePath}. Error: ${(error as Error).message}`
-      );
-      // Fallback: try parsing without comment removal if the first attempt fails due to complex comments
-      try {
-        return JSON.parse(content) as T;
-      } catch (e) {
-        console.warn(
-          `Warning: Could not parse JSON file at ${filePath} even after fallback. Error: ${(e as Error).message}`
-        );
-        return undefined;
-      }
-    }
-  }
-  return undefined;
-}
-
 // Component 2: sourceDir and testDir Determination
 export async function findSourceDir(
   rootDir: string,
   fileOps: IFileOperations,
-  tsconfigPath?: string // Relative to rootDir
+  // tsconfigPath?: string, // Relative to rootDir - No longer primary way to pass tsconfig
+  parsedTsConfig?: TsConfigLike // Accept pre-parsed tsconfig content
 ): Promise<string | undefined> {
   const commonSrcDirs = ['src', 'source', 'app', 'lib'];
+  const tsconfigContent = parsedTsConfig;
 
-  if (tsconfigPath) {
-    const absoluteTsconfigPath = path.join(rootDir, tsconfigPath);
-    const tsconfigExistsResult = await fileOps.exists(absoluteTsconfigPath);
-    if (tsconfigExistsResult.isOk() && tsconfigExistsResult.value) {
-      const tsconfigContent = await safeReadJsonFile<{
-        compilerOptions?: { rootDir?: string; baseUrl?: string };
-        include?: string[];
-      }>(absoluteTsconfigPath, fileOps);
+  // Fallback to reading if parsedTsConfig is not provided (though ProjectAnalyzer should provide it)
+  // This part of the logic might be simplified or removed if ProjectAnalyzer always passes content.
+  // For now, keeping it as a less robust fallback.
+  // if (!tsconfigContent && tsconfigPath) {
+  //   const absoluteTsconfigPath = path.join(rootDir, tsconfigPath);
+  //   const tsconfigExistsResult = await fileOps.exists(absoluteTsconfigPath);
+  //   if (tsconfigExistsResult.isOk() && tsconfigExistsResult.value) {
+  //     tsconfigContent = await safeReadJsonFile<{
+  //       compilerOptions?: { rootDir?: string; baseUrl?: string };
+  //       include?: string[];
+  //     }>(absoluteTsconfigPath, fileOps);
+  //   }
+  // }
 
-      if (tsconfigContent?.compilerOptions?.rootDir) {
-        const resolvedRootDir = path.resolve(rootDir, tsconfigContent.compilerOptions.rootDir);
-        const existsResult = await fileOps.exists(resolvedRootDir);
-        const isDirResult = await fileOps.isDirectory(resolvedRootDir);
+  if (tsconfigContent) {
+    // Use the provided or parsed content
+    if (tsconfigContent?.compilerOptions?.rootDir) {
+      const resolvedRootDir = path.resolve(rootDir, tsconfigContent.compilerOptions.rootDir);
+      const existsResult = await fileOps.exists(resolvedRootDir);
+      const isDirResult = await fileOps.isDirectory(resolvedRootDir);
+      if (existsResult.isOk() && existsResult.value && isDirResult.isOk() && isDirResult.value) {
+        return path.relative(rootDir, resolvedRootDir);
+      }
+    }
+    if (tsconfigContent?.compilerOptions?.baseUrl) {
+      const resolvedBaseUrl = path.resolve(rootDir, tsconfigContent.compilerOptions.baseUrl);
+      // Check if baseUrl is one of the common source dirs or points to a valid dir
+      if (commonSrcDirs.includes(path.basename(resolvedBaseUrl))) {
+        const existsResult = await fileOps.exists(resolvedBaseUrl);
+        const isDirResult = await fileOps.isDirectory(resolvedBaseUrl);
         if (existsResult.isOk() && existsResult.value && isDirResult.isOk() && isDirResult.value) {
-          return path.relative(rootDir, resolvedRootDir);
+          return path.relative(rootDir, resolvedBaseUrl);
         }
       }
-      if (tsconfigContent?.compilerOptions?.baseUrl) {
-        const resolvedBaseUrl = path.resolve(rootDir, tsconfigContent.compilerOptions.baseUrl);
-        // Check if baseUrl is one of the common source dirs or points to a valid dir
-        if (commonSrcDirs.includes(path.basename(resolvedBaseUrl))) {
-          const existsResult = await fileOps.exists(resolvedBaseUrl);
-          const isDirResult = await fileOps.isDirectory(resolvedBaseUrl);
+    }
+    if (tsconfigContent?.include) {
+      for (const pattern of tsconfigContent.include) {
+        // Example: "src/**/*" -> "src"
+        const potentialDir = pattern.split('/')[0];
+        if (potentialDir && !potentialDir.includes('*')) {
+          const dirPath = path.join(rootDir, potentialDir);
+          const existsResult = await fileOps.exists(dirPath);
+          const isDirResult = await fileOps.isDirectory(dirPath);
           if (
             existsResult.isOk() &&
             existsResult.value &&
             isDirResult.isOk() &&
             isDirResult.value
           ) {
-            return path.relative(rootDir, resolvedBaseUrl);
-          }
-        }
-      }
-      if (tsconfigContent?.include) {
-        for (const pattern of tsconfigContent.include) {
-          // Example: "src/**/*" -> "src"
-          const potentialDir = pattern.split('/')[0];
-          if (potentialDir && !potentialDir.includes('*')) {
-            const dirPath = path.join(rootDir, potentialDir);
-            const existsResult = await fileOps.exists(dirPath);
-            const isDirResult = await fileOps.isDirectory(dirPath);
-            if (
-              existsResult.isOk() &&
-              existsResult.value &&
-              isDirResult.isOk() &&
-              isDirResult.value
-            ) {
-              return potentialDir;
-            }
+            return potentialDir;
           }
         }
       }
     }
   }
+  // Removed extra closing brace here that was prematurely closing 'if (tsconfigContent)'
 
   for (const dir of commonSrcDirs) {
     const dirPath = path.join(rootDir, dir);
@@ -178,9 +163,24 @@ export async function findSourceDir(
 export async function findTestDir(
   rootDir: string,
   fileOps: IFileOperations,
-  tsconfigPath?: string // Relative to rootDir
+  // tsconfigPath?: string, // Relative to rootDir - No longer primary way to pass tsconfig
+  parsedTsConfig?: TsConfigLike // Accept pre-parsed tsconfig content
 ): Promise<string | undefined> {
   const commonTestDirs = ['tests', 'test', '__tests__', 'specs', 'spec']; // Added __tests__ and specs
+  const tsconfigContent = parsedTsConfig;
+
+  // Fallback logic for reading tsconfig if not provided (similar to findSourceDir)
+  // Can be simplified if ProjectAnalyzer always provides it.
+  // if (!tsconfigContent && tsconfigPath) {
+  //   const absoluteTsconfigPath = path.join(rootDir, tsconfigPath);
+  //   const tsconfigExistsResult = await fileOps.exists(absoluteTsconfigPath);
+  //   if (tsconfigExistsResult.isOk() && tsconfigExistsResult.value) {
+  //     tsconfigContent = await safeReadJsonFile<{ include?: string[]; exclude?: string[] }>(
+  //       absoluteTsconfigPath,
+  //       fileOps
+  //     );
+  //   }
+  // }
 
   // tsconfig.json usually doesn't specify test directories directly in compilerOptions.
   // Test runners (Jest, Vitest) configs are more reliable.
@@ -188,36 +188,30 @@ export async function findTestDir(
   // For now, primarily relying on heuristics for testDir.
   // Future enhancement: check jest.config.js, vitest.config.js for rootDir/roots.
 
-  if (tsconfigPath) {
-    const absoluteTsconfigPath = path.join(rootDir, tsconfigPath);
-    const tsconfigExistsResult = await fileOps.exists(absoluteTsconfigPath);
-    if (tsconfigExistsResult.isOk() && tsconfigExistsResult.value) {
-      const tsconfigContent = await safeReadJsonFile<{ include?: string[]; exclude?: string[] }>(
-        absoluteTsconfigPath,
-        fileOps
-      );
-      // Check include patterns for test-like paths
-      if (tsconfigContent?.include) {
-        for (const pattern of tsconfigContent.include) {
-          for (const commonDir of commonTestDirs) {
-            if (pattern.startsWith(commonDir + '/') || pattern === commonDir) {
-              const dirPath = path.join(rootDir, commonDir);
-              const existsResult = await fileOps.exists(dirPath);
-              const isDirResult = await fileOps.isDirectory(dirPath);
-              if (
-                existsResult.isOk() &&
-                existsResult.value &&
-                isDirResult.isOk() &&
-                isDirResult.value
-              ) {
-                return commonDir;
-              }
+  if (tsconfigContent) {
+    // Use the provided or parsed content
+    // Check include patterns for test-like paths
+    if (tsconfigContent?.include) {
+      for (const pattern of tsconfigContent.include) {
+        for (const commonDir of commonTestDirs) {
+          if (pattern.startsWith(commonDir + '/') || pattern === commonDir) {
+            const dirPath = path.join(rootDir, commonDir);
+            const existsResult = await fileOps.exists(dirPath);
+            const isDirResult = await fileOps.isDirectory(dirPath);
+            if (
+              existsResult.isOk() &&
+              existsResult.value &&
+              isDirResult.isOk() &&
+              isDirResult.value
+            ) {
+              return commonDir;
             }
           }
         }
       }
     }
   }
+  // Removed extra closing brace here that was prematurely closing 'if (tsconfigContent)'
 
   for (const dir of commonTestDirs) {
     const dirPath = path.join(rootDir, dir);
@@ -302,7 +296,7 @@ export async function findMainEntryPoints(
   packageJsonContent: any, // Already parsed
   sourceDir: string | undefined, // Relative to rootDir
   fileOps: IFileOperations,
-  tsconfigContent?: any // Already parsed
+  tsconfigContent?: TsConfigLike // Already parsed, use the new type
 ): Promise<string[]> {
   const entryPoints = new Set<string>();
 

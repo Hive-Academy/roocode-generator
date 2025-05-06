@@ -215,9 +215,17 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         );
       }
 
-      const sourceDir = await StructureHelpers.findSourceDir(rootPath, this.fileOps, tsconfigPath);
+      const sourceDir = await StructureHelpers.findSourceDir(
+        rootPath,
+        this.fileOps,
+        tsconfigContent // Pass only the parsed content
+      );
       this.logger.debug(`Determined sourceDir: ${sourceDir}`);
-      const testDir = await StructureHelpers.findTestDir(rootPath, this.fileOps, tsconfigPath);
+      const testDir = await StructureHelpers.findTestDir(
+        rootPath,
+        this.fileOps,
+        tsconfigContent // Pass only the parsed content
+      );
       this.logger.debug(`Determined testDir: ${testDir}`);
       const configFiles = await StructureHelpers.findConfigFiles(rootPath, this.fileOps);
       this.logger.debug(`Found configFiles: ${configFiles.join(', ')}`);
