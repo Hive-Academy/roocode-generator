@@ -47,6 +47,16 @@ export interface TechStackAnalysis {
 }
 
 /**
+ * Represents a node in the directory tree structure.
+ */
+export interface DirectoryNode {
+  name: string;
+  path: string; // Relative path from rootDir
+  type: 'directory' | 'file';
+  children?: DirectoryNode[]; // Only for type 'directory'
+}
+
+/**
  * Represents the identified structure of a project.
  */
 export interface ProjectStructure {
@@ -56,6 +66,7 @@ export interface ProjectStructure {
   configFiles: string[]; // Relative paths from rootDir to key config files (e.g., 'tsconfig.json', '.eslintrc.js')
   mainEntryPoints: string[]; // Relative paths from rootDir to main application entry points
   componentStructure: Record<string, string[]>; // Map of component types/locations to file paths (e.g., { 'ui': ['src/components/ui/Button.tsx'] }) - Structure might need refinement based on analysis capabilities
+  directoryTree: DirectoryNode[]; // Represents the root level nodes of the project's directory structure
 }
 
 /**
@@ -82,4 +93,9 @@ export interface ProjectContext {
    * Populated by the AstAnalysisService.
    */
   codeInsights: { [filePath: string]: CodeInsights }; // Made required as per new requirements
+
+  /**
+   * Optional property to hold the parsed content of the project's package.json file.
+   */
+  packageJson?: any;
 }
