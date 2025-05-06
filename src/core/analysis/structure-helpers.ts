@@ -1,8 +1,8 @@
-import { SKIP_DIRECTORIES } from '../constants'; // Added this import
 import { Dirent } from 'fs';
 import * as path from 'path';
 import { IFileOperations } from '../file-operations/interfaces';
 import { DirectoryNode } from './types';
+import { SKIP_DIRECTORIES } from './constants';
 
 export interface TsConfigLike {
   // Added export
