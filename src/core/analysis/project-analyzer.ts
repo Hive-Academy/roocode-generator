@@ -2,9 +2,17 @@ import { Injectable, Inject } from '../di/decorators';
 import { IFileOperations } from '../file-operations/interfaces';
 import { ILogger } from '../services/logger-service';
 import { Result } from '../result/result';
-import { IProjectAnalyzer, ProjectContext, GenericAstNode, TechStackAnalysis } from './types'; // Import GenericAstNode, TechStackAnalysis
+import {
+  IProjectAnalyzer,
+  ProjectContext,
+  GenericAstNode,
+  TechStackAnalysis,
+  ProjectStructure,
+  DirectoryNode,
+} from './types'; // Import GenericAstNode, TechStackAnalysis
 import { CodeInsights, IAstAnalysisService } from './ast-analysis.interfaces'; // Added CodeInsights, IAstAnalysisService
 import { ITechStackAnalyzerService } from './tech-stack-analyzer'; // Added TechStackAnalyzerService import
+import * as StructureHelpers from './structure-helpers'; // Added import for structure helpers
 import { LLMAgent } from '../llm/llm-agent';
 import { LLMProviderError } from '../llm/llm-provider-errors';
 import { ResponseParser } from './response-parser';
@@ -156,7 +164,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       this.progress.update('Analyzing tech stack...');
       this.logger.debug('Starting local tech stack analysis...');
       // Note: allFiles.value is guaranteed to exist here due to earlier checks
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
       const localTechStackResult: TechStackAnalysis = await this.techStackAnalyzerService.analyze(
         rootPath,
         allFiles.value,
@@ -164,6 +172,80 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       );
       this.logger.debug('Local tech stack analysis completed.');
       // --- End Local Tech Stack Analysis ---
+
+      // --- Local Project Structure Analysis ---
+      this.progress.update('Analyzing project structure...');
+      this.logger.debug('Starting local project structure analysis...');
+
+      const tsconfigPath = 'tsconfig.json'; // Assuming tsconfig.json is at the root
+      let tsconfigContent: any;
+      const absoluteTsconfigPath = path.join(rootPath, tsconfigPath);
+      const tsconfigExistsResult = await this.fileOps.exists(absoluteTsconfigPath);
+      if (tsconfigExistsResult.isOk() && tsconfigExistsResult.value) {
+        // Using the same safeReadJsonFile logic as in structure-helpers, or ProjectAnalyzer could have its own.
+        // For now, assuming structure-helpers' safeReadJsonFile is not directly exported or we re-implement.
+        // Let's assume we read it here if needed by multiple structure helpers.
+        const tsconfigFileReadResult = await this.fileOps.readFile(absoluteTsconfigPath);
+        if (tsconfigFileReadResult.isOk() && tsconfigFileReadResult.value) {
+          // tsconfigFileReadResult.value is already a string based on IFileOperations.readFile signature
+          const fileContentString = tsconfigFileReadResult.value;
+          try {
+            const contentWithoutComments = fileContentString.replace(
+              /\/\*[\s\S]*?\*\/|\/\/.*/g,
+              ''
+            );
+            tsconfigContent = JSON.parse(contentWithoutComments);
+          } catch (e) {
+            this.logger.warn(
+              `Failed to parse tsconfig.json (with comment removal): ${e instanceof Error ? e.message : String(e)}`
+            );
+            try {
+              // Fallback to parsing the original string content
+              tsconfigContent = JSON.parse(fileContentString); // Fallback
+            } catch (e2) {
+              this.logger.warn(
+                `Failed to parse tsconfig.json (fallback): ${e2 instanceof Error ? e2.message : String(e2)}`
+              );
+            }
+          }
+        }
+      }
+
+      const sourceDir = await StructureHelpers.findSourceDir(rootPath, this.fileOps, tsconfigPath);
+      this.logger.debug(`Determined sourceDir: ${sourceDir}`);
+      const testDir = await StructureHelpers.findTestDir(rootPath, this.fileOps, tsconfigPath);
+      this.logger.debug(`Determined testDir: ${testDir}`);
+      const configFiles = await StructureHelpers.findConfigFiles(rootPath, this.fileOps);
+      this.logger.debug(`Found configFiles: ${configFiles.join(', ')}`);
+
+      const mainEntryPoints = await StructureHelpers.findMainEntryPoints(
+        rootPath,
+        packageJsonData,
+        sourceDir,
+        this.fileOps,
+        tsconfigContent
+      );
+      this.logger.debug(`Determined mainEntryPoints: ${mainEntryPoints.join(', ')}`);
+
+      const directoryTree: DirectoryNode[] = await StructureHelpers.generateDirectoryTree(
+        rootPath,
+        '.', // Start scanning from the root directory itself
+        this.fileOps,
+        this.shouldAnalyzeFile.bind(this)
+      );
+      this.logger.debug('Generated directoryTree.');
+
+      const localProjectStructure: ProjectStructure = {
+        rootDir: rootPath,
+        sourceDir: sourceDir || '', // Default to empty string if undefined
+        testDir: testDir || '', // Default to empty string if undefined
+        configFiles: configFiles,
+        mainEntryPoints: mainEntryPoints,
+        directoryTree: directoryTree,
+        componentStructure: {}, // Initialize as empty object
+      };
+      this.logger.debug('Local project structure analysis completed.');
+      // --- End Local Project Structure Analysis ---
 
       // --- Tree-sitter Parsing and Analysis Step ---
       this.progress.update('Parsing supported files for structure...');
@@ -393,12 +475,8 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
 
       // Assemble final context using results from LLM context analysis and code insights
       const finalContext: ProjectContext = {
-        techStack,
-        structure: {
-          ...structure,
-          rootDir: rootPath,
-          componentStructure: structure.componentStructure ?? {},
-        },
+        techStack: localTechStackResult, // Use locally derived tech stack
+        structure: localProjectStructure, // Use locally derived structure
         dependencies: {
           ...dependencies,
           dependencies: dependencies.dependencies ?? {},
@@ -424,11 +502,8 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
        * Note: astData is intentionally excluded as per requirements.
        */
       const filteredContext: ProjectContext = {
-        techStack: finalContext.techStack,
-        structure: {
-          ...finalContext.structure,
-          componentStructure: finalContext.structure?.componentStructure ?? {},
-        },
+        techStack: finalContext.techStack, // This will be localTechStackResult
+        structure: finalContext.structure, // This will be localProjectStructure
         dependencies: {
           ...finalContext.dependencies,
           dependencies: finalContext.dependencies?.dependencies ?? {},
