@@ -145,7 +145,7 @@ Subtasks 1-4 were reported as completed in the implementation plan. The review f
       - **AC7 Untested:** Fallback not triggered.
       - **AC8 Verified:** Pre-call validation against limits observed.
       - **TSK-016 Blocking Issues Resolved:** Original JSON parsing and token counting crashes did not occur.
-      - **NEW CRITICAL ISSUE (Security):** API Key logged: `[DEBUG] Fetching model limits from: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17?key=AIzaSyA68ZCLNwGfvwcqy-h8WJnHmJm2nD3WudE`
+      - **NEW CRITICAL ISSUE (Security):** API Key logged: `[DEBUG] Fetching model limits from: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17?key=`
       - **NEW FUNCTIONAL ISSUE:** Failure due to `Invalid ProjectContext: JSON validation failed: structure.sourceDir Expected string, received array; structure.testDir Expected string, received array`. The LLM response for project context was malformed according to application schema and lacked detail.
     - Related criteria: AC3, AC4, AC5, AC6, AC7, AC8.
     - Status: ❌ Fail (due to new critical issues, though TSK-017 specific ACs were mostly met from a stability perspective)
@@ -182,8 +182,8 @@ The following changes are required before approval:
 ### Recommended for Follow-up (Separate Task):
 
 1.  **Address ProjectContext Schema and Content Quality:** - Investigate why the LLM is returning `sourceDir` and `testDir` as arrays which has only one folder inside them - Improve the prompt or LLM interaction to ensure the generated `ProjectContext` is detailed and adheres to the application's schema. - This is related to the functional failure observed: `Invalid ProjectContext: JSON validation failed...` - This is the output of the generated projectContext which feels off and lack lots of informations
-        ```
-        {
+    ```
+    {
     "techStack": {
     "languages": [
     "TypeScript",
