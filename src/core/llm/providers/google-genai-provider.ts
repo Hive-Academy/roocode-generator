@@ -170,7 +170,8 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
    */
   private async fetchModelLimits(): Promise<number> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}?key=${this.config.apiKey}`;
-    this.logger.debug(`Fetching model limits from: ${url}`);
+    const redactedUrl = url.replace(/key=([^&]+)/, 'key=[REDACTED_API_KEY]');
+    this.logger.debug(`Fetching model limits from: ${redactedUrl}`);
 
     try {
       const response = await fetch(url, {
