@@ -1,109 +1,120 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import path from 'path'; // Added path import
-import { IAstAnalysisService } from '@core/analysis/ast-analysis.interfaces';
+import path from 'path';
+import {
+  IAstAnalysisService,
+  CodeInsights,
+} from '../../../src/core/analysis/ast-analysis.interfaces'; // Import CodeInsights
 import {
   FileMetadata,
   IFileContentCollector,
   IFilePrioritizer,
   ITreeSitterParserService,
 } from '../../../src/core/analysis/interfaces';
-import { GenericAstNode, ProjectContext } from '../../../src/core/analysis/types'; // Added ProjectContext
+import { GenericAstNode } from '../../../src/core/analysis/types';
 import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
-import { Result } from '../../../src/core/result/result'; // Import Result
-import { ResponseParser } from '../../../src/core/analysis/response-parser';
+import { Result } from '../../../src/core/result/result';
+import { ITechStackAnalyzerService } from '../../../src/core/analysis/tech-stack-analyzer'; // Added
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
 import { LLMAgent } from '../../../src/core/llm/llm-agent';
-// Removed duplicate Result import
 import { ILogger } from '../../../src/core/services/logger-service';
 import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
-import { Dirent } from 'fs'; // Added Dirent import
+import { Dirent } from 'fs';
 
-// Define a type for the metadata objects used frequently in tests
+// Import all mock factories
+import { createMockLogger } from '../../__mocks__/logger.mock';
+import { createMockFileOperations } from '../../__mocks__/file-operations.mock';
+import { createMockLLMAgent } from '../../__mocks__/llm-agent.mock';
+// import { createMockResponseParser } from '../../__mocks__/response-parser.mock'; // Unused
+import { createMockProgressIndicator } from '../../__mocks__/progress-indicator.mock';
+import { createMockFileContentCollector } from '../../__mocks__/file-content-collector.mock';
+import { createMockFilePrioritizer } from '../../__mocks__/file-prioritizer.mock';
+import { createMockTreeSitterParserService } from '../../__mocks__/tree-sitter-parser.service.mock';
+import { createMockAstAnalysisService } from '../../__mocks__/ast-analysis.service.mock';
+import { createMockTechStackAnalyzerService } from '../../__mocks__/tech-stack-analyzer.mock'; // Added
 
 // --- New Describe Block for TreeSitter Integration ---
 describe('ProjectAnalyzer TreeSitter Integration', () => {
   let projectAnalyzer: ProjectAnalyzer;
   let mockFileOps: jest.Mocked<IFileOperations>;
-  let mockLogger: jest.Mocked<ILogger>; // Restored
-  let mockLLMAgent: jest.Mocked<LLMAgent>; // Restored
-  let mockResponseParser: jest.Mocked<ResponseParser>; // Restored
-  let mockProgress: jest.Mocked<ProgressIndicator>; // Restored
-  let mockContentCollector: jest.Mocked<IFileContentCollector>; // Restored
-  let mockFilePrioritizer: jest.Mocked<IFilePrioritizer>; // Restored
-  let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>; // Restored
-  let mockAstAnalysisService: jest.Mocked<IAstAnalysisService>; // Added
+  let mockLogger: jest.Mocked<ILogger>;
+  let mockLLMAgent: jest.Mocked<LLMAgent>;
+  // let mockResponseParser: jest.Mocked<ResponseParser>; // Removed
+  let mockProgress: jest.Mocked<ProgressIndicator>;
+  let mockContentCollector: jest.Mocked<IFileContentCollector>;
+  let mockFilePrioritizer: jest.Mocked<IFilePrioritizer>;
+  let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>;
+  let mockAstAnalysisService: jest.Mocked<IAstAnalysisService>;
+  let mockTechStackAnalyzerService: jest.Mocked<ITechStackAnalyzerService>; // Added
+
+  // Default CodeInsights mock
+  const defaultCodeInsights: CodeInsights = { functions: [], classes: [], imports: [] };
+
+  // Define a mock AST node for reuse
+  const mockGenericAstNode: GenericAstNode = {
+    type: 'program',
+    text: '',
+    startPosition: { row: 0, column: 0 },
+    endPosition: { row: 0, column: 0 },
+    isNamed: true,
+    fieldName: null,
+    children: [],
+  };
 
   beforeEach(() => {
-    // Re-initialize mocks for this describe block
-    mockFileOps = {
-      readDir: jest.fn().mockResolvedValue(Result.ok([])),
-      isDirectory: jest.fn().mockResolvedValue(Result.ok(false)),
-      validatePath: jest.fn(),
-      getFiles: jest.fn(),
-      writeFile: jest.fn(),
-      createDirectory: jest.fn(),
-      // readFile will be overridden below
-      readFile: jest.fn(), // Add placeholder
-      // Add other methods if needed by tests
-      getRelativePath: jest.fn((base: string, full: string) => path.relative(base, full)),
-      getAbsolutePath: jest.fn((p: string) => path.resolve(p)),
-      joinPaths: jest.fn((...args: string[]) => path.join(...args)),
-    } as any;
+    // Use mock factories for all dependencies
+    mockFileOps = createMockFileOperations();
+    mockLogger = createMockLogger();
+    mockLLMAgent = createMockLLMAgent();
+    // mockResponseParser = createMockResponseParser(); // Removed
+    mockProgress = createMockProgressIndicator();
+    mockContentCollector = createMockFileContentCollector();
+    mockFilePrioritizer = createMockFilePrioritizer();
+    mockTreeSitterParserService = createMockTreeSitterParserService();
+    mockAstAnalysisService = createMockAstAnalysisService();
+    mockTechStackAnalyzerService = createMockTechStackAnalyzerService(); // Added
 
-    mockLogger = {
-      debug: jest.fn(),
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-    } as any;
+    // --- Default Mocks for beforeEach ---
+    // FileOps
+    mockFileOps.readDir.mockResolvedValue(Result.ok([]));
+    mockFileOps.isDirectory.mockResolvedValue(Result.ok(false));
+    mockFileOps.normalizePath.mockImplementation((p: string) => p);
+    mockFileOps.exists.mockResolvedValue(Result.ok(true));
+    mockFileOps.copyDirectoryRecursive.mockResolvedValue(Result.ok(undefined));
+    // readFile is mocked specifically in tests below
 
-    mockLLMAgent = {
-      getModelContextWindow: jest.fn().mockResolvedValue(10000),
-      countTokens: jest.fn().mockResolvedValue(10),
-      getCompletion: jest.fn(),
-      getProvider: jest.fn().mockResolvedValue(
-        Result.ok({
-          getContextWindowSize: jest.fn().mockReturnValue(10000),
-          countTokens: jest.fn().mockResolvedValue(10),
-          getCompletion: jest.fn(),
-        })
-      ),
-    } as any;
+    // LLMAgent
+    mockLLMAgent.getModelContextWindow.mockResolvedValue(10000);
+    mockLLMAgent.countTokens.mockResolvedValue(10);
+    mockLLMAgent.getProvider.mockResolvedValue(
+      Result.ok({ countTokens: jest.fn().mockResolvedValue(10) } as any)
+    );
+    mockLLMAgent.getCompletion.mockResolvedValue(Result.ok('{}')); // Default success
 
-    mockResponseParser = {
-      parseLlmResponse: jest.fn(),
-    } as any;
+    // mockResponseParser.parseLlmResponse.mockResolvedValue(Result.ok(defaultProjectContext)); // Removed
+    mockTechStackAnalyzerService.analyze.mockResolvedValue({
+      // Default mock
+      languages: ['typescript'],
+      frameworks: ['jest'],
+      buildTools: ['npm'],
+      testingFrameworks: ['jest'],
+      linters: ['eslint'],
+      packageManager: 'npm',
+    });
 
-    mockProgress = {
-      start: jest.fn(),
-      update: jest.fn(),
-      fail: jest.fn(),
-      succeed: jest.fn(),
-    } as any;
+    // ContentCollector - Default empty success
+    mockContentCollector.collectContent.mockResolvedValue(Result.ok({ content: '', metadata: [] }));
 
-    mockContentCollector = {
-      collectContent: jest.fn(),
-    } as unknown as jest.Mocked<IFileContentCollector>;
+    // FilePrioritizer - Default pass-through
+    mockFilePrioritizer.prioritizeFiles.mockImplementation((metadata: FileMetadata[]) => metadata);
 
-    mockFilePrioritizer = {
-      prioritizeFiles: jest.fn(),
-    } as unknown as jest.Mocked<IFilePrioritizer>;
-
-    // Corrected mock definition for ITreeSitterParserService
-    mockTreeSitterParserService = {
-      initialize: jest.fn().mockReturnValue(Result.ok(undefined)), // initialize is synchronous
-      parse: jest.fn(), // Mock parse
-    } as jest.Mocked<ITreeSitterParserService>;
-
-    mockAstAnalysisService = {
-      analyzeAst: jest
-        .fn()
-        .mockResolvedValue(Result.ok({ functions: [], classes: [], imports: [] })),
-    } as jest.Mocked<IAstAnalysisService>;
+    // TreeSitter & AST Analysis
+    mockTreeSitterParserService.initialize.mockReturnValue(Result.ok(undefined));
+    mockTreeSitterParserService.parse.mockReturnValue(Result.ok(mockGenericAstNode)); // Default success
+    mockAstAnalysisService.analyzeAst.mockResolvedValue(Result.ok(defaultCodeInsights)); // Default success
 
     // Assign the specific readFile mock implementation AFTER basic mock setup
     // eslint-disable-next-line @typescript-eslint/require-await
-    mockFileOps.readFile = jest.fn().mockImplementation(async (filePath: string) => {
+    mockFileOps.readFile.mockImplementation(async (filePath: string) => {
       // This mock needs to handle the files used in the tests within this suite
       const tsFilePath = path.join('/path/to/project', 'src', 'component.ts');
       const jsFilePath = path.join('/path/to/project', 'lib', 'utils.js');
@@ -128,12 +139,12 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
       mockFileOps,
       mockLogger,
       mockLLMAgent,
-      mockResponseParser,
-      mockProgress,
+      mockProgress, // Corrected: 4th arg
       mockContentCollector,
       mockFilePrioritizer,
       mockTreeSitterParserService,
-      mockAstAnalysisService // Added 9th argument
+      mockAstAnalysisService,
+      mockTechStackAnalyzerService // Added: 9th arg
     );
   });
 
@@ -159,7 +170,6 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
     ];
 
     // Mock file system operations to simulate finding these files
-    // Mock readDir to return Dirent-like objects
     (mockFileOps.readDir as jest.Mock).mockImplementation((dirPath: string) => {
       if (dirPath === rootPath) {
         return Promise.resolve(
@@ -215,17 +225,6 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
     );
 
     // Mock successful parsing for supported files with specific data
-    const mockGenericAstNode: GenericAstNode = {
-      type: 'program',
-      text: '',
-      startPosition: { row: 0, column: 0 },
-      endPosition: { row: 0, column: 0 },
-      isNamed: true,
-      fieldName: null,
-      children: [],
-    };
-
-    // Corrected: Mock the parse method
     mockTreeSitterParserService.parse.mockImplementation((content, language) => {
       if (
         (language === 'typescript' && content === tsContent) ||
@@ -236,14 +235,24 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
       return Result.err(new Error(`Unexpected parse call: lang=${String(language)}`));
     });
 
-    // Mock LLM and ResponseParser for successful run
-    mockLLMAgent.getCompletion.mockResolvedValue(Result.ok('{}')); // Assume LLM part succeeds
-    mockResponseParser.parseLlmResponse.mockReturnValue(Result.ok({} as ProjectContext)); // Assume LLM parsing succeeds
+    // Mock LLM and ResponseParser for successful run (using defaults from beforeEach)
 
     // Mock AstAnalysisService for successful run
-    mockAstAnalysisService.analyzeAst.mockResolvedValue(
-      Result.ok({ functions: [], classes: [], imports: [] })
-    );
+    const tsInsights: CodeInsights = {
+      functions: [],
+      classes: [{ name: 'MyComponent' }],
+      imports: [],
+    }; // Example specific insight
+    const jsInsights: CodeInsights = {
+      functions: [{ name: 'helper', parameters: [] }],
+      classes: [],
+      imports: [],
+    }; // Example specific insight
+    mockAstAnalysisService.analyzeAst.mockImplementation(async (ast, filePath) => {
+      if (filePath.endsWith('component.ts')) return Result.ok(tsInsights);
+      if (filePath.endsWith('utils.js')) return Result.ok(jsInsights);
+      return await Promise.resolve(Result.ok(defaultCodeInsights)); // Default empty for others
+    });
 
     // Act
     const result = await projectAnalyzer.analyzeProject([rootPath]);
@@ -251,11 +260,11 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
     // Assert
     expect(result.isOk()).toBe(true); // Ensure analysis completed
 
-    // Corrected: Verify parse calls for supported files
+    // Verify parse calls for supported files
     expect(mockTreeSitterParserService.parse).toHaveBeenCalledWith(tsContent, 'typescript');
     expect(mockTreeSitterParserService.parse).toHaveBeenCalledWith(jsContent, 'javascript');
 
-    // Corrected: Verify parse was NOT called for unsupported files
+    // Verify parse was NOT called for unsupported files
     expect(mockTreeSitterParserService.parse).not.toHaveBeenCalledWith(
       txtContent,
       expect.any(String)
@@ -265,29 +274,28 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
       expect.any(String)
     );
 
-    // Verify logger.debug was called for skipping unsupported files (check might be fragile depending on internal logic)
-    // expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining(`Skipping unsupported file type: ${txtFilePath}`));
-    // expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining(`Skipping unsupported file type: ${cssFilePath}`));
+    // Verify logger.debug was called for skipping unsupported files
+    expect(mockLogger.debug).toHaveBeenCalledWith(
+      expect.stringContaining(`Skipping unsupported file type: ${txtFilePath}`)
+    );
+    expect(mockLogger.debug).toHaveBeenCalledWith(
+      expect.stringContaining(`Skipping unsupported file type: ${cssFilePath}`)
+    );
 
-    // Verify the final context contains the parsed data in astData
+    // Verify the final context contains the parsed data in codeInsights
     const finalContext = result.unwrap();
 
-    // Verify astData is ABSENT
-    expect(finalContext).not.toHaveProperty('astData');
-
-    // Verify codeInsights is PRESENT and is an object
     expect(finalContext).toHaveProperty('codeInsights');
     expect(typeof finalContext.codeInsights).toBe('object');
-    expect(finalContext.codeInsights).toEqual({}); // Defaults to {}
+    expect(finalContext.codeInsights[path.join('src/component.ts')]).toEqual(tsInsights);
+    expect(finalContext.codeInsights[path.join('lib/utils.js')]).toEqual(jsInsights);
+    expect(finalContext.codeInsights).not.toHaveProperty(path.join('docs/notes.txt'));
+    expect(finalContext.codeInsights).not.toHaveProperty(path.join('styles/main.css'));
 
-    // Verify structure.componentStructure defaults to {}
-    expect(finalContext.structure.componentStructure).toEqual({});
-
-    // Verify dependencies defaults
-    expect(finalContext.dependencies.dependencies).toEqual({});
-    expect(finalContext.dependencies.devDependencies).toEqual({});
-    expect(finalContext.dependencies.peerDependencies).toEqual({});
-    expect(finalContext.dependencies.internalDependencies).toEqual({});
+    // Verify other parts of context are still present (using defaults from beforeEach)
+    expect(finalContext.techStack).toBeDefined();
+    expect(finalContext.structure).toBeDefined();
+    expect(finalContext.dependencies).toBeDefined();
   });
 
   it('should log a warning if parsing fails and exclude failed file from context', async () => {
@@ -318,9 +326,9 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
     mockContentCollector.collectContent.mockResolvedValue(
       Result.ok({ content: 'Irrelevant combined content', metadata: fileMetadata })
     );
-    (mockFileOps.readFile as jest.Mock).mockResolvedValue(Result.ok(jsContent));
+    (mockFileOps.readFile as jest.Mock).mockResolvedValue(Result.ok(jsContent)); // Ensure readFile returns the buggy content
 
-    // Corrected: Mock failed parsing for the JS file using parse
+    // Mock failed parsing for the JS file using parse
     mockTreeSitterParserService.parse.mockImplementation((content, language) => {
       if (language === 'javascript' && content === jsContent) {
         return Result.err(mockError);
@@ -328,12 +336,8 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
       return Result.err(new Error('Unexpected parse call'));
     });
 
-    // Mock LLM, ResponseParser, AstAnalysisService for successful run otherwise
-    mockLLMAgent.getCompletion.mockResolvedValue(Result.ok('{}'));
-    mockResponseParser.parseLlmResponse.mockReturnValue(Result.ok({} as ProjectContext));
-    mockAstAnalysisService.analyzeAst.mockResolvedValue(
-      Result.ok({ functions: [], classes: [], imports: [] })
-    );
+    // Mock LLM, ResponseParser, AstAnalysisService for successful run otherwise (using defaults)
+    // AstAnalysisService should not be called for the failed file
 
     // Act
     const result = await projectAnalyzer.analyzeProject([rootPath]);
@@ -341,20 +345,25 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
     // Assert
     expect(result.isOk()).toBe(true); // Analysis should still complete successfully overall
 
-    // Corrected: Verify parse was called
+    // Verify parse was called
     expect(mockTreeSitterParserService.parse).toHaveBeenCalledWith(jsContent, 'javascript');
 
     // Verify logger.warn was called with file path and error message
     expect(mockLogger.warn).toHaveBeenCalledTimes(1); // Should be called once for the parse failure
-    // Use POSIX path in the expected log message
     expect(mockLogger.warn).toHaveBeenCalledWith(
-      // Use the relative path as logged
-      expect.stringContaining(`Tree-sitter parsing failed for src/buggy.js`)
+      expect.stringContaining(`Tree-sitter parsing failed for src/buggy.js`) // Use relative path
     );
     expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining(mockError.message));
 
-    // Verify the final context does NOT contain entries for the failed file in astData
+    // Verify AstAnalysisService was NOT called for the failed file
+    expect(mockAstAnalysisService.analyzeAst).not.toHaveBeenCalledWith(
+      expect.any(Object), // AST data wouldn't exist
+      path.join('src/buggy.js')
+    );
+
+    // Verify the final context does NOT contain entries for the failed file in codeInsights
     const finalContext = result.unwrap();
+    expect(finalContext.codeInsights).toEqual({}); // Should be empty as no files were successfully parsed AND analyzed
 
     // Ensure other parts of the context might still exist
     expect(finalContext.techStack).toBeDefined(); // Assuming LLM part succeeded

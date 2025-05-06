@@ -6,13 +6,14 @@ import {
   ITreeSitterParserService,
 } from '@core/analysis/interfaces';
 import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
-import { ResponseParser } from '../../../src/core/analysis/response-parser';
+import { ITechStackAnalyzerService } from '../../../src/core/analysis/tech-stack-analyzer'; // Added
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
 import { LLMAgent } from '../../../src/core/llm/llm-agent';
 import { Result } from '../../../src/core/result/result';
 import { ILogger } from '../../../src/core/services/logger-service'; // Keep type import
 import { createMockLogger } from '../../__mocks__/logger.mock'; // Add mock factory import
 import { createMockFileOperations } from '../../__mocks__/file-operations.mock'; // Added import for mock factory
+import { createMockTechStackAnalyzerService } from '../../__mocks__/tech-stack-analyzer.mock'; // Added
 import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
 
 describe('ProjectAnalyzer Directory Handling', () => {
@@ -20,10 +21,10 @@ describe('ProjectAnalyzer Directory Handling', () => {
   let mockFileOps: jest.Mocked<IFileOperations>;
   let mockLogger: jest.Mocked<ILogger>;
   let mockLLMAgent: jest.Mocked<LLMAgent>;
-  let mockResponseParser: jest.Mocked<ResponseParser>;
   let mockProgressIndicator: jest.Mocked<ProgressIndicator>;
   let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>;
   let mockAstAnalysisService: jest.Mocked<IAstAnalysisService>; // Added
+  let mockTechStackAnalyzerService: jest.Mocked<ITechStackAnalyzerService>; // Added
 
   beforeEach(() => {
     mockFileOps = createMockFileOperations(); // Use the factory
@@ -35,9 +36,17 @@ describe('ProjectAnalyzer Directory Handling', () => {
       getChatCompletion: jest.fn(),
     } as unknown as jest.Mocked<LLMAgent>;
 
-    mockResponseParser = {
-      parseJSON: jest.fn(),
-    } as unknown as jest.Mocked<ResponseParser>;
+    // mockResponseParser removed
+    mockTechStackAnalyzerService = createMockTechStackAnalyzerService(); // Added
+    mockTechStackAnalyzerService.analyze.mockResolvedValue({
+      // Default mock
+      languages: ['typescript'],
+      frameworks: ['jest'],
+      buildTools: ['npm'],
+      testingFrameworks: ['jest'],
+      linters: ['eslint'],
+      packageManager: 'npm',
+    });
 
     mockProgressIndicator = {
       start: jest.fn(),
@@ -72,12 +81,12 @@ describe('ProjectAnalyzer Directory Handling', () => {
       mockFileOps,
       mockLogger,
       mockLLMAgent,
-      mockResponseParser,
-      mockProgressIndicator,
+      mockProgressIndicator, // Corrected: 4th arg
       contentCollector,
       filePrioritizer,
       mockTreeSitterParserService,
-      mockAstAnalysisService // Added 9th argument
+      mockAstAnalysisService,
+      mockTechStackAnalyzerService // Added: 9th arg
     );
   });
 

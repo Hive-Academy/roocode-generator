@@ -8,6 +8,8 @@ import { ITreeSitterParserService } from '@core/analysis/interfaces';
 import { ILogger } from '../../../src/core/services/logger-service'; // Import ILogger type
 import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
 import { IAstAnalysisService } from '@core/analysis/ast-analysis.interfaces'; // Added
+import { ITechStackAnalyzerService } from '../../../src/core/analysis/tech-stack-analyzer'; // Added
+import { createMockTechStackAnalyzerService } from '../../__mocks__/tech-stack-analyzer.mock'; // Added
 
 describe('ProjectAnalyzer Prompt Tests', () => {
   let projectAnalyzer: ProjectAnalyzer;
@@ -27,12 +29,13 @@ describe('ProjectAnalyzer Prompt Tests', () => {
     countTokens: jest.fn().mockResolvedValue(100),
     getCompletion: jest.fn(),
   } as unknown as LLMAgent; // Cast to satisfy TS
-  const mockResponseParser = {} as any; // Pos 4
+  // const mockResponseParser = {} as any; // Pos 4 - Removed as unused
   const mockProgress = {} as any; // Pos 5
   const mockContentCollector = {} as any; // Pos 6
   const mockFilePrioritizer = {} as any; // Pos 7
   let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>; // Pos 8
   let mockAstAnalysisService: jest.Mocked<IAstAnalysisService>; // Pos 9 - Added
+  let mockTechStackAnalyzerService: jest.Mocked<ITechStackAnalyzerService>; // Added
 
   beforeEach(() => {
     // Reset mocks before each test
@@ -50,16 +53,26 @@ describe('ProjectAnalyzer Prompt Tests', () => {
         .fn()
         .mockResolvedValue(Result.ok({ functions: [], classes: [], imports: [] })), // Added
     } as jest.Mocked<IAstAnalysisService>; // Added
+    mockTechStackAnalyzerService = createMockTechStackAnalyzerService(); // Added
+    mockTechStackAnalyzerService.analyze.mockResolvedValue({
+      // Default mock
+      languages: ['typescript'],
+      frameworks: ['jest'],
+      buildTools: ['npm'],
+      testingFrameworks: ['jest'],
+      linters: ['eslint'],
+      packageManager: 'npm',
+    });
     projectAnalyzer = new ProjectAnalyzer(
-      mockFileOps,
-      mockLogger, // Pos 2
-      mockLlmAgent,
-      mockResponseParser,
-      mockProgress,
-      mockContentCollector,
-      mockFilePrioritizer,
-      mockTreeSitterParserService,
-      mockAstAnalysisService // Added 9th argument
+      mockFileOps, // 1
+      mockLogger, // 2
+      mockLlmAgent, // 3
+      mockProgress, // 4 (Corrected from mockResponseParser)
+      mockContentCollector, // 5 (Corrected from mockProgress)
+      mockFilePrioritizer, // 6 (Corrected from mockContentCollector)
+      mockTreeSitterParserService, // 7 (Corrected from mockFilePrioritizer)
+      mockAstAnalysisService, // 8 (Corrected from mockTreeSitterParserService)
+      mockTechStackAnalyzerService // 9 (Added)
     );
   });
 
@@ -231,12 +244,13 @@ describe('Integration: ProjectAnalyzer with JsonSchemaHelper', () => {
     countTokens: jest.fn().mockResolvedValue(100),
     getCompletion: jest.fn(),
   } as unknown as LLMAgent; // Cast to satisfy TS
-  const mockResponseParserInt = {} as any; // Pos 4
+  // const mockResponseParserInt = {} as any; // Pos 4 - Removed as unused
   const mockProgressInt = {} as any; // Pos 5
   const mockContentCollectorInt = {} as any; // Pos 6
   const mockFilePrioritizerInt = {} as any; // Pos 7
   let mockTreeSitterParserServiceInt: jest.Mocked<ITreeSitterParserService>; // Pos 8
   let mockAstAnalysisServiceInt: jest.Mocked<IAstAnalysisService>; // Pos 9 - Added
+  let mockTechStackAnalyzerServiceInt: jest.Mocked<ITechStackAnalyzerService>; // Added for integration test
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -253,16 +267,26 @@ describe('Integration: ProjectAnalyzer with JsonSchemaHelper', () => {
         .fn()
         .mockResolvedValue(Result.ok({ functions: [], classes: [], imports: [] })), // Added
     } as jest.Mocked<IAstAnalysisService>; // Added
+    mockTechStackAnalyzerServiceInt = createMockTechStackAnalyzerService(); // Added
+    mockTechStackAnalyzerServiceInt.analyze.mockResolvedValue({
+      // Default mock
+      languages: ['typescript'],
+      frameworks: ['jest'],
+      buildTools: ['npm'],
+      testingFrameworks: ['jest'],
+      linters: ['eslint'],
+      packageManager: 'npm',
+    });
     projectAnalyzer = new ProjectAnalyzer(
-      mockFileOpsInt,
-      mockLoggerIntegration, // Pos 2
-      mockLlmAgentInt,
-      mockResponseParserInt,
-      mockProgressInt,
-      mockContentCollectorInt,
-      mockFilePrioritizerInt,
-      mockTreeSitterParserServiceInt,
-      mockAstAnalysisServiceInt // Added 9th argument
+      mockFileOpsInt, // 1
+      mockLoggerIntegration, // 2
+      mockLlmAgentInt, // 3
+      mockProgressInt, // 4 (Corrected from mockResponseParserInt)
+      mockContentCollectorInt, // 5 (Corrected from mockProgressInt)
+      mockFilePrioritizerInt, // 6 (Corrected from mockContentCollectorInt)
+      mockTreeSitterParserServiceInt, // 7 (Corrected from mockFilePrioritizerInt)
+      mockAstAnalysisServiceInt, // 8 (Corrected from mockTreeSitterParserServiceInt)
+      mockTechStackAnalyzerServiceInt // 9 (Added)
     );
     jsonSchemaHelper = new JsonSchemaHelper();
   });
@@ -288,6 +312,7 @@ describe('Integration: ProjectAnalyzer with JsonSchemaHelper', () => {
         configFiles: ['package.json'],
         mainEntryPoints: ['src/index.ts'],
         componentStructure: { components: [prompt] },
+        directoryTree: [], // Added missing required property
         // Add required fields for validation
         // definedFunctions: {}, // Removed
         // definedClasses: {}, // Removed

@@ -27,6 +27,7 @@ import { IFileContentCollector, IFilePrioritizer, ITokenCounter } from '@core/an
 import { LLMTokenCounter } from '@core/analysis/token-counter';
 import { ITreeSitterParserService } from '@core/analysis/interfaces'; // Removed IAstAnalysisService from here
 import { IAstAnalysisService } from '@core/analysis/ast-analysis.interfaces'; // Added correct import
+import { ITechStackAnalyzerService } from '../../analysis/tech-stack-analyzer';
 import { TreeSitterParserService } from '@core/analysis/tree-sitter-parser.service';
 
 import { LLMAgent } from '@core/llm/llm-agent';
@@ -109,7 +110,7 @@ export function registerCoreModule(container: Container): void {
     const fileOps = resolveDependency<IFileOperations>(container, 'IFileOperations');
     const logger = resolveDependency<ILogger>(container, 'ILogger');
     const llmAgent = resolveDependency<LLMAgent>(container, 'LLMAgent');
-    const responseParser = resolveDependency<ResponseParser>(container, 'ResponseParser');
+    // const responseParser = resolveDependency<ResponseParser>(container, 'ResponseParser'); // No longer a direct dependency for ProjectAnalyzer
     const progressIndicator = resolveDependency<ProgressIndicator>(container, 'ProgressIndicator');
     const fileContentCollector = resolveDependency<IFileContentCollector>(
       container,
@@ -124,29 +125,34 @@ export function registerCoreModule(container: Container): void {
       container, // Added
       'IAstAnalysisService' // Added
     ); // Added
+    const techStackAnalyzerService = resolveDependency<ITechStackAnalyzerService>(
+      container,
+      'ITechStackAnalyzerService'
+    );
     // GrammarLoaderService is now an indirect dependency via TreeSitterParserService
 
     assertIsDefined(fileOps, 'IFileOperations dependency not found');
     assertIsDefined(logger, 'ILogger dependency not found');
     assertIsDefined(llmAgent, 'LLMAgent dependency not found');
-    assertIsDefined(responseParser, 'ResponseParser dependency not found');
+    // responseParser is no longer a direct dependency of ProjectAnalyzer
     assertIsDefined(progressIndicator, 'ProgressIndicator dependency not found');
     assertIsDefined(fileContentCollector, 'IFileContentCollector dependency not found');
     assertIsDefined(filePrioritizer, 'IFilePrioritizer dependency not found');
     assertIsDefined(treeSitterParserService, 'ITreeSitterParserService dependency not found');
     assertIsDefined(astAnalysisService, 'IAstAnalysisService dependency not found'); // Added
+    assertIsDefined(techStackAnalyzerService, 'ITechStackAnalyzerService dependency not found');
     // No need to assert GrammarLoaderService here as it's injected into TreeSitterParserService
 
     return new ProjectAnalyzer(
-      fileOps,
-      logger,
-      llmAgent,
-      responseParser,
-      progressIndicator,
-      fileContentCollector,
-      filePrioritizer,
-      treeSitterParserService, // Pass the resolved dependency
-      astAnalysisService // Added the 9th argument
+      fileOps, // 1
+      logger, // 2
+      llmAgent, // 3
+      progressIndicator, // 4
+      fileContentCollector, // 5
+      filePrioritizer, // 6
+      treeSitterParserService, // 7
+      astAnalysisService, // 8
+      techStackAnalyzerService // 9
     );
   });
 
