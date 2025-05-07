@@ -16,3 +16,4 @@ coverage/
 /.vscode/mcp.json
 /.eslintcache
 /test-output
+/.cache

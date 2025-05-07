@@ -142,31 +142,66 @@ _Original AC1-AC4 for `GoogleGenAIProvider` are considered met by its existing `
 
 ### Subtask 5: Final E2E Testing, `ProjectContext` Logging & Verification
 
-- **Status:** In Progress
-- **Description:** Conduct comprehensive manual E2E testing for all changes, focusing on the new structured output from all providers and overall system stability.
-- **Files to Modify:** None, unless minor fixes arise from testing. (Logging part in `src/core/analysis/project-analyzer.ts` should be confirmed complete).
-- **Implementation Details:**
-  - **Confirm `ProjectContext` Logging:** Ensure `ProjectAnalyzer.analyzeProject` serializes the final `ProjectContext` to `project-context-output.json` as previously implemented.
-  - **E2E Test Execution:**
-    - Run `ProjectAnalyzer.analyzeProject` (e.g., via `npm start -- generate -- -g memory-bank`) on the `roocode-generator` project, configuring it to use different LLM providers (Google, Anthropic, OpenAI, OpenRouter with a compatible model) for `codeInsights` if possible, or test each provider path through more targeted means if direct switching in `analyzeProject` is complex.
-    - Inspect the generated `project-context-output.json` file(s) and application logs.
-    - Verify:
-      - Correct, schema-compliant `codeInsights` from each provider (AC5).
-      - Successful parsing of `tsconfig.json` with comments (AC6).
-      - Correct file/directory exclusions (AC7).
-      - No regressions in core analysis features (AC8).
-      - Stability and correct error handling for all providers (AC1-AC4).
-      - Adherence to code quality standards (AC10).
-- **Testing Requirements:** Document manual test cases, provider configurations used, observations, and paths to `ProjectContext` files.
-- **Related Acceptance Criteria:** AC1-AC8, AC10. (AC9 covered by E2E).
-- **Estimated effort:** 3 - 4 hours (extensive E2E testing across providers)
+- **Status:** Completed
+- **Description:** Conducted E2E testing for `ProjectContext` generation, focusing on Google GenAI provider for `codeInsights`, and verified related ACs. Resolved build-blocking type inconsistencies across LLM components.
+- **Files to Modify:**
+  - `src/core/llm/interfaces.ts` (Updated signatures, error types)
+  - `src/core/llm/providers/google-genai-provider.ts` (Updated signatures, error types)
+  - `src/core/llm/providers/anthropic-provider.ts` (Updated signatures, error types)
+  - `src/core/llm/providers/openai-provider.ts` (Updated signatures, error types)
+  - `src/core/llm/providers/open-router-provider.ts` (Updated signatures, error types)
+  - `src/core/llm/llm-agent.ts` (Updated signatures, error types, internal logic)
+  - `src/core/llm/provider-registry.ts` (Updated signatures, error types)
+  - `src/core/llm/model-lister.service.ts` (Updated signatures, error types)
+  - `src/core/analysis/ast-analysis.interfaces.ts` (Updated error types)
+  - `src/core/analysis/ast-analysis.service.ts` (Updated signatures, error types, prompt construction)
+  - `src/core/di/modules/llm-module.ts` (Updated factory error returns, fixed logger scope)
+  - `tests/__mocks__/llm-agent.mock.ts` (Updated signatures, added missing mocks)
+  - `tests/__mocks__/ast-analysis.service.mock.ts` (Updated signatures)
+  - `tests/__mocks__/project-analyzer.mock.ts` (Updated signatures)
+  - `tests/core/analysis/ast-analysis.service.test.ts` (Updated mocks and assertions)
+  - `tests/core/llm/provider-registry.test.ts` (Updated mock factories and assertions)
+- **Implementation Summary:**
+  - Confirmed `ProjectContext` logging in `ProjectAnalyzer.ts` and `ProjectAnalyzerHelpers.ts` was correctly implemented (pretty-printed to `.cache/project-context-output.json`, path logged).
+  - **Type System Refactoring:** Undertook extensive refactoring to resolve build-blocking TypeScript errors. This involved:
+    - Standardizing `getStructuredCompletion` method signature across `ILLMProvider`, `ILLMAgent`, and all concrete provider implementations to use `(prompt: BaseLanguageModelInput, schema: T, completionConfig?: LLMCompletionConfig)` and return `Promise<Result<z.infer<T>, LLMProviderError>>`.
+    - Standardizing `getCompletion` method signature across `ILLMProvider`, `ILLMAgent`, and all concrete provider implementations to return `Promise<Result<string, LLMProviderError>>`.
+    - Updating `LLMProviderFactory` type in `interfaces.ts` to return `Result<ILLMProvider, LLMProviderError>`.
+    - Updating `IModelListerService` and its implementation `ModelListerService` for `listModelsForProvider` to return `Promise<Result<string[], LLMProviderError>>`.
+    - Updating `IAstAnalysisService` and its implementation `AstAnalysisService` for `analyzeAst` to return `Promise<Result<CodeInsights, LLMProviderError>>` and to correctly call the updated `llmAgent.getStructuredCompletion`.
+    - Correcting provider factories in `llm-module.ts` to align with updated `LLMProviderFactory` type and simplified constructor signatures for `OpenAIProvider` and `OpenRouterProvider`. Fixed logger scoping issues.
+    - Updating all relevant mock implementations (`llm-agent.mock.ts`, `ast-analysis.service.mock.ts`, `project-analyzer.mock.ts`, and mocks within `provider-registry.test.ts`) to match new interface signatures and error types.
+    - Correcting test assertions in `ast-analysis.service.test.ts` and `provider-registry.test.ts` to expect `LLMProviderError` and handle changes in error propagation.
+  - **E2E Test Execution & Verification (Scoped by Architect):**
+    - Delegated E2E testing to Junior Tester.
+    - Junior Tester ran `ProjectAnalyzer.analyzeProject` (via `npm start -- generate -- -g memory-bank`) on the `roocode-generator` project itself.
+    - Testing for `codeInsights` was performed using the **Google GenAI provider**.
+    - The generated `.cache/project-context-output.json` and application logs were inspected.
+    - **All specified Acceptance Criteria (AC1-AC8, AC10) were reported as PASSING for the Google GenAI provider path.** This includes:
+      - AC5: `codeInsights` present, structured, and schema-compliant (for Google GenAI).
+      - AC6: `tsconfig.json` (with comments) correctly parsed and represented.
+      - AC7: File/directory exclusions (`SKIP_DIRECTORIES`, hidden dirs) correctly applied in `directoryTree` and for `codeInsights`.
+      - AC8: No regressions in other core analysis parts of `ProjectContext`.
+      - AC1-AC4: Google GenAI provider stable and `getStructuredCompletion` successful.
+      - AC10: Code quality of recent logging changes maintained.
+    - Per Architect's direction, E2E testing for Anthropic, OpenAI, and OpenRouter providers for `codeInsights` was deferred for this task.
+- **Deviations:**
+  - The full E2E testing across all four LLM providers for `codeInsights` was not completed in this subtask due to Architect's decision to scope down after successful Google GenAI verification and extensive type-fixing efforts. Only Google GenAI was E2E tested for `codeInsights` verification against `project-context-output.json`.
+- **Junior Tester Observations (for future consideration):**
+  - Potential data duplication in `project-context-output.json`:
+    - Dependencies object (`ProjectContext.dependencies`) vs. nested dependencies in `ProjectContext.packageJson`.
+    - `ProjectContext.structure.directoryTree` potentially redundant with info in `codeInsights` and `internalDependencies`.
+    - Suggestion to create a new task to trim/optimize `projectContext` output.
+- **Related Acceptance Criteria:** AC1-AC8, AC10 verified for Google GenAI path. AC9 (Comprehensive E2E) partially met as per Architect's revised scope for this subtask.
+- **Estimated effort:** 3 - 4 hours (Actual effort significantly higher due to extensive type error resolution across multiple files).
 - **Required Delegation Components:**
   - Junior Tester:
-    - Component: Execute `ProjectAnalyzer` with various provider configurations.
-    - Component: Retrieve and meticulously verify `project-context-output.json` against ACs for each provider path.
-    - Component: Document all findings, provider configurations, and AC verification status.
+    - Component: Build verification.
+    - Component: Execute `ProjectAnalyzer` with Google GenAI provider configuration.
+    - Component: Retrieve and meticulously verify `project-context-output.json` against ACs for the Google GenAI path.
+    - Component: Document findings, configuration, and AC verification status.
 - **Delegation Success Criteria**:
-  - Junior Tester provides a comprehensive report detailing E2E test execution for all relevant provider paths, `ProjectContext` file analysis, and verification of all ACs.
+  - Junior Tester confirmed build success and provided a report on E2E test execution for Google GenAI, verifying ACs for that path.
 
 ## 5. Testing Strategy (Revised)
 
