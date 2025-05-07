@@ -1154,14 +1154,15 @@ After creating the implementation plan, delegate the FIRST subtask:
 <mode>senior-developer</mode>
 <message>
 
-Implement subtask [number]: [specific subtask name] from the implementation plan. This subtask has been defined to strictly adhere to project architecture and best practices.
+## Implement subtask [number]: [specific subtask name] from the implementation plan.
+### This subtask has been defined to strictly adhere to project architecture and best practices.
 
-Implementation plan: task-tracking/[taskID]-[taskName]/implementation-plan.md
+- Implementation plan: task-tracking/[taskID]-[taskName]/implementation-plan.md
 
-This is task [X] of [Y] in the implementation sequence.
+## IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+## IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
 
-IMPORTANT: Follow the workflow exactly as defined in your system prompt. Adherence to project architecture and best practices is CRITICAL.
-IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
+### This is task [X] of [Y] in the implementation sequence.
 
 Specific task details:
 - Before implementing, thoroughly scan the code related to this subtask to understand existing patterns, architecture, and best practices. Your implementation MUST strictly follow these.
@@ -1200,9 +1201,14 @@ After reviewing each completed subtask, delegate the NEXT subtask:
 <new_task>
 <mode>senior-developer</mode>
 <message>
-Good work on completing subtask [number]. Now please implement subtask [number+1]: [specific subtask name] from the implementation plan. This subtask has been defined to strictly adhere to project architecture and best practices.
 
-Implementation plan: task-tracking/[taskID]-[taskName]/implementation-plan.md
+>> Good work on completing subtask [number]. Now please implement subtask [number+1]: [specific subtask name] from the implementation plan. This subtask has been defined to strictly adhere to project architecture and best practices.
+
+- Implementation plan: task-tracking/[taskID]-[taskName]/implementation-plan.md
+
+
+## IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+## IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
 
 This is task [X+1] of [Y] in the implementation sequence.
 
@@ -1251,9 +1257,13 @@ When rejecting incomplete or unsatisfactory work:
 <new_task>
 <mode>senior-developer</mode>
 <message>
+
 # REDELEGATION: Subtask [number] - [name]
 
-I've reviewed your implementation of subtask [number], but it does not fully satisfy the requirements. This is redelegation attempt #[X].
+>> I've reviewed your implementation of subtask [number], but it does not fully satisfy the requirements. This is redelegation attempt #[X].
+
+## IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+## IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
 
 ## Unmet Acceptance Criteria
 - [Criterion X]: [Explanation of why it's not satisfied]
@@ -1307,12 +1317,12 @@ ONLY when ALL subtasks are complete:
 <mode>code-review</mode>
 <message>
 
-Review the complete implementation of [feature name].
+# Review the complete implementation of [feature name].
 
-IMPORTANT: Follow the workflow exactly as defined in your system prompt.
-IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
+## IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+## IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
 
-All [Y] subtasks have been implemented incrementally and verified.
+- All [Y] subtasks have been implemented incrementally and verified.
 
 Implementation plan: task-tracking/[taskID]-[taskName]/implementation-plan.md
 Task description: task-tracking/[taskID]-[taskName]/task-description.md
@@ -1354,9 +1364,13 @@ When Code Review returns "NEEDS CHANGES":
 <new_task>
 <mode>senior-developer</mode>
 <message>
+
 # Post-Review Revision Required: [Feature Name]
 
-Code Review has reviewed the implementation and identified issues that need to be addressed before approval.
+## IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+## IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
+
+### Code Review has reviewed the implementation and identified issues that need to be addressed before approval.
 
 ## Review Status
 Status: NEEDS CHANGES

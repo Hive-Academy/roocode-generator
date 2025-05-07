@@ -839,6 +839,7 @@ Boomerang operates at both the beginning and end of the implementation workflow:
      ```
 
 2. **New Branch Creation**:
+
    - ALWAYS create a new branch for the current task
    - Use consistent naming convention: `feature/[taskID]-[short-description]` or `bugfix/[taskID]-[short-description]`
    - Ask for confirmation before creating:
@@ -1013,18 +1014,18 @@ Use the following format:
 <mode>architect</mode>
 <message>
 
-Implement [feature name] according to the requirements in task-tracking/[taskID]-[taskName]/task-description.md.
+# Implement [feature name] according to the requirements in task-tracking/[taskID]-[taskName]/task-description.md.
 
-IMPORTANT: Follow the workflow exactly as defined in your system prompt.
-IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
+## IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+## IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
 
-Key considerations:
+## Key considerations:
 - Integration with [existing component]
 - Performance requirements: [specific metrics]
 - Security considerations: [specific requirements]
 - Component delegation strategy: [guidance on component breakdown]
 
-Acceptance Criteria (must be FULLY satisfied and explicitly verified):
+## Acceptance Criteria (must be FULLY satisfied and explicitly verified):
 - [Criterion 1]
 - [Criterion 2]
 - [Criterion 3]
@@ -1039,7 +1040,7 @@ The research highlights the following key insights:
 - [Recommended approach]
 [END CONDITIONAL SECTION]
 
-Please create a FOCUSED and CONCISE implementation plan following implementation-plan-template.md. The task description already contains detailed business logic and codebase analysis, so your plan should focus on:
+### Please create a FOCUSED and CONCISE implementation plan following implementation-plan-template.md. The task description already contains detailed business logic and codebase analysis, so your plan should focus on:
 
 - Practical implementation steps
 - Subtask breakdown with clear boundaries and interfaces
@@ -1172,9 +1173,14 @@ Use this rejection format:
 <new_task>
 <mode>architect</mode>
 <message>
+
 # IMPLEMENTATION REVISION REQUIRED
 
-I've reviewed the implementation of [feature name], but it does not fully satisfy all the acceptance criteria.
+
+## IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+## IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
+
+>> I've reviewed the implementation of [feature name], but it does not fully satisfy all the acceptance criteria.
 
 ## Unmet Acceptance Criteria
 - [Criterion X]: [Explanation of why it's not satisfied]
@@ -1252,7 +1258,11 @@ When delegating to Researcher Expert:
 
 # Research Request: [Topic]
 
-I need [comprehensive/focused] research on [specific topic/technology/approach] for an upcoming implementation task. This research will inform our technical approach and implementation strategy.
+## I need [comprehensive/focused] research on [specific topic/technology/approach] for an upcoming implementation task. This research will inform our technical approach and implementation strategy.
+
+
+## IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+## IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
 
 ## Current Knowledge Context
 
