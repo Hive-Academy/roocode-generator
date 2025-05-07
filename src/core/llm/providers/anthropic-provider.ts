@@ -6,6 +6,7 @@ import type { ILogger } from '@core/services/logger-service';
 import { LLMConfig } from 'types/shared';
 import { ChatAnthropic } from '@langchain/anthropic';
 import { z } from 'zod';
+import { retryWithBackoff } from '@core/utils/retry-utils';
 
 type AnthropicTokenCountResponse = {
   total_tokens: number;
@@ -25,6 +26,9 @@ export class AnthropicProvider extends BaseLLMProvider {
     const model = this.clientFactory();
     model.temperature = this.config.temperature;
     model.modelName = this.config.model;
+    if (typeof this.config.maxTokens === 'number') {
+      model.maxTokens = this.config.maxTokens; // Corrected based on research
+    }
     this.model = model;
   }
 
@@ -78,24 +82,85 @@ export class AnthropicProvider extends BaseLLMProvider {
   }
 
   async getStructuredCompletion<T extends z.ZodTypeAny>(
-    _systemPrompt: string,
-    _userPrompt: string,
-    _schema: T
+    systemPrompt: string,
+    userPrompt: string,
+    schema: T
   ): Promise<Result<z.infer<T>, Error>> {
-    this.logger.warn(
-      `getStructuredCompletion is not yet fully implemented for ${this.name}. Attempting fallback or throwing error.`
-    );
-    // For now, throw a NotImplementedError.
-    // Alternatively, one could try to use this.getCompletion and then parse/validate,
-    // but that bypasses the benefits of withStructuredOutput.
-    return Promise.resolve(
-      Result.err(
-        new LLMProviderError(
-          `getStructuredCompletion not implemented for ${this.name}`,
-          'NOT_IMPLEMENTED',
+    const validationResult = await this._validateInputTokens(systemPrompt, userPrompt);
+    if (validationResult.isErr()) {
+      return Result.err(validationResult.error!);
+    }
+
+    const combinedPromptContent = `${systemPrompt}\n\nUser Input: ${userPrompt}`;
+    const callResult = await this._performStructuredCallWithRetry(combinedPromptContent, schema);
+    if (callResult.isErr()) {
+      return Result.err(callResult.error!);
+    }
+    return Result.ok(callResult.value);
+  }
+  private async _validateInputTokens(
+    systemPrompt: string,
+    userPrompt: string
+  ): Promise<Result<void, LLMProviderError>> {
+    try {
+      const inputText = `${systemPrompt}\n\nUser Input: ${userPrompt}`;
+      const currentInputTokens = await this.countTokens(inputText);
+      const limit = this.defaultContextSize;
+      this.logger.debug(
+        `Anthropic Structured Input tokens: ${currentInputTokens}, Limit: ${limit}`
+      );
+
+      if (currentInputTokens > limit) {
+        const errorMsg = `Input (${currentInputTokens} tokens) for Anthropic structured completion exceeds model token limit (${limit}).`;
+        this.logger.warn(`${errorMsg} Skipping API call.`);
+        return Result.err(new LLMProviderError(errorMsg, 'INPUT_VALIDATION_ERROR', this.name));
+      }
+      return Result.ok(undefined); // Indicate success
+    } catch (validationError) {
+      this.logger.error(
+        'Error during pre-call validation in Anthropic getStructuredCompletion',
+        validationError instanceof Error ? validationError : new Error(String(validationError))
+      );
+      return Result.err(
+        LLMProviderError.fromError(
+          validationError instanceof Error ? validationError : new Error(String(validationError)),
           this.name
         )
-      )
-    );
+      );
+    }
+  }
+
+  private async _performStructuredCallWithRetry<T extends z.ZodTypeAny>(
+    combinedPromptContent: string,
+    schema: T
+  ): Promise<Result<z.infer<T>, LLMProviderError>> {
+    try {
+      this.logger.debug(
+        `Sending structured completion request to Anthropic (model: ${this.config.model}) with schema and retry`
+      );
+
+      const structuredModel = this.model.withStructuredOutput(schema, {
+        name: schema.description || 'extract_anthropic_data',
+      });
+
+      const RETRY_OPTIONS = {
+        retries: 3,
+        initialDelay: 500, // ms
+        shouldRetry: (error: any): boolean => {
+          const status = error?.status ?? error?.response?.status;
+          return status === 429 || status === 500 || status === 503;
+        },
+      };
+
+      const response = await retryWithBackoff(async () => {
+        return structuredModel.invoke(combinedPromptContent);
+      }, RETRY_OPTIONS);
+
+      return Result.ok(response);
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error('Failed to get structured completion from Anthropic after retries', err);
+      return Result.err(LLMProviderError.fromError(err, this.name));
+    }
   }
 }
