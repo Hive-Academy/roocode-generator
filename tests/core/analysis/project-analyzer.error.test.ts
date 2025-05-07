@@ -135,7 +135,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
           'RATE_LIMIT_EXCEEDED',
           'LLM_ERROR',
           {}
-        ) as Error;
+        );
         // Need preceding steps to succeed
         mockFileOps.readDir.mockResolvedValue(
           Result.ok<Dirent[]>([
@@ -156,7 +156,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
           Result.ok({ countTokens: jest.fn().mockResolvedValue(10) } as any)
         );
         // Mock the failing LLM call
-        mockLlmAgent.getCompletion.mockResolvedValueOnce(Result.err<Error>(error));
+        mockLlmAgent.getCompletion.mockResolvedValueOnce(Result.err<LLMProviderError>(error));
 
         const result = await projectAnalyzer.analyzeProject(['/valid/path']);
         expect(result.isErr()).toBe(true);
@@ -171,7 +171,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
           'Invalid JSON response',
           'INVALID_RESPONSE_FORMAT',
           'LLM_ERROR'
-        ) as Error;
+        );
         // Need preceding steps to succeed
         mockFileOps.readDir.mockResolvedValue(
           Result.ok<Dirent[]>([
@@ -192,7 +192,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
           Result.ok({ countTokens: jest.fn().mockResolvedValue(10) } as any)
         );
         // Mock the failing LLM call (will retry)
-        mockLlmAgent.getCompletion.mockResolvedValue(Result.err<Error>(error));
+        mockLlmAgent.getCompletion.mockResolvedValue(Result.err<LLMProviderError>(error));
 
         const result = await projectAnalyzer.analyzeProject(['/valid/path']);
         expect(result.isErr()).toBe(true);
@@ -425,7 +425,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
           'INITIALIZATION_FAILED',
           'LLM_ERROR',
           {}
-        ) as Error;
+        );
         // Need preceding steps to succeed up to getProvider call
         mockFileOps.readDir.mockResolvedValue(
           Result.ok<Dirent[]>([
@@ -435,7 +435,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
         mockFileOps.isDirectory.mockResolvedValue(Result.ok(false));
         mockLlmAgent.getModelContextWindow.mockResolvedValue(8000);
         // Mock getProvider failing (used by getPromptOverheadTokens)
-        mockLlmAgent.getProvider.mockResolvedValueOnce(Result.err<Error>(error));
+        mockLlmAgent.getProvider.mockResolvedValueOnce(Result.err<LLMProviderError>(error));
 
         const result = await projectAnalyzer.analyzeProject(['/valid/path']);
         expect(result.isErr()).toBe(true);
@@ -527,7 +527,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
           'Rate limit exceeded',
           'RATE_LIMIT_EXCEEDED',
           'LLM_ERROR'
-        ) as Error;
+        );
         // Need preceding steps to succeed
         mockFileOps.readDir.mockResolvedValue(
           Result.ok<Dirent[]>([
@@ -535,7 +535,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
           ])
         );
         // ... other mocks ...
-        mockLlmAgent.getCompletion.mockResolvedValue(Result.err<Error>(error)); // Mock LLM call failing with rate limit
+        mockLlmAgent.getCompletion.mockResolvedValue(Result.err<LLMProviderError>(error)); // Mock LLM call failing with rate limit
 
         const result = await projectAnalyzer.analyzeProject(['/valid/path']);
         expect(result.isErr()).toBe(true);
@@ -546,11 +546,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
       });
 
       it('should handle LLM authentication errors', async () => {
-        const error = new LLMProviderError(
-          'Invalid API key',
-          'AUTHENTICATION_ERROR',
-          'LLM_ERROR'
-        ) as Error;
+        const error = new LLMProviderError('Invalid API key', 'AUTHENTICATION_ERROR', 'LLM_ERROR');
         // Need preceding steps to succeed
         mockFileOps.readDir.mockResolvedValue(
           Result.ok<Dirent[]>([
@@ -558,7 +554,7 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
           ])
         );
         // ... other mocks ...
-        mockLlmAgent.getCompletion.mockResolvedValue(Result.err<Error>(error)); // Mock LLM call failing with auth error
+        mockLlmAgent.getCompletion.mockResolvedValue(Result.err<LLMProviderError>(error)); // Mock LLM call failing with auth error
 
         const result = await projectAnalyzer.analyzeProject(['/valid/path']);
         expect(result.isErr()).toBe(true);

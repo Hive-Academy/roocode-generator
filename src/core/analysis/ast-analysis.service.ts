@@ -9,10 +9,12 @@ import {
 } from './ast-analysis.interfaces';
 import { GenericAstNode } from './types'; // Ensure this path is correct
 import { Result } from '../result/result';
-import { ILLMAgent } from '../llm/interfaces';
+import { ILLMAgent, LLMCompletionConfig } from '../llm/interfaces'; // Added LLMCompletionConfig
 import { ILogger } from '../services/logger-service';
 import { Injectable, Inject } from '../di/decorators';
 import { RooCodeError } from '../errors';
+import { LLMProviderError } from '../llm/llm-provider-errors'; // Added
+import type { BaseLanguageModelInput } from '@langchain/core/language_models/base'; // Added
 /**
  * Zod schema for validating FunctionInfo objects.
  * Ensures the object has a 'name' (string) and 'parameters' (array of strings).
@@ -85,62 +87,52 @@ export class AstAnalysisService implements IAstAnalysisService {
   async analyzeAst(
     astData: GenericAstNode,
     filePath: string
-  ): Promise<Result<CodeInsights, Error>> {
+  ): Promise<Result<CodeInsights, LLMProviderError>> {
+    // Changed Error to LLMProviderError
     this.logger.debug(`Analyzing AST for file: ${filePath}`);
 
     try {
       // Step 1: Condense the AST
       const condensedAst = this._condenseAst(astData);
-      const condensedAstJson = JSON.stringify(condensedAst, null, 2); // Pretty print for prompt clarity
-
-      // Optional: Log the condensed AST for debugging
-      // this.logger.debug(`Condensed AST for ${filePath}:\n${condensedAstJson}`);
+      const condensedAstJson = JSON.stringify(condensedAst, null, 2);
 
       // Step 2: Build the prompt using the condensed AST JSON
-      const systemPrompt = this.buildPrompt(condensedAstJson);
-      const userPrompt = ''; // User prompt remains empty as data is in system prompt
-
-      // Optional: Add token counting check here if needed later
-      // const tokenCount = await this.llmAgent.countTokens(systemPrompt + userPrompt);
-      // if (tokenCount > MAX_TOKENS) return Result.err(...)
+      // For getStructuredCompletion, the prompt is BaseLanguageModelInput.
+      // We'll pass the system prompt as a string, which is a valid BaseLanguageModelInput.
+      const llmPrompt: BaseLanguageModelInput = this.buildPrompt(condensedAstJson);
+      // No separate userPrompt needed as it's incorporated in buildPrompt or not used by getStructuredCompletion in this way.
 
       // Step 3: Call the LLM using structured output
       this.logger.debug(`Requesting structured completion for ${filePath}`);
+      // Assuming no specific completionConfig is needed here, pass undefined or an empty object.
+      const completionConfig: LLMCompletionConfig | undefined = undefined;
       const structuredResult = await this.llmAgent.getStructuredCompletion(
-        systemPrompt,
-        userPrompt,
-        codeInsightsSchema // Pass the Zod schema directly
+        llmPrompt, // Pass the combined prompt
+        codeInsightsSchema, // Pass the Zod schema directly
+        completionConfig
       );
 
       if (structuredResult.isErr()) {
-        const error =
-          structuredResult.error ??
-          new Error(`Unknown error from structured LLM call for ${filePath}`);
-        // The error from getStructuredCompletion should ideally be an LLMProviderError or similar.
-        // It might include details about parsing or validation if withStructuredOutput failed internally.
+        // structuredResult.error is LLMProviderError
         this.logger.error(
-          `Structured LLM call failed for ${filePath}: ${error.message}`,
-          error // Log the original error object (now guaranteed to be an Error)
+          `Structured LLM call failed for ${filePath}: ${structuredResult.error!.message}`, // Added !
+          structuredResult.error // Log the original error object
         );
-        // Error is already an Error instance due to the nullish coalescing operator
-        return Result.err(error);
+        return Result.err<LLMProviderError>(structuredResult.error!); // Return LLMProviderError
       }
 
       // If structuredResult.isOk(), the value is already parsed and validated CodeInsights.
       const insights = structuredResult.value;
       if (!insights) {
-        // Handles null or undefined, though undefined was the specific concern
         this.logger.error(
           `Structured LLM call for ${filePath} succeeded but returned a null or undefined value.`
         );
-        return Result.err(
-          new RooCodeError(
-            `Structured LLM call succeeded but returned null or undefined for ${filePath}`,
-            'UNEXPECTED_ANALYSIS_ERROR'
-          )
+        const err = new RooCodeError(
+          `Structured LLM call succeeded but returned null or undefined for ${filePath}`,
+          'UNEXPECTED_ANALYSIS_ERROR'
         );
+        return Result.err(LLMProviderError.fromError(err, 'AstAnalysisService'));
       }
-      // If we reach here, insights is guaranteed to be CodeInsights
       this.logger.debug(
         `Successfully received and validated structured AST insights for ${filePath}`
       );
@@ -148,14 +140,13 @@ export class AstAnalysisService implements IAstAnalysisService {
     } catch (error) {
       const errorMessage = `Unexpected error during AST analysis for ${filePath}: ${error instanceof Error ? error.message : String(error)}`;
       this.logger.error(errorMessage, error instanceof Error ? error : undefined);
-      return Result.err(
-        new RooCodeError(
-          errorMessage,
-          'UNEXPECTED_ANALYSIS_ERROR',
-          undefined,
-          error instanceof Error ? error : new Error(String(error))
-        )
+      const rooError = new RooCodeError(
+        errorMessage,
+        'UNEXPECTED_ANALYSIS_ERROR',
+        undefined,
+        error instanceof Error ? error : new Error(String(error))
       );
+      return Result.err(LLMProviderError.fromError(rooError, 'AstAnalysisService'));
     }
   }
 

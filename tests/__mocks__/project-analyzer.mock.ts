@@ -2,6 +2,7 @@ import { jest } from '@jest/globals';
 // ProjectAnalyzer import removed
 import { IProjectAnalyzer, ProjectContext } from '../../src/core/analysis/types';
 import { Result } from '../../src/core/result/result';
+import { LLMProviderError } from '../../src/core/llm/llm-provider-errors'; // Added import
 import { createMockFileOperations } from './file-operations.mock';
 import { createMockLogger } from './logger.mock';
 import { createMockLLMAgent } from './llm-agent.mock';
@@ -70,7 +71,7 @@ export const createMockProjectAnalyzer = (): MockProjectAnalyzer => {
 
   const analyzerMock = {
     analyzeProject: jest
-      .fn<() => Promise<Result<ProjectContext, Error>>>()
+      .fn<() => Promise<Result<ProjectContext, LLMProviderError>>>() // Changed Error to LLMProviderError
       .mockResolvedValue(Result.ok(defaultMockProjectContextData)), // Use the detailed default mock
   } as unknown as jest.Mocked<IProjectAnalyzer>;
 

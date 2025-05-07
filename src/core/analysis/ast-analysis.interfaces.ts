@@ -1,4 +1,5 @@
 // src/core/analysis/ast-analysis.interfaces.ts
+import { LLMProviderError } from '@core/llm/llm-provider-errors';
 import { Result } from '../result/result';
 import { GenericAstNode } from './types';
 
@@ -76,7 +77,10 @@ export interface IAstAnalysisService {
    * @param astData The generic AST node representing the root of the file's structure.
    * @param filePath The relative path of the file being analyzed.
    * @returns A Promise resolving to a Result containing the extracted CodeInsights on success,
-   *          or an Error on failure.
+   *          or an LLMProviderError on failure (or a wrapped error).
    */
-  analyzeAst(astData: GenericAstNode, filePath: string): Promise<Result<CodeInsights, Error>>;
+  analyzeAst(
+    astData: GenericAstNode,
+    filePath: string
+  ): Promise<Result<CodeInsights, LLMProviderError>>;
 }

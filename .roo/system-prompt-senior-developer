@@ -973,9 +973,7 @@ When you receive a task from Architect:
      ```
      feat(subtask-#): implement [specific subtask name]
 
-     - Detail the specific implementation added, emphasizing adherence to architecture/patterns.
-     - List files modified.
-     - Note any delegated components included in this commit.
+     - detail the specific implementation added, emphasizing adherence to architecture/patterns.
      ```
 
    - Commit message should not exceed 90 characters in length

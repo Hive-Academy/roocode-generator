@@ -1,9 +1,12 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 // tests/core/analysis/ast-analysis.service.test.ts
 import { AstAnalysisService } from '../../../src/core/analysis/ast-analysis.service';
-import { ILLMAgent } from '../../../src/core/llm/interfaces';
+import { ILLMAgent, LLMCompletionConfig } from '../../../src/core/llm/interfaces';
 import { ILogger } from '../../../src/core/services/logger-service';
 import { Result } from '../../../src/core/result/result';
+import { LLMProviderError } from '../../../src/core/llm/llm-provider-errors';
+import type { BaseLanguageModelInput } from '@langchain/core/language_models/base';
+import { z } from 'zod';
 import { GenericAstNode } from '../../../src/core/analysis/types';
 import { CodeInsights } from '../../../src/core/analysis/ast-analysis.interfaces';
 import { RooCodeError } from '../../../src/core/errors';
@@ -17,7 +20,15 @@ describe('AstAnalysisService', () => {
     beforeEach(() => {
       mockLLMAgent = {
         analyzeProject: jest.fn(),
-        getCompletion: jest.fn(),
+        getCompletion: jest.fn<Promise<Result<string, LLMProviderError>>, [string, string]>(),
+        getStructuredCompletion: jest.fn().mockImplementation(
+          <T extends z.ZodTypeAny>(
+            _prompt: BaseLanguageModelInput,
+            _schema: T,
+            _completionConfig?: LLMCompletionConfig
+          ): Promise<Result<z.infer<T>, LLMProviderError>> =>
+            Promise.resolve(Result.ok({} as z.infer<T>)) // Default mock
+        ),
         getModelContextWindow: jest.fn().mockResolvedValue(1000),
         countTokens: jest.fn().mockResolvedValue(10),
         getProvider: jest.fn(),
@@ -320,7 +331,28 @@ describe('analyzeAst method', () => {
   beforeEach(() => {
     mockLLMAgent = {
       analyzeProject: jest.fn(),
-      getCompletion: jest.fn(),
+      getCompletion: jest.fn<Promise<Result<string, LLMProviderError>>, [string, string]>(),
+      getStructuredCompletion: jest
+        .fn()
+        .mockImplementation(
+          <T extends z.ZodTypeAny>(
+            _prompt: BaseLanguageModelInput,
+            schema: T,
+            _completionConfig?: LLMCompletionConfig
+          ): Promise<Result<z.infer<T>, LLMProviderError>> => {
+            if (schema.description === 'CodeInsightsSchema') {
+              return Promise.resolve(
+                Result.ok({
+                  // Corrected mock CodeInsights
+                  imports: [],
+                  functions: [],
+                  classes: [],
+                } as z.infer<T>)
+              );
+            }
+            return Promise.resolve(Result.ok({} as z.infer<T>));
+          }
+        ),
       getModelContextWindow: jest.fn().mockResolvedValue(1000),
       countTokens: jest.fn().mockResolvedValue(10),
       getProvider: jest.fn(),
@@ -337,7 +369,6 @@ describe('analyzeAst method', () => {
 
     service = new AstAnalysisService(mockLLMAgent, mockLogger);
 
-    // Spy on the private method and control its return value
     condenseAstSpy = jest
       .spyOn(AstAnalysisService.prototype as any, '_condenseAst')
       .mockReturnValue(mockCondensedAst);
@@ -348,200 +379,158 @@ describe('analyzeAst method', () => {
   });
 
   it('should call _condenseAst with the provided astData', async () => {
-    // Arrange: Mock LLM to return success to allow the flow to reach completion call
     const mockLLMResponse: CodeInsights = {
+      // Corrected mock CodeInsights
       imports: [{ source: 'fs' }],
       functions: [{ name: 'readFile', parameters: ['path'] }],
       classes: [{ name: 'MyClass' }],
     };
-    mockLLMAgent.getCompletion.mockResolvedValue(Result.ok(JSON.stringify(mockLLMResponse)));
+    mockLLMAgent.getStructuredCompletion.mockResolvedValue(Result.ok(mockLLMResponse));
 
-    // Act
     await service.analyzeAst(mockAstData, mockFilePath);
 
-    // Assert
     expect(condenseAstSpy).toHaveBeenCalledTimes(1);
     expect(condenseAstSpy).toHaveBeenCalledWith(mockAstData);
   });
 
   it('should analyze AST successfully, return CodeInsights, and verify prompt', async () => {
-    // Arrange
     const mockLLMResponse: CodeInsights = {
+      // Corrected mock CodeInsights
       imports: [{ source: 'fs' }],
-      functions: [{ name: 'readFile', parameters: ['path'] }], // Note 'parameters'
+      functions: [{ name: 'readFile', parameters: ['path'] }],
       classes: [{ name: 'MyClass' }],
     };
-    const mockLLMResponseJson = JSON.stringify(mockLLMResponse);
-    mockLLMAgent.getCompletion.mockResolvedValue(Result.ok(mockLLMResponseJson));
+    mockLLMAgent.getStructuredCompletion.mockResolvedValue(Result.ok(mockLLMResponse));
 
-    // Act
     const result = await service.analyzeAst(mockAstData, mockFilePath);
 
-    // Assert: Result
     expect(result.isOk()).toBe(true);
     expect(result.value).toEqual(mockLLMResponse);
 
-    // Assert: Dependencies called
     expect(condenseAstSpy).toHaveBeenCalledWith(mockAstData);
-    expect(mockLLMAgent.getCompletion).toHaveBeenCalledTimes(1);
+    expect(mockLLMAgent.getStructuredCompletion).toHaveBeenCalledTimes(1);
 
-    // Assert: Prompt Verification
+    const structuredCompletionCallArgs = mockLLMAgent.getStructuredCompletion.mock.calls[0];
+    const promptArg = structuredCompletionCallArgs[0];
+    const schemaArg = structuredCompletionCallArgs[1];
 
-    const systemPromptArg = mockLLMAgent.getCompletion.mock.calls[0][0];
-    expect(systemPromptArg).toContain('CONDENSED');
-    expect(systemPromptArg).toContain('### Target Output Schema (CodeInsights) ###');
-    expect(systemPromptArg).toContain(mockCondensedAstJson); // Verify condensed data is in prompt
+    expect(typeof promptArg).toBe('string'); // AstAnalysisService passes the system prompt string
+    const systemPromptContent = promptArg as string;
 
-    // Assert: Logging
+    expect(systemPromptContent).toContain('CONDENSED');
+    expect(systemPromptContent).toContain('### Target Output Schema (CodeInsights) ###');
+    expect(systemPromptContent).toContain(mockCondensedAstJson);
+    expect(schemaArg).toBeDefined();
+    expect(schemaArg.description).toBe('CodeInsightsSchema');
 
     expect(mockLogger.debug).toHaveBeenCalledWith(`Analyzing AST for file: ${mockFilePath}`);
-
     expect(mockLogger.debug).toHaveBeenCalledWith(
-      `Successfully analyzed and validated AST insights for ${mockFilePath}`
+      `Successfully received and validated structured AST insights for ${mockFilePath}`
     );
-
     expect(mockLogger.warn).not.toHaveBeenCalled();
-
     expect(mockLogger.error).not.toHaveBeenCalled();
   });
 
   it('should return error if LLM agent fails', async () => {
-    // Arrange
-    const llmError = new Error('LLM API Error');
-    mockLLMAgent.getCompletion.mockResolvedValue(Result.err(llmError));
+    const llmError = new LLMProviderError('LLM API Error', 'API_ERROR', 'mockProvider');
+    mockLLMAgent.getStructuredCompletion.mockResolvedValue(Result.err(llmError));
 
-    // Act
     const result = await service.analyzeAst(mockAstData, mockFilePath);
 
-    // Assert: Result
     expect(result.isErr()).toBe(true);
     expect(result.error).toBe(llmError);
 
-    // Assert: Logging
-
     expect(mockLogger.error).toHaveBeenCalledTimes(1);
-
     expect(mockLogger.error).toHaveBeenCalledWith(
-      `LLM call failed for ${mockFilePath}: ${llmError.message}`
+      `Structured LLM call failed for ${mockFilePath}: ${llmError.message}`,
+      llmError
     );
-
     expect(mockLogger.warn).not.toHaveBeenCalled();
   });
 
-  it('should return error if LLM response is invalid JSON', async () => {
-    // Arrange
-    const invalidJson = '{"imports": [';
-    mockLLMAgent.getCompletion.mockResolvedValue(Result.ok(invalidJson));
+  it('should return LLMProviderError if LLM response cannot be parsed by schema (simulated by provider error)', async () => {
+    const schemaValidationError = new LLMProviderError(
+      'Simulated parsing failure in LLM response',
+      'SCHEMA_VALIDATION_ERROR',
+      'mockProvider'
+    );
+    mockLLMAgent.getStructuredCompletion.mockResolvedValue(Result.err(schemaValidationError));
 
-    // Act
     const result = await service.analyzeAst(mockAstData, mockFilePath);
 
-    // Assert: Result
     expect(result.isErr()).toBe(true);
-    expect(result.error).toBeInstanceOf(RooCodeError);
-    expect((result.error as RooCodeError).code).toBe('LLM_JSON_PARSE_ERROR');
-    expect((result.error as RooCodeError).message).toContain('Invalid JSON response from LLM');
+    expect(result.error).toBeInstanceOf(LLMProviderError);
+    expect(result.error).toBe(schemaValidationError);
 
-    // Assert: Logging
-    expect(mockLogger.warn).toHaveBeenCalledTimes(1);
-    expect(mockLogger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('Failed to parse LLM JSON response')
+    expect(mockLogger.error).toHaveBeenCalledTimes(1);
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      `Structured LLM call failed for ${mockFilePath}: Simulated parsing failure in LLM response`,
+      schemaValidationError
     );
-    expect(mockLogger.debug).toHaveBeenCalledWith(
-      `Raw response for ${mockFilePath}:\n${invalidJson}`
-    );
-    expect(mockLogger.error).not.toHaveBeenCalled();
   });
 
-  it('should return error if LLM response is empty or whitespace after cleaning', async () => {
-    // Arrange
-    const emptyResponses = ['', '   ', '```json\n\n```'];
-    for (const emptyJson of emptyResponses) {
-      mockLLMAgent.getCompletion.mockResolvedValue(Result.ok(emptyJson));
-      mockLogger.warn.mockClear(); // Clear mocks for loop iteration
-      mockLogger.debug.mockClear();
+  it('should return LLMProviderError if LLM response is empty or unparsable (simulated by provider error)', async () => {
+    const emptyContentError = new LLMProviderError(
+      'LLM returned empty or unparsable content for schema',
+      'SCHEMA_VALIDATION_ERROR',
+      'mockProvider'
+    );
+    mockLLMAgent.getStructuredCompletion.mockResolvedValue(Result.err(emptyContentError));
 
-      // Act
-      const result = await service.analyzeAst(mockAstData, mockFilePath);
-
-      // Assert: Result
-      expect(result.isErr()).toBe(true);
-      expect(result.error).toBeInstanceOf(RooCodeError);
-      expect((result.error as RooCodeError).code).toBe('LLM_JSON_PARSE_ERROR');
-      expect((result.error as RooCodeError).message).toContain('LLM returned an empty response');
-
-      // Assert: Logging
-      expect(mockLogger.warn).toHaveBeenCalledTimes(1);
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Failed to parse LLM JSON response')
-      );
-      expect(mockLogger.debug).toHaveBeenCalledWith(
-        `Raw response for ${mockFilePath}:\n${emptyJson}`
-      );
-      expect(mockLogger.error).not.toHaveBeenCalled();
-    }
-  });
-
-  it('should return error if LLM response fails schema validation', async () => {
-    // Arrange
-    const invalidSchemaResponse = JSON.stringify({
-      imports: [{ source: 123 }], // Invalid type
-      functions: [{ name: 'testFunc' }], // Missing 'parameters'
-      classes: [],
-    });
-    mockLLMAgent.getCompletion.mockResolvedValue(Result.ok(invalidSchemaResponse));
-
-    // Act
     const result = await service.analyzeAst(mockAstData, mockFilePath);
 
-    // Assert: Result
     expect(result.isErr()).toBe(true);
-    expect(result.error).toBeInstanceOf(RooCodeError);
-    expect((result.error as RooCodeError).code).toBe('LLM_SCHEMA_VALIDATION_ERROR');
-    expect((result.error as RooCodeError).message).toContain(
-      'LLM response failed schema validation'
-    );
+    expect(result.error).toBeInstanceOf(LLMProviderError);
+    expect(result.error).toBe(emptyContentError);
 
-    // Assert: Logging
-    expect(mockLogger.warn).toHaveBeenCalledTimes(1);
-    expect(mockLogger.warn).toHaveBeenCalledWith(
-      expect.stringContaining('LLM response validation failed')
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      `Structured LLM call failed for ${mockFilePath}: LLM returned empty or unparsable content for schema`,
+      emptyContentError
     );
-    expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining('Validation issues for'));
-    expect(mockLogger.debug).toHaveBeenCalledWith(expect.stringContaining('Parsed JSON for'));
-    expect(mockLogger.error).not.toHaveBeenCalled();
   });
 
-  it('should return error if _condenseAst throws an error', async () => {
-    // Arrange
+  it('should return LLMProviderError (wrapping RooCodeError) if insights are null/undefined after successful LLM call', async () => {
+    mockLLMAgent.getStructuredCompletion.mockResolvedValue(Result.ok(null as any)); // Simulate null insights
+
+    const result = await service.analyzeAst(mockAstData, mockFilePath);
+
+    expect(result.isErr()).toBe(true);
+    const err = result.error as LLMProviderError;
+    expect(err).toBeInstanceOf(LLMProviderError);
+    expect(err.provider).toBe('AstAnalysisService');
+    expect(err.code).toBe('UNKNOWN_ERROR'); // fromError default
+    expect(err.message).toContain('Structured LLM call succeeded but returned null or undefined');
+    expect(err.details?.cause).toBeInstanceOf(RooCodeError);
+    expect((err.details?.cause as RooCodeError).code).toBe('UNEXPECTED_ANALYSIS_ERROR');
+  });
+
+  it('should return LLMProviderError (wrapping RooCodeError) if _condenseAst throws an error', async () => {
     const condensationError = new Error('Condensation failed');
     condenseAstSpy.mockImplementation(() => {
       throw condensationError;
     });
 
-    // Act
     const result = await service.analyzeAst(mockAstData, mockFilePath);
 
-    // Assert: Result
     expect(result.isErr()).toBe(true);
-    expect(result.error).toBeInstanceOf(RooCodeError);
-    expect((result.error as RooCodeError).code).toBe('UNEXPECTED_ANALYSIS_ERROR');
-    expect((result.error as RooCodeError).message).toContain(
-      'Unexpected error during AST analysis'
+    const err = result.error as LLMProviderError;
+    expect(err).toBeInstanceOf(LLMProviderError);
+    expect(err.provider).toBe('AstAnalysisService');
+    expect(err.code).toBe('UNKNOWN_ERROR');
+    expect(err.message).toContain(
+      'Unexpected error during AST analysis for src/test.ts: Condensation failed'
     );
-    expect((result.error as RooCodeError).cause).toBe(condensationError);
-
-    // Assert: Logging
+    expect(err.details?.cause).toBeInstanceOf(RooCodeError);
+    expect((err.details?.cause as RooCodeError).cause).toBe(condensationError);
 
     expect(mockLogger.error).toHaveBeenCalledTimes(1);
-
     expect(mockLogger.error).toHaveBeenCalledWith(
-      expect.stringContaining('Unexpected error during AST analysis'),
+      expect.stringContaining(
+        'Unexpected error during AST analysis for src/test.ts: Condensation failed'
+      ),
       condensationError
     );
-
     expect(mockLogger.warn).not.toHaveBeenCalled();
-
-    expect(mockLLMAgent.getCompletion).not.toHaveBeenCalled(); // Should fail before LLM call
+    expect(mockLLMAgent.getStructuredCompletion).not.toHaveBeenCalled();
   });
 });

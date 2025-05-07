@@ -6,6 +6,7 @@ import { Result } from '../../../src/core/result/result';
 import { ILogger } from '../../../src/core/services/logger-service'; // Keep type import
 import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
 import { LLMConfig } from '../../../types/shared';
+import { LLMProviderError } from '@core/llm/llm-provider-errors';
 
 describe('LLMConfigService - interactiveEditConfig', () => {
   let service: LLMConfigService;
@@ -232,7 +233,7 @@ describe('LLMConfigService - interactiveEditConfig', () => {
 
   it('should handle error when model listing fails', async () => {
     mockModelListerService.listModelsForProvider.mockResolvedValue(
-      Result.err(new Error('Model listing error'))
+      Result.err(new LLMProviderError('Model listing error', 'PRovider error', 'Provider'))
     );
 
     // Override the default mockInquirer implementation for this test
