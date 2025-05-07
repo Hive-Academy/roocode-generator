@@ -85,7 +85,7 @@ _Note: AC1-AC4 for GoogleGenAIProvider and AC9 (Comprehensive Testing) will be p
 
 ### Subtask 2: Implement `tsconfig.json` Comment Stripping in `ProjectAnalyzer`
 
-- **Status:** Completed
+- **Status:** Completed (Commit: `52025c6`)
 - **Description:** Modify `ProjectAnalyzer` to strip comments from `tsconfig.json` content before parsing it with `parseRobustJson`.
 - **Files to Modify:**
   - `src/core/analysis/project-analyzer.ts`
@@ -126,7 +126,7 @@ _Note: AC1-AC4 for GoogleGenAIProvider and AC9 (Comprehensive Testing) will be p
 - **Related Acceptance Criteria:** AC6, AC10
 - **Estimated effort:** 45-60 minutes (including regex refinement)
 - **Required Delegation Components:**
-  - Junior Coder: Can implement the comment stripping function and integrate it.
+  - Junior Coder: Implemented the comment stripping function and integrated it.
     - Component: Implement `stripJsonComments` function. (Completed)
     - Component: Integrate `stripJsonComments` into `ProjectAnalyzer`. (Completed)
   - Junior Tester: N/A for this subtask directly.
@@ -135,40 +135,49 @@ _Note: AC1-AC4 for GoogleGenAIProvider and AC9 (Comprehensive Testing) will be p
 
 ### Subtask 3: Manual E2E Testing, `ProjectContext` Logging & Verification
 
-- **Status:** Not Started
+- **Status:** In Progress
 - **Description:** Conduct comprehensive manual E2E testing for all changes. This includes verifying `AstAnalysisService` and `ProjectAnalyzer` modifications, ensuring correct file/directory exclusions, logging `ProjectContext` to a file, and checking for regressions.
-- **Files to Modify:**
-  - `src/core/analysis/project-analyzer.ts` (to add `ProjectContext` file logging).
+- **Files to Modify / Create:**
+  - `src/core/analysis/project-analyzer.ts` (for `ProjectContext` file logging integration and refactoring to use helpers)
+  - `src/core/analysis/project-analyzer.helpers.ts` (New file for extracted helper methods)
+  - `src/core/di/modules/analysis-module.ts` (for `ProjectAnalyzerHelpers` DI registration)
+  - `src/core/di/modules/core-module.ts` (for updating `ProjectAnalyzer` factory to inject helpers)
 - **Implementation Details:**
-  - **`ProjectContext` Logging:** Modify `ProjectAnalyzer.analyzeProject` to serialize the final `ProjectContext` object to a JSON file (e.g., `project-context-output.json`) in a designated temporary or output directory. This should be done before returning the context.
+  - **`ProjectContext` Logging (Completed by Junior Coder):**
+    - `ProjectAnalyzer.analyzeProject` now serializes the final `ProjectContext` object to `project-context-output.json` (in `.cache` or project root).
+    - This was implemented in a private method `_saveProjectContextToFile` (now moved to helpers).
+    - Errors are logged as warnings and do not crash the analysis.
     ```typescript
-    // In ProjectAnalyzer.analyzeProject, before returning:
-    // const finalContext = { ... };
-    // try {
-    //   const outputPath = path.join(this.projectRoot, 'project-context-output.json'); // Or a .cache dir
-    //   await this.fileOps.writeFile(outputPath, JSON.stringify(finalContext, null, 2));
-    //   this.logger.info(`ProjectContext written to ${outputPath}`);
-    // } catch (e) {
-    //   this.logger.warn(`Failed to write ProjectContext to file: ${e.message}`);
-    // }
+    // In ProjectAnalyzer.analyzeProject (now calling helper):
+    // await this.helpers._saveProjectContextToFile(finalContext, this.projectRoot);
+    // ...
     // return Result.ok(finalContext);
     ```
-  - **E2E Test Execution:**
+  - **Deviation: `ProjectAnalyzer` Refactoring (Completed by Junior Coder):**
+    - **Description:** Based on a request to improve maintainability prior to E2E testing, `ProjectAnalyzer` was refactored.
+    - **Actions:**
+      - Helper methods (`stripJsonComments`, `shouldAnalyzeFile`, `isDirectory`, `_saveProjectContextToFile`, `collectAnalyzableFiles`) were extracted from `ProjectAnalyzer`.
+      - These methods were moved into a new injectable class `ProjectAnalyzerHelpers` in `src/core/analysis/project-analyzer.helpers.ts`.
+      - `ProjectAnalyzer` now receives `ProjectAnalyzerHelpers` via DI and calls these methods through `this.helpers.*`.
+      - DI modules (`analysis-module.ts`, `core-module.ts`) were updated to register and inject `ProjectAnalyzerHelpers`.
+    - **Rationale:** To reduce the size and complexity of `project-analyzer.ts` and improve modularity.
+  - **E2E Test Execution (To be delegated to Junior Tester):**
     - Run `ProjectAnalyzer.analyzeProject` (e.g., via `npm start -- generate -- -g memory-bank` or a dedicated test script) on the current `roocode-generator` project and potentially 1-2 other diverse small sample projects.
     - Inspect the generated `project-context-output.json` file thoroughly.
     - Verify:
-      - Correct parsing of `codeInsights` (AC5) even with (simulated) slightly malformed LLM JSON.
+      - Correct parsing of `codeInsights` (AC5).
       - Successful parsing of `tsconfig.json` containing comments (AC6).
-      - Correct exclusion of `SKIP_DIRECTORIES` and hidden directories from `structure.directoryTree` and files for `codeInsights` (AC7).
-      - No regressions in core analysis features (tech stack, non-LLM structure, dependencies) (AC8).
-      - No obvious regressions in `GoogleGenAIProvider` functionality through a basic E2E flow that uses it (AC1-AC4).
+      - Correct exclusion of `SKIP_DIRECTORIES` and hidden directories (AC7).
+      - No regressions in core analysis features (AC8).
+      - No obvious regressions in `GoogleGenAIProvider` functionality (AC1-AC4).
       - Adherence to code quality standards for new code (AC10).
 - **Testing Requirements:** As per description. Document manual test cases, observations, and the path to the logged `ProjectContext` file.
 - **Related Acceptance Criteria:** AC1-AC8, AC10. (AC9 covered by the thoroughness of manual E2E).
-- **Estimated effort:** 2 - 3 hours (implementation of logging + extensive manual testing and verification)
+- **Estimated effort:** 2 - 3 hours (logging implementation + refactoring + extensive manual testing and verification)
 - **Required Delegation Components:**
-  - Junior Coder: Can implement the `ProjectContext` file logging logic in `ProjectAnalyzer`.
-    - Component: Add file logging for `ProjectContext` in `ProjectAnalyzer`.
+  - Junior Coder:
+    - Component: Add file logging for `ProjectContext` in `ProjectAnalyzer`. (Completed)
+    - Component: Refactor `ProjectAnalyzer` by extracting helper methods to `ProjectAnalyzerHelpers` and update DI. (Completed as part of deviation)
   - Junior Tester: Will perform the bulk of the manual E2E testing and verification.
     - Component: Execute `ProjectAnalyzer` on specified projects.
     - Component: Locate and retrieve the logged `project-context-output.json`.
@@ -176,7 +185,7 @@ _Note: AC1-AC4 for GoogleGenAIProvider and AC9 (Comprehensive Testing) will be p
     - Component: Execute E2E scenarios to check for regressions in core analysis and `GoogleGenAIProvider`.
     - Component: Document all findings, including paths to logs/output files.
 - **Delegation Success Criteria**:
-  - Junior Coder successfully implements `ProjectContext` file logging.
+  - Junior Coder successfully implements `ProjectContext` file logging and `ProjectAnalyzer` refactoring.
   - Junior Tester provides a comprehensive report detailing E2E test execution, `ProjectContext` file analysis, and verification of all relevant ACs. The `project-context-output.json` file is provided.
 
 ## 5. Testing Strategy (Revised)
@@ -197,6 +206,6 @@ _Note: AC1-AC4 for GoogleGenAIProvider and AC9 (Comprehensive Testing) will be p
 2.  **Subtask 2:** Implement `tsconfig.json` Comment Stripping in `ProjectAnalyzer`
     _Rationale: Addresses a specific parsing issue, building on robust parsing concepts._
 3.  **Subtask 3:** Manual E2E Testing, `ProjectContext` Logging & Verification
-    _Rationale: Comprehensive validation of all changes, including `ProjectContext` integrity and regression checks. Logging `ProjectContext` is key here._
+    _Rationale: Comprehensive validation of all changes, including `ProjectContext` integrity and regression checks. Logging `ProjectContext` is key here. This subtask now also includes the refactoring of `ProjectAnalyzer`._
 
 This revised plan focuses on delivering the core functional improvements quickly, relying on thorough manual E2E testing and detailed `ProjectContext` inspection for validation in this iteration.

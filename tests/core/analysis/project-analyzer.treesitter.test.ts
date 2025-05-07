@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import { Dirent } from 'fs';
 import path from 'path';
 import {
-  IAstAnalysisService,
   CodeInsights,
+  IAstAnalysisService,
 } from '../../../src/core/analysis/ast-analysis.interfaces'; // Import CodeInsights
 import {
   FileMetadata,
@@ -10,36 +11,33 @@ import {
   IFilePrioritizer,
   ITreeSitterParserService,
 } from '../../../src/core/analysis/interfaces';
-import { GenericAstNode } from '../../../src/core/analysis/types';
-import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
-import { Result } from '../../../src/core/result/result';
 import { ITechStackAnalyzerService } from '../../../src/core/analysis/tech-stack-analyzer'; // Added
+import { GenericAstNode } from '../../../src/core/analysis/types';
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
 import { LLMAgent } from '../../../src/core/llm/llm-agent';
+import { Result } from '../../../src/core/result/result';
 import { ILogger } from '../../../src/core/services/logger-service';
-import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
-import { Dirent } from 'fs';
 
 // Import all mock factories
-import { createMockLogger } from '../../__mocks__/logger.mock';
-import { createMockFileOperations } from '../../__mocks__/file-operations.mock';
-import { createMockLLMAgent } from '../../__mocks__/llm-agent.mock';
-// import { createMockResponseParser } from '../../__mocks__/response-parser.mock'; // Unused
-import { createMockProgressIndicator } from '../../__mocks__/progress-indicator.mock';
-import { createMockFileContentCollector } from '../../__mocks__/file-content-collector.mock';
-import { createMockFilePrioritizer } from '../../__mocks__/file-prioritizer.mock';
-import { createMockTreeSitterParserService } from '../../__mocks__/tree-sitter-parser.service.mock';
+import {
+  createMockProjectAnalyzer,
+  MockProjectAnalyzer,
+} from 'tests/__mocks__/project-analyzer.mock';
 import { createMockAstAnalysisService } from '../../__mocks__/ast-analysis.service.mock';
+import { createMockFileContentCollector } from '../../__mocks__/file-content-collector.mock';
+import { createMockFileOperations } from '../../__mocks__/file-operations.mock';
+import { createMockFilePrioritizer } from '../../__mocks__/file-prioritizer.mock';
+import { createMockLLMAgent } from '../../__mocks__/llm-agent.mock';
+import { createMockLogger } from '../../__mocks__/logger.mock';
 import { createMockTechStackAnalyzerService } from '../../__mocks__/tech-stack-analyzer.mock'; // Added
+import { createMockTreeSitterParserService } from '../../__mocks__/tree-sitter-parser.service.mock';
 
 // --- New Describe Block for TreeSitter Integration ---
 describe('ProjectAnalyzer TreeSitter Integration', () => {
-  let projectAnalyzer: ProjectAnalyzer;
+  let projectAnalyzer: MockProjectAnalyzer;
   let mockFileOps: jest.Mocked<IFileOperations>;
   let mockLogger: jest.Mocked<ILogger>;
   let mockLLMAgent: jest.Mocked<LLMAgent>;
-  // let mockResponseParser: jest.Mocked<ResponseParser>; // Removed
-  let mockProgress: jest.Mocked<ProgressIndicator>;
   let mockContentCollector: jest.Mocked<IFileContentCollector>;
   let mockFilePrioritizer: jest.Mocked<IFilePrioritizer>;
   let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>;
@@ -65,8 +63,6 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
     mockFileOps = createMockFileOperations();
     mockLogger = createMockLogger();
     mockLLMAgent = createMockLLMAgent();
-    // mockResponseParser = createMockResponseParser(); // Removed
-    mockProgress = createMockProgressIndicator();
     mockContentCollector = createMockFileContentCollector();
     mockFilePrioritizer = createMockFilePrioritizer();
     mockTreeSitterParserService = createMockTreeSitterParserService();
@@ -135,19 +131,8 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
     });
 
     // Re-instantiate projectAnalyzer with mocks for this suite
-    projectAnalyzer = new ProjectAnalyzer(
-      mockFileOps,
-      mockLogger,
-      mockLLMAgent,
-      mockProgress, // Corrected: 4th arg
-      mockContentCollector,
-      mockFilePrioritizer,
-      mockTreeSitterParserService,
-      mockAstAnalysisService,
-      mockTechStackAnalyzerService // Added: 9th arg
-    );
+    projectAnalyzer = createMockProjectAnalyzer();
   });
-
   // Test focusing on TreeSitter interaction
   it('should call treeSitterParserService.parse for supported files, skip unsupported, and include results in context', async () => {
     // Arrange

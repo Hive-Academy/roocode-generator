@@ -1,44 +1,38 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import path from 'path';
 import {
+  CodeInsights,
+  IAstAnalysisService,
+} from '../../../src/core/analysis/ast-analysis.interfaces'; // Import CodeInsights
+import {
   FileMetadata,
   IFileContentCollector,
   IFilePrioritizer,
   ITreeSitterParserService,
 } from '../../../src/core/analysis/interfaces';
-import { /* ProjectContext, */ GenericAstNode } from '../../../src/core/analysis/types'; // ProjectContext commented out as unused
-import {
-  IAstAnalysisService,
-  CodeInsights,
-} from '../../../src/core/analysis/ast-analysis.interfaces'; // Import CodeInsights
 import { ITechStackAnalyzerService } from '../../../src/core/analysis/tech-stack-analyzer';
-import { ProjectAnalyzer } from '../../../src/core/analysis/project-analyzer';
-// ResponseParser is no longer a direct dependency to mock here for ProjectAnalyzer
+import { GenericAstNode } from '../../../src/core/analysis/types';
+import { Dirent } from 'fs'; // Import Dirent
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
 import { LLMAgent } from '../../../src/core/llm/llm-agent';
 import { Result } from '../../../src/core/result/result';
 import { ILogger } from '../../../src/core/services/logger-service';
 import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
-import { Dirent } from 'fs'; // Import Dirent
 
 // Import all mock factories
-import { createMockLogger } from '../../__mocks__/logger.mock';
 import { createMockFileOperations } from '../../__mocks__/file-operations.mock';
 import { createMockLLMAgent } from '../../__mocks__/llm-agent.mock';
-// import { createMockResponseParser } from '../../__mocks__/response-parser.mock'; // No longer needed here
-import { createMockProgressIndicator } from '../../__mocks__/progress-indicator.mock';
+import { createMockLogger } from '../../__mocks__/logger.mock';
+import {
+  createMockProjectAnalyzer,
+  MockProjectAnalyzer,
+} from 'tests/__mocks__/project-analyzer.mock';
+import { createMockAstAnalysisService } from '../../__mocks__/ast-analysis.service.mock';
 import { createMockFileContentCollector } from '../../__mocks__/file-content-collector.mock';
 import { createMockFilePrioritizer } from '../../__mocks__/file-prioritizer.mock';
-import { createMockTreeSitterParserService } from '../../__mocks__/tree-sitter-parser.service.mock';
-import { createMockAstAnalysisService } from '../../__mocks__/ast-analysis.service.mock';
+import { createMockProgressIndicator } from '../../__mocks__/progress-indicator.mock';
 import { createMockTechStackAnalyzerService } from '../../__mocks__/tech-stack-analyzer.mock'; // Added
-
-// ** FIX: Define DeepPartial utility type **
-// type DeepPartial<T> = T extends object
-//   ? {
-//       [P in keyof T]?: DeepPartial<T[P]>;
-//     }
-//   : T;
+import { createMockTreeSitterParserService } from '../../__mocks__/tree-sitter-parser.service.mock';
 
 // Define a mock AST node for reuse
 const mockAstNode: GenericAstNode = {
@@ -62,7 +56,7 @@ const mockAstNode: GenericAstNode = {
 };
 
 // --- Global Mocks & Variables ---
-let projectAnalyzer: ProjectAnalyzer;
+let projectAnalyzer: MockProjectAnalyzer;
 let mockFileOps: jest.Mocked<IFileOperations>;
 let mockLogger: jest.Mocked<ILogger>;
 let mockLLMAgent: jest.Mocked<LLMAgent>;
@@ -78,53 +72,6 @@ const rootPath = 'root/path';
 
 // --- Describe Block for Analysis Result ---
 describe('ProjectAnalyzer Analysis Result', () => {
-  // Mock LLM response that might contain outdated/different TS structure info
-  // const mockLlmResponseWithOldTsData = JSON.stringify({
-  //   techStack: { languages: ['TypeScript'], frameworks: ['Node.js'] },
-  //   structure: {
-  //     rootDir: 'src',
-  //     // definedFunctions and definedClasses removed
-  //   },
-  //   dependencies: {
-  //     internalDependencies: {
-  //       'src/app.ts': ['./utils'],
-  //     },
-  //     externalDependencies: ['express'], // Keep this for testing merge logic
-  //   },
-  // });
-
-  // Mock parsed result corresponding to the above LLM response
-  // const mockParsedResultWithOldTsData: DeepPartial<ProjectContext> = {
-  //   techStack: { languages: ['TypeScript'], frameworks: ['Node.js'] },
-  //   structure: {
-  //     rootDir: 'src', // This will be overridden by actual rootPath
-  //   },
-  //   dependencies: {
-  //     internalDependencies: {
-  //       'src/app.ts': ['./utils'],
-  //     },
-  //     // Simulate how LLM might return external deps before package.json merge
-  //     dependencies: { express: 'some-version-from-llm' },
-  //   },
-  // };
-
-  // Mock LLM response without any structure fields
-  // const mockLlmResponseWithoutStructure = JSON.stringify({
-  //   techStack: { languages: ['JavaScript'] },
-  //   // structure field is missing
-  //   dependencies: { externalDependencies: ['lodash'] }, // Keep this for testing merge logic
-  // });
-
-  // Mock parsed result corresponding to the above LLM response
-  // const mockParsedResultWithoutStructure: DeepPartial<ProjectContext> = {
-  //   techStack: { languages: ['JavaScript'] },
-  //   // structure field is missing
-  //   dependencies: {
-  //     // Simulate how LLM might return external deps before package.json merge
-  //     dependencies: { lodash: 'some-version-from-llm' },
-  //   },
-  // };
-
   // Default CodeInsights mock
   const defaultCodeInsights: CodeInsights = { functions: [], classes: [], imports: [] };
 
@@ -172,10 +119,6 @@ describe('ProjectAnalyzer Analysis Result', () => {
     );
     mockLLMAgent.getCompletion.mockResolvedValue(Result.ok('{}')); // Default success
 
-    // ResponseParser mock is removed as it's not a direct dependency of ProjectAnalyzer anymore for these tests.
-    // Tests relying on its specific behavior when used by ProjectAnalyzer might need adjustment
-    // if ProjectAnalyzer's interaction with LLM responses for context has changed.
-
     // Default mock for techStackAnalyzerService
     mockTechStackAnalyzerService.analyze.mockResolvedValue({
       // Provide a default valid TechStackAnalysis
@@ -208,28 +151,10 @@ describe('ProjectAnalyzer Analysis Result', () => {
     mockAstAnalysisService.analyzeAst.mockResolvedValue(Result.ok(defaultCodeInsights)); // Default success with empty insights
 
     // Instantiate projectAnalyzer
-    projectAnalyzer = new ProjectAnalyzer(
-      mockFileOps,
-      mockLogger,
-      mockLLMAgent,
-      mockProgress, // Corrected: 4th arg is ProgressIndicator
-      mockContentCollector,
-      mockFilePrioritizer,
-      mockTreeSitterParserService,
-      mockAstAnalysisService,
-      mockTechStackAnalyzerService // Added: 9th arg
-    );
+    projectAnalyzer = createMockProjectAnalyzer();
   });
 
   it('should correctly merge Tree-sitter data (empty for TS), overriding LLM response', async () => {
-    // LLM response still provides other data (techStack, etc.) and potentially outdated structure info
-    // This test might need re-evaluation as ProjectAnalyzer no longer directly calls LLM for context.
-    // However, the core assertion is about codeInsights and structure, which are locally derived.
-    // mockLLMAgent.getCompletion.mockResolvedValue(Result.ok(mockLlmResponseWithOldTsData));
-    // mockResponseParser.parseLlmResponse.mockResolvedValue(
-    //   Result.ok(mockParsedResultWithOldTsData as ProjectContext)
-    // );
-
     // Mock AST analysis to return empty insights for the files
     mockAstAnalysisService.analyzeAst.mockResolvedValue(Result.ok(defaultCodeInsights));
 
@@ -267,13 +192,6 @@ describe('ProjectAnalyzer Analysis Result', () => {
   });
 
   it('should use Tree-sitter data (empty for TS) even if structure missing in LLM response', async () => {
-    // LLM response doesn't contain the structure fields
-    // This test might need re-evaluation as ProjectAnalyzer no longer directly calls LLM for context.
-    // mockLLMAgent.getCompletion.mockResolvedValue(Result.ok(mockLlmResponseWithoutStructure));
-    // mockResponseParser.parseLlmResponse.mockResolvedValue(
-    //   Result.ok(mockParsedResultWithoutStructure as ProjectContext)
-    // );
-
     // Mock AST analysis to return empty insights
     mockAstAnalysisService.analyzeAst.mockResolvedValue(Result.ok(defaultCodeInsights));
 
@@ -303,14 +221,6 @@ describe('ProjectAnalyzer Analysis Result', () => {
   });
 
   it('should return error if LLM response generation fails', async () => {
-    // This test is likely no longer relevant as analyzeProject doesn't directly call getCompletion for context.
-    // If it's testing a different LLM call within analyzeProject (e.g., for AST analysis if that were LLM based),
-    // it would need to be adjusted. For now, commenting out the parts that assume the old LLM call.
-    // const error = new Error('LLM Error');
-    // mockLLMAgent.getCompletion.mockResolvedValue(Result.err(error));
-
-    // For the test to pass in its current form without major refactoring,
-    // let's assume a failure in a deeper part, e.g. file collection, if no files are found.
     mockFileOps.readDir.mockResolvedValue(Result.ok([])); // No files found
     mockContentCollector.collectContent.mockResolvedValue(Result.ok({ content: '', metadata: [] }));
 
@@ -464,4 +374,4 @@ describe('ProjectAnalyzer Analysis Result', () => {
     expect(context.structure.rootDir).toBe(rootPath);
     expect(context.dependencies.dependencies).toEqual({ express: '4.17.1' });
   });
-}); // Closing bracket for 'ProjectAnalyzer Analysis Result' describe block
+});
