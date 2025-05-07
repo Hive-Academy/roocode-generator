@@ -9,6 +9,7 @@ import {
   ITechStackAnalyzerService,
   TechStackAnalyzerService,
 } from '@core/analysis/tech-stack-analyzer'; // Added import
+import { ProjectAnalyzerHelpers } from '../../analysis/project-analyzer.helpers'; // Import the new helper
 
 /**
  * Registers services related to project analysis (AST, Tech Stack, etc.).
@@ -31,5 +32,14 @@ export function registerAnalysisServices(container: Container): void {
     const logger = resolveDependency<ILogger>(container, 'ILogger');
     // Instantiate the service with resolved dependencies
     return new TechStackAnalyzerService(fileOps, logger);
+  });
+
+  // Register ProjectAnalyzerHelpers using the factory pattern
+  container.registerFactory<ProjectAnalyzerHelpers>('ProjectAnalyzerHelpers', () => {
+    // Resolve dependencies using the helper
+    const fileOps = resolveDependency<IFileOperations>(container, 'IFileOperations');
+    const logger = resolveDependency<ILogger>(container, 'ILogger');
+    // Instantiate the service with resolved dependencies
+    return new ProjectAnalyzerHelpers(fileOps, logger);
   });
 }
