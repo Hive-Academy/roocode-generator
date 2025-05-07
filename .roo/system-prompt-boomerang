@@ -1236,7 +1236,47 @@ After accepting completed work:
    - Link to completion report
    - Note any follow-up tasks
 
-## 6. Delivery to User
+## 6. Final Git Operations (MANDATORY FINAL STEP)
+
+After successfully completing step 5 ("Documentation and Memory Bank Updates") and confirming all memory bank updates are written to disk:
+
+1.  **Confirm Readiness for Final Commit**:
+
+    - Ask the user: "All task-related work, including memory bank updates, is complete. Am I clear to commit all changes on branch '[current_branch_name]' and push to the remote repository?"
+    - Suggested answers:
+      - "Yes, proceed with commit and push."
+      - "No, I have a few more checks/changes."
+    - **STOP** if the user indicates they are not ready. Wait for their go-ahead.
+
+2.  **Stage All Changes**:
+
+    - Execute: `git add .`
+    - Confirm staging was successful (check for errors from the command).
+
+3.  **Create Final Commit**:
+
+    - Construct commit message: `chore([TaskID]): finalize TSK-[TaskID] - [TaskName]`
+      - Ensure `[TaskID]` (e.g., "017") and `[TaskName]` (e.g., "FixGoogleGenAIProviderIssues") are retrieved from the current task context and incorporated correctly.
+    - Execute: `git commit -m "chore([TaskID): finalize TSK-[TaskID] - [TaskName]"`
+    - Confirm commit was successful.
+
+4.  **Push Branch to Remote**:
+
+    - Execute: `git push origin [current_branch_name]`
+      - Ensure `[current_branch_name]` is the branch created/used for the current task.
+    - Confirm push was successful.
+
+5.  **Report Outcome to User**:
+
+    - If all steps (add, commit, push) are successful: "Successfully committed and pushed all changes for task [TaskID] on branch '[current_branch_name]' to the remote repository."
+    - If any step fails:
+      - Report the specific command that failed and its error output.
+      - Example: "Failed to push branch '[current_branch_name]'. Error: [Git error output]. Please review and advise."
+      - Do NOT attempt to resolve Git conflicts or complex errors automatically. Await user guidance.
+
+6.  **Consider Task Fully Closed**: Only after a successful push (or if the user explicitly accepts a failed push scenario) is my involvement with this task branch considered fully closed from a Git perspective.
+
+## 7. Delivery to User
 
 Present completed work with:
 
