@@ -20,24 +20,20 @@ import {
   CodeInsightsMap,
 } from './dependency-helpers';
 import { LLMAgent } from '../llm/llm-agent';
-import {
-  BINARY_EXTENSIONS,
-  SKIP_DIRECTORIES,
-  ANALYZABLE_EXTENSIONS,
-  ANALYZABLE_FILENAMES,
-} from './constants';
+// BINARY_EXTENSIONS, SKIP_DIRECTORIES, ANALYZABLE_EXTENSIONS, ANALYZABLE_FILENAMES are now in helpers
 import { ProgressIndicator } from '../ui/progress-indicator';
 import { IFileContentCollector, FileMetadata, ITreeSitterParserService } from './interfaces'; // Import ITreeSitterParserService
 import { IFilePrioritizer } from './interfaces';
 import { parseRobustJson } from '../utils/json-utils'; // Added import
 import path from 'path';
 import { EXTENSION_LANGUAGE_MAP } from './tree-sitter.config'; // Import language map
+import { ProjectAnalyzerHelpers } from './project-analyzer.helpers'; // Import the new helper class
 
 @Injectable()
 export class ProjectAnalyzer implements IProjectAnalyzer {
   constructor(
-    @Inject('IFileOperations') private readonly fileOps: IFileOperations,
-    @Inject('ILogger') private readonly logger: ILogger,
+    @Inject('IFileOperations') private readonly fileOps: IFileOperations, // Kept for other methods
+    @Inject('ILogger') private readonly logger: ILogger, // Kept for other methods
     @Inject('LLMAgent') private readonly llmAgent: LLMAgent,
     @Inject('ProgressIndicator') private readonly progress: ProgressIndicator,
     @Inject('IFileContentCollector') private readonly contentCollector: IFileContentCollector,
@@ -53,7 +49,8 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
      * Service for analyzing the technology stack locally.
      */
     @Inject('ITechStackAnalyzerService')
-    private readonly techStackAnalyzerService: ITechStackAnalyzerService
+    private readonly techStackAnalyzerService: ITechStackAnalyzerService,
+    @Inject('ProjectAnalyzerHelpers') private readonly helpers: ProjectAnalyzerHelpers // Inject the helper
   ) {
     this.logger.trace('ProjectAnalyzer initialized');
   }
@@ -84,7 +81,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       );
 
       // Collect all analyzable files
-      const allFiles = await this.collectAnalyzableFiles(rootPath);
+      const allFiles = await this.helpers.collectAnalyzableFiles(rootPath);
       if (allFiles.isErr()) {
         const error = allFiles.error || new Error('Unknown error collecting files');
         return Result.err(error);
@@ -194,7 +191,8 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         if (tsconfigFileReadResult.isOk() && tsconfigFileReadResult.value) {
           const fileContentString = tsconfigFileReadResult.value;
           try {
-            tsconfigContent = await parseRobustJson(fileContentString, this.logger);
+            const cleanedFileContentString = this.helpers.stripJsonComments(fileContentString);
+            tsconfigContent = await parseRobustJson(cleanedFileContentString, this.logger);
             this.logger.debug(
               `Successfully parsed tsconfig.json using parseRobustJson from: ${absoluteTsconfigPath}`
             );
@@ -244,7 +242,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         rootPath,
         '.', // Start scanning from the root directory itself
         this.fileOps,
-        this.shouldAnalyzeFile.bind(this)
+        this.helpers.shouldAnalyzeFile.bind(this.helpers) // Use helper method
       );
       this.logger.debug('Generated directoryTree.');
 
@@ -490,6 +488,10 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         packageJson: finalContext.packageJson, // Include packageJson in filtered context
       };
 
+      // Save the final context to a file for E2E verification
+      // This operation handles its own errors and does not interrupt the main flow.
+      await this.helpers.saveProjectContextToFile(filteredContext, rootPath); // Use helper method
+
       return Result.ok(filteredContext); // Return the filtered context
     } catch (error) {
       this.progress.fail('Project context analysis failed');
@@ -500,135 +502,9 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
     }
   }
 
-  private async collectAnalyzableFiles(rootDir: string): Promise<Result<string[], Error>> {
-    try {
-      const allFiles: string[] = [];
-      // Modify scanDir to return a Result for better error propagation
-      const scanDir = async (dirPath: string): Promise<Result<void, Error>> => {
-        const readDirResult = await this.fileOps.readDir(dirPath); // Renamed variable
-        if (readDirResult.isErr()) {
-          // Use renamed variable
-          // Return error Result instead of throwing
-          return Result.err(
-            new Error(
-              `Read directory failed: ${readDirResult.error instanceof Error ? readDirResult.error.message : String(readDirResult.error)}` // Use renamed variable
-            )
-          );
-        }
-        if (!readDirResult.value) {
-          // Use renamed variable
-          // Handle case where readDir succeeds but returns no value (shouldn't happen with Dirent[])
-          this.logger.warn(`readDir for ${dirPath} returned ok but no value.`);
-          return Result.ok(undefined); // Return ok if just warning
-        }
-
-        const items = readDirResult.value; // Use renamed variable
-        for (const item of items) {
-          const itemName: string = typeof item === 'string' ? item : item.name;
-          const fullPath: string = path.join(dirPath, itemName);
-
-          if (SKIP_DIRECTORIES.has(itemName)) {
-            this.logger.trace(`Skipping excluded directory: ${itemName}`);
-            continue;
-          }
-
-          if (itemName.startsWith('.')) {
-            this.logger.trace(`Skipping hidden item: ${itemName}`);
-            continue;
-          }
-
-          const isDirResult = await this.isDirectory(fullPath);
-          if (isDirResult.isErr()) {
-            // Return error Result instead of throwing
-            this.logger.warn(`Error checking directory status: ${fullPath} - ${isDirResult.error}`); // Keep warn log
-            return Result.err(
-              new Error(
-                `Is directory check failed: ${isDirResult.error instanceof Error ? isDirResult.error.message : String(isDirResult.error)}`
-              )
-            );
-          }
-
-          if (isDirResult.value) {
-            // Check result of recursive call
-            const scanResult = await scanDir(fullPath);
-            if (scanResult.isErr()) {
-              return scanResult; // Propagate error up
-            }
-          } else if (this.shouldAnalyzeFile(fullPath)) {
-            allFiles.push(fullPath);
-          }
-        }
-        // If loop completes without error, return success
-        return Result.ok(undefined);
-      };
-
-      const startTime = Date.now();
-      // Check the result of the initial scanDir call
-      const finalScanResult = await scanDir(rootDir);
-      if (finalScanResult.isErr()) {
-        // If scanDir returned an error, propagate it correctly typed
-        return Result.err(finalScanResult.error as Error);
-      }
-      const elapsedTime = Date.now() - startTime;
-      this.logger.info(
-        `File path collection completed in ${elapsedTime} ms. Found ${allFiles.length} analyzable files.`
-      );
-
-      return Result.ok(allFiles);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Error collecting analyzable files: ${errorMessage}`);
-      return Result.err(new Error(`Error collecting analyzable files: ${errorMessage}`));
-    }
-  }
-
-  private async isDirectory(filePath: string): Promise<Result<boolean, Error>> {
-    const result = await this.fileOps.isDirectory(filePath);
-    if (result.isErr()) {
-      this.logger.warn(`Error checking if path is directory: ${filePath} - ${result.error}`);
-      return Result.err(result.error as Error);
-    }
-    return Result.ok(result.value as boolean);
-  }
-
-  private shouldAnalyzeFile(filePath: string): boolean {
-    const fileName = path.basename(filePath);
-    const ext = path.extname(fileName).toLowerCase();
-
-    if (
-      fileName.includes('.test.') ||
-      fileName.includes('.spec.') ||
-      fileName.endsWith('.d.ts') ||
-      fileName.endsWith('.map') ||
-      fileName === 'package-lock.json' ||
-      fileName === 'yarn.lock' ||
-      fileName.endsWith('.lock')
-    ) {
-      this.logger.trace(`Skipping test/generated/lock file: ${fileName}`);
-      return false;
-    }
-
-    if (BINARY_EXTENSIONS.has(ext)) {
-      this.logger.trace(`Skipping binary file: ${fileName}`);
-      return false;
-    }
-
-    if (ANALYZABLE_FILENAMES.has(fileName)) {
-      this.logger.trace(`Including known filename: ${fileName}`);
-      return true;
-    }
-
-    if (ANALYZABLE_EXTENSIONS.has(ext)) {
-      this.logger.trace(`Including file with known extension: ${fileName}`);
-      return true;
-    }
-
-    if (!ext && ANALYZABLE_FILENAMES.has(fileName)) {
-      this.logger.trace(`Including known filename without extension: ${fileName}`);
-      return true;
-    }
-
-    this.logger.trace(`Skipping file by default: ${fileName}`);
-    return false;
-  }
+  // Removed collectAnalyzableFiles
+  // Removed isDirectory
+  // Removed shouldAnalyzeFile
+  // Removed stripJsonComments
+  // Removed _saveProjectContextToFile
 }

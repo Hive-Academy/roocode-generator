@@ -8,6 +8,7 @@ import { Container } from '@core/di/container';
 import { assertIsDefined, resolveDependency } from '@core/di/utils'; // Import helpers from utils
 import { IFileOperations } from '@core/file-operations/interfaces';
 import { ILLMProvider, IModelListerService, LLMProviderFactory } from '@core/llm/interfaces';
+import { LLMProviderError } from '@core/llm/llm-provider-errors'; // Added import
 import { LLMAgent } from '@core/llm/llm-agent';
 import { ModelListerService } from '@core/llm/model-lister.service';
 import { AnthropicProvider } from '@core/llm/providers/anthropic-provider';
@@ -53,35 +54,40 @@ export function registerLlmModule(container: Container): void {
 
   // Register factories for LLM providers that instantiate with config and client factory
   container.registerFactory<LLMProviderFactory>('ILLMProvider.OpenAI.Factory', () => {
-    const logger = resolveDependency<ILogger>(container, 'ILogger'); // Resolve logger early for error handling
+    const logger = resolveDependency<ILogger>(container, 'ILogger'); // Keep this one
+    // OpenAIProvider constructor was simplified and no longer takes a clientFactory.
+    // It instantiates ChatOpenAI internally.
+    // The clientFactory for ChatOpenAI ('OpenAIClientFactory') is not directly used by OpenAIProvider factory anymore.
+    // However, other services might still use 'OpenAIClientFactory' if they need a raw ChatOpenAI client.
+    // For the provider factory, we just need logger and config.
+    // const logger = resolveDependency<ILogger>(container, 'ILogger'); // REMOVE DUPLICATE
     try {
-      const clientFactory = resolveDependency<(config: LLMConfig) => ChatOpenAI>(
-        container,
-        'OpenAIClientFactory'
-      );
-
-      return function factory(config: LLMConfig): Result<ILLMProvider, Error> {
+      return function factory(config: LLMConfig): Result<ILLMProvider, LLMProviderError> {
+        // Changed Error to LLMProviderError
         try {
-          const client = clientFactory(config);
-          return Result.ok(new OpenAIProvider(config, logger, () => client));
+          // OpenAIProvider now creates its own ChatOpenAI client.
+          return Result.ok(new OpenAIProvider(config, logger));
         } catch (error) {
           logger.error(
             `Error creating OpenAI provider instance: ${error instanceof Error ? error.message : String(error)}`,
-            error as Error
+            error as Error // Logger can take Error
           );
-          return Result.err(error instanceof Error ? error : new Error(String(error)));
+          return Result.err(LLMProviderError.fromError(error, 'OpenAIFactory'));
         }
       };
     } catch (error) {
+      // This catch is for errors resolving the logger, less likely.
       logger.error(
-        `Failed to resolve dependencies for OpenAI provider factory: ${error instanceof Error ? error.message : String(error)}`,
-        error as Error
+        `Failed to resolve dependencies for OpenAI provider factory (e.g., logger): ${error instanceof Error ? error.message : String(error)}`,
+        error as Error // Logger can take Error
       );
-      // Return a factory that always returns an error if dependency resolution fails
       return () =>
+        // This factory now needs to return Result<ILLMProvider, LLMProviderError>
         Result.err(
-          new Error(
-            `Failed to create OpenAI factory: ${error instanceof Error ? error.message : String(error)}`
+          new LLMProviderError( // Changed to LLMProviderError
+            `Failed to create OpenAI factory due to DI error: ${error instanceof Error ? error.message : String(error)}`,
+            'FACTORY_INIT_ERROR',
+            'OpenAIFactory'
           )
         );
     }
@@ -95,7 +101,8 @@ export function registerLlmModule(container: Container): void {
         'GoogleGenAIClientFactory'
       );
 
-      return function factory(config: LLMConfig): Result<ILLMProvider, Error> {
+      return function factory(config: LLMConfig): Result<ILLMProvider, LLMProviderError> {
+        // Changed Error to LLMProviderError
         try {
           const client = clientFactory(config);
           return Result.ok(new GoogleGenAIProvider(config, logger, () => client));
@@ -104,7 +111,7 @@ export function registerLlmModule(container: Container): void {
             `Error creating Google GenAI provider instance: ${error instanceof Error ? error.message : String(error)}`,
             error as Error
           );
-          return Result.err(error instanceof Error ? error : new Error(String(error)));
+          return Result.err(LLMProviderError.fromError(error, 'GoogleGenAIFactory'));
         }
       };
     } catch (error) {
@@ -114,8 +121,10 @@ export function registerLlmModule(container: Container): void {
       );
       return () =>
         Result.err(
-          new Error(
-            `Failed to create GoogleGenAI factory: ${error instanceof Error ? error.message : String(error)}`
+          new LLMProviderError( // Changed to LLMProviderError
+            `Failed to create GoogleGenAI factory: ${error instanceof Error ? error.message : String(error)}`,
+            'FACTORY_INIT_ERROR',
+            'GoogleGenAIFactory'
           )
         );
     }
@@ -129,7 +138,8 @@ export function registerLlmModule(container: Container): void {
         'AnthropicClientFactory'
       );
 
-      return function factory(config: LLMConfig): Result<ILLMProvider, Error> {
+      return function factory(config: LLMConfig): Result<ILLMProvider, LLMProviderError> {
+        // Changed Error to LLMProviderError
         try {
           const client = clientFactory(config);
           return Result.ok(new AnthropicProvider(config, logger, () => client));
@@ -138,7 +148,7 @@ export function registerLlmModule(container: Container): void {
             `Error creating Anthropic provider instance: ${error instanceof Error ? error.message : String(error)}`,
             error as Error
           );
-          return Result.err(error instanceof Error ? error : new Error(String(error)));
+          return Result.err(LLMProviderError.fromError(error, 'AnthropicFactory'));
         }
       };
     } catch (error) {
@@ -148,8 +158,10 @@ export function registerLlmModule(container: Container): void {
       );
       return () =>
         Result.err(
-          new Error(
-            `Failed to create Anthropic factory: ${error instanceof Error ? error.message : String(error)}`
+          new LLMProviderError( // Changed to LLMProviderError
+            `Failed to create Anthropic factory: ${error instanceof Error ? error.message : String(error)}`,
+            'FACTORY_INIT_ERROR',
+            'AnthropicFactory'
           )
         );
     }
@@ -157,19 +169,38 @@ export function registerLlmModule(container: Container): void {
 
   // Register OpenRouter provider factory
   container.registerFactory<LLMProviderFactory>('ILLMProvider.OpenRouter.Factory', () => {
-    const logger = resolveDependency<ILogger>(container, 'ILogger');
+    const logger = resolveDependency<ILogger>(container, 'ILogger'); // Keep this one
 
-    return function factory(config: LLMConfig): Result<ILLMProvider, Error> {
-      try {
-        return Result.ok(new OpenRouterProvider(config, logger));
-      } catch (error) {
-        logger.error(
-          `Error creating OpenRouter provider instance: ${error instanceof Error ? error.message : String(error)}`,
-          error as Error
+    // OpenRouterProvider constructor was simplified and no longer takes a clientFactory.
+    // const logger = resolveDependency<ILogger>(container, 'ILogger'); // REMOVE DUPLICATE
+    try {
+      return function factory(config: LLMConfig): Result<ILLMProvider, LLMProviderError> {
+        // Changed Error to LLMProviderError
+        try {
+          return Result.ok(new OpenRouterProvider(config, logger));
+        } catch (error) {
+          logger.error(
+            `Error creating OpenRouter provider instance: ${error instanceof Error ? error.message : String(error)}`,
+            error as Error
+          );
+          return Result.err(LLMProviderError.fromError(error, 'OpenRouterFactory'));
+        }
+      };
+    } catch (error) {
+      // This catch is for errors resolving the logger.
+      logger.error(
+        `Failed to resolve dependencies for OpenRouter provider factory (e.g., logger): ${error instanceof Error ? error.message : String(error)}`,
+        error as Error
+      );
+      return () =>
+        Result.err(
+          new LLMProviderError(
+            `Failed to create OpenRouter factory due to DI error: ${error instanceof Error ? error.message : String(error)}`,
+            'FACTORY_INIT_ERROR',
+            'OpenRouterFactory'
+          )
         );
-        return Result.err(error instanceof Error ? error : new Error(String(error)));
-      }
-    };
+    }
   });
 
   // Register LLMProviderRegistry

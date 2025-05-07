@@ -1,114 +1,111 @@
----
-title: Task Description
-type: template
-category: task
-taskId: TSK-017
-priority: High
----
+# Task Description: TSK-017 - Fix Google GenAI Provider Issues & Enhance JSON Parsing Robustness
 
-# Task Description: TSK-017/FixGoogleGenAIProviderIssues
+## 1. Task Overview
 
-## Overview
+**Goal**: Resolve critical reliability issues with the Google GenAI provider and enhance the robustness of JSON parsing for `codeInsights` generation and `tsconfig.json` processing. This involves ensuring stable LLM interactions, accurate token handling, and correct parsing of potentially malformed or comment-laden JSON.
 
-This task addresses critical reliability issues encountered when interacting with the Google GenAI provider (specifically `gemini-2.5-flash-preview-04-17`). The current implementation fails due to:
+**Original Issues (from TSK-017 description & registry):**
 
-1.  Malformed JSON responses returned during project analysis (`codeInsights` generation), causing parsing errors.
-2.  Errors during token counting, including receiving unexpected non-JSON (HTML) responses.
+- Malformed JSON responses from Google GenAI for `codeInsights`.
+- Errors in Google GenAI token counting (e.g., HTML responses).
+- Lack of robust retry logic and token limit handling for Google GenAI.
+- `tsconfig.json` parsing warnings (potentially due to comments).
+- Directory exclusion issues (addressed by TSK-018, but verification needed).
 
-Fixing these issues is essential to ensure the stability of the memory bank generation process and to unblock the completion of TSK-016 ("Enhance Memory Bank Generator Content Quality"). This task implements recommendations from the research conducted (see Related Documentation).
+**Revised Scope based on Analysis:**
 
-## Requirements
+- Verify and test existing fixes in `GoogleGenAIProvider` (retries, token counting, limits).
+- Integrate `parseRobustJson` (using `jsonrepair`) into `AstAnalysisService` for `codeInsights` LLM responses.
+- Implement comment stripping for `tsconfig.json` content in `ProjectAnalyzer` before calling `parseRobustJson`.
+- Ensure comprehensive unit and integration testing for all affected components.
+
+**Business Context**: Reliable LLM interaction and project analysis are fundamental to `roocode-generator`'s core features, especially memory bank generation (blocked by TSK-016, which depends on this task).
+
+**Task Categorization**: Bug Fix / Refactoring / Reliability Enhancement
+**Priority**: High
+
+## 2. Current Implementation Analysis
+
+- **`src/core/llm/providers/google-genai-provider.ts`**: Contains significant existing implementations for retry logic (using `retryWithBackoff`), direct `fetch`-based token counting (with HTML error handling), and dynamic input token limit fetching with pre-call validation. Requires thorough testing.
+- **`src/core/analysis/ast-analysis.service.ts`**: Currently uses direct `JSON.parse()` for LLM responses when generating `CodeInsights`. This is the primary integration point for `parseRobustJson`.
+- **`src/core/utils/json-utils.ts`**: Contains the `parseRobustJson` utility, which already uses the `jsonrepair` library. This utility will be leveraged.
+- **`src/core/analysis/project-analyzer.ts`**: Uses `parseRobustJson` for `tsconfig.json` but does not currently preprocess for comments. It also handles file/directory exclusions for AST analysis input and (with TSK-018 fixes) for `structure.directoryTree`.
+- **`package.json`**: Already includes `jsonrepair` as a dependency.
+
+## 3. Component Structure (Conceptual Changes)
+
+- **`GoogleGenAIProvider`**: Behaviorally more robust due to verified existing fixes and comprehensive testing.
+- **`AstAnalysisService`**: Will internally use `parseRobustJson` for LLM responses, making its `CodeInsights` generation more resilient to malformed JSON.
+- **`ProjectAnalyzer`**: Will preprocess `tsconfig.json` content (strip comments) before passing it to `parseRobustJson`.
+
+## 4. Detailed Requirements
 
 ### Functional Requirements
 
-- The project analysis process must successfully generate `codeInsights` even if the LLM returns common JSON syntax errors (e.g., trailing commas, missing quotes).
-- The token counting mechanism for the Google GenAI provider must return accurate counts or fail gracefully with informative logs.
-- API interactions with Google GenAI should automatically retry on transient errors (e.g., rate limits, server errors).
-- Input exceeding the model's token limit should be detected _before_ sending the request to the API.
+1.  **Google GenAI Provider Stability:**
+    - API interactions with Google GenAI must automatically retry on transient errors (429, 500, 503) for both completions and token counting.
+    - Input exceeding the model's dynamically fetched (or fallback) token limit must be detected _before_ sending requests to the API, with appropriate errors returned.
+    - Token counting must handle non-JSON error responses (especially HTML) gracefully, log them, and fall back to approximation without retrying on such specific errors.
+2.  **Robust `codeInsights` JSON Parsing:**
+    - `AstAnalysisService` must successfully parse `codeInsights` JSON responses from the LLM even if they contain common syntax errors (e.g., trailing commas, missing quotes), by leveraging `jsonrepair` via `parseRobustJson`.
+3.  **Robust `tsconfig.json` Parsing:**
+    - `ProjectAnalyzer` must successfully parse `tsconfig.json` files, even if they contain comments, by stripping comments before attempting parsing with `parseRobustJson`.
+4.  **Exclusion Integrity:**
+    - The final `ProjectContext` must correctly reflect file/directory exclusions (as per `SKIP_DIRECTORIES` and hidden file conventions), building upon TSK-018 fixes.
 
 ### Technical Requirements
 
-- Integrate the `jsonrepair` library (or a similar robust alternative identified in research) to sanitize JSON responses from the Google GenAI provider before parsing.
-- Implement retry logic with exponential backoff for specific Google GenAI API errors (`429`, `500`, `503`) in both completion (`generateContent`) and `countTokens` calls within `google-genai-provider.ts`.
-- Add specific error detection logic within the `countTokens` handling to identify and log non-JSON responses (specifically checking for HTML like `<!DOCTYPE...`).
-- Implement a mechanism to programmatically retrieve the `input_token_limit` for the configured Google GenAI model using the `getModels` API/SDK method.
-- Use the retrieved (or a fallback) token limit to validate input size _before_ making API calls (`countTokens`, `generateContent`).
-- Ensure comprehensive logging around JSON repair attempts, API retries, and token limit handling.
+1.  **`GoogleGenAIProvider` Testing:**
+    - Add comprehensive unit/integration tests for existing retry logic, token limit fetching/validation, and token counting (including HTML error and approximation fallback).
+2.  **`AstAnalysisService` Modification:**
+    - Modify `AstAnalysisService.analyzeAst` to use `parseRobustJson` (from `json-utils.ts`) for parsing the LLM response string.
+    - Ensure appropriate error handling and logging around this parsing step.
+3.  **`ProjectAnalyzer` Modification:**
+    - Modify `ProjectAnalyzer.analyzeProject` to implement comment stripping from `tsconfig.json` file content _before_ calling `parseRobustJson`.
+4.  **Testing:**
+    - Add unit tests for the `tsconfig.json` comment stripping logic.
+    - Add/update unit tests for `AstAnalysisService` focusing on robust JSON parsing.
+    - Ensure all new and modified code adheres to project standards and `Result` pattern.
 
-## Scope
+## 5. Acceptance Criteria Checklist
 
-### Included
+| #                                    | Criterion                                                                                                                                                                                                                                                                                                                                                            | Verification Method                                                                                                                                                                                                                         |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Google GenAI Provider Robustness** |                                                                                                                                                                                                                                                                                                                                                                      |
+| AC1                                  | **`GoogleGenAIProvider.getCompletion` Pre-call Validation:** Input exceeding the model's fetched or fallback token limit is detected _before_ sending the request, an error is logged, and an `LLMProviderError` is returned.                                                                                                                                        | Unit Test: Mock `countTokens` to return a high value, mock `inputTokenLimit`. Verify `this.model.predict` is not called and correct error is returned. Code Review: Verify pre-call validation logic.                                       |
+| AC2                                  | **`GoogleGenAIProvider.countTokens` Retry & HTML Handling:** `countTokens` correctly retries on specified API errors (429, 500, 503) and correctly identifies, logs, and does _not_ retry on HTML error responses, falling back to approximation.                                                                                                                    | Unit Tests: Mock `fetch` to simulate retriable errors, HTML errors, and success. Verify retry attempts, HTML detection, logging, and final token count (or approximation). Code Review.                                                     |
+| AC3                                  | **`GoogleGenAIProvider.fetchModelLimits` Functionality:** The provider attempts to fetch the model's input token limit on initialization. If successful, the fetched limit is used. If failed, a defined fallback limit is used and logged.                                                                                                                          | Unit Tests: Mock `fetch` for `fetchModelLimits` to simulate success and failure. Verify `inputTokenLimit` property is set correctly and logs are appropriate. Code Review.                                                                  |
+| AC4                                  | **`GoogleGenAIProvider` General Retry Logic:** Retry logic with exponential backoff is correctly implemented and verified for `getCompletion` and `countTokens` for specified API errors (429, 500, 503).                                                                                                                                                            | Unit Tests: Mock API responses with these codes for both methods, verify retry behavior and eventual success/failure. Code Review.                                                                                                          |
+| **JSON Repair & Parsing**            |                                                                                                                                                                                                                                                                                                                                                                      |
+| AC5                                  | **`AstAnalysisService` Uses Robust Parsing:** `AstAnalysisService.analyzeAst` uses the `parseRobustJson` utility (or an equivalent robust mechanism incorporating `jsonrepair`) to parse the LLM response when generating `CodeInsights`.                                                                                                                            | Code Review: Verify `ast-analysis.service.ts` calls `parseRobustJson`. Unit Test: Mock `llmAgent.getCompletion` to return malformed JSON; verify `AstAnalysisService` attempts repair and can succeed or fail gracefully with proper error. |
+| AC6                                  | **`ProjectAnalyzer` Handles `tsconfig.json` Comments:** `ProjectAnalyzer.analyzeProject` preprocesses `tsconfig.json` content to remove comments _before_ passing it to `parseRobustJson`.                                                                                                                                                                           | Code Review: Verify comment stripping logic in `project-analyzer.ts`. Unit Test: Provide `tsconfig.json` content with comments; verify it's parsed successfully by `parseRobustJson` after preprocessing.                                   |
+| **Exclusions & Context Integrity**   |                                                                                                                                                                                                                                                                                                                                                                      |
+| AC7                                  | **Correct File/Directory Exclusions in `ProjectContext`:** The final `ProjectContext` generated by `ProjectAnalyzer.analyzeProject` correctly excludes directories from `SKIP_DIRECTORIES` (e.g., `node_modules`, `dist`) and hidden directories (e.g., `.git`, `.vscode`) from both the `structure.directoryTree` and from the files considered for `codeInsights`. | Manual Inspection: Run `ProjectAnalyzer` on the current project. Inspect logged `ProjectContext` or a saved output. Verify exclusions. Automated Test: If possible, an integration test checking `ProjectContext` structure.                |
+| **Overall & Testing**                |                                                                                                                                                                                                                                                                                                                                                                      |
+| AC8                                  | **No Regressions in Core Analysis:** Core project analysis features (tech stack, non-LLM structure analysis, dependency analysis) remain functional and are not negatively impacted.                                                                                                                                                                                 | Existing integration tests for `ProjectAnalyzer` should pass. Manual spot checks of `ProjectContext` for these sections.                                                                                                                    |
+| AC9                                  | **Comprehensive Unit Tests:** New and updated unit tests cover all modified logic in `GoogleGenAIProvider`, `AstAnalysisService`, and the `tsconfig.json` comment stripping in `ProjectAnalyzer`. Tests cover success paths, error handling, retry logic, and edge cases.                                                                                            | Code Review: Verify test coverage and scenarios. Automated Testing: All relevant tests pass with sufficient coverage.                                                                                                                       |
+| AC10                                 | **Code Quality Standards:** All new/modified code adheres to project coding standards (ESLint, Prettier), includes necessary comments, and follows the `Result` pattern for error handling.                                                                                                                                                                          | Code Review: Static analysis tools pass. Manual review for clarity, comments, and error handling patterns.                                                                                                                                  |
 
-- Modifying `src/core/analysis/project-analyzer.ts` (or utility) to integrate JSON repair logic for LLM responses.
-- Modifying `src/core/llm/providers/google-genai-provider.ts` to:
-  - Implement API retry logic (exponential backoff).
-  - Fix the `countTokens` implementation, including handling non-JSON error responses.
-  - Integrate token limit retrieval and pre-call validation.
-- Potentially modifying `src/core/llm/llm-config.service.ts` or similar to manage/cache the retrieved token limit.
-- Adding `jsonrepair` as a project dependency.
-- Adding unit/integration tests for the new/modified logic (JSON repair, retry, error handling, token limits).
+## 6. Implementation Guidance
 
-### Excluded
+- **`GoogleGenAIProvider`**: Focus on writing comprehensive tests for the existing advanced features (retries, token limits, specific error handling in `countTokens`). Ensure all ACs related to its robustness are met through these tests.
+- **`AstAnalysisService`**:
+  - Locate the `JSON.parse()` call for the LLM response.
+  - Replace it with a call to `parseRobustJson(responseString, this.logger)`.
+  - Adjust surrounding error handling to align with `parseRobustJson`'s behavior (it throws on final failure).
+- **`ProjectAnalyzer`**:
+  - Before calling `parseRobustJson` for `tsconfig.json` content, implement a simple comment stripping utility (e.g., using regex to remove `//` and `/* ... */` style comments). Be mindful of not breaking JSON strings that might contain comment-like sequences.
+  - Ensure the logger is passed correctly to `parseRobustJson`.
+- **Testing**:
+  - For `GoogleGenAIProvider`, mock `fetch` responses extensively to simulate various API success/error conditions.
+  - For `AstAnalysisService`, mock `llmAgent.getCompletion` to return various forms of valid and malformed JSON strings.
+  - For `tsconfig.json` comment stripping, provide test strings with different comment styles and ensure they are correctly cleaned and then parsed.
 
-- Changing the primary LLM provider from Google GenAI.
-- Implementing a vector store or RAG approach.
-- Fixing potential issues in other LLM providers.
-- Major refactoring of the analysis or LLM modules beyond what's needed for these fixes.
-- Addressing the root cause of _why_ the LLM returns malformed JSON (focus is on handling it).
+## 7. File and Component References
 
-### Affected Components
-
-See [[TechnicalArchitecture]] for component details.
-
-- `src/core/analysis/project-analyzer.ts`
-- `src/core/llm/providers/google-genai-provider.ts`
-- Potentially `src/core/llm/llm-config.service.ts`
-- `package.json` (to add `jsonrepair` dependency)
-
-## Dependencies
-
-### Technical Dependencies
-
-- Requires installation of the `jsonrepair` npm package.
-- Depends on the Google GenAI API/SDK providing the `getModels` functionality.
-
-### Task Dependencies
-
-- None. This task is intended to unblock TSK-016.
-
-## Success Criteria
-
-1.  **AC1 (JSON Repair):** The `jsonrepair` library (or a similarly effective one based on the research) is integrated into the LLM response handling logic (likely within `project-analyzer.ts` or a utility).
-    - _Verification:_ Code review confirms integration and usage pattern (try standard parse, then repair, then parse again).
-2.  **AC2 (Malformed JSON Handling):** The system successfully parses previously problematic JSON responses from Google GenAI (examples from TSK-016 logs) after implementing the repair logic.
-    - _Verification:_ Unit tests using the logged malformed JSON strings as input demonstrate successful parsing after repair. Manual testing confirms `codeInsights` generation works without JSON parsing errors for the affected files (`json-schema-helper.ts`, `template.ts`).
-3.  **AC3 (Token Counting Fix):** The token counting mechanism for the Google GenAI provider correctly returns the token count or handles API errors gracefully.
-    - _Verification:_ Unit/integration tests confirm `countTokens` returns a number for valid requests.
-4.  **AC4 (HTML Error Handling):** The specific HTML `<!DOCTYPE...` error encountered during token counting is detected, logged comprehensively (including a snippet of the HTML), and treated as a distinct failure (not just a generic error).
-    - _Verification:_ Unit test simulating the HTML response confirms detection and specific logging. Code review verifies the check (e.g., `responseString.trim().startsWith('<!DOCTYPE')`).
-5.  **AC5 (API Retry Logic):** Retry logic with exponential backoff is implemented for specific Google GenAI API errors (`429`, `500`, `503`) in both completion and token counting calls.
-    - _Verification:_ Code review confirms retry logic implementation. Unit tests mocking API responses with these codes verify retry behavior.
-6.  **AC6 (Token Limit Retrieval):** A mechanism is implemented to programmatically retrieve the `input_token_limit` for the configured Google GenAI model using the `getModels` API/SDK method.
-    - _Verification:_ Code review confirms implementation. Unit/integration test verifies successful retrieval of the limit.
-7.  **AC7 (Token Limit Fallback):** A sensible fallback value (e.g., 1,000,000 tokens for Gemini 2.5 Flash) is used if the programmatic retrieval of the token limit fails.
-    - _Verification:_ Code review confirms fallback logic. Unit test simulating API failure for `getModels` confirms fallback value is used.
-8.  **AC8 (Token Limit Usage):** The retrieved (or fallback) token limit is used to validate input size _before_ making calls to `countTokens` or `generateContent` to prevent unnecessary API calls destined to fail.
-    - _Verification:_ Code review confirms pre-call validation logic. Unit tests with input exceeding the limit confirm the API call is skipped and an appropriate error/warning is generated.
-
-## Additional Context
-
-### Business Context
-
-The memory bank generation feature is a core capability of this tool. Its reliability is paramount. The current errors with the Google GenAI provider block the generation process and prevent further quality enhancements planned in TSK-016. Resolving these provider-specific issues ensures the feature works as expected and allows development to continue.
-
-### Technical Context
-
-The `project-analyzer` component relies on LLM calls (via `google-genai-provider.ts`) to generate `codeInsights`. Logs from TSK-016 execution show that the `gemini-2.5-flash-preview-04-17` model is returning JSON with syntax errors, causing `JSON.parse` to fail. Additionally, the `countTokens` function within the provider is failing with non-JSON errors (HTML detected), indicating issues with API interaction or error handling. The research report provides specific recommendations for libraries (`jsonrepair`) and techniques (retry logic, specific error detection, token limit handling) to address these problems.
-
-### Related Documentation
-
-- Research Report: [research-report.md](./research-report.md)
-- Implementation Plan: [[implementation-plan-template]]
-- Technical Details: [[TechnicalArchitecture]]
-- Development Guidelines: [[DeveloperGuide]]
-- Blocked Task: [[TSK-016-EnhanceMemoryBankGenQuality/task-description.md]]
+- `src/core/llm/providers/google-genai-provider.ts` (Testing focus)
+- `src/core/analysis/ast-analysis.service.ts` (Modify for robust parsing)
+- `src/core/analysis/project-analyzer.ts` (Modify for tsconfig comment stripping)
+- `src/core/utils/json-utils.ts` (Leverage `parseRobustJson`)
+- `package.json` (Verify `jsonrepair` dependency - already confirmed)
+- Associated unit test files for the above.

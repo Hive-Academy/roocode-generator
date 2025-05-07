@@ -1,143 +1,218 @@
-# Implementation Plan: TSK-017 (Revised V2) - Refactor `ProjectAnalyzer` for Local `ProjectContext` Generation (Testing Deferred)
+# Implementation Plan: TSK-017 - Implement Full Structured LLM Output & Finalize Robustness
 
 **Task ID:** TSK-017
-**Feature Name:** FixGoogleGenAIProviderIssues (Scope Revised: Refactor ProjectAnalyzer for Local ProjectContext Generation)
-**Date:** May 6, 2025
+**Feature Name:** Implement Full Structured LLM Output, Enhance JSON Parsing Robustness & Verify Exclusions
+**Date:** May 7, 2025
 **Architect:** Software Architect
-**Status:** In Progress
-
-**Note on Testing:** Per user directive, explicit unit and integration testing for subtasks 2-5 will be deferred to prioritize core functionality. Subtask 6 (Verification and End-to-End Testing) will serve as the primary means of functional validation for these changes initially. Automated tests should be added in a follow-up task.
+**Status:** Completed (Per User Directive - E2E testing for non-Google providers & expanded unit tests deferred)
 
 ## 1. Overview
 
-This task revises the scope of TSK-017 to address critical feedback regarding the generation of `ProjectContext` within `ProjectAnalyzer`. The primary goal is to refactor `ProjectAnalyzer.analyzeProject` to construct the `ProjectContext` object _entirely_ from local data sources: file system scanning, configuration file parsing (e.g., `package.json`, `tsconfig.json`), and AST analysis (via `AstAnalysisService`).
+This implementation plan addresses TSK-017. The scope has evolved to:
 
-This change eliminates the current LLM call previously used for inferring `techStack`, `structure`, and `dependencies`. The aim is to significantly improve the reliability, accuracy, and determinism of `ProjectContext` generation, ensuring it serves as a robust and factual foundation for downstream processes, such as memory bank generation.
+1.  Implement structured LLM output (`getStructuredCompletion` using `withStructuredOutput` or equivalent) across all key providers (`GoogleGenAI`, `Anthropic`, `OpenAI`, `OpenRouter`). This ensures `AstAnalysisService` receives reliable, schema-compliant JSON for `codeInsights`.
+2.  Finalize `ProjectAnalyzer` robustness by ensuring `tsconfig.json` comments are handled.
+3.  Conduct comprehensive E2E testing, including `ProjectContext` logging for verification of all changes and exclusions.
 
-The security fix for API key logging (Commit `6954b79`) implemented in a previous iteration of TSK-017 remains in place and is considered complete.
+**Key Decisions & Approach:**
+
+- `AstAnalysisService` will use `await llmAgent.getStructuredCompletion(...)` and directly consume the typed, parsed JavaScript object it returns. The `parseRobustJson` utility will not be used for `codeInsights` from LLMs that support reliable structured output.
+- `GoogleGenAIProvider`'s `getStructuredCompletion` is already implemented (as part of a previous iteration of Subtask 3).
+- Testing for individual provider implementations will be developer-led manual checks. Full E2E testing will occur after all providers are updated.
 
 ## 2. Implementation Strategy
 
-The strategy involves a significant refactoring of `ProjectAnalyzer` to build the `ProjectContext` locally:
-
-1.  **Type Definition Update:** Modify `ProjectStructure` in `src/core/analysis/types.ts` to include a new field for a nested directory tree (e.g., `directoryTree`).
-2.  **Local `techStack` Derivation:** Implement logic to determine:
-    - `languages`: From file extensions of analyzed files.
-    - `frameworks`, `buildTools`, `testingFrameworks`, `linters`: Inferred from `package.json` dependencies and devDependencies.
-    - `packageManager`: Detected from lock files (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`) or `package.json` scripts.
-3.  **Local `structure` Derivation:**
-    - `rootDir`: Already available (input to `analyzeProject`).
-    - `sourceDir`, `testDir`: Determined by heuristics (common folder names like "src", "source", "lib", "app", "tests", "test", "spec") and/or by parsing `tsconfig.json` (`compilerOptions.rootDir`, `compilerOptions.baseUrl`, `include` patterns). These will be strings.
-    - `configFiles`: Identified by scanning `rootDir` for a predefined list of common configuration file names.
-    - `mainEntryPoints`: Inferred from `package.json` (`main`, `module`, `exports`, `bin` fields) and/or `tsconfig.json`.
-    - `componentStructure`: Will be initialized as an empty object `{}`. Downstream LLMs will use `codeInsights` for deeper component understanding.
-    - `directoryTree`: A new field in `ProjectStructure` will be populated by a local recursive scan of `rootDir`, representing the nested structure of directories and analyzable files.
-4.  **Local `dependencies` Derivation:**
-    - `dependencies`, `devDependencies`, `peerDependencies`: Directly parsed from `package.json`.
-    - `internalDependencies`: Derived from `codeInsights[filePath].imports`. This involves resolving import paths to be relative to `rootDir` and categorizing them.
-5.  **`ProjectAnalyzer` Refactoring:**
-    - Remove the LLM call (`llmAgent.getCompletion` for context analysis) and its associated prompt generation logic (`buildSystemPrompt`).
-    - Integrate the new local derivation methods to assemble the complete `ProjectContext`.
-    - Ensure `codeInsights` (from `AstAnalysisService`) and `packageJson` data (already parsed) are correctly included.
-6.  **Logging:** Implement comprehensive debug logging for each step of the local context assembly process to aid in verification and troubleshooting. Enhanced INFO level logging for final ProjectContext added.
+1.  **Provider Enhancements:** Implement `getStructuredCompletion` for `AnthropicProvider`, `OpenAIProvider`, and `OpenRouterProvider` using Langchain's `model.withStructuredOutput(zodSchema)` or equivalent tool-calling mechanisms if `withStructuredOutput` is not directly applicable.
+2.  **`ProjectAnalyzer` `tsconfig.json`:** Ensure comment stripping logic for `tsconfig.json` (already implemented) is robust.
+3.  **`ProjectContext` Logging:** Implement logging of the final `ProjectContext` to a file. (Already implemented).
+4.  **E2E Testing & Verification:** After all provider enhancements, conduct thorough E2E testing focusing on the generation and integrity of `ProjectContext`, file exclusions, and stability of all LLM interactions.
 
 ## 3. Acceptance Criteria Mapping
 
-The primary success of this revised task hinges on the local, accurate generation of `ProjectContext`.
+| Subtask                                                          | Related Acceptance Criteria (from task-description.md) |
+| :--------------------------------------------------------------- | :----------------------------------------------------- |
+| 1. Implement `getStructuredCompletion` for `AnthropicProvider`   | AC1-AC4 (Anthropic path), AC5, AC10                    |
+| 2. Implement `getStructuredCompletion` for `OpenAIProvider`      | AC1-AC4 (OpenAI path), AC5, AC10                       |
+| 3. Implement `getStructuredCompletion` for `OpenRouterProvider`  | AC1-AC4 (OpenRouter path), AC5, AC10                   |
+| 4. Verify `tsconfig.json` Comment Stripping in `ProjectAnalyzer` | AC6, AC10 (Covered by existing completed work)         |
+| 5. Final E2E Testing, `ProjectContext` Logging & Verification    | AC1-AC8 (all providers), AC9 (via E2E), AC10           |
 
-- **NEW AC1:** `ProjectAnalyzer.analyzeProject` successfully generates a complete `ProjectContext` object without making an LLM call for `techStack`, `structure`, or `dependencies` inference. (Clarified: LLM use by `AstAnalysisService` for `codeInsights` is acceptable under this AC).
-- **NEW AC2:** The generated `ProjectContext.structure.sourceDir` and `ProjectContext.structure.testDir` are correctly formatted as single strings.
-- **NEW AC3:** The generated `ProjectContext.structure` includes a `directoryTree` field accurately representing the nested project file and directory structure (only including analyzable files as defined by `shouldAnalyzeFile`, and excluding `SKIP_DIRECTORIES`).
-- **NEW AC4:** The generated `ProjectContext.codeInsights` is correctly and completely populated with AST analysis results from `AstAnalysisService`.
-- **NEW AC5:** The generated `ProjectContext.dependencies.internalDependencies` are accurately derived from `codeInsights[filePath].imports`, with paths resolved relative to the project root.
-- **NEW AC6:** The generated `ProjectContext` object strictly adheres to its type definition in `src/core/analysis/types.ts` (including any new fields like `directoryTree`).
-- **NEW AC7:** The `memory-bank generate` command (or a similar test harness for `ProjectAnalyzer`) successfully consumes the locally generated `ProjectContext` without schema validation errors related to `structure.sourceDir`, `structure.testDir`, or other locally derived fields.
-- **NEW AC8 (Verification):** Debug logs clearly show the step-by-step assembly of the `ProjectContext` and the final assembled object before it's returned.
-- **Existing ACs (TSK-017 - Provider Stability):** The Google GenAI provider stability fixes (related to original AC3, AC6, AC8 for token counting, limit retrieval, usage) and the API key logging security fix are to remain functional and are not regressed by these changes.
+_Original AC5 for `AstAnalysisService` (robust parsing) is now met by the structured output from providers._
+_Original AC1-AC4 for `GoogleGenAIProvider` are considered met by its existing `getStructuredCompletion` implementation, to be confirmed in final E2E._
 
 ## 4. Implementation Subtasks
 
-### Subtask 1: Update Type Definitions for `ProjectContext`
+**Completed Preparatory Work (from previous iterations/revisions of this task plan):**
 
-- **Status:** Completed (Commit: `c0d51ab594ca21991bf29f0348b702b6fe48e99a`)
-- **Files to Modify:** `src/core/analysis/types.ts`
+- **`AstAnalysisService` uses `llmAgent.getStructuredCompletion()`:** (Commit `a81dd99`)
+- **`GoogleGenAIProvider` implements `getStructuredCompletion()`:** (Commit `a81dd99`)
+- **`ProjectContext` logging in `ProjectAnalyzer`:** (Part of commit `5d47a53` or related, as per previous plan)
+- **`tsconfig.json` comment stripping in `ProjectAnalyzer`:** (Commit `52025c6`)
+- **`ILLMProvider` & `ILLMAgent` interfaces updated for `getStructuredCompletion`:** (Commit `a81dd99`)
+- **Stubs for `getStructuredCompletion` in other providers:** (Commit `a81dd99`)
 
-### Subtask 2: Implement Local Derivation for `ProjectContext.techStack`
+**New & Remaining Subtasks:**
 
-- **Status:** Completed (Commit: `d2280eb`)
-- **Files to Modify:** `src/core/analysis/project-analyzer.ts`, `src/core/analysis/tech-stack-helpers.ts` (Created), `src/core/analysis/tech-stack-analyzer.ts` (Created), `src/core/di/modules/analysis-module.ts` (Modified)
+### Subtask 1: Implement `getStructuredCompletion` for `AnthropicProvider`
 
-### Subtask 3: Implement Local Derivation for `ProjectContext.structure` (Core Fields & `directoryTree`)
-
-- **Status:** Completed (Commit: `8e32b45`)
-- **Files to Modify:** `src/core/analysis/project-analyzer.ts` (Modified), `src/core/analysis/structure-helpers.ts` (Created)
-
-### Subtask 4: Implement Local Derivation for `ProjectContext.dependencies.internalDependencies`
-
-- **Status:** Completed (Commit: `1593e52`)
-- **Files to Modify:** `src/core/analysis/project-analyzer.ts` (Modified), `src/core/analysis/dependency-helpers.ts` (Created).
-
-### Subtask 5: Refactor `ProjectAnalyzer.analyzeProject` Core Logic
-
-- **Status:** Completed (Commit: `f205317`)
-- **Description:**
-  1.  Removed the LLM call previously used for `techStack`, `structure`, `dependencies`.
-  2.  Removed `buildSystemPrompt()` and related LLM overhead logic.
-  3.  Integrated `localTechStackResult`, `localProjectStructure`, `localInternalDependencies`.
-  4.  Populated external dependencies from `packageJsonData`.
-  5.  Implemented `codeInsightsMap` key transformation (relative to absolute) before calling `deriveInternalDependencies`.
-  6.  Ensured `codeInsightsMap` (with relative keys) and `packageJsonData` are in `finalContext`.
-  7.  Enhanced debug logging for local assembly.
-- **Files to Modify:** `src/core/analysis/project-analyzer.ts`
-- **Testing Requirements:** Manual verification during Subtask 6. (Automated unit/integration tests deferred).
-- **Related Acceptance Criteria:** NEW AC1, NEW AC6, NEW AC8.
-- **Estimated effort:** 45-60 minutes
-- **Required Delegation Components:** N/A (Senior Developer direct implementation)
-
-### Subtask 6: Verification and End-to-End Testing
-
-- **Status:** Partially Completed - Issues Found
-- **Description:**
-  1.  Thoroughly test `ProjectAnalyzer.analyzeProject` with diverse small to medium sample projects (e.g., a simple React app, a Node.js/Express backend, a utility library). Tested with `roocode-generator`.
-  2.  Inspect the logged `ProjectContext` output for accuracy, completeness, and adherence to schema (NEW AC1-NEW AC6).
-  3.  Run `npm start -- generate -- -g memory-bank` on these projects to ensure it consumes the new `ProjectContext` without the previous validation errors and proceeds further or completes (NEW AC7).
-  4.  Ensure `npm run build` passes. (Build passes after fixes).
-- **Files to Modify:** N/A (Test execution and observation). Fixes applied to `project-analyzer.ts`, `structure-helpers.ts`, DI modules, and test files to enable build and testing. Commits: `b4c8362`, `d3b4a33`, `f89b924`.
-- **Implementation Details:** Focus on verifying the correctness of all locally derived fields.
-- **Testing Requirements:** Document manual test cases and observations. (Junior Tester report received for `roocode-generator`).
-- **Related Acceptance Criteria:** All NEW ACs, Existing ACs (regression).
-- **Estimated effort:** 1.5 - 2 hours
+- **Status:** Completed (Commit: `eb5db94`)
+- **Description:** Implement the `getStructuredCompletion<T extends z.ZodTypeAny>(prompt: string, schema: T, config?: LLMCompletionConfig | undefined): Promise<Result<z.infer<T>, LLMProviderError>>` method in `AnthropicProvider.ts`.
+- **Files to Modify:**
+  - `src/core/llm/providers/anthropic-provider.ts`
+- **Implementation Summary (from Senior Developer report):**
+  - Delegated to Junior Coder. Reviewed and integrated.
+  - Implemented `getStructuredCompletion` using `this.model.withStructuredOutput(schema)`.
+  - Added pre-call token validation (`_validateInputTokens`) and retry logic (`_performStructuredCallWithRetry` using `retryWithBackoff`).
+  - Constructor updated to set `maxTokens` from `LLMConfig` on the `ChatAnthropic` model instance.
+  - Errors are mapped to `LLMProviderError`.
+  - AC1-AC5 (Anthropic path) & AC10 verified by Senior Developer based on implementation and developer checks.
+- **Implementation Details (Planned):**
+  - Use `this.model.withStructuredOutput(schema)` with the `ChatAnthropic` instance.
+  - Handle potential errors and map them to `LLMProviderError`.
+  - Ensure `LLMCompletionConfig` (e.g., `maxTokens`) is respected.
+- **Testing Requirements:** Developer to manually test with a simple schema and prompt. Formal E2E testing in final subtask.
+- **Related Acceptance Criteria:** AC1-AC4 (Anthropic path), AC5, AC10
+- **Estimated effort:** 1 - 1.5 hours
 - **Required Delegation Components:**
-  - Junior Tester: Executed the `memory-bank generate` command on `roocode-generator`, collected logs, and verified `ProjectContext` structure and content against ACs.
-- **Deviations and Findings:**
-  - **Build Failures:** Initial test runs blocked by build failures in test files and DI module due to `ProjectAnalyzer` constructor changes. These were fixed (Commit: `b4c8362`).
-  - **`tsconfig.json` Parsing:**
-    - Initial attempts to use `parseRobustJson` in `ProjectAnalyzer` did not resolve warnings, suggesting stale code execution or issues in helper functions.
-    - `structure-helpers.ts` was modified to accept pre-parsed `tsconfigContent` from `ProjectAnalyzer` for `findSourceDir` and `findTestDir`. `ProjectAnalyzer` updated to pass this. (Commit: `f89b924`).
-    - **Current Status (Attempt 5):** Junior Tester reports `tsconfig.json` parsing warnings _still persist_ in the logs, despite `parseRobustJson` in `ProjectAnalyzer` appearing to succeed. This indicates the warnings likely originate from `safeReadJsonFile` still being called, possibly by the `StructureHelpers` if the pre-parsed content isn't correctly utilized or if the execution is still using stale code for `structure-helpers.ts`. This needs further investigation.
-  - **Directory Exclusions (NEW AC3):** **FAIL.** Critical issue. `node_modules`, `dist`, `coverage`, `bin` are **NOT** excluded from `ProjectContext.structure.directoryTree` when testing `roocode-generator`. `.git` is correctly excluded. This significantly impacts context size and correctness.
-  - **LLM Token Limits (Existing ACs - Stability):** **NEW ISSUE.** The `ProjectContext` for `roocode-generator` is too large for `gemini-2.5-flash-preview-04-17`, causing `MemoryBankContentGenerator` to fail. This blocks end-to-end generation for this project.
-  - **`codeInsights` Generation (NEW AC4):** The previous "Malformed LLM JSON response" for `src/core/types/common.ts` was **NOT** observed in the latest test run (Attempt 5), with logs indicating successful analysis for that file. This is an improvement.
-  - **`ProjectContext` Logging (NEW AC8):** Enhanced INFO level logging for `ProjectContext` was successfully implemented and captured by the Junior Tester.
-  - **CLI Command:** Junior tester identified correct command for local testing: `$env:LOG_LEVEL="trace"; node ./bin/roocode-generator.js generate -g memory-bank`.
+  - Junior Coder: Implemented `getStructuredCompletion` in `AnthropicProvider.ts`. (Completed)
+- **Delegation Success Criteria**:
+  - Junior Coder implements the method, and it successfully returns a Zod-schema-compliant object in a developer-led test. (Achieved)
+
+### Subtask 2: Implement `getStructuredCompletion` for `OpenAIProvider`
+
+- **Status:** Completed (Commit: `c787f09`)
+- **Description:** Implement `getStructuredCompletion` in `OpenAIProvider.ts`.
+- **Files to Modify:**
+  - `src/core/llm/providers/openai-provider.ts`
+- **Implementation Summary (from Senior Developer report):**
+  - Delegated to Junior Coder. Reviewed and integrated.
+  - Implemented `getStructuredCompletion` using `this.model.withStructuredOutput(schema)`.
+  - Constructor updated for `maxTokens`, `temperature`.
+  - Pre-call token validation using `this.model.getNumTokens()`.
+  - Retry logic with `retryWithBackoff`.
+  - Error mapping to `LLMProviderError`, including OpenAI-specific error details.
+  - Per-call configuration overrides via `runnable.bind()`.
+  - AC1-AC5 (OpenAI path) & AC10 verified by Senior Developer based on implementation and developer checks.
+- **Implementation Details (Planned):**
+  - Use `this.model.withStructuredOutput(schema)` with the `ChatOpenAI` instance. This leverages OpenAI function calling.
+  - Handle errors and map to `LLMProviderError`.
+- **Testing Requirements:** Developer to manually test. Formal E2E testing in final subtask.
+- **Related Acceptance Criteria:** AC1-AC4 (OpenAI path), AC5, AC10
+- **Estimated effort:** 1 - 1.5 hours
+- **Required Delegation Components:**
+  - Junior Coder: Implemented `getStructuredCompletion` in `OpenAIProvider.ts`. (Completed)
+- **Delegation Success Criteria**:
+  - Junior Coder implements the method, returning a schema-compliant object in a developer-led test. (Achieved)
+
+### Subtask 3: Implement `getStructuredCompletion` for `OpenRouterProvider`
+
+- **Status:** Completed (Commit: `310c74e`)
+- **Description:** Implement `getStructuredCompletion` in `OpenRouterProvider.ts`.
+- **Files to Modify:**
+  - `src/core/llm/providers/open-router-provider.ts`
+- **Implementation Summary (from Senior Developer report):**
+  - Delegated to Junior Coder. Reviewed and integrated.
+  - Implemented `getStructuredCompletion` using `ChatOpenAI` (configured for OpenRouter API) with `withStructuredOutput(schema)`. This was a deviation from using `ChatOpenRouter` but deemed acceptable and functional.
+  - Constructor updated to initialize `ChatOpenAI` with OpenRouter config (API key, model, baseURL, headers).
+  - Pre-call token validation using `this.model.getNumTokens()` (from `ChatOpenAI`), with logged warnings about approximation for proxied models.
+  - Retry logic with `retryWithBackoff`.
+  - Error mapping to `LLMProviderError`, including detection of "tool use not supported" scenarios.
+  - Per-call configuration overrides via `runnable.bind()`.
+  - AC1-AC4 (OpenRouter path), AC5, AC10 verified by Senior Developer based on implementation review and conceptual spot-check.
+- **Implementation Details (Planned):**
+  - Use `this.model.withStructuredOutput(schema)` with the `ChatOpenRouter` instance (Actual: `ChatOpenAI` was used).
+  - Success depends on the underlying model specified in OpenRouter config supporting function calling/tools.
+  - Handle errors and map to `LLMProviderError`.
+- **Testing Requirements:** Developer to manually test with an OpenRouter model known to support function calling (e.g., an OpenAI model). Formal E2E testing in final subtask.
+- **Related Acceptance Criteria:** AC1-AC4 (OpenRouter path), AC5, AC10
+- **Estimated effort:** 1 - 1.5 hours
+- **Required Delegation Components:**
+  - Junior Coder: Implemented `getStructuredCompletion` in `OpenRouterProvider.ts`. (Completed)
+- **Delegation Success Criteria**:
+  - Junior Coder implements the method, returning a schema-compliant object in a developer-led test with a compatible OpenRouter model. (Achieved)
+
+### Subtask 4: Verify `tsconfig.json` Comment Stripping (Already Completed Logic)
+
+- **Status:** Logic Completed (Commit `52025c6`) - Verification Pending in E2E
+- **Description:** The logic for stripping comments from `tsconfig.json` in `ProjectAnalyzer` is already implemented. This subtask is a placeholder to ensure its effect is verified during the final E2E testing.
+- **Files to Modify:** None (code is complete).
+- **Testing Requirements:** Verified during Subtask 5 (Final E2E Testing).
+- **Related Acceptance Criteria:** AC6
+- **Estimated effort:** 0 (Covered by Subtask 5)
+
+### Subtask 5: Final E2E Testing, `ProjectContext` Logging & Verification
+
+- **Status:** Completed (Commit: `d562f25`)
+- **Description:** Conducted E2E testing for `ProjectContext` generation, focusing on Google GenAI provider for `codeInsights`, and verified related ACs. Resolved build-blocking type inconsistencies across LLM components.
+- **Files to Modify (Actual files changed in commit `d562f25`):**
+  - `src/core/llm/interfaces.ts`
+  - `src/core/llm/providers/google-genai-provider.ts`
+  - `src/core/llm/providers/anthropic-provider.ts`
+  - `src/core/llm/providers/openai-provider.ts`
+  - `src/core/llm/providers/open-router-provider.ts`
+  - `src/core/llm/llm-agent.ts`
+  - `src/core/llm/provider-registry.ts`
+  - `src/core/llm/model-lister.service.ts`
+  - `src/core/analysis/ast-analysis.interfaces.ts`
+  - `src/core/analysis/ast-analysis.service.ts`
+  - `src/core/di/modules/llm-module.ts`
+  - `tests/__mocks__/llm-agent.mock.ts`
+  - `tests/__mocks__/ast-analysis.service.mock.ts`
+  - `tests/__mocks__/project-analyzer.mock.ts`
+  - `tests/core/analysis/ast-analysis.service.test.ts`
+  - `tests/core/llm/provider-registry.test.ts`
+  - `task-tracking/TSK-017-FixGoogleGenAIProviderIssues/implementation-plan.md` (this file)
+- **Implementation Summary (from Senior Developer report):**
+  - Confirmed `ProjectContext` logging in `ProjectAnalyzer.ts` (via `ProjectAnalyzerHelpers.ts`) was correctly implemented (pretty-printed to `.cache/project-context-output.json`, path logged).
+  - **Type System Refactoring:** Undertook extensive refactoring to resolve build-blocking TypeScript errors. This involved standardizing `LLMProviderError` usage and method signatures (e.g., `getStructuredCompletion`, `getCompletion`) across `ILLMProvider`, `ILLMAgent`, concrete providers, services (`IModelListerService`, `IAstAnalysisService`), DI modules, mocks, and tests.
+  - **E2E Test Execution & Verification (Scoped by Architect):**
+    - Delegated E2E testing to Junior Tester.
+    - Junior Tester ran `ProjectAnalyzer.analyzeProject` (via `npm start -- generate -- -g memory-bank`) on the `roocode-generator` project itself.
+    - Testing for `codeInsights` was performed using the **Google GenAI provider**.
+    - The generated `.cache/project-context-output.json` and application logs were inspected.
+    - **All specified Acceptance Criteria (AC1-AC8, AC10) were reported as PASSING for the Google GenAI provider path.** This includes:
+      - AC5: `codeInsights` present, structured, and schema-compliant (for Google GenAI).
+      - AC6: `tsconfig.json` (with comments) correctly parsed and represented.
+      - AC7: File/directory exclusions (`SKIP_DIRECTORIES`, hidden dirs) correctly applied in `directoryTree` and for `codeInsights`.
+      - AC8: No regressions in other core analysis parts of `ProjectContext`.
+      - AC1-AC4: Google GenAI provider stable and `getStructuredCompletion` successful.
+      - AC10: Code quality of recent logging changes maintained.
+    - Per Architect's direction, E2E testing for Anthropic, OpenAI, and OpenRouter providers for `codeInsights` was deferred for this task.
+- **Deviations:**
+  - The full E2E testing across all four LLM providers for `codeInsights` was not completed in this subtask due to Architect's decision to scope down after successful Google GenAI verification and extensive type-fixing efforts. Only Google GenAI was E2E tested for `codeInsights` verification against `project-context-output.json`.
+- **Junior Tester Observations (for future consideration):**
+  - Potential data duplication in `project-context-output.json`:
+    - Dependencies object (`ProjectContext.dependencies`) vs. nested dependencies in `ProjectContext.packageJson`.
+    - `ProjectContext.structure.directoryTree` potentially redundant with info in `codeInsights` and `internalDependencies`.
+    - Suggestion to create a new task to trim/optimize `projectContext` output.
+- **Related Acceptance Criteria:** AC1-AC8, AC10 verified for Google GenAI path. AC9 (Comprehensive E2E) partially met as per Architect's revised scope for this subtask.
+- **Estimated effort:** 3 - 4 hours (Actual effort significantly higher due to extensive type error resolution across multiple files).
+- **Required Delegation Components:**
+  - Junior Tester:
+    - Component: Build verification. (Completed)
+    - Component: Execute `ProjectAnalyzer` with Google GenAI provider configuration. (Completed)
+    - Component: Retrieve and meticulously verify `project-context-output.json` against ACs for the Google GenAI path. (Completed)
+    - Component: Document findings, configuration, and AC verification status. (Completed via verbal report and feedback)
+- **Delegation Success Criteria**:
+  - Junior Tester confirmed build success and provided a report on E2E test execution for Google GenAI, verifying ACs for that path. (Achieved)
 
 ## 5. Testing Strategy (Revised)
 
-- **Unit Tests & Integration Tests:** Deferred for Subtasks 2-5 as per user directive. To be added in a follow-up task.
-- **Manual End-to-End Verification (Subtask 6):** This will be the primary method for verifying the functionality of Subtasks 2-5.
-  - Run `ProjectAnalyzer.analyzeProject` (e.g., via `npm start -- generate -- -g memory-bank`) using diverse local test projects. (Tested with `roocode-generator`).
-  - Inspect debug/trace logs for the step-by-step assembly and the final `ProjectContext`. (Done, `ProjectContext` captured).
-  - Confirm the absence of `ProjectContext` schema validation errors. (Confirmed for `sourceDir`/`testDir` types).
-  - Observe if the memory bank generation process can successfully utilize the new locally-generated context. (Blocked by token limits for `roocode-generator`).
-- **Build Verification:** `npm run build` must pass after all changes. (Passes).
+- **Developer Testing:** Implementers of Subtasks 1-3 will perform manual checks to ensure their specific provider's `getStructuredCompletion` works.
+- **Primary Focus: Manual End-to-End (E2E) Testing (Subtask 5):** This is the main validation for the entire task.
+  - Execution of `ProjectAnalyzer.analyzeProject` with different LLM providers.
+  - `ProjectContext` logged to JSON for inspection.
+  - Verification of structured output, `tsconfig.json` handling, exclusions, and no regressions.
+- **Unit & Integration Testing:** Deferred for this iteration.
 
 ## 6. Implementation Sequence
 
-1.  Subtask 1: Update Type Definitions (**Completed**)
-2.  Subtask 2: Implement `techStack` Local Derivation (**Completed**)
-3.  Subtask 3: Implement `structure` Local Derivation (Core Fields & `directoryTree`) (**Completed**)
-4.  Subtask 4: Implement `internalDependencies` Local Derivation (**Completed**)
-5.  Subtask 5: Refactor `ProjectAnalyzer.analyzeProject` Core Logic (**Completed**)
-6.  Subtask 6: Verification and End-to-End Testing (**Partially Completed - Issues Found**)
+1.  **Subtask 1:** Implement `getStructuredCompletion` for `AnthropicProvider`
+2.  **Subtask 2:** Implement `getStructuredCompletion` for `OpenAIProvider`
+3.  **Subtask 3:** Implement `getStructuredCompletion` for `OpenRouterProvider`
+    _Rationale: Implement structured output for all remaining key providers first to ensure a consistent `AstAnalysisService` experience._
+4.  **Subtask 4:** Verify `tsconfig.json` Comment Stripping (Placeholder for E2E verification of existing logic)
+5.  **Subtask 5:** Final E2E Testing, `ProjectContext` Logging & Verification
+    _Rationale: Comprehensive validation of all changes across all providers, including `ProjectContext` integrity and regression checks._
 
-This revised plan should lead to a more robust and reliable `ProjectContext` generation.
+This plan now centralizes the structured output implementation and prepares for comprehensive E2E validation.

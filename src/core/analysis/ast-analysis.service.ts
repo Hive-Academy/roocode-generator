@@ -9,10 +9,12 @@ import {
 } from './ast-analysis.interfaces';
 import { GenericAstNode } from './types'; // Ensure this path is correct
 import { Result } from '../result/result';
-import { ILLMAgent } from '../llm/interfaces';
+import { ILLMAgent, LLMCompletionConfig } from '../llm/interfaces'; // Added LLMCompletionConfig
 import { ILogger } from '../services/logger-service';
 import { Injectable, Inject } from '../di/decorators';
 import { RooCodeError } from '../errors';
+import { LLMProviderError } from '../llm/llm-provider-errors'; // Added
+import type { BaseLanguageModelInput } from '@langchain/core/language_models/base'; // Added
 /**
  * Zod schema for validating FunctionInfo objects.
  * Ensures the object has a 'name' (string) and 'parameters' (array of strings).
@@ -85,99 +87,66 @@ export class AstAnalysisService implements IAstAnalysisService {
   async analyzeAst(
     astData: GenericAstNode,
     filePath: string
-  ): Promise<Result<CodeInsights, Error>> {
+  ): Promise<Result<CodeInsights, LLMProviderError>> {
+    // Changed Error to LLMProviderError
     this.logger.debug(`Analyzing AST for file: ${filePath}`);
 
     try {
       // Step 1: Condense the AST
       const condensedAst = this._condenseAst(astData);
-      const condensedAstJson = JSON.stringify(condensedAst, null, 2); // Pretty print for prompt clarity
-
-      // Optional: Log the condensed AST for debugging
-      // this.logger.debug(`Condensed AST for ${filePath}:\n${condensedAstJson}`);
+      const condensedAstJson = JSON.stringify(condensedAst, null, 2);
 
       // Step 2: Build the prompt using the condensed AST JSON
-      const systemPrompt = this.buildPrompt(condensedAstJson);
-      const userPrompt = ''; // User prompt remains empty as data is in system prompt
+      // For getStructuredCompletion, the prompt is BaseLanguageModelInput.
+      // We'll pass the system prompt as a string, which is a valid BaseLanguageModelInput.
+      const llmPrompt: BaseLanguageModelInput = this.buildPrompt(condensedAstJson);
+      // No separate userPrompt needed as it's incorporated in buildPrompt or not used by getStructuredCompletion in this way.
 
-      // Optional: Add token counting check here if needed later
-      // const tokenCount = await this.llmAgent.countTokens(systemPrompt + userPrompt);
-      // if (tokenCount > MAX_TOKENS) return Result.err(...)
+      // Step 3: Call the LLM using structured output
+      this.logger.debug(`Requesting structured completion for ${filePath}`);
+      // Assuming no specific completionConfig is needed here, pass undefined or an empty object.
+      const completionConfig: LLMCompletionConfig | undefined = undefined;
+      const structuredResult = await this.llmAgent.getStructuredCompletion(
+        llmPrompt, // Pass the combined prompt
+        codeInsightsSchema, // Pass the Zod schema directly
+        completionConfig
+      );
 
-      // Step 3: Call the LLM
-      const completionResult = await this.llmAgent.getCompletion(systemPrompt, userPrompt);
-
-      if (completionResult.isErr()) {
-        // Ensure error exists before accessing message and returning
-        const error = completionResult.error ?? new Error('Unknown LLM Agent Error');
-        this.logger.error(`LLM call failed for ${filePath}: ${error.message}`);
-        return Result.err(error);
+      if (structuredResult.isErr()) {
+        // structuredResult.error is LLMProviderError
+        this.logger.error(
+          `Structured LLM call failed for ${filePath}: ${structuredResult.error!.message}`, // Added !
+          structuredResult.error // Log the original error object
+        );
+        return Result.err<LLMProviderError>(structuredResult.error!); // Return LLMProviderError
       }
 
-      // Step 4: Parse and Validate the LLM Response
-      const rawResponse = completionResult.value!;
-      let parsedJson: unknown;
-
-      try {
-        // Clean potential markdown fences before parsing
-        const cleanedResponse = rawResponse.replace(/```json\n?([\s\S]*?)\n?```/g, '$1').trim();
-        if (!cleanedResponse) {
-          throw new Error('LLM returned an empty response after cleaning markdown fences.');
-        }
-        parsedJson = JSON.parse(cleanedResponse);
-      } catch (parseError) {
-        this.logger.warn(
-          `Failed to parse LLM JSON response for ${filePath}: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+      // If structuredResult.isOk(), the value is already parsed and validated CodeInsights.
+      const insights = structuredResult.value;
+      if (!insights) {
+        this.logger.error(
+          `Structured LLM call for ${filePath} succeeded but returned a null or undefined value.`
         );
-        this.logger.debug(`Raw response for ${filePath}:\n${rawResponse}`);
-        const errorMessage = `Invalid JSON response from LLM for ${filePath}. Parse Error: ${parseError instanceof Error ? parseError.message : String(parseError)}`;
-        return Result.err(
-          new RooCodeError(
-            errorMessage,
-            'LLM_JSON_PARSE_ERROR',
-            { rawResponse }, // Add context
-            parseError instanceof Error ? parseError : new Error(String(parseError))
-          )
+        const err = new RooCodeError(
+          `Structured LLM call succeeded but returned null or undefined for ${filePath}`,
+          'UNEXPECTED_ANALYSIS_ERROR'
         );
+        return Result.err(LLMProviderError.fromError(err, 'AstAnalysisService'));
       }
-
-      const validationResult = codeInsightsSchema.safeParse(parsedJson);
-
-      if (!validationResult.success) {
-        this.logger.warn(
-          `LLM response validation failed for ${filePath}: ${validationResult.error.message}`
-        );
-        this.logger.debug(
-          `Validation issues for ${filePath}: ${JSON.stringify(validationResult.error.issues, null, 2)}`
-        );
-        this.logger.debug(
-          `Parsed JSON for ${filePath} (failed validation):\n${JSON.stringify(parsedJson, null, 2)}`
-        );
-        const validationIssues = JSON.stringify(validationResult.error.issues, null, 2);
-        const errorMessage = `LLM response failed schema validation for ${filePath}. Issues: ${validationIssues}`;
-        return Result.err(
-          new RooCodeError(
-            errorMessage,
-            'LLM_SCHEMA_VALIDATION_ERROR',
-            { parsedJson }, // Add context
-            validationResult.error
-          )
-        );
-      }
-
-      this.logger.debug(`Successfully analyzed and validated AST insights for ${filePath}`);
-      return Result.ok(validationResult.data);
+      this.logger.debug(
+        `Successfully received and validated structured AST insights for ${filePath}`
+      );
+      return Result.ok(insights);
     } catch (error) {
       const errorMessage = `Unexpected error during AST analysis for ${filePath}: ${error instanceof Error ? error.message : String(error)}`;
       this.logger.error(errorMessage, error instanceof Error ? error : undefined);
-      return Result.err(
-        new RooCodeError(
-          errorMessage,
-          'UNEXPECTED_ANALYSIS_ERROR',
-          undefined,
-          error instanceof Error ? error : new Error(String(error))
-        )
+      const rooError = new RooCodeError(
+        errorMessage,
+        'UNEXPECTED_ANALYSIS_ERROR',
+        undefined,
+        error instanceof Error ? error : new Error(String(error))
       );
+      return Result.err(LLMProviderError.fromError(rooError, 'AstAnalysisService'));
     }
   }
 

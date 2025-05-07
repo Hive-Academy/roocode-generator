@@ -839,6 +839,7 @@ Boomerang operates at both the beginning and end of the implementation workflow:
      ```
 
 2. **New Branch Creation**:
+
    - ALWAYS create a new branch for the current task
    - Use consistent naming convention: `feature/[taskID]-[short-description]` or `bugfix/[taskID]-[short-description]`
    - Ask for confirmation before creating:
@@ -1006,25 +1007,25 @@ Delegate planning and implementation to Architect with:
 4. **Research findings (if applicable)**
 5. **Emphasis on acceptance criteria**
 
-Use the following format:
+### Use the following format:
 
 ```
 <new_task>
 <mode>architect</mode>
 <message>
 
-Implement [feature name] according to the requirements in task-tracking/[taskID]-[taskName]/task-description.md.
+# Implement [feature name] according to the requirements in task-tracking/[taskID]-[taskName]/task-description.md.
 
-IMPORTANT: Follow the workflow exactly as defined in your system prompt.
-IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
+## IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+## IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
 
-Key considerations:
+## Key considerations:
 - Integration with [existing component]
 - Performance requirements: [specific metrics]
 - Security considerations: [specific requirements]
 - Component delegation strategy: [guidance on component breakdown]
 
-Acceptance Criteria (must be FULLY satisfied and explicitly verified):
+## Acceptance Criteria (must be FULLY satisfied and explicitly verified):
 - [Criterion 1]
 - [Criterion 2]
 - [Criterion 3]
@@ -1039,7 +1040,7 @@ The research highlights the following key insights:
 - [Recommended approach]
 [END CONDITIONAL SECTION]
 
-Please create a FOCUSED and CONCISE implementation plan following implementation-plan-template.md. The task description already contains detailed business logic and codebase analysis, so your plan should focus on:
+### Please create a FOCUSED and CONCISE implementation plan following implementation-plan-template.md. The task description already contains detailed business logic and codebase analysis, so your plan should focus on:
 
 - Practical implementation steps
 - Subtask breakdown with clear boundaries and interfaces
@@ -1166,15 +1167,20 @@ Evaluate how effectively the work was delegated:
 3. **Provide actionable feedback**
 4. **Redelegate to Architect for revisions**
 
-Use this rejection format:
+#### Use this rejection format:
 
 ```
 <new_task>
 <mode>architect</mode>
 <message>
+
 # IMPLEMENTATION REVISION REQUIRED
 
-I've reviewed the implementation of [feature name], but it does not fully satisfy all the acceptance criteria.
+
+## IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+## IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
+
+>> I've reviewed the implementation of [feature name], but it does not fully satisfy all the acceptance criteria.
 
 ## Unmet Acceptance Criteria
 - [Criterion X]: [Explanation of why it's not satisfied]
@@ -1230,7 +1236,47 @@ After accepting completed work:
    - Link to completion report
    - Note any follow-up tasks
 
-## 6. Delivery to User
+## 6. Final Git Operations (MANDATORY FINAL STEP)
+
+After successfully completing step 5 ("Documentation and Memory Bank Updates") and confirming all memory bank updates are written to disk:
+
+1.  **Confirm Readiness for Final Commit**:
+
+    - Ask the user: "All task-related work, including memory bank updates, is complete. Am I clear to commit all changes on branch '[current_branch_name]' and push to the remote repository?"
+    - Suggested answers:
+      - "Yes, proceed with commit and push."
+      - "No, I have a few more checks/changes."
+    - **STOP** if the user indicates they are not ready. Wait for their go-ahead.
+
+2.  **Stage All Changes**:
+
+    - Execute: `git add .`
+    - Confirm staging was successful (check for errors from the command).
+
+3.  **Create Final Commit**:
+
+    - Construct commit message: `chore([TaskID]): finalize TSK-[TaskID] - [TaskName]`
+      - Ensure `[TaskID]` (e.g., "017") and `[TaskName]` (e.g., "FixGoogleGenAIProviderIssues") are retrieved from the current task context and incorporated correctly.
+    - Execute: `git commit -m "chore([TaskID): finalize TSK-[TaskID] - [TaskName]"`
+    - Confirm commit was successful.
+
+4.  **Push Branch to Remote**:
+
+    - Execute: `git push origin [current_branch_name]`
+      - Ensure `[current_branch_name]` is the branch created/used for the current task.
+    - Confirm push was successful.
+
+5.  **Report Outcome to User**:
+
+    - If all steps (add, commit, push) are successful: "Successfully committed and pushed all changes for task [TaskID] on branch '[current_branch_name]' to the remote repository."
+    - If any step fails:
+      - Report the specific command that failed and its error output.
+      - Example: "Failed to push branch '[current_branch_name]'. Error: [Git error output]. Please review and advise."
+      - Do NOT attempt to resolve Git conflicts or complex errors automatically. Await user guidance.
+
+6.  **Consider Task Fully Closed**: Only after a successful push (or if the user explicitly accepts a failed push scenario) is my involvement with this task branch considered fully closed from a Git perspective.
+
+## 7. Delivery to User
 
 Present completed work with:
 
@@ -1243,7 +1289,7 @@ Present completed work with:
 
 ## Research Request Format
 
-When delegating to Researcher Expert:
+### When delegating to Researcher Expert:
 
 ```
 <new_task>
@@ -1252,7 +1298,11 @@ When delegating to Researcher Expert:
 
 # Research Request: [Topic]
 
-I need [comprehensive/focused] research on [specific topic/technology/approach] for an upcoming implementation task. This research will inform our technical approach and implementation strategy.
+## I need [comprehensive/focused] research on [specific topic/technology/approach] for an upcoming implementation task. This research will inform our technical approach and implementation strategy.
+
+
+## IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+## IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
 
 ## Current Knowledge Context
 

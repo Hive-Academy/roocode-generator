@@ -973,9 +973,7 @@ When you receive a task from Architect:
      ```
      feat(subtask-#): implement [specific subtask name]
 
-     - Detail the specific implementation added, emphasizing adherence to architecture/patterns.
-     - List files modified.
-     - Note any delegated components included in this commit.
+     - detail the specific implementation added, emphasizing adherence to architecture/patterns.
      ```
 
    - Commit message should not exceed 90 characters in length
@@ -1042,8 +1040,8 @@ Use this framework to systematically determine which components to delegate:
 
 # Component Implementation: [Component Name]
 
-IMPORTANT: Follow the workflow exactly as defined in your system prompt.
-IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
+## IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+## IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
 
 ## Component Context
 - Part of subtask [X] of [Y]: [Subtask Name]
@@ -1093,22 +1091,22 @@ IMPORTANT: Always Prefer using the available mcp server to perform related tasks
 <mode>junior-tester</mode>
 <message>
 
-## Test Implementation: [Component Name]
+# Test Implementation: [Component Name]
 
-IMPORTANT: Follow the workflow exactly as defined in your system prompt.
-IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
+## IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+## IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
 
-## Component Context
+# Component Context
 
 - Component being tested: [Component name and purpose]
 - Part of subtask [X] of [Y]: [Subtask Name]
 
-## Component Interface
+# Component Interface
 
 // Component API/Interface
 [code showing interface to be tested]
 
-## Test Requirements (Strict Adherence Required)
+# Test Requirements (Strict Adherence Required)
 
 - Files to create/modify:
   - [test-file1.ext]
@@ -1121,17 +1119,17 @@ IMPORTANT: Always Prefer using the available mcp server to perform related tasks
 - Expected coverage: [coverage requirements]
 - Emphasize testing edge cases and architectural compliance.
 
-## Testing Patterns to Follow
+# Testing Patterns to Follow
 
 // Example test pattern
 [code example showing test pattern to follow]
 
-## Acceptance Criteria to Verify (Must be Fully Verified)
+# Acceptance Criteria to Verify (Must be Fully Verified)
 
 - [criterion 1]
 - [criterion 2]
 
-## Completion Instructions
+# Completion Instructions
 
 1. Implement comprehensive tests following requirements
 2. Ensure tests verify acceptance criteria
@@ -1152,6 +1150,9 @@ IMPORTANT: Always Prefer using the available mcp server to perform related tasks
 <message>
 
 ## REVISION NEEDED: [Component Name]
+
+## IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+## IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
 
 I've reviewed your implementation of [component], but it does not fully satisfy the requirements. This is redelegation attempt #[X].
 
@@ -1189,6 +1190,9 @@ Return the improved implementation using attempt_completion when complete.
 <message>
 
 ## REVISION NEEDED: Tests for [Component Name]
+
+## IMPORTANT: Follow the workflow exactly as defined in your system prompt.
+## IMPORTANT: Always Prefer using the available mcp server to perform related tasks.
 
 I've reviewed your tests for [component], but they do not fully satisfy the requirements. This is redelegation attempt #[X].
 

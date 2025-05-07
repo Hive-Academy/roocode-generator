@@ -1,6 +1,9 @@
 import { Injectable } from '../di/decorators';
-import { ILLMProvider } from './interfaces';
+import { ILLMProvider, LLMCompletionConfig } from './interfaces';
 import { Result } from '../result/result';
+import { LLMProviderError } from './llm-provider-errors';
+import { BaseLanguageModelInput } from '@langchain/core/language_models/base';
+import { ZodTypeAny, TypeOf } from 'zod';
 
 /**
  * Base class for LLM providers.
@@ -17,7 +20,10 @@ export abstract class BaseLLMProvider implements ILLMProvider {
    * @param userPrompt The user prompt to use
    * @returns Promise resolving to a Result containing either the completion or an error
    */
-  abstract getCompletion(systemPrompt: string, userPrompt: string): Promise<Result<string, Error>>;
+  abstract getCompletion(
+    systemPrompt: string,
+    userPrompt: string
+  ): Promise<Result<string, LLMProviderError>>;
 
   /**
    * Get the maximum context window size for the model
@@ -36,4 +42,12 @@ export abstract class BaseLLMProvider implements ILLMProvider {
     // Default implementation uses simple approximation
     return Promise.resolve(Math.ceil(text.length / 4));
   }
+
+  abstract getStructuredCompletion<T extends ZodTypeAny>(
+    prompt: BaseLanguageModelInput,
+    schema: T,
+    completionConfig?: LLMCompletionConfig
+  ): Promise<Result<TypeOf<T>, LLMProviderError>>;
+
+  async listModels?(): Promise<Result<string[], LLMProviderError>>;
 }

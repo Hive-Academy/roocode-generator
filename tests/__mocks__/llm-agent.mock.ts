@@ -1,36 +1,95 @@
 import { LLMAgent } from '../../src/core/llm/llm-agent';
 import { Result } from '../../src/core/result/result';
-// Removed unused import
+import { ILLMProvider, LLMCompletionConfig } from '../../src/core/llm/interfaces';
+import { LLMProviderError } from '../../src/core/llm/llm-provider-errors';
+import type { BaseLanguageModelInput } from '@langchain/core/language_models/base';
+import { z } from 'zod';
 
 // Define the structure based on LLMAgent, mocking necessary methods
 export const createMockLLMAgent = (): jest.Mocked<LLMAgent> => {
-  // We need to cast to 'any' first because the constructor is private/complex
-  // and we are only mocking the public interface methods we need.
-  const mockAgent = {
-    // Mock getCompletion as a Jest mock function
+  const mockSuccessfulProvider: jest.Mocked<ILLMProvider> = {
+    name: 'mockProvider',
     getCompletion: jest
-      .fn<Promise<Result<string, Error>>, [string, string]>()
+      .fn<Promise<Result<string, LLMProviderError>>, [string, string]>()
+      .mockResolvedValue(Result.ok('mock provider completion')),
+    getStructuredCompletion: jest.fn().mockImplementation(
+      <T extends z.ZodTypeAny>(
+        _prompt: BaseLanguageModelInput, // Prefixed unused
+        schema: T,
+        _completionConfig?: LLMCompletionConfig // Prefixed unused
+      ): Promise<Result<z.infer<T>, LLMProviderError>> => {
+        try {
+          if (schema instanceof z.ZodObject) {
+            const mockData = Object.keys(schema.shape as object).reduce(
+              (acc: Record<string, any>, key) => {
+                // Typed acc
+                const fieldSchema = schema.shape[key];
+                if (fieldSchema instanceof z.ZodString) acc[key] = `mock ${key}`;
+                else if (fieldSchema instanceof z.ZodNumber) acc[key] = 0;
+                else if (fieldSchema instanceof z.ZodBoolean) acc[key] = false;
+                else if (fieldSchema instanceof z.ZodArray) acc[key] = [];
+                else if (fieldSchema instanceof z.ZodObject) acc[key] = {};
+                else acc[key] = undefined;
+                return acc;
+              },
+              {}
+            ); // Initial value for reduce
+            return Promise.resolve(Result.ok(mockData as z.infer<T>));
+          }
+        } catch {
+          // Prefixed unused
+          /* ignore, fallback to generic object */
+        }
+        return Promise.resolve(Result.ok({ mockKey: 'mockValue' } as any));
+      }
+    ),
+    getContextWindowSize: jest.fn<Promise<number>, []>().mockResolvedValue(4096),
+    countTokens: jest.fn<Promise<number>, [string]>().mockResolvedValue(10),
+    listModels: jest
+      .fn<Promise<Result<string[], LLMProviderError>>, []>()
+      .mockResolvedValue(Result.ok(['mock-model-1', 'mock-model-2'])),
+  };
+
+  const mockAgent = {
+    analyzeProject: jest.fn().mockResolvedValue(Result.ok({ mockAnalysis: true })),
+    getCompletion: jest
+      .fn<Promise<Result<string, LLMProviderError>>, [string, string]>()
       .mockResolvedValue(Result.ok('Default Mock LLM Content')),
-
-    // Mock other methods used in the tests
-    getModelContextWindow: jest.fn<Promise<number>, []>().mockResolvedValue(8000), // Default mock value
-
+    getStructuredCompletion: jest.fn().mockImplementation(
+      <T extends z.ZodTypeAny>(
+        _prompt: BaseLanguageModelInput, // Prefixed unused
+        schema: T,
+        _completionConfig?: LLMCompletionConfig // Prefixed unused
+      ): Promise<Result<z.infer<T>, LLMProviderError>> => {
+        try {
+          if (schema instanceof z.ZodObject) {
+            const mockData = Object.keys(schema.shape as object).reduce(
+              (acc: Record<string, any>, key) => {
+                // Typed acc
+                const fieldSchema = schema.shape[key];
+                if (fieldSchema instanceof z.ZodString) acc[key] = `mock agent ${key}`;
+                else acc[key] = undefined;
+                return acc;
+              },
+              {}
+            ); // Initial value for reduce
+            return Promise.resolve(Result.ok(mockData as z.infer<T>));
+          }
+        } catch {
+          // Prefixed unused
+          /* ignore */
+        }
+        return Promise.resolve(Result.ok({ mockAgentKey: 'mockAgentValue' } as any));
+      }
+    ),
+    getModelContextWindow: jest.fn<Promise<number>, []>().mockResolvedValue(8000),
     getProvider: jest
-      .fn<Promise<Result<any, Error>>, []>()
-      .mockResolvedValue(Result.ok({ countTokens: jest.fn().mockResolvedValue(10) } as any)), // Default mock value
-
-    countTokens: jest.fn<Promise<number>, [string]>().mockResolvedValue(100), // Default mock value
-
-    // Add other methods if they were needed, mocking their signatures
-    // e.g., getChatCompletion: jest.fn<Promise<Result<ChatCompletionResponse, Error>>, [any]>()
-    //         .mockResolvedValue(Result.ok({ choices: [{ message: { content: 'Default Chat Mock' } }] })),
-  } as unknown as jest.Mocked<LLMAgent>; // Cast to the mocked type
-
-  // Ensure 'this' context if necessary, though usually not needed for simple mocks
-  // mockAgent.getCompletion = mockAgent.getCompletion.bind(mockAgent);
+      .fn<Promise<Result<ILLMProvider, LLMProviderError>>, []>()
+      .mockResolvedValue(Result.ok(mockSuccessfulProvider)),
+    countTokens: jest.fn<Promise<number>, [string]>().mockResolvedValue(100),
+  } as unknown as jest.Mocked<LLMAgent>;
 
   return mockAgent;
 };
 
-// Default export for convenience if needed
 export const mockLLMAgent = createMockLLMAgent();
