@@ -1,16 +1,17 @@
-import { Injectable, Inject } from '@core/di/decorators';
-import { Result } from '@core/result/result';
+import { Inject, Injectable } from '@core/di/decorators';
 import { BaseLLMProvider } from '@core/llm/llm-provider';
 import { LLMProviderError } from '@core/llm/llm-provider-errors';
+import { Result } from '@core/result/result';
 import type { ILogger } from '@core/services/logger-service';
-import { LLMConfig } from 'types/shared';
+import { retryWithBackoff } from '@core/utils/retry-utils';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { LLMConfig } from 'types/shared';
+import { z } from 'zod';
 import {
   GoogleGenAIErrorResponse,
   GoogleGenAITokenResponse, // Use existing interface
   GoogleModelInfoResponse, // Added interface
 } from '../types/google-genai.types';
-import { retryWithBackoff } from '@core/utils/retry-utils';
 
 // Define a custom error for fetch failures to include status
 class FetchError extends Error {
@@ -121,15 +122,113 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
       const response = await retryWithBackoff(async () => {
         // The actual API call using langchain client
         // Note: Langchain client might have its own token counting/limits, but we are enforcing ours beforehand.
-        return this.model.predict(`${systemPrompt}\n\nUser Input: ${userPrompt}`);
+        const message = await this.model.invoke(`${systemPrompt}\n\nUser Input: ${userPrompt}`);
+        if (typeof message.content === 'string') {
+          return message.content;
+        } else if (Array.isArray(message.content)) {
+          let combinedText = '';
+          for (const part of message.content) {
+            // Ensure part and part.text are valid before trying to access/append
+            if (
+              part &&
+              typeof part.type === 'string' &&
+              part.type === 'text' &&
+              typeof part.text === 'string'
+            ) {
+              combinedText += part.text;
+            }
+            // Not handling other part types like 'image_url' for now
+          }
+          if (combinedText) {
+            return combinedText;
+          } else {
+            // This case means we got an array, but no text parts, or empty text parts.
+            throw new Error(
+              'LLM response content array did not contain any processable text parts. Received: ' +
+                JSON.stringify(message.content)
+            );
+          }
+        } else {
+          // Fallback for unexpected content types
+          throw new Error(
+            'LLM response content is not a string or a recognized array structure. Received: ' +
+              JSON.stringify(message.content)
+          );
+        }
       }, RETRY_OPTIONS);
 
+      // The 'response' variable from retryWithBackoff will now be the string content
       return Result.ok(response);
     } catch (error) {
       // This catches the final error after retries are exhausted or if shouldRetry returned false
       const err = error instanceof Error ? error : new Error(String(error));
       this.logger.error('Failed to get completion from Google GenAI after retries', err);
       // Wrap the final error
+      return Result.err(LLMProviderError.fromError(err, this.name));
+    }
+  }
+
+  async getStructuredCompletion<T extends z.ZodTypeAny>(
+    systemPrompt: string,
+    userPrompt: string,
+    schema: T
+  ): Promise<Result<z.infer<T>, Error>> {
+    // --- Pre-call Validation (similar to getCompletion) ---
+    try {
+      const inputText = `${systemPrompt}\n\nUser Input: ${userPrompt}`;
+      const currentInputTokens = await this.countTokens(inputText);
+      const limit = this.inputTokenLimit ?? this.FALLBACK_TOKEN_LIMIT;
+      this.logger.debug(`Structured Input tokens: ${currentInputTokens}, Limit: ${limit}`);
+
+      if (currentInputTokens > limit) {
+        const errorMsg = `Input (${currentInputTokens} tokens) for structured completion exceeds model token limit (${limit}).`;
+        this.logger.warn(`${errorMsg} Skipping API call.`);
+        return Result.err(new LLMProviderError(errorMsg, 'INPUT_VALIDATION_ERROR', this.name));
+      }
+    } catch (validationError) {
+      this.logger.error(
+        'Error during pre-call validation in getStructuredCompletion',
+        validationError instanceof Error ? validationError : new Error(String(validationError))
+      );
+      return Result.err(
+        LLMProviderError.fromError(
+          validationError instanceof Error ? validationError : new Error(String(validationError)),
+          this.name
+        )
+      );
+    }
+    // --- End Pre-call Validation ---
+
+    try {
+      this.logger.debug(
+        `Sending structured completion request to Google GenAI (model: ${this.config.model}) with schema and retry`
+      );
+
+      // Combine prompts for invoke. Langchain's withStructuredOutput typically works with a single prompt input or a list of messages.
+      // For simplicity, we'll combine them. A more robust approach might use ChatPromptTemplate.
+      const combinedPromptContent = `${systemPrompt}\n\nUser Input: ${userPrompt}`;
+
+      // It's crucial that the prompt itself also strongly guides the LLM to output JSON.
+      // The schema passed to withStructuredOutput helps, but the prompt is still key.
+      // The systemPrompt coming from AstAnalysisService already has strong JSON instructions.
+
+      const structuredModel = this.model.withStructuredOutput(schema, {
+        name: schema.description || 'extract_structured_data', // Optional: name for the "tool"
+        // method: "jsonMode" // This might be an option for some models/versions, but not universally guaranteed for Google GenAI via this method.
+        // Langchain tries to use the best method (tool calling, JSON mode, or prompting)
+      });
+
+      const response = await retryWithBackoff(async () => {
+        // Using invoke with the combined prompt content.
+        // For some models/LC versions, a list of messages [new SystemMessage(systemPrompt), new HumanMessage(userPrompt)] might be preferred.
+        return structuredModel.invoke(combinedPromptContent);
+      }, RETRY_OPTIONS);
+
+      // withStructuredOutput should directly return the parsed and validated object or throw an error.
+      return Result.ok(response);
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error('Failed to get structured completion from Google GenAI after retries', err);
       return Result.err(LLMProviderError.fromError(err, this.name));
     }
   }

@@ -13,7 +13,6 @@ import { ILLMAgent } from '../llm/interfaces';
 import { ILogger } from '../services/logger-service';
 import { Injectable, Inject } from '../di/decorators';
 import { RooCodeError } from '../errors';
-import { parseRobustJson } from '../utils/json-utils';
 /**
  * Zod schema for validating FunctionInfo objects.
  * Ensures the object has a 'name' (string) and 'parameters' (array of strings).
@@ -105,71 +104,47 @@ export class AstAnalysisService implements IAstAnalysisService {
       // const tokenCount = await this.llmAgent.countTokens(systemPrompt + userPrompt);
       // if (tokenCount > MAX_TOKENS) return Result.err(...)
 
-      // Step 3: Call the LLM
-      const completionResult = await this.llmAgent.getCompletion(systemPrompt, userPrompt);
+      // Step 3: Call the LLM using structured output
+      this.logger.debug(`Requesting structured completion for ${filePath}`);
+      const structuredResult = await this.llmAgent.getStructuredCompletion(
+        systemPrompt,
+        userPrompt,
+        codeInsightsSchema // Pass the Zod schema directly
+      );
 
-      if (completionResult.isErr()) {
-        // Ensure error exists before accessing message and returning
-        const error = completionResult.error ?? new Error('Unknown LLM Agent Error');
-        this.logger.error(`LLM call failed for ${filePath}: ${error.message}`);
+      if (structuredResult.isErr()) {
+        const error =
+          structuredResult.error ??
+          new Error(`Unknown error from structured LLM call for ${filePath}`);
+        // The error from getStructuredCompletion should ideally be an LLMProviderError or similar.
+        // It might include details about parsing or validation if withStructuredOutput failed internally.
+        this.logger.error(
+          `Structured LLM call failed for ${filePath}: ${error.message}`,
+          error // Log the original error object (now guaranteed to be an Error)
+        );
+        // Error is already an Error instance due to the nullish coalescing operator
         return Result.err(error);
       }
 
-      // Step 4: Parse and Validate the LLM Response
-      const rawResponse = completionResult.value!;
-      let parsedJson: unknown;
-
-      try {
-        // Clean potential markdown fences before parsing
-        const cleanedResponse = rawResponse.replace(/```json\n?([\s\S]*?)\n?```/g, '$1').trim();
-        if (!cleanedResponse) {
-          throw new Error('LLM returned an empty response after cleaning markdown fences.');
-        }
-        parsedJson = parseRobustJson(cleanedResponse, this.logger);
-      } catch (parseError) {
-        const errorMessage = `Failed to robustly parse LLM JSON response for ${filePath} after multiple attempts. Final Error: ${parseError instanceof Error ? parseError.message : String(parseError)}`;
+      // If structuredResult.isOk(), the value is already parsed and validated CodeInsights.
+      const insights = structuredResult.value;
+      if (!insights) {
+        // Handles null or undefined, though undefined was the specific concern
         this.logger.error(
-          // Use error level for final failure of robust parsing
-          `Failed to robustly parse LLM JSON response for ${filePath} after multiple attempts. Raw response logged at debug level. Final Error: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
-          parseError instanceof Error ? parseError : new Error(String(parseError)) // Pass the error object
+          `Structured LLM call for ${filePath} succeeded but returned a null or undefined value.`
         );
-        // this.logger.debug(`Raw response for ${filePath} (robust parse failed):\n${rawResponse}`); // This debug log is already present and still relevant if robust parsing fails.
         return Result.err(
           new RooCodeError(
-            errorMessage,
-            'LLM_ROBUST_JSON_PARSE_ERROR', // New error code
-            { rawResponse, attempts: (parseError as any)?.attempts }, // Optionally include attempts
-            parseError instanceof Error ? parseError : new Error(String(parseError))
+            `Structured LLM call succeeded but returned null or undefined for ${filePath}`,
+            'UNEXPECTED_ANALYSIS_ERROR'
           )
         );
       }
-
-      const validationResult = codeInsightsSchema.safeParse(parsedJson);
-
-      if (!validationResult.success) {
-        this.logger.warn(
-          `LLM response validation failed for ${filePath}: ${validationResult.error.message}`
-        );
-        this.logger.debug(
-          `Validation issues for ${filePath}: ${JSON.stringify(validationResult.error.issues, null, 2)}`
-        );
-        this.logger.debug(
-          `Parsed JSON for ${filePath} (failed validation):\n${JSON.stringify(parsedJson, null, 2)}`
-        );
-        const validationIssues = JSON.stringify(validationResult.error.issues, null, 2);
-        const errorMessage = `LLM response failed schema validation for ${filePath}. Issues: ${validationIssues}`;
-        return Result.err(
-          new RooCodeError(
-            errorMessage,
-            'LLM_SCHEMA_VALIDATION_ERROR',
-            { parsedJson }, // Add context
-            validationResult.error
-          )
-        );
-      }
-
-      this.logger.debug(`Successfully analyzed and validated AST insights for ${filePath}`);
-      return Result.ok(validationResult.data);
+      // If we reach here, insights is guaranteed to be CodeInsights
+      this.logger.debug(
+        `Successfully received and validated structured AST insights for ${filePath}`
+      );
+      return Result.ok(insights);
     } catch (error) {
       const errorMessage = `Unexpected error during AST analysis for ${filePath}: ${error instanceof Error ? error.message : String(error)}`;
       this.logger.error(errorMessage, error instanceof Error ? error : undefined);

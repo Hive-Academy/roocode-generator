@@ -5,6 +5,7 @@ import { LLMProviderError } from '@core/llm/llm-provider-errors';
 import type { ILogger } from '@core/services/logger-service';
 import { LLMConfig } from 'types/shared';
 import { ChatAnthropic } from '@langchain/anthropic';
+import { z } from 'zod';
 
 type AnthropicTokenCountResponse = {
   total_tokens: number;
@@ -74,5 +75,27 @@ export class AnthropicProvider extends BaseLLMProvider {
       );
       return Promise.resolve(Math.ceil(text.length / 4));
     }
+  }
+
+  async getStructuredCompletion<T extends z.ZodTypeAny>(
+    _systemPrompt: string,
+    _userPrompt: string,
+    _schema: T
+  ): Promise<Result<z.infer<T>, Error>> {
+    this.logger.warn(
+      `getStructuredCompletion is not yet fully implemented for ${this.name}. Attempting fallback or throwing error.`
+    );
+    // For now, throw a NotImplementedError.
+    // Alternatively, one could try to use this.getCompletion and then parse/validate,
+    // but that bypasses the benefits of withStructuredOutput.
+    return Promise.resolve(
+      Result.err(
+        new LLMProviderError(
+          `getStructuredCompletion not implemented for ${this.name}`,
+          'NOT_IMPLEMENTED',
+          this.name
+        )
+      )
+    );
   }
 }

@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { Injectable, Inject } from '@core/di/decorators';
 import { Result } from '@core/result/result';
 import { BaseLLMProvider } from '@core/llm/llm-provider';
@@ -217,5 +218,22 @@ export class OpenRouterProvider extends BaseLLMProvider {
     // OpenRouter doesn't provide a token counting API
     // Use the default implementation from the base class
     return super.countTokens(text);
+  }
+
+  async getStructuredCompletion<T extends z.ZodTypeAny>(
+    _systemPrompt: string,
+    _userPrompt: string,
+    _schema: T
+  ): Promise<Result<z.infer<T>, Error>> {
+    this.logger.warn(`getStructuredCompletion is not yet fully implemented for ${this.name}.`);
+    return Promise.resolve(
+      Result.err(
+        new LLMProviderError(
+          `getStructuredCompletion not implemented for ${this.name}`,
+          'NOT_IMPLEMENTED',
+          this.name
+        )
+      )
+    );
   }
 }
