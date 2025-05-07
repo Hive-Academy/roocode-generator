@@ -13,6 +13,7 @@ import { ILLMAgent } from '../llm/interfaces';
 import { ILogger } from '../services/logger-service';
 import { Injectable, Inject } from '../di/decorators';
 import { RooCodeError } from '../errors';
+import { parseRobustJson } from '../utils/json-utils';
 /**
  * Zod schema for validating FunctionInfo objects.
  * Ensures the object has a 'name' (string) and 'parameters' (array of strings).
@@ -124,18 +125,20 @@ export class AstAnalysisService implements IAstAnalysisService {
         if (!cleanedResponse) {
           throw new Error('LLM returned an empty response after cleaning markdown fences.');
         }
-        parsedJson = JSON.parse(cleanedResponse);
+        parsedJson = parseRobustJson(cleanedResponse, this.logger);
       } catch (parseError) {
-        this.logger.warn(
-          `Failed to parse LLM JSON response for ${filePath}: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+        const errorMessage = `Failed to robustly parse LLM JSON response for ${filePath} after multiple attempts. Final Error: ${parseError instanceof Error ? parseError.message : String(parseError)}`;
+        this.logger.error(
+          // Use error level for final failure of robust parsing
+          `Failed to robustly parse LLM JSON response for ${filePath} after multiple attempts. Raw response logged at debug level. Final Error: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+          parseError instanceof Error ? parseError : new Error(String(parseError)) // Pass the error object
         );
-        this.logger.debug(`Raw response for ${filePath}:\n${rawResponse}`);
-        const errorMessage = `Invalid JSON response from LLM for ${filePath}. Parse Error: ${parseError instanceof Error ? parseError.message : String(parseError)}`;
+        // this.logger.debug(`Raw response for ${filePath} (robust parse failed):\n${rawResponse}`); // This debug log is already present and still relevant if robust parsing fails.
         return Result.err(
           new RooCodeError(
             errorMessage,
-            'LLM_JSON_PARSE_ERROR',
-            { rawResponse }, // Add context
+            'LLM_ROBUST_JSON_PARSE_ERROR', // New error code
+            { rawResponse, attempts: (parseError as any)?.attempts }, // Optionally include attempts
             parseError instanceof Error ? parseError : new Error(String(parseError))
           )
         );
