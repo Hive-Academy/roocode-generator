@@ -12,6 +12,7 @@ import {
   MockProjectAnalyzer,
 } from '../../__mocks__/project-analyzer.mock'; // Corrected path
 import { ILLMProvider } from '@core/llm/interfaces';
+import { LLMProviderError } from '@core/llm/llm-provider-errors';
 
 // Mock data
 const mockAstNode: GenericAstNode = {
@@ -95,6 +96,7 @@ describe('ProjectAnalyzer - IAstAnalysisService Integration', () => {
       Result.ok({
         name: 'testMockProvider', // Added name
         getCompletion: jest.fn().mockResolvedValue(Result.ok('test provider completion')), // Added getCompletion
+        getStructuredCompletion: jest.fn().mockResolvedValue(Result.ok('test provider')),
         getContextWindowSize: jest.fn().mockResolvedValue(2048), // Added getContextWindowSize
         countTokens: jest.fn().mockResolvedValue(5), // Existing
         // listModels is optional
@@ -337,7 +339,7 @@ describe('ProjectAnalyzer - IAstAnalysisService Integration', () => {
 
   test('Partial Failure Path: should handle Err results from analyzeAst and log warnings', async () => {
     // Arrange
-    const analysisError = new Error('Simulated AST analysis failure');
+    const analysisError = new LLMProviderError('Simulated AST analysis failure', 'Error', 'Error');
     projectAnalyzer.mockAstAnalysisService.analyzeAst
       .mockResolvedValueOnce(Result.ok(mockCodeInsights1)) // file1.ts succeeds
       .mockResolvedValueOnce(Result.err(analysisError)); // file2.js fails with Err

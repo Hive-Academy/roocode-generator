@@ -11,20 +11,12 @@ import {
 } from '@langchain/openai';
 import { LLMConfig } from 'types/shared';
 import { z } from 'zod';
-
 import { retryWithBackoff } from '@core/utils/retry-utils';
 import { type BaseLanguageModelInput } from '@langchain/core/language_models/base';
-import { HumanMessage } from '@langchain/core/messages';
 import { type Runnable } from '@langchain/core/runnables';
+import { LLMCompletionConfig } from '../interfaces'; // Import from interfaces
 
-interface LLMCompletionConfig {
-  temperature?: number;
-  maxTokens?: number;
-  stopSequences?: string[];
-  topP?: number;
-}
-
-type OpenRouterChatOpenAIParams = Partial<OpenAIInput>;
+type OpenRouterChatOpenAIParams = Partial<OpenAIInput>; // This uses OpenAIInput from @langchain/openai
 
 interface OpenRouterModel {
   id: string;
@@ -290,15 +282,67 @@ export class OpenRouterProvider extends BaseLLMProvider {
   }
 
   private async _validateInputTokens(
-    prompt: string,
+    prompt: BaseLanguageModelInput, // Changed to BaseLanguageModelInput
     maxOutputTokensConfig?: number
   ): Promise<Result<void, LLMProviderError>> {
+    let promptStringForTokenCount: string;
+    if (typeof prompt === 'string') {
+      promptStringForTokenCount = prompt;
+    } else if (Array.isArray(prompt)) {
+      promptStringForTokenCount = prompt
+        .map((msgLike) => {
+          if (typeof msgLike === 'string') return msgLike;
+          if (Array.isArray(msgLike) && msgLike.length === 2 && typeof msgLike[1] === 'string')
+            return msgLike[1];
+          if (
+            typeof msgLike === 'object' &&
+            msgLike !== null &&
+            'content' in msgLike &&
+            typeof msgLike.content === 'string'
+          )
+            return msgLike.content;
+          return '';
+        })
+        .filter((content) => !!content)
+        .join('\n');
+    } else if (
+      typeof prompt === 'object' &&
+      prompt !== null &&
+      'content' in prompt &&
+      typeof prompt.content === 'string'
+    ) {
+      promptStringForTokenCount = prompt.content;
+    } else {
+      try {
+        if (typeof (prompt as any)?.toChatMessages === 'function') {
+          const messages = (prompt as any).toChatMessages();
+          promptStringForTokenCount = messages
+            .map((m: any) => (typeof m.content === 'string' ? m.content : ''))
+            .filter((c: string) => !!c)
+            .join('\n');
+        } else if (
+          typeof (prompt as any)?.toString === 'function' &&
+          (prompt as any).toString() !== '[object Object]'
+        ) {
+          promptStringForTokenCount = (prompt as any).toString();
+        } else {
+          promptStringForTokenCount = JSON.stringify(prompt);
+          this.logger.debug(
+            `OpenRouterProvider: promptStringForTokenCount fell back to JSON.stringify. Output: ${promptStringForTokenCount.substring(0, 100)}...`
+          );
+        }
+      } catch (e) {
+        promptStringForTokenCount = '';
+        this.logger.warn(
+          `OpenRouterProvider: promptStringForTokenCount could not be stringified, falling back to empty string. Error: ${e instanceof Error ? e.message : String(e)}`
+        );
+      }
+    }
+
     try {
-      const currentInputTokens = await this.countTokens(prompt); // Uses the above countTokens method
+      const currentInputTokens = await this.countTokens(promptStringForTokenCount);
       const modelContextWindow = await this.getContextWindowSize();
-
       const maxOutputTokens = maxOutputTokensConfig ?? this.config.maxTokens ?? 1024; // Default if not set
-
       const availableForInput = modelContextWindow - maxOutputTokens;
 
       this.logger.debug(
@@ -389,28 +433,29 @@ export class OpenRouterProvider extends BaseLLMProvider {
   }
 
   public async getStructuredCompletion<T extends z.ZodTypeAny>(
-    prompt: string, // Input is a string as per task
+    prompt: BaseLanguageModelInput, // Changed to BaseLanguageModelInput
     schema: T,
-    completionConfig?: LLMCompletionConfig
+    completionConfig?: LLMCompletionConfig // Uses imported LLMCompletionConfig
   ): Promise<Result<z.infer<T>, LLMProviderError>> {
     this.logger.debug(
-      `OpenRouterProvider (getStructuredCompletion): Starting for model ${this.config.model}. Schema: ${schema.description || 'Unnamed Schema'}`
+      `OpenRouterProvider (getStructuredCompletion): Starting for model ${this.config.model}. Schema: ${schema.description || 'Unnamed Schema'}. Prompt type: ${typeof prompt === 'string' ? 'string' : 'object'}`
     );
 
     const maxOutputTokensForThisCall = completionConfig?.maxTokens ?? this.config.maxTokens;
 
+    // _validateInputTokens now takes BaseLanguageModelInput
     const tokenValidationResult = await this._validateInputTokens(
-      prompt,
+      prompt, // Pass BaseLanguageModelInput directly
       maxOutputTokensForThisCall
     );
     if (tokenValidationResult.isErr()) {
       return Result.err<LLMProviderError>(tokenValidationResult.error!);
     }
 
-    // Fixed: Try wrapping HumanMessage in an array for BaseLanguageModelInput
-    const langChainPromptInput: BaseLanguageModelInput = [new HumanMessage(prompt)];
+    // langChainPromptInput is now the original prompt parameter
+    // const langChainPromptInput: BaseLanguageModelInput = [new HumanMessage(prompt)]; // No longer needed if prompt is already BaseLanguageModelInput
 
-    // Use this.model (ChatOpenRouter) withStructuredOutput
+    // Use this.model (ChatOpenAI configured for OpenRouter) withStructuredOutput
     // The success depends on the underlying OpenRouter model supporting function calling/tool use.
     let runnableToInvoke: Runnable<
       BaseLanguageModelInput,
@@ -447,7 +492,7 @@ export class OpenRouterProvider extends BaseLLMProvider {
     try {
       const parsedObject = await this._performStructuredCallWithRetry(
         runnableToInvoke,
-        langChainPromptInput,
+        prompt, // Use the original prompt parameter
         runtimeCallOptions
       );
 

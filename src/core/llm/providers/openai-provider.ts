@@ -93,7 +93,10 @@ export class OpenAIProvider extends BaseLLMProvider {
 
   // _initializeTiktoken method removed
 
-  async getCompletion(systemPrompt: string, userPrompt: string): Promise<Result<string, Error>> {
+  async getCompletion(
+    systemPrompt: string,
+    userPrompt: string
+  ): Promise<Result<string, LLMProviderError>> {
     try {
       this.logger.debug(`Sending completion request to OpenAI (model: ${this.config.model})`);
       const response = await this.model.predict(`${systemPrompt}\n\nUser Input: ${userPrompt}`);
