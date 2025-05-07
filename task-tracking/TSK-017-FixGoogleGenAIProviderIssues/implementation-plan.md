@@ -51,7 +51,7 @@ _Note: AC1-AC4 for GoogleGenAIProvider and AC9 (Comprehensive Testing) will be p
 
 ### Subtask 1: Integrate `parseRobustJson` into `AstAnalysisService`
 
-- **Status:** Completed
+- **Status:** Completed (Commit: `bce5ddd`)
 - **Description:** Modify `AstAnalysisService` to use `parseRobustJson` for parsing LLM responses when generating `codeInsights`.
 - **Files to Modify:**
   - `src/core/analysis/ast-analysis.service.ts`
@@ -68,65 +68,70 @@ _Note: AC1-AC4 for GoogleGenAIProvider and AC9 (Comprehensive Testing) will be p
   // }
   ```
   - Ensure `this.logger` is available and passed to `parseRobustJson`.
-- **Actual Implementation Summary:**
+- **Actual Implementation Summary (from Senior Developer report):**
   - Delegated to Junior Coder: Modification of `AstAnalysisService` to replace `JSON.parse` with `parseRobustJson` and update error handling.
-  - Junior Coder successfully imported `parseRobustJson`, replaced the parsing call in `analyzeAst`, and updated the `catch` block to use `this.logger.error`, a new error code `LLM_ROBUST_JSON_PARSE_ERROR` in `RooCodeError`, and included `rawResponse` and `attempts` in the error context.
-  - AC5: Verified. `parseRobustJson` is used with `this.logger`, and error handling is updated per requirements.
-  - AC10: Verified. Changes adhere to project coding standards and patterns.
+  - Junior Coder successfully imported `parseRobustJson`, replaced the parsing call in `analyzeAst`, passed `this.logger`, and updated the `catch` block to use `this.logger.error`, the new error code `LLM_ROBUST_JSON_PARSE_ERROR` in `RooCodeError`, and included `rawResponse` and `attempts` (if available on error object) in the error context.
+  - AC5: Verified by Senior Developer. `parseRobustJson` is used with `this.logger`, and error handling is updated per requirements.
+  - AC10: Verified by Senior Developer. Changes adhere to project coding standards and patterns.
 - **Testing Requirements:** Verification will occur during Subtask 3 (Manual E2E Testing). The developer should manually test with sample malformed JSON during development.
 - **Related Acceptance Criteria:** AC5, AC10
 - **Estimated effort:** 30-45 minutes
 - **Required Delegation Components:**
-  - Junior Coder: Can implement the change in `AstAnalysisService`.
-    - Component: Modify `AstAnalysisService` to replace `JSON.parse` with `parseRobustJson` and update error handling.
+  - Junior Coder: Implemented the change in `AstAnalysisService`.
+    - Component: Modify `AstAnalysisService` to replace `JSON.parse` with `parseRobustJson` and update error handling. (Completed)
   - Junior Tester: N/A for this subtask directly.
 - **Delegation Success Criteria**:
-  - Junior Coder correctly integrates `parseRobustJson` and updates error handling. Manual spot-check by Senior Developer confirms basic functionality.
+  - Junior Coder correctly integrated `parseRobustJson` and updated error handling. Manual spot-check by Senior Developer confirmed basic functionality. (Achieved)
 
 ### Subtask 2: Implement `tsconfig.json` Comment Stripping in `ProjectAnalyzer`
 
-- **Status:** Not Started
+- **Status:** Completed
 - **Description:** Modify `ProjectAnalyzer` to strip comments from `tsconfig.json` content before parsing it with `parseRobustJson`.
 - **Files to Modify:**
   - `src/core/analysis/project-analyzer.ts`
 - **Implementation Details:**
+
   - Create a utility function (e.g., private method `stripJsonComments` in `ProjectAnalyzer`).
+
   ```typescript
   // Example comment stripping logic (to be refined):
-  function stripJsonComments(jsonString: string): string {
-    // Replace /* ... */ block comments
-    let noBlockComments = jsonString.replace(/\/\*[\s\S]*?\*\//g, '');
-    // Replace // line comments
-    return noBlockComments
-      .split('\n')
-      .map((line) => {
-        const commentIndex = line.indexOf('//');
-        // Basic check to avoid stripping URLs or comments within strings if possible
-        if (commentIndex !== -1 && !line.substring(0, commentIndex).match(/["']\s*:[^/]*$/)) {
-          return line.substring(0, commentIndex);
-        }
-        return line;
-      })
-      .join('\n');
-  }
+  // private stripJsonComments(jsonString: string): string {
+  //   // Remove block comments first
+  //   let cleanedString = jsonString.replace(/\/\*[\s\S]*?\*\//g, '');
+  //   // Remove line comments (those not preceded by a colon, to be safer with URLs in strings)
+  //   cleanedString = cleanedString.replace(/(?<!http:|https:|file:)\/\/[^\r\n]*/g, '');
+  //   return cleanedString;
+  // }
+
   // In ProjectAnalyzer.analyzeProject, when reading tsconfig.json:
   // const tsconfigContent = await this.fileOps.readFile(tsconfigPath);
   // if (tsconfigContent.isOk()) {
-  //   const cleanedContent = stripJsonComments(tsconfigContent.value);
-  //   const parsedTsconfig = parseRobustJson(cleanedContent, this.logger);
+  //   const fileContentString = tsconfigFileReadResult.value;
+  //   const cleanedFileContentString = this.stripJsonComments(fileContentString); // New line
+  //   const parsedTsconfig = parseRobustJson(cleanedFileContentString, this.logger); // Modified line
   //   // ...
   // }
   ```
+
+- **Actual Implementation Summary (from Senior Developer report):**
+  - Delegated to Junior Coder: Implementation of `stripJsonComments` private method in `ProjectAnalyzer` and its integration into the `tsconfig.json` parsing flow.
+  - Junior Coder successfully implemented `stripJsonComments` using a two-pass regex approach:
+    1. `/\/\*[\s\S]*?\*\//g` for block comments.
+    2. `/(?<!http:|https:|file:)\/\/[^\r\n]*/g` for line comments (protecting URLs).
+  - The method was integrated correctly before calling `parseRobustJson` for `tsconfig.json` content.
+  - Trace logging was added to the new method.
+  - AC6: Verified by Senior Developer. `ProjectAnalyzer` now strips comments from `tsconfig.json` before parsing. The stripping logic handles single-line, multi-line comments and avoids stripping URLs.
+  - AC10: Verified by Senior Developer. Changes adhere to project coding standards and patterns.
 - **Testing Requirements:** Verification will occur during Subtask 3 (Manual E2E Testing). The developer should manually test with sample `tsconfig.json` files containing comments during development.
 - **Related Acceptance Criteria:** AC6, AC10
 - **Estimated effort:** 45-60 minutes (including regex refinement)
 - **Required Delegation Components:**
   - Junior Coder: Can implement the comment stripping function and integrate it.
-    - Component: Implement `stripJsonComments` function.
-    - Component: Integrate `stripJsonComments` into `ProjectAnalyzer`.
+    - Component: Implement `stripJsonComments` function. (Completed)
+    - Component: Integrate `stripJsonComments` into `ProjectAnalyzer`. (Completed)
   - Junior Tester: N/A for this subtask directly.
 - **Delegation Success Criteria**:
-  - Junior Coder implements comment stripping. Manual spot-check by Senior Developer confirms basic functionality with a commented `tsconfig.json`.
+  - Junior Coder implements comment stripping. Manual spot-check by Senior Developer confirms basic functionality with a commented `tsconfig.json`. (Achieved)
 
 ### Subtask 3: Manual E2E Testing, `ProjectContext` Logging & Verification
 

@@ -194,7 +194,8 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         if (tsconfigFileReadResult.isOk() && tsconfigFileReadResult.value) {
           const fileContentString = tsconfigFileReadResult.value;
           try {
-            tsconfigContent = await parseRobustJson(fileContentString, this.logger);
+            const cleanedFileContentString = this.stripJsonComments(fileContentString);
+            tsconfigContent = await parseRobustJson(cleanedFileContentString, this.logger);
             this.logger.debug(
               `Successfully parsed tsconfig.json using parseRobustJson from: ${absoluteTsconfigPath}`
             );
@@ -630,5 +631,18 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
 
     this.logger.trace(`Skipping file by default: ${fileName}`);
     return false;
+  }
+  private stripJsonComments(jsonString: string): string {
+    this.logger.trace('Attempting to strip comments from JSON string');
+    // Remove block comments first (e.g., /* ... */)
+    let cleanedString = jsonString.replace(/\/\*[\s\S]*?\*\//g, '');
+
+    // Then remove single-line comments (e.g., // ...),
+    // ensuring not to remove parts of URLs like http://, https://, file://
+    // The negative lookbehind `(?<!http:|https:|file:)` ensures that `//` is not preceded by these protocols.
+    cleanedString = cleanedString.replace(/(?<!http:|https:|file:)\/\/[^\r\n]*/g, '');
+
+    this.logger.trace('Successfully stripped comments from JSON string');
+    return cleanedString;
   }
 }
