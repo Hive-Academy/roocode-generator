@@ -29,6 +29,7 @@ import { ITreeSitterParserService } from '@core/analysis/interfaces'; // Removed
 import { IAstAnalysisService } from '@core/analysis/ast-analysis.interfaces'; // Added correct import
 import { ITechStackAnalyzerService } from '../../analysis/tech-stack-analyzer';
 import { TreeSitterParserService } from '@core/analysis/tree-sitter-parser.service';
+import { ProjectAnalyzerHelpers } from '@core/analysis/project-analyzer.helpers'; // Import the new helper
 
 import { LLMAgent } from '@core/llm/llm-agent';
 
@@ -129,6 +130,10 @@ export function registerCoreModule(container: Container): void {
       container,
       'ITechStackAnalyzerService'
     );
+    const projectAnalyzerHelpers = resolveDependency<ProjectAnalyzerHelpers>( // Resolve the helper
+      container,
+      'ProjectAnalyzerHelpers' // Assumes 'ProjectAnalyzerHelpers' is its registration key
+    );
     // GrammarLoaderService is now an indirect dependency via TreeSitterParserService
 
     assertIsDefined(fileOps, 'IFileOperations dependency not found');
@@ -141,6 +146,7 @@ export function registerCoreModule(container: Container): void {
     assertIsDefined(treeSitterParserService, 'ITreeSitterParserService dependency not found');
     assertIsDefined(astAnalysisService, 'IAstAnalysisService dependency not found'); // Added
     assertIsDefined(techStackAnalyzerService, 'ITechStackAnalyzerService dependency not found');
+    assertIsDefined(projectAnalyzerHelpers, 'ProjectAnalyzerHelpers dependency not found'); // Assert helper
     // No need to assert GrammarLoaderService here as it's injected into TreeSitterParserService
 
     return new ProjectAnalyzer(
@@ -152,7 +158,8 @@ export function registerCoreModule(container: Container): void {
       filePrioritizer, // 6
       treeSitterParserService, // 7
       astAnalysisService, // 8
-      techStackAnalyzerService // 9
+      techStackAnalyzerService, // 9
+      projectAnalyzerHelpers // 10 - Pass the helper
     );
   });
 
