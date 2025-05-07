@@ -47,7 +47,12 @@ export class ContentProcessor implements IContentProcessor {
     try {
       // Regex to match HTML comments: <!-- ... -->
       // [\s\S]*? matches any character (including newline) non-greedily
-      const processed = content.replace(/<!--[\s\S]*?-->/g, '');
+      let previous;
+      let processed = content;
+      do {
+        previous = processed;
+        processed = processed.replace(/<!--[\s\S]*?-->/g, '');
+      } while (processed !== previous);
       return Result.ok(processed);
     } catch (error) {
       return this._wrapProcessingError(
