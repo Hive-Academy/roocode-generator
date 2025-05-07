@@ -5,6 +5,7 @@ import { LLMProviderError } from '@core/llm/llm-provider-errors';
 import type { ILogger } from '@core/services/logger-service';
 import { LLMConfig } from 'types/shared';
 import { ChatOpenAI } from '@langchain/openai';
+import { z } from 'zod';
 
 // Type definitions for OpenAI API responses
 type OpenAIModelResponse = {
@@ -118,5 +119,22 @@ export class OpenAIProvider extends BaseLLMProvider {
       );
       return Promise.resolve(Math.ceil(text.length / 4));
     }
+  }
+
+  async getStructuredCompletion<T extends z.ZodTypeAny>(
+    _systemPrompt: string,
+    _userPrompt: string,
+    _schema: T
+  ): Promise<Result<z.infer<T>, Error>> {
+    this.logger.warn(`getStructuredCompletion is not yet fully implemented for ${this.name}.`);
+    return Promise.resolve(
+      Result.err(
+        new LLMProviderError(
+          `getStructuredCompletion not implemented for ${this.name}`,
+          'NOT_IMPLEMENTED',
+          this.name
+        )
+      )
+    );
   }
 }

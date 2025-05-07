@@ -1,10 +1,16 @@
 import { Result } from '../result/result';
 import type { AnalysisResult, LLMConfig } from '../../../types/shared';
 import { LLMProviderError } from './llm-provider-errors';
+import { z } from 'zod'; // Added import for Zod
 
 export interface ILLMProvider {
   readonly name: string;
   getCompletion(systemPrompt: string, userPrompt: string): Promise<Result<string, Error>>;
+  getStructuredCompletion<T extends z.ZodTypeAny>( // Added method
+    systemPrompt: string,
+    userPrompt: string,
+    schema: T
+  ): Promise<Result<z.infer<T>, Error>>;
   listModels?(): Promise<Result<string[], LLMProviderError>>;
   getContextWindowSize(): Promise<number>;
   countTokens(text: string): Promise<number>;
@@ -18,6 +24,11 @@ export interface ILLMProviderRegistry {
 export interface ILLMAgent {
   analyzeProject(projectDir: string): Promise<Result<AnalysisResult, Error>>;
   getCompletion(systemPrompt: string, userPrompt: string): Promise<Result<string, Error>>;
+  getStructuredCompletion<T extends z.ZodTypeAny>( // Added method
+    systemPrompt: string,
+    userPrompt: string,
+    schema: T
+  ): Promise<Result<z.infer<T>, Error>>;
   getModelContextWindow(): Promise<number>; // Updated to async
   countTokens(text: string): Promise<number>; // Updated to async
   getProvider(): Promise<Result<ILLMProvider, Error>>; // Updated to async

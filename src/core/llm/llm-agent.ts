@@ -7,6 +7,7 @@ import { ILogger } from '../services/logger-service';
 import { Dirent } from 'fs';
 import { LLMProviderRegistry } from './provider-registry';
 import { ILLMProvider } from './interfaces';
+import { z } from 'zod';
 
 @Injectable()
 export class LLMAgent implements ILLMAgent {
@@ -185,6 +186,43 @@ export class LLMAgent implements ILLMAgent {
     } catch (error) {
       this.logger.error(
         `Error getting completion: ${error instanceof Error ? error.message : String(error)}`
+      );
+      return Result.err(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  /**
+   * Gets a structured completion from the configured LLM provider.
+   * @param systemPrompt The system prompt to use
+   * @param userPrompt The user prompt to use
+   * @param schema The Zod schema to validate the output against
+   * @returns Result containing the parsed and validated object or an error
+   */
+  async getStructuredCompletion<T extends z.ZodTypeAny>(
+    systemPrompt: string,
+    userPrompt: string,
+    schema: T
+  ): Promise<Result<z.infer<T>, Error>> {
+    try {
+      const providerResult = await this.llmProviderRegistry.getProvider();
+      if (providerResult.isErr()) {
+        this.logger.error(
+          `Failed to get LLM provider for structured completion: ${providerResult.error?.message}`
+        );
+        return Result.err(
+          providerResult.error ?? new Error('Failed to get LLM provider for structured completion')
+        );
+      }
+
+      const provider = providerResult.value;
+      if (!provider) {
+        return Result.err(new Error('LLM provider is undefined for structured completion'));
+      }
+
+      return await provider.getStructuredCompletion(systemPrompt, userPrompt, schema);
+    } catch (error) {
+      this.logger.error(
+        `Error getting structured completion: ${error instanceof Error ? error.message : String(error)}`
       );
       return Result.err(error instanceof Error ? error : new Error(String(error)));
     }
