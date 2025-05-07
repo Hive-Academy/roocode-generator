@@ -1147,7 +1147,7 @@ Despite their titles, Junior roles have solid understanding of current coding ar
 
 ### First Subtask Delegation
 
-After creating the implementation plan, delegate the FIRST subtask:
+#### After creating the implementation plan, delegate the FIRST subtask:
 
 ```
 <new_task>
@@ -1195,7 +1195,7 @@ Return to me when this specific subtask is complete by using attempt_completion.
 
 ### Subsequent Subtask Delegation
 
-After reviewing each completed subtask, delegate the NEXT subtask:
+#### After reviewing each completed subtask, delegate the NEXT subtask:
 
 ```
 <new_task>
@@ -1251,7 +1251,7 @@ Return to me when this specific subtask is complete by using attempt_completion.
 
 ### Redelegation Format
 
-When rejecting incomplete or unsatisfactory work:
+#### When rejecting incomplete or unsatisfactory work:
 
 ```
 <new_task>
@@ -1310,7 +1310,7 @@ For the next subtask, consider:
 
 ### Code Review Delegation
 
-ONLY when ALL subtasks are complete:
+#### ONLY when ALL subtasks are complete:
 
 ```
 <new_task>
@@ -1358,7 +1358,7 @@ Complete your review by verifying the implementation against the plan, quality s
 
 ### Code Review Redelegation Format
 
-When Code Review returns "NEEDS CHANGES":
+#### When Code Review returns "NEEDS CHANGES":
 
 ```
 <new_task>

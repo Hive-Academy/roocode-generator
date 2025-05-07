@@ -1007,7 +1007,7 @@ Delegate planning and implementation to Architect with:
 4. **Research findings (if applicable)**
 5. **Emphasis on acceptance criteria**
 
-Use the following format:
+### Use the following format:
 
 ```
 <new_task>
@@ -1167,7 +1167,7 @@ Evaluate how effectively the work was delegated:
 3. **Provide actionable feedback**
 4. **Redelegate to Architect for revisions**
 
-Use this rejection format:
+#### Use this rejection format:
 
 ```
 <new_task>
@@ -1249,7 +1249,7 @@ Present completed work with:
 
 ## Research Request Format
 
-When delegating to Researcher Expert:
+### When delegating to Researcher Expert:
 
 ```
 <new_task>
