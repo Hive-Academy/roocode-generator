@@ -80,25 +80,33 @@ _Original AC1-AC4 for `GoogleGenAIProvider` are considered met by its existing `
 
 ### Subtask 2: Implement `getStructuredCompletion` for `OpenAIProvider`
 
-- **Status:** In Progress
+- **Status:** Completed (Commit: `c787f09`)
 - **Description:** Implement `getStructuredCompletion` in `OpenAIProvider.ts`.
 - **Files to Modify:**
   - `src/core/llm/providers/openai-provider.ts`
-- **Implementation Details:**
+- **Implementation Summary (from Senior Developer report):**
+  - Delegated to Junior Coder. Reviewed and integrated.
+  - Implemented `getStructuredCompletion` using `this.model.withStructuredOutput(schema)`.
+  - Constructor updated for `maxTokens`, `temperature`.
+  - Pre-call token validation using `this.model.getNumTokens()`.
+  - Retry logic with `retryWithBackoff`.
+  - Error mapping to `LLMProviderError`, including OpenAI-specific error details.
+  - Per-call configuration overrides via `runnable.bind()`.
+  - AC1-AC5 (OpenAI path) & AC10 verified by Senior Developer based on implementation and developer checks.
+- **Implementation Details (Planned):**
   - Use `this.model.withStructuredOutput(schema)` with the `ChatOpenAI` instance. This leverages OpenAI function calling.
   - Handle errors and map to `LLMProviderError`.
 - **Testing Requirements:** Developer to manually test. Formal E2E testing in final subtask.
 - **Related Acceptance Criteria:** AC1-AC4 (OpenAI path), AC5, AC10
 - **Estimated effort:** 1 - 1.5 hours
 - **Required Delegation Components:**
-  - Junior Coder: Can implement this.
-    - Component: Implement `getStructuredCompletion` in `OpenAIProvider.ts`.
+  - Junior Coder: Implemented `getStructuredCompletion` in `OpenAIProvider.ts`. (Completed)
 - **Delegation Success Criteria**:
-  - Junior Coder implements the method, returning a schema-compliant object in a developer-led test.
+  - Junior Coder implements the method, returning a schema-compliant object in a developer-led test. (Achieved)
 
 ### Subtask 3: Implement `getStructuredCompletion` for `OpenRouterProvider`
 
-- **Status:** Not Started
+- **Status:** In Progress
 - **Description:** Implement `getStructuredCompletion` in `OpenRouterProvider.ts`.
 - **Files to Modify:**
   - `src/core/llm/providers/open-router-provider.ts`
