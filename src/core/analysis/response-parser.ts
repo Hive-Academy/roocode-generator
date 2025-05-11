@@ -92,50 +92,51 @@ export class ResponseParser {
    * @param parsedData The parsed JSON object from the LLM response.
    */
   private applyProjectContextDefaults(parsedData: any): void {
-    if (!parsedData) {
-      this.logger.warn('Attempted to apply defaults to null/undefined parsedData');
+    if (!parsedData || typeof parsedData !== 'object') {
+      this.logger.warn('Attempted to apply defaults to null, undefined, or non-object parsedData');
       return;
     }
 
-    // Ensure parent 'structure' object exists
-    if (!parsedData.structure) {
-      this.logger.debug('Initializing missing structure object in parsed LLM response');
-      parsedData.structure = {};
+    // Default for techStack
+    if (parsedData.techStack === null || typeof parsedData.techStack === 'undefined') {
+      this.logger.debug('Initializing missing techStack object in parsed LLM response');
+      parsedData.techStack = {};
+    }
+    // Ensure techStack is an object before trying to default its properties
+    if (typeof parsedData.techStack === 'object' && parsedData.techStack !== null) {
+      const ts = parsedData.techStack;
+      if (ts.languages === null || typeof ts.languages === 'undefined') ts.languages = [];
+      if (ts.frameworks === null || typeof ts.frameworks === 'undefined') ts.frameworks = [];
+      if (ts.buildTools === null || typeof ts.buildTools === 'undefined') ts.buildTools = [];
+      if (ts.testingFrameworks === null || typeof ts.testingFrameworks === 'undefined')
+        ts.testingFrameworks = [];
+      if (ts.linters === null || typeof ts.linters === 'undefined') ts.linters = [];
+      if (ts.packageManager === null || typeof ts.packageManager === 'undefined')
+        ts.packageManager = ''; // Or 'npm'
     }
 
-    // Apply default to structure.testDir
-    if (
-      parsedData.structure.testDir === null ||
-      typeof parsedData.structure.testDir === 'undefined'
-    ) {
-      this.logger.debug('Defaulting null/undefined structure.testDir to empty string');
-      parsedData.structure.testDir = '';
+    // Default for packageJson
+    if (parsedData.packageJson === null || typeof parsedData.packageJson === 'undefined') {
+      this.logger.debug('Initializing missing packageJson object in parsed LLM response');
+      parsedData.packageJson = {};
+    }
+    // Ensure packageJson is an object before trying to default its properties
+    if (typeof parsedData.packageJson === 'object' && parsedData.packageJson !== null) {
+      const pj = parsedData.packageJson;
+      if (pj.dependencies === null || typeof pj.dependencies === 'undefined') pj.dependencies = {};
+      if (pj.devDependencies === null || typeof pj.devDependencies === 'undefined')
+        pj.devDependencies = {};
+      if (pj.peerDependencies === null || typeof pj.peerDependencies === 'undefined')
+        pj.peerDependencies = {};
     }
 
-    // Apply default to structure.componentStructure
-    if (
-      parsedData.structure.componentStructure === null ||
-      typeof parsedData.structure.componentStructure === 'undefined'
-    ) {
-      this.logger.debug('Defaulting null/undefined structure.componentStructure to empty object');
-      parsedData.structure.componentStructure = {};
+    // Default for codeInsights
+    if (parsedData.codeInsights === null || typeof parsedData.codeInsights === 'undefined') {
+      this.logger.debug('Initializing missing codeInsights object in parsed LLM response');
+      parsedData.codeInsights = {};
     }
 
-    // Ensure parent 'dependencies' object exists
-    if (!parsedData.dependencies) {
-      this.logger.debug('Initializing missing dependencies object in parsed LLM response');
-      parsedData.dependencies = {};
-    }
-
-    // Apply default to dependencies.internalDependencies
-    if (
-      parsedData.dependencies.internalDependencies === null ||
-      typeof parsedData.dependencies.internalDependencies === 'undefined'
-    ) {
-      this.logger.debug(
-        'Defaulting null/undefined dependencies.internalDependencies to empty object'
-      );
-      parsedData.dependencies.internalDependencies = {};
-    }
+    // projectRootPath is a required string, schema validation will catch if it's missing/wrong type.
+    // No specific default applied here for it, assuming it should generally be present.
   }
 }

@@ -106,7 +106,7 @@ export interface ProjectContext {
 
 ### Subtask 2: Update `ProjectAnalyzer` for Minimal Context (Round 2 Refactor)
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Modify `src/core/analysis/project-analyzer.ts` to populate only the minimal `ProjectContext` fields. Remove logic for building `directoryTree` and `internalDependencyGraph`.
 
@@ -123,6 +123,26 @@ export interface ProjectContext {
 
 **Implementation Details**:
 Streamline `ProjectAnalyzer` to focus only on `techStack`, `packageJson`, `codeInsights`, and basic root path information. The `ProjectStructure` field in `ProjectContext` might be removed or simplified to just `projectRootPath` at the top level of `ProjectContext`.
+
+**Implementation Notes**:
+
+- Delegated removal of `directoryTree` generation logic and `internalDependencyGraph` population logic from `src/core/analysis/project-analyzer.ts` to Junior Coder.
+- Junior Coder confirmed `src/core/analysis/directory-node-tagger.ts` was already deleted. Verified this with `list_files`.
+- Reviewed and integrated Junior Coder's changes to `project-analyzer.ts`.
+- Ensured `finalContext` and `filteredContext` in `project-analyzer.ts` now strictly adhere to the new `ProjectContext` interface:
+  ```typescript
+  export interface ProjectContext {
+    projectRootPath: string;
+    techStack: TechStackAnalysis;
+    packageJson: PackageJsonMinimal; // Assuming packageJsonData is shaped or cast to this
+    codeInsights: { [filePath: string]: CodeInsights };
+  }
+  ```
+- Removed unused imports and variables related to the removed logic in `project-analyzer.ts`.
+- The `projectRootPath` is set from `rootPath`.
+- `packageJson` is populated from `packageJsonData`.
+- `codeInsights` is populated from `codeInsightsMap`.
+- All acceptance criteria for this subtask (AC1, AC2, AC3 related to `ProjectAnalyzer` changes) are met.
 
 **Testing Requirements**: (All automated testing deferred)
 
@@ -147,7 +167,7 @@ Streamline `ProjectAnalyzer` to focus only on `techStack`, `packageJson`, `codeI
 
 ### Subtask 3: Update Consumers for Minimal Context (Round 2 Refactor)
 
-**Status**: Not Started
+**Status**: In Progress
 
 **Description**: Update all services, generators, and helper functions that consume `ProjectContext` to work with the minimal structure, deriving information from `codeInsights` and `packageJson` as needed.
 
