@@ -2,32 +2,17 @@ import { Injectable, Inject } from '../di/decorators';
 import { IFileOperations } from '../file-operations/interfaces';
 import { ILogger } from '../services/logger-service';
 import { Result } from '../result/result';
-import {
-  IProjectAnalyzer,
-  ProjectContext,
-  GenericAstNode,
-  TechStackAnalysis,
-  ProjectStructure,
-  DirectoryNode,
-} from './types'; // Import GenericAstNode, TechStackAnalysis
-import { CodeInsights, IAstAnalysisService } from './ast-analysis.interfaces'; // Added CodeInsights, IAstAnalysisService
-import { ITechStackAnalyzerService } from './tech-stack-analyzer'; // Added TechStackAnalyzerService import
-import * as StructureHelpers from './structure-helpers'; // Added import for structure helpers
-import { TsConfigLike } from './structure-helpers'; // Import TsConfigLike
-import {
-  deriveInternalDependencies,
-  TsConfigPathsInfo,
-  CodeInsightsMap,
-} from './dependency-helpers';
+import { IProjectAnalyzer, ProjectContext, GenericAstNode, TechStackAnalysis } from './types';
+import { CodeInsights, IAstAnalysisService } from './ast-analysis.interfaces';
+import { ITechStackAnalyzerService } from './tech-stack-analyzer';
+
 import { LLMAgent } from '../llm/llm-agent';
-// BINARY_EXTENSIONS, SKIP_DIRECTORIES, ANALYZABLE_EXTENSIONS, ANALYZABLE_FILENAMES are now in helpers
 import { ProgressIndicator } from '../ui/progress-indicator';
-import { IFileContentCollector, FileMetadata, ITreeSitterParserService } from './interfaces'; // Import ITreeSitterParserService
+import { IFileContentCollector, FileMetadata, ITreeSitterParserService } from './interfaces';
 import { IFilePrioritizer } from './interfaces';
-import { parseRobustJson } from '../utils/json-utils'; // Added import
 import path from 'path';
-import { EXTENSION_LANGUAGE_MAP } from './tree-sitter.config'; // Import language map
-import { ProjectAnalyzerHelpers } from './project-analyzer.helpers'; // Import the new helper class
+import { EXTENSION_LANGUAGE_MAP } from './tree-sitter.config';
+import { ProjectAnalyzerHelpers } from './project-analyzer.helpers';
 
 @Injectable()
 export class ProjectAnalyzer implements IProjectAnalyzer {
@@ -40,17 +25,11 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
     @Inject('IFilePrioritizer') private readonly filePrioritizer: IFilePrioritizer,
     @Inject('ITreeSitterParserService')
     private readonly treeSitterParserService: ITreeSitterParserService,
-    /**
-     * Service for analyzing AST data to extract code insights.
-     */
     @Inject('IAstAnalysisService')
     private readonly astAnalysisService: IAstAnalysisService,
-    /**
-     * Service for analyzing the technology stack locally.
-     */
     @Inject('ITechStackAnalyzerService')
     private readonly techStackAnalyzerService: ITechStackAnalyzerService,
-    @Inject('ProjectAnalyzerHelpers') private readonly helpers: ProjectAnalyzerHelpers // Inject the helper
+    @Inject('ProjectAnalyzerHelpers') private readonly helpers: ProjectAnalyzerHelpers
   ) {
     this.logger.trace('ProjectAnalyzer initialized');
   }
@@ -71,10 +50,6 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
     try {
       this.progress.start('Collecting project files for analysis...'); // Explicitly ignore promise
 
-      // Calculate available tokens for file content
-      // Use the model's context window as the budget for file content collection.
-      // This is a general budget, not tied to a specific LLM prompt within this method,
-      // as the direct LLM call for context generation is being removed.
       const maxTokens = await this.llmAgent.getModelContextWindow();
       this.logger.info(
         `Using model context window as maxTokens budget for file content collection: ${maxTokens}`
@@ -131,7 +106,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       // --- Read and parse package.json (Temporary for TSK-016) ---
       // TODO: Implement robust handling for various package managers/config files in a future task.
 
-      let packageJsonData: any;
+      let packageJsonData: any; // This will be cast to PackageJsonMinimal later
       const packageJsonPath = path.join(rootPath, 'package.json');
       this.logger.debug(`Attempting to read package.json from: ${packageJsonPath}`);
       const packageJsonReadResult = await this.fileOps.readFile(packageJsonPath);
@@ -157,17 +132,12 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
             `package.json not found at ${packageJsonPath}. Analysis will proceed without it.`
           );
         }
-        // Continue without package.json data
       } else {
-        // Handle case where read is ok but value is undefined (shouldn't happen with readFile)
         this.logger.warn('fileOps.readFile for package.json returned ok but value is undefined.');
       }
-      // --- End package.json processing ---
 
-      // --- Local Tech Stack Analysis ---
       this.progress.update('Analyzing tech stack...');
       this.logger.debug('Starting local tech stack analysis...');
-      // Note: allFiles.value is guaranteed to exist here due to earlier checks
 
       const localTechStackResult: TechStackAnalysis = await this.techStackAnalyzerService.analyze(
         rootPath,
@@ -175,90 +145,12 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         packageJsonData
       );
       this.logger.debug('Local tech stack analysis completed.');
-      // --- End Local Tech Stack Analysis ---
 
-      // --- Local Project Structure Analysis ---
       this.progress.update('Analyzing project structure...');
-      this.logger.debug('Starting local project structure analysis...');
+      this.logger.debug('Starting local project structure analysis (minimal)...'); // Updated log
 
-      const tsconfigPath = 'tsconfig.json'; // Assuming tsconfig.json is at the root
-      let tsconfigContent: TsConfigLike | undefined; // Typed tsconfigContent
-      const absoluteTsconfigPath = path.join(rootPath, tsconfigPath);
-      const tsconfigExistsResult = await this.fileOps.exists(absoluteTsconfigPath);
+      this.logger.debug('Local project structure analysis (now minimal) completed.'); // Updated log
 
-      if (tsconfigExistsResult.isOk() && tsconfigExistsResult.value) {
-        const tsconfigFileReadResult = await this.fileOps.readFile(absoluteTsconfigPath);
-        if (tsconfigFileReadResult.isOk() && tsconfigFileReadResult.value) {
-          const fileContentString = tsconfigFileReadResult.value;
-          try {
-            const cleanedFileContentString = this.helpers.stripJsonComments(fileContentString);
-            tsconfigContent = await parseRobustJson(cleanedFileContentString, this.logger);
-            this.logger.debug(
-              `Successfully parsed tsconfig.json using parseRobustJson from: ${absoluteTsconfigPath}`
-            );
-          } catch (error) {
-            // parseRobustJson already logs detailed errors, so just a general warning here.
-            this.logger.warn(
-              `Failed to robustly parse tsconfig.json from ${absoluteTsconfigPath}. Error: ${error instanceof Error ? error.message : String(error)}`
-            );
-            // tsconfigContent will remain undefined, and downstream logic should handle it.
-          }
-        } else if (tsconfigFileReadResult.isErr()) {
-          this.logger.warn(
-            `Failed to read tsconfig.json at ${absoluteTsconfigPath}: ${tsconfigFileReadResult.error?.message ?? 'Unknown read error'}`
-          );
-        }
-      } else {
-        this.logger.debug(
-          `tsconfig.json not found at ${absoluteTsconfigPath} or could not check existence.`
-        );
-      }
-
-      const sourceDir = await StructureHelpers.findSourceDir(
-        rootPath,
-        this.fileOps,
-        tsconfigContent // Pass only the parsed content
-      );
-      this.logger.debug(`Determined sourceDir: ${sourceDir}`);
-      const testDir = await StructureHelpers.findTestDir(
-        rootPath,
-        this.fileOps,
-        tsconfigContent // Pass only the parsed content
-      );
-      this.logger.debug(`Determined testDir: ${testDir}`);
-      const configFiles = await StructureHelpers.findConfigFiles(rootPath, this.fileOps);
-      this.logger.debug(`Found configFiles: ${configFiles.join(', ')}`);
-
-      const mainEntryPoints = await StructureHelpers.findMainEntryPoints(
-        rootPath,
-        packageJsonData,
-        sourceDir,
-        this.fileOps,
-        tsconfigContent
-      );
-      this.logger.debug(`Determined mainEntryPoints: ${mainEntryPoints.join(', ')}`);
-
-      const directoryTree: DirectoryNode[] = await StructureHelpers.generateDirectoryTree(
-        rootPath,
-        '.', // Start scanning from the root directory itself
-        this.fileOps,
-        this.helpers.shouldAnalyzeFile.bind(this.helpers) // Use helper method
-      );
-      this.logger.debug('Generated directoryTree.');
-
-      const localProjectStructure: ProjectStructure = {
-        rootDir: rootPath,
-        sourceDir: sourceDir || '', // Default to empty string if undefined
-        testDir: testDir || '', // Default to empty string if undefined
-        configFiles: configFiles,
-        mainEntryPoints: mainEntryPoints,
-        directoryTree: directoryTree,
-        componentStructure: {}, // Initialize as empty object
-      };
-      this.logger.debug('Local project structure analysis completed.');
-      // --- End Local Project Structure Analysis ---
-
-      // --- Tree-sitter Parsing and Analysis Step ---
       this.progress.update('Parsing supported files for structure...');
       this.logger.debug('Starting AST generation and collection...'); // Corrected log
 
@@ -277,25 +169,20 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
             this.logger.warn(
               `Error reading file ${filePath} for parsing: ${readFileResult.error?.message ?? 'Unknown read error'}`
             );
-            continue; // Skip this file if read fails
+            continue;
           }
-          const fileContent = readFileResult.value!; // Renamed variable for clarity
+          const fileContent = readFileResult.value!;
           const relativePath = path.relative(rootPath, filePath).replace(/\\/g, '/');
 
-          // Parse synchronously
           const parseResult: Result<GenericAstNode, Error> = this.treeSitterParserService.parse(
-            fileContent, // Use fileContent here
+            fileContent,
             language
-          ); // Returns Result<GenericAstNode, Error>
+          );
 
           if (parseResult.isOk()) {
-            // Directly add valid AST data
-            // Use non-null assertion as isOk() guarantees value exists
             validAstData.push({ relativePath, astData: parseResult.value! });
             this.logger.trace(`Successfully parsed and stored AST for ${relativePath}`); // Changed from trace
           } else {
-            // Log warning for parsing errors (Result.err)
-            // Use non-null assertion as else block implies isErr() which guarantees error exists
             this.logger.warn(
               `Tree-sitter parsing failed for ${relativePath}: ${parseResult.error!.message}` // Updated log message
             );
@@ -357,85 +244,26 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       } else {
         this.logger.debug('No valid ASTs found to analyze. Skipping analysis step.');
       }
-      // --- End Tree-sitter Parsing and Analysis Step ---
 
-      // --- Local Internal Dependencies Analysis ---
-      this.progress.update('Analyzing internal dependencies...');
-      this.logger.debug('Starting local internal dependencies analysis...');
-      let tsconfigPaths: TsConfigPathsInfo | undefined = undefined;
-      if (
-        tsconfigContent &&
-        tsconfigContent.compilerOptions &&
-        typeof tsconfigContent.compilerOptions.baseUrl === 'string'
-      ) {
-        const baseUrlString: string = tsconfigContent.compilerOptions.baseUrl;
-        const absoluteBaseUrl = path.resolve(rootPath, baseUrlString);
-        tsconfigPaths = {
-          baseUrl: absoluteBaseUrl,
-          paths: tsconfigContent.compilerOptions.paths,
-        };
-        this.logger.debug(
-          `Prepared tsconfigPathsInfo for dependency analysis: baseUrl='${absoluteBaseUrl}', paths available: ${!!tsconfigContent.compilerOptions.paths}`
-        );
-      } else {
-        this.logger.debug(
-          'tsconfig.json baseUrl not found or tsconfigContent not available, proceeding without alias path info for dependency analysis.'
-        );
-      }
-
-      this.logger.debug(
-        'Transforming codeInsightsMap keys to absolute paths for internal dependency analysis...'
-      );
-      const absoluteCodeInsightsMap: CodeInsightsMap = {};
-      for (const relativeKey in codeInsightsMap) {
-        if (Object.prototype.hasOwnProperty.call(codeInsightsMap, relativeKey)) {
-          const absoluteKey = path.resolve(rootPath, relativeKey);
-          absoluteCodeInsightsMap[absoluteKey] = codeInsightsMap[relativeKey];
-        }
-      }
-      this.logger.debug(
-        `Transformed ${Object.keys(absoluteCodeInsightsMap).length} code insight keys to absolute paths.`
-      );
-
-      const localInternalDependencies = deriveInternalDependencies(
-        absoluteCodeInsightsMap, // Use the new map with absolute keys
-        rootPath,
-        tsconfigPaths
-      );
-      this.logger.debug('Local internal dependencies analysis completed.');
-      // --- End Local Internal Dependencies Analysis ---
-
-      // LLM-based context generation, parsing, and merging has been removed.
-      // All context components are now derived locally.
       this.progress.update('Assembling final project context from local data...');
       this.logger.debug('Assembling final ProjectContext from local data sources...');
       this.logger.trace(
         `Using localTechStackResult: ${JSON.stringify(localTechStackResult, null, 2)}`
       );
+
       this.logger.trace(
-        `Using localProjectStructure: ${JSON.stringify(localProjectStructure, null, 2)}`
+        `Using packageJsonData: ${packageJsonData ? JSON.stringify(packageJsonData, null, 2) : 'not available'}`
       );
-      this.logger.trace(
-        `Using packageJsonData for external dependencies: ${packageJsonData ? JSON.stringify(packageJsonData, null, 2) : 'not available'}`
-      );
-      this.logger.trace(
-        `Using localInternalDependencies: ${JSON.stringify(localInternalDependencies, null, 2)}`
-      );
+
       this.logger.trace(
         `Using codeInsightsMap: ${Object.keys(codeInsightsMap ?? {}).length} entries`
       );
 
       const finalContext: ProjectContext = {
+        projectRootPath: rootPath,
         techStack: localTechStackResult,
-        structure: localProjectStructure,
-        dependencies: {
-          dependencies: packageJsonData?.dependencies ?? {},
-          devDependencies: packageJsonData?.devDependencies ?? {},
-          peerDependencies: packageJsonData?.peerDependencies ?? {},
-          internalDependencies: localInternalDependencies ?? {},
-        },
+        packageJson: packageJsonData, // This should conform to PackageJsonMinimal
         codeInsights: codeInsightsMap ?? {},
-        packageJson: packageJsonData,
       };
       this.logger.debug('Successfully assembled final ProjectContext.');
 
@@ -447,10 +275,7 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         `Approximate size of final ProjectContext string: ${finalContextString.length} characters.`
       );
       this.logger.info(`--- BEGIN FINAL PROJECT CONTEXT ---`);
-      // Log in chunks if too large for a single log entry, or consider writing to a temp file if essential for debugging large contexts.
-      // For now, attempting to log directly. If this causes issues, will revise.
       if (finalContextString.length > 200000) {
-        // Arbitrary limit for a single log, adjust as needed
         this.logger.info(
           'Final ProjectContext is very large, logging first 200KB. Full context logged at TRACE level if enabled and successful.'
         );
@@ -461,35 +286,15 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
         this.logger.info(finalContextString);
       }
       this.logger.info(`--- END FINAL PROJECT CONTEXT ---`);
-      this.logger.trace(
-        // Keep trace for potentially very verbose full output if stringify succeeds
-        `Final ProjectContext (TRACE - full):\n${finalContextString}`
-      );
+      this.logger.trace(`Final ProjectContext (TRACE - full):\n${finalContextString}`);
 
-      // --- TEMPORARY LOGGING REMOVED ---
-
-      /**
-       * Filter the assembled context to ensure it strictly adheres to the ProjectContext interface.
-       * This prevents leaking intermediate data structures or properties used during analysis.
-       * Creates a new object and explicitly copies only the defined properties.
-       * Note: astData is intentionally excluded as per requirements.
-       */
       const filteredContext: ProjectContext = {
-        techStack: finalContext.techStack, // This will be localTechStackResult
-        structure: finalContext.structure, // This will be localProjectStructure
-        dependencies: {
-          ...finalContext.dependencies,
-          dependencies: finalContext.dependencies?.dependencies ?? {},
-          devDependencies: finalContext.dependencies?.devDependencies ?? {},
-          peerDependencies: finalContext.dependencies?.peerDependencies ?? {},
-          internalDependencies: finalContext.dependencies?.internalDependencies ?? {},
-        },
-        codeInsights: finalContext.codeInsights ?? {}, // Always include codeInsights with default
-        packageJson: finalContext.packageJson, // Include packageJson in filtered context
+        projectRootPath: finalContext.projectRootPath,
+        techStack: finalContext.techStack,
+        packageJson: finalContext.packageJson, // This should conform to PackageJsonMinimal
+        codeInsights: finalContext.codeInsights ?? {},
       };
 
-      // Save the final context to a file for E2E verification
-      // This operation handles its own errors and does not interrupt the main flow.
       await this.helpers.saveProjectContextToFile(filteredContext, rootPath); // Use helper method
 
       return Result.ok(filteredContext); // Return the filtered context
@@ -501,10 +306,4 @@ export class ProjectAnalyzer implements IProjectAnalyzer {
       return Result.err(new Error(`Project context analysis failed: ${errorMessage}`));
     }
   }
-
-  // Removed collectAnalyzableFiles
-  // Removed isDirectory
-  // Removed shouldAnalyzeFile
-  // Removed stripJsonComments
-  // Removed _saveProjectContextToFile
 }
