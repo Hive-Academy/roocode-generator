@@ -47,36 +47,15 @@ export interface TechStackAnalysis {
 }
 
 /**
- * Represents a node in the directory tree structure.
+ * Represents a minimal set of information from a package.json file.
  */
-export interface DirectoryNode {
-  name: string;
-  path: string; // Relative path from rootDir
-  type: 'directory' | 'file';
-  children?: DirectoryNode[]; // Only for type 'directory'
-}
-
-/**
- * Represents the identified structure of a project.
- */
-export interface ProjectStructure {
-  rootDir: string; // Absolute path to the project root
-  sourceDir: string; // Relative path from rootDir to the main source code
-  testDir: string; // Relative path from rootDir to the main test code
-  configFiles: string[]; // Relative paths from rootDir to key config files (e.g., 'tsconfig.json', '.eslintrc.js')
-  mainEntryPoints: string[]; // Relative paths from rootDir to main application entry points
-  componentStructure: Record<string, string[]>; // Map of component types/locations to file paths (e.g., { 'ui': ['src/components/ui/Button.tsx'] }) - Structure might need refinement based on analysis capabilities
-  directoryTree: DirectoryNode[]; // Represents the root level nodes of the project's directory structure
-}
-
-/**
- * Represents the dependency graph of a project.
- */
-export interface DependencyGraph {
-  dependencies: Record<string, string>; // { 'react': '^18.0.0' }
-  devDependencies: Record<string, string>; // { 'jest': '^29.0.0' }
-  peerDependencies: Record<string, string>; // { 'react': '>=17.0.0' }
-  internalDependencies: Record<string, string[]>; // Map of internal modules to their dependencies { 'src/utils/helper.ts': ['src/core/types.ts'] } - Structure might need refinement
+export interface PackageJsonMinimal {
+  name?: string;
+  version?: string;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+  // Add other essential fields as needed, e.g., main, module, type
 }
 
 /**
@@ -84,18 +63,14 @@ export interface DependencyGraph {
  * This will likely be used by the RulesGenerator.
  */
 export interface ProjectContext {
+  projectRootPath: string; // Explicit root path for the project
   techStack: TechStackAnalysis;
-  structure: ProjectStructure;
-  dependencies: DependencyGraph;
+  packageJson: PackageJsonMinimal; // SSoT for external dependencies
   /**
-   * Optional map containing structured code insights extracted via AST analysis.
-   * The key is the relative file path, and the value is the CodeInsights object for that file.
+   * Map containing structured code insights extracted via AST analysis.
+   * The key is the relative file path (from projectRootPath),
+   * and the value is the CodeInsights object for that file.
    * Populated by the AstAnalysisService.
    */
-  codeInsights: { [filePath: string]: CodeInsights }; // Made required as per new requirements
-
-  /**
-   * Optional property to hold the parsed content of the project's package.json file.
-   */
-  packageJson?: any;
+  codeInsights: { [filePath: string]: CodeInsights };
 }
