@@ -50,7 +50,7 @@ Unit and integration testing are deferred to a separate, subsequent task.
 
 ### Subtask 1: Define Minimal `ProjectContext` Types (Round 2 Refactor)
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Redefine `ProjectContext` and related interfaces in `src/core/analysis/types.ts` to remove `structure.directoryTree` and `internalDependencyGraph`.
 
@@ -83,6 +83,14 @@ export interface ProjectContext {
   // internalDependencyGraph field is removed.
 }
 ```
+
+**Implementation Notes**:
+
+- Modified `src/core/analysis/types.ts` as per description.
+- Removed `DirectoryNode`, `ProjectStructure`, and `DependencyGraph` interfaces.
+- Added `PackageJsonMinimal` interface.
+- Updated `ProjectContext` to include `projectRootPath: string`, use `packageJson: PackageJsonMinimal` (non-optional), and remove `structure` and `dependencies` fields.
+- These changes align with the goal of a lean `ProjectContext` and satisfy AC1, AC2, and AC3.
 
 **Testing Requirements**: (All automated testing deferred)
 
@@ -215,6 +223,8 @@ This is the most extensive part. Each consumer needs to be analyzed.
 **Delegation Success Criteria**:
 
 - Junior Tester provides detailed and accurate records of CLI outputs.
+
+---
 
 ## 5. Implementation Sequence (Revised)
 
