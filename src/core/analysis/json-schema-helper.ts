@@ -31,39 +31,60 @@ export class JsonSchemaHelper implements IJsonSchemaHelper {
       .strict();
 
     // Define the ProjectContext schema using Zod
+    const functionInfoSchema = z
+      .object({
+        name: z.string(),
+        parameters: z.array(z.string()),
+      })
+      .strict();
+
+    const classInfoSchema = z
+      .object({
+        name: z.string(),
+      })
+      .strict();
+
+    const importInfoSchema = z
+      .object({
+        source: z.string(),
+      })
+      .strict();
+
+    const codeInsightsSchema = z
+      .object({
+        functions: z.array(functionInfoSchema),
+        classes: z.array(classInfoSchema),
+        imports: z.array(importInfoSchema),
+      })
+      .strict();
+
+    const techStackAnalysisSchema = z
+      .object({
+        languages: z.array(z.string()),
+        frameworks: z.array(z.string()),
+        buildTools: z.array(z.string()),
+        testingFrameworks: z.array(z.string()),
+        linters: z.array(z.string()),
+        packageManager: z.string(),
+      })
+      .strict();
+
+    const packageJsonMinimalSchema = z
+      .object({
+        name: z.string().optional(),
+        version: z.string().optional(),
+        dependencies: z.record(z.string()).optional(),
+        devDependencies: z.record(z.string()).optional(),
+        peerDependencies: z.record(z.string()).optional(),
+      })
+      .strict();
+
     this.projectContextSchema = z
       .object({
-        techStack: z
-          .object({
-            languages: z.array(z.string()),
-            frameworks: z.array(z.string()),
-            buildTools: z.array(z.string()),
-            testingFrameworks: z.array(z.string()),
-            linters: z.array(z.string()),
-            packageManager: z.string(),
-          })
-          .strict(),
-
-        structure: z
-          .object({
-            rootDir: z.string(),
-            sourceDir: z.string(),
-            testDir: z.string(),
-            configFiles: z.array(z.string()),
-            mainEntryPoints: z.array(z.string()),
-            componentStructure: z.record(z.array(z.string())),
-            // Removed definedFunctions and definedClasses as they are replaced by astData
-          })
-          .strict(),
-
-        dependencies: z
-          .object({
-            dependencies: z.record(z.string()),
-            devDependencies: z.record(z.string()),
-            peerDependencies: z.record(z.string()),
-            internalDependencies: z.record(z.array(z.string())),
-          })
-          .strict(),
+        projectRootPath: z.string(),
+        techStack: techStackAnalysisSchema,
+        packageJson: packageJsonMinimalSchema,
+        codeInsights: z.record(codeInsightsSchema),
       })
       .strict();
   }

@@ -4,249 +4,240 @@
 
 Welcome, developer! This guide provides instructions for setting up the development environment, running the project, understanding the codebase, and contributing effectively to roocode-generator.
 
+- **Purpose**: `roocode-generator` is a CLI tool designed to generate RooCode workflow configuration files tailored to any given tech stack.
+- **Target Audience**: This guide is intended for developers who want to contribute to the `roocode-generator` project.
 - **Prerequisites**: Please read the [Project Overview](ProjectOverview.md) and [Technical Architecture](TechnicalArchitecture.md) documents first.
 
 ## 2. Getting Started: Setup & Installation
 
 ### 2.1. Prerequisites
 
-- **Node.js**: >=16 (as specified in `package.json` under `engines.node`)
-- **Package Manager**: npm (as specified in `techStack.packageManager`)
+- **Node.js**: Requires Node.js version `>=16`.
+- **Package Manager**: Uses `npm`. Ensure you have a recent version installed (e.g., npm 9.x or later).
 - **Git**: Standard Git installation.
-- **Project Build Tools**: The project uses TypeScript Compiler (`tsc`) and `Vite` for building, which are managed as project dependencies.
+- **(Optional) Specific Tools**:
+  - TypeScript Compiler (`tsc`)
+  - Vite
+  - Jest
+  - ESLint
+  - Prettier
+  - Tree-sitter grammars (handled during dependency installation)
 
 ### 2.2. Cloning the Repository
 
-git clone https://github.com/yourusername/roocode-generator.git
+git clone https://github.com/yourusername/roocode-generator.git # Assuming this is the repository URL
 cd roocode-generator
 
 ### 2.3. Installing Dependencies
+
+Use npm to install project dependencies:
 
 ```bash
 npm install
 ```
 
-The project uses `tree-sitter` and specific grammar packages (`tree-sitter-javascript`, `tree-sitter-typescript`). These are typically handled by npm during installation.
+This command will install both production and development dependencies, including tools like Husky for Git hooks and Tree-sitter grammars.
 
 ### 2.4. Environment Configuration
 
-- Create a `.env` file in the root directory (`.`). (This file is ignored by Git as per `.gitignore`).
-- Add necessary API keys or configuration. The project uses `dotenv` to load these variables. Key environment variables for LLM providers include:
+The project uses `dotenv` for environment variable management.
 
-  ```dotenv
-  # Example for LLM Providers:
-  ANTHROPIC_API_KEY=your_anthropic_api_key
-  GOOGLE_API_KEY=your_google_api_key
-  OPENAI_API_KEY=your_openai_api_key
-  OPEN_ROUTER_API_KEY=your_open_router_api_key
-  # Add other necessary variables as required by the application
-  ```
+- Create a `.env` file in the root directory (`.`). (This file is typically ignored by Git).
+- Add necessary API keys or configuration, particularly for LLM providers:
 
-  Refer to `llm.config.json` for LLM provider and model configuration, which might work in conjunction with API keys from environment variables.
+```dotenv
+# Example:
+# OPENAI_API_KEY=your_openai_key
+# ANTHROPIC_API_KEY=your_anthropic_key
+# GOOGLE_API_KEY=your_google_key
+# OPENROUTER_API_KEY=your_openrouter_key
+
+# Optional: Specify default LLM provider and model
+# DEFAULT_LLM_PROVIDER=openai
+# DEFAULT_LLM_MODEL=gpt-4o
+```
+
+Refer to the LLM configuration section in the Technical Architecture for more details on required variables for different providers.
 
 ### 2.5. Initial Build
+
+The project is written in TypeScript and requires compilation.
 
 ```bash
 npm run build
 ```
 
-This command compiles the TypeScript code and bundles the application into the `dist` directory.
+This command uses `vite build` to compile the TypeScript code into JavaScript, outputting to the `dist` directory.
 
 ### 2.6. Verifying Installation
 
+You can verify the installation by running the help command or the test suite.
+
 ```bash
-# Run the CLI's help command
+# Example: Run help command
 node bin/roocode-generator.js --help
 
-# Run tests to ensure all components are working correctly
+# Example: Run tests
 npm test
 ```
 
 ## 3. Project Structure Overview
 
-- `src`: Core source code of the application (TypeScript files).
-- `tests`: Automated tests (using Jest). Contains unit and potentially integration tests.
-- `docs`: Project documentation, presentations, and reports.
-- `templates`: Contains templates used for code generation, including system prompts and memory bank document templates.
-- `memory-bank`: Stores generated Memory Bank documents like `ProjectOverview.md`, `TechnicalArchitecture.md`, and `DeveloperGuide.md`.
-- `bin`: Executable scripts, including the main CLI entry point `roocode-generator.js`.
-- `configFiles`: Various configuration files like `tsconfig.json`, `eslint.config.mjs`, `vite.config.ts`, `jest.config.js`, `llm.config.json` are located in the root directory (`.`).
-- `.`: Project root directory.
+The project follows a modular structure, primarily organized within the `src` directory.
+
+- `src/core`: Contains the core logic, including DI, file operations, error handling, LLM integration, project analysis, configuration management, and UI components.
+- `src/generators`: Contains the implementations for different types of workflow generators (e.g., `roomodes-generator`, `system-prompts-generator`).
+- `src/memory-bank`: Contains logic related to generating and managing the project's "memory bank" or contextual documentation.
+- `src/types`: Contains TypeScript type definitions.
+- `bin`: Contains the main executable script (`roocode-generator.js`).
+- `dist`: Output directory for compiled JavaScript code.
+- `tests`: Automated tests using Jest.
+- `.`: Project root, containing configuration files like `package.json`, `tsconfig.json`, `vite.config.ts`, linting/formatting configs, etc.
+
+Refer to the Technical Architecture document for a more detailed breakdown of modules and their interactions.
 
 ## 4. Development Workflow
 
 ### 4.1. Common Scripts
 
-- `npm run start`: Executes `node bin/roocode-generator.js`. Runs the main CLI application.
-- `npm run build`: Executes `npm run clean && vite build`. Cleans the `dist` directory and then builds the project using Vite and the TypeScript Compiler.
-- `npm run test`: Executes `jest`. Runs the automated test suite using Jest.
-- `npm run test:watch`: Executes `jest --watch`. Runs tests in watch mode.
-- `npm run lint`: Executes `eslint . --ext .ts,.js,.mjs --cache`. Lints the codebase using ESLint.
-- `npm run lint:fix`: Executes `eslint . --ext .ts,.js,.mjs --cache --fix`. Lints and automatically fixes issues.
-- `npm run format`: Executes `prettier --check "src/**/*.{ts,js,mjs,json,md}"`. Checks code formatting using Prettier.
-- `npm run format:write`: Executes `prettier --write "src/**/*.{ts,js,mjs,json,md}"`. Formats code using Prettier.
-- `npm run style`: Executes `npm run format:write && npm run lint:fix`. A convenience script to format and lint the code.
-- `npm run dev`: Executes `vite`. Starts the Vite development server. (Primarily for projects with a web frontend, its utility for this CLI might be specific to certain development tasks).
-- `npm run clean`: Executes `rimraf dist`. Removes the `dist` directory.
+The `package.json` file defines several useful scripts for development tasks:
+
+- `npm start`: Runs the compiled CLI tool directly using Node.
+- `npm run build`: Compiles the TypeScript source code using Vite.
+- `npm run type-check`: Runs the TypeScript compiler to check for type errors without emitting files.
+- `npm test`: Runs the test suite using Jest.
+- `npm test:watch`: Runs tests in watch mode.
+- `npm test:coverage`: Runs tests and generates a coverage report.
+- `npm run lint`: Runs ESLint to check for code style and potential errors.
+- `npm run lint:fix`: Runs ESLint and automatically fixes issues where possible.
+- `npm run format`: Checks code formatting using Prettier.
+- `npm run format:write`: Formats code using Prettier.
+- `npm run style`: Runs both formatting and linting with auto-fix.
+- `npm prepare`: Sets up Husky Git hooks (runs automatically after `npm install`).
+- `npm run dev`: Starts a development server/process (currently configured via Vite, though primarily a CLI tool).
+- `npm run clean`: Removes the `dist` directory.
 
 ### 4.2. Branching Strategy
 
-The project generally follows a Gitflow-like branching model:
+The project uses a feature branching strategy:
 
-- **Main branches**:
-  - `main`: Represents the latest stable release.
-  - `develop`: Integration branch for new features and ongoing development.
-- **Feature branches**: `feature/your-feature-name` (branched from `develop`).
-- **Bugfix branches**: `fix/your-bug-fix` (branched from `develop` for regular fixes, or `main` for hotfixes if necessary).
-- **Release branches**: `release/version-number` (branched from `develop` when preparing for a new release).
+- Main branches: `main` (for releases) and `develop` (for ongoing development).
+- Feature branches: Create branches prefixed with `feature/` (e.g., `feature/add-new-generator`) for new features, branched from `develop`.
+- Bugfix branches: Create branches prefixed with `fix/` (e.g., `fix/cli-parsing-error`) for bug fixes, branched from `develop` (or `main` for hotfixes).
+
+All development work should happen on feature or bugfix branches.
 
 ### 4.3. Making Changes
 
-1.  Ensure your `develop` branch is up-to-date: `git checkout develop && git pull origin develop`.
-2.  Create a feature/fix branch from `develop`: `git checkout -b feature/your-descriptive-name` or `fix/your-descriptive-name`.
-3.  Implement your changes.
-4.  Ensure the code compiles/builds: `npm run build`.
-5.  Write or update tests for your changes in the `tests` directory.
-6.  Run linters and formatters: `npm run style` (or `npm run format:write` and `npm run lint:fix` separately).
+1.  Ensure you are on the `develop` branch and it's up to date (`git pull origin develop`).
+2.  Create a new feature or fix branch: `git checkout -b feature/your-feature-name`.
+3.  Implement your changes in the source files (`src/`).
+4.  Ensure code compiles/builds by running `npm run build`.
+5.  Write or update tests in the `tests/` directory to cover your changes.
+6.  Run linters and formatters: `npm run style`.
 7.  Ensure all tests pass: `npm test`.
-8.  Commit your changes following project conventions (see Section 5: Coding Standards & Conventions, especially commit messages).
-9.  Push your branch to the remote repository: `git push origin feature/your-descriptive-name`.
-10. Create a Pull Request (PR) against the `develop` branch.
+8.  Commit changes using conventional commit messages (see Coding Standards).
+9.  Push your branch: `git push origin feature/your-feature-name`.
+10. Create a Pull Request (PR) targeting the `develop` branch.
 
 ### 4.4. Pull Request (PR) Process
 
-- **Target Branch**: Typically `develop`.
-- **Title/Description**: Provide a clear, concise title and a detailed description of the changes, including the "why" and "what".
-- **Link to Task/Issue**: If applicable, link the PR to the relevant task or issue in the project's issue tracker.
-- **Code Review**: PRs require at least one approval from a team member.
-- **CI Checks**: Automated checks (linting, testing, build via `npm run lint`, `npm test`, `npm run build`) must pass. These are usually configured in the CI/CD pipeline (e.g., GitHub Actions).
+- PRs should target the `develop` branch for new features and standard bug fixes. Hotfixes may target `main`.
+- Provide a clear title and description of the changes.
+- Link to any relevant issues or tasks.
+- PRs require review and approval from at least one other contributor.
+- All automated CI checks (linting, testing, build) must pass before merging.
 
 ### 4.5. Debugging
 
-- **Console Logging**: Use `console.log`, `console.debug`, `console.error` strategically. The `LoggerService` (`src/core/services/logger-service.ts`) provides more structured logging.
-- **Node.js Debugger**: Utilize the built-in Node.js debugger. You can run scripts with the `--inspect` or `--inspect-brk` flag:
-  ```bash
-  node --inspect-brk bin/roocode-generator.js [command] [options]
-  ```
-  Then connect using Chrome DevTools (via `chrome://inspect`) or your IDE's debugger (e.g., VS Code).
-- **IDE Debugger**: Configure your IDE (like VS Code) to debug Node.js applications. You might need to create a `launch.json` configuration if one isn't provided.
-- **Unit Tests**: Write focused unit tests to isolate and debug specific functions or modules.
+- Use `console.log` or the `LoggerService` (`src/core/services/logger-service.ts`) for basic logging.
+- Utilize the Node.js debugger. You can often set breakpoints directly in your IDE (like VS Code) and run the main script (`bin/roocode-generator.js`) with debugging enabled. Check the `.vscode/launch.json` file if it exists for pre-configured launch profiles.
 
 ## 5. Coding Standards & Conventions
 
-- **Language**: Primarily TypeScript. JavaScript, JSON, Markdown, and HTML are also used.
-- **Style Guide**: Adhere to standard TypeScript best practices. ESLint and Prettier enforce specific styles.
-- **Linting**:
-  - Tools: `ESLint`, `Prettier`.
-  - Configuration: `eslint.config.mjs`, `.prettierrc`.
-  - Run: `npm run lint` (check) or `npm run lint:fix` (fix).
-- **Formatting**:
-  - Tool: `Prettier`.
-  - Configuration: `.prettierrc`, also integrated into ESLint setup.
-  - Run: `npm run format` (check) or `npm run format:write` (fix).
-- **Naming Conventions**:
-  - `camelCase` for variables, functions, and method names.
-  - `PascalCase` for class names, interface names, type aliases, and enums.
-  - File names: `kebab-case.ts` or `PascalCase.ts` (check project consistency, `kebab-case` is common for services/modules).
-- **Commit Messages**: Follow the Conventional Commits specification. This is enforced by `commitlint` (configured in `commitlint.config.js`). Example: `feat: add user authentication module`.
-- **Team Agreement**: (No specific team agreement document found in context. Adhere to general best practices and conventions established in the codebase.)
+- **Language**: TypeScript and JavaScript.
+- **Style Guide**: Enforced by ESLint and Prettier.
+- **Linting**: ESLint (`eslint.config.mjs`). Run `npm run lint` or `npm run lint:fix`.
+- **Formatting**: Prettier (`.prettierrc`, configured in `package.json`). Run `npm run format` or `npm run format:write`.
+- **Naming Conventions**: Follow standard TypeScript/JavaScript conventions (camelCase for variables/functions, PascalCase for classes/types).
+- **Commit Messages**: Follow Conventional Commits specification, enforced by Commitlint (`commitlint.config.js`) and Husky. Use prefixes like `feat:`, `fix:`, `docs:`, `chore:`, `test:`, `refactor:`, etc.
+- **Team Agreement**: Adhere to the standards enforced by linters, formatters, and commitlint.
 
 ## 6. Testing
 
-- **Framework**: `Jest` (configured in `jest.config.js`).
-- **Location**: Tests are located in the `tests` directory. Mock implementations are found in `tests/__mocks__`.
-- **File Naming Convention**: Test files typically follow `*.test.ts` or `*.spec.ts` (e.g., `my-module.test.ts`).
+- **Framework**: Jest (`jest.config.js`).
+- **Location**: Tests are located in the `tests/` directory. Test files typically follow the naming convention `*.test.ts`.
 - **Running Tests**:
   - All tests: `npm test`
-  - Watch mode (reruns tests on file changes): `npm run test:watch`
-  - Coverage report: `npm run test:coverage`
-  - Specific file: `npm test -- tests/core/analysis/project-analyzer.test.ts` (replace with actual path)
-  - Specific test suite or test name: Use Jest's `-t` flag: `npm test -- -t "My test suite name"`
-- **Types of Tests**:
-  - **Unit Tests**: Focus on testing individual modules, classes, or functions in isolation. Mocks are heavily used (see `tests/__mocks__`).
-  - (Potentially) **Integration Tests**: Testing interactions between different parts of the system.
-  - **E2E Testing for LLM Providers**: For features heavily reliant on specific LLM provider outputs (like `codeInsights` generation via `getStructuredCompletion`), End-to-End (E2E) tests should be considered for each critical provider path. This involves setting up test scenarios that invoke the full chain from analysis to LLM interaction and response validation. (Detailed procedures for setting up and running these E2E tests for various providers will be documented as part of a dedicated testing enhancement task: TSK-NEW-E2E-Unit-Testing-Providers).
-- **Writing Tests**:
-  - Use Jest's BDD-style syntax (`describe`, `it`, `expect`).
-  - Aim for clear, descriptive test names.
-  - Ensure tests are independent and can run in any order.
-  - Mock dependencies where necessary to isolate the unit under test.
+  - Watch mode: `npm test:watch`
+  - Specific file: `npm test -- tests/path/to/your.test.ts`
+- **Types of Tests**: Primarily focuses on Unit Tests and potentially some Integration Tests for core modules.
+- **Writing Tests**: Write tests in the `tests/` directory using the Jest framework. Mock dependencies as needed using Jest's mocking capabilities (see `tests/__mocks__`).
 
 ## 7. Build & Deployment
 
-- **Build Process**:
-  - Command: `npm run build`
-  - Tools: Uses `Vite` and the `TypeScript Compiler (tsc)`.
-  - Configuration: `vite.config.ts` (for Vite), `tsconfig.json` (for TypeScript).
-  - Output: The build process outputs JavaScript files, type definitions, and other assets to the `dist` directory. This directory is included in the `package.json` `files` array for publishing.
-- **Deployment**:
-  - This project is a CLI tool/library intended to be published to npm.
-  - Releases and publishing are automated using `semantic-release`. Configuration for `semantic-release` can be found in `.releaserc.json` and related `devDependencies` in `package.json`.
-  - Merges to the `main` branch (or other configured release branches) typically trigger the `semantic-release` process, which analyzes commits, determines the next version, generates a changelog, tags the release, and publishes the package to npm.
+- **Build Process**: The build process is handled by `npm run build`, which uses Vite and the TypeScript Compiler (`tsc`). The output is placed in the `dist/` directory.
+- **Deployment**: As a CLI tool, `roocode-generator` is typically distributed via npm. Deployment involves publishing a new version to the npm registry using `npm publish`. The `package.json` `bin` field (`"roocode": "./bin/roocode-generator.js"`) makes the tool executable when installed globally or used via `npx`.
 
 ## 8. Key Libraries & Concepts
 
-- **`@langchain/*` (e.g., `@langchain/openai`, `@langchain/anthropic`, `@langchain/google-genai`, `@langchain/core`)**: Core libraries for interacting with Large Language Models (LLMs). Used for generating content, analyzing code, etc.
-- **`commander`**: A library for building command-line interfaces. Used to define commands, options, and parse arguments for `roocode-generator`.
-- **`inquirer`**: Provides interactive command-line user interfaces (prompts, lists, confirmations).
-- **`zod`**: A TypeScript-first schema declaration and validation library. Used for validating configurations and LLM responses.
-- **`tree-sitter`**: A parser generator tool and an incremental parsing library. Used for parsing source code into Abstract Syntax Trees (ASTs) for detailed code analysis (`src/core/analysis/tree-sitter-parser.service.ts`).
-- **`ora`**: Provides elegant terminal spinners for long-running CLI tasks.
-- **`chalk`**: Used for styling terminal string output with colors and formatting.
-- **`reflect-metadata`**: Used by the custom Dependency Injection (DI) system to manage metadata for injectable classes and their dependencies.
-- **Dependency Injection (DI)**: The project uses a custom DI container (`src/core/di`) to manage dependencies between services and components, promoting loose coupling and testability.
-- **LLM Abstraction Layer**: Located in `src/core/llm`, this layer provides a consistent interface (`ILLMProvider`, `LLMAgent`) for interacting with different LLM providers (OpenAI, Anthropic, Google GenAI, OpenRouter), abstracting away provider-specific details.
-  - **Structured LLM Output (`getStructuredCompletion`)**: When requiring structured JSON output from LLMs (e.g., for `codeInsights`), providers implement a `getStructuredCompletion` method. This method typically uses Langchain's `withStructuredOutput` functionality, Zod schemas for defining the expected output structure, and handles pre-call validation (like token limits), API retries, and error mapping. This ensures that consumers like `AstAnalysisService` receive a typed, validated object or a clear error, enhancing reliability. New provider implementations requiring structured output should follow this pattern.
-- **Project Analysis Core**: The `src/core/analysis` module is responsible for understanding the target project's structure, tech stack, dependencies, and performing AST-based code analysis. Key components include `ProjectAnalyzer`, `AstAnalysisService`, and `TreeSitterParserService`.
-- **Memory Bank**: A central concept (`src/memory-bank`) for generating, storing, and managing comprehensive contextual documents about a software project (e.g., `ProjectOverview.md`, `TechnicalArchitecture.md`).
-- **Generators**: Modular components (`src/generators`, `src/core/generators`) responsible for creating specific types of files or configurations based on project context and templates.
+- **commander**: Used for building the command-line interface.
+- **inquirer**: Used for interactive prompts in the CLI.
+- **langchain**: Provides integration with various LLM providers (OpenAI, Anthropic, Google GenAI, OpenRouter).
+- **zod**: Used for schema validation, particularly for LLM responses and configuration.
+- **ora**: Provides elegant terminal spinners for indicating progress.
+- **chalk**: Used for styling terminal output.
+- **tree-sitter**: Used for parsing code into Abstract Syntax Trees (ASTs) for analysis.
+- **jsonrepair**: Used for robust parsing and repairing of potentially malformed JSON from LLM responses.
+- **dotenv**: Loads environment variables from a `.env` file.
+- **Dependency Injection (DI)**: The project uses a custom DI container (`src/core/di`) to manage service dependencies and improve testability.
+- **Result Type**: A custom `Result` type (`src/core/result`) is used throughout the codebase for explicit error handling, distinguishing between successful outcomes and failures.
+- **Project Analysis & `ProjectContext`**: Modules in `src/core/analysis` are responsible for collecting project files, analyzing tech stack, parsing ASTs, and preparing context for LLMs.
+  - The central data structure produced is `ProjectContext` (defined in `src/core/analysis/types.ts`). Following TSK-020, this structure has been significantly minimized to optimize LLM payloads and reduce data redundancy.
+  - **Minimal Structure**: It now primarily consists of `projectRootPath`, `techStack` (detailing technologies), `packageJson` (a minimal representation of `package.json` for external dependencies), and `codeInsights` (a map of file paths to their AST-derived summaries including functions, classes, and imports).
+  - **Removed Components**: Explicit structures like `directoryTree` and `internalDependencyGraph` have been removed from `ProjectContext`.
+  - **Derived Information**: Information previously available directly (e.g., lists of config files, entry points, full internal dependency graphs) is now derived on-demand from the minimal `ProjectContext` using helper utilities located in `src/core/analysis/project-context.utils.ts`. Key utilities include:
+    - `getConfigFiles(projectContext)`: Derives configuration file paths.
+    - `getEntryPointFiles(projectContext)`: Derives main entry point file paths.
+    - `getInternalDependenciesForFile(projectContext, filePath)`: Derives internal dependencies for a specific file from `codeInsights`.
+    - `getDependencyVersion(projectContext, packageName)`: Retrieves version for an external dependency from `packageJson`.
+    - `getFilesByPattern(projectContext, patterns)`: Gets files matching glob patterns from `codeInsights` keys.
+  - This approach relies more on `codeInsights` as the SSoT for file-level information and on utility functions or LLM inference for higher-level structural understanding.
+- **Generators**: Modules in `src/generators` implement the logic for creating specific types of workflow configuration files.
+- **Memory Bank**: Modules in `src/memory-bank` handle the generation of contextual documentation or "memory" about the project for use by LLMs.
 
 ## 9. Troubleshooting
 
-- **Issue**: Build failures related to Vite or TypeScript (`npm run build` fails).
-  - **Solution**:
-    - Check `vite.config.ts` and `tsconfig.json` for misconfigurations.
-    - Ensure all dependencies are correctly installed (`npm install`).
-    - Clean the `dist` directory (`npm run clean`) and try building again.
-    - Look for specific TypeScript errors in the console output.
-    - `Tree-sitter` related build issues have occurred historically (see TSK-011, TSK-012); ensure native build tools are available if grammars need local compilation, though pre-built binaries are usually preferred.
-- **Issue**: Test failures (`npm test` fails).
-  - **Solution**:
-    - Run tests for the specific failing file/suite to isolate the issue.
-    - Use `console.log` or the debugger within tests.
-    - Check mocks in `tests/__mocks__` to ensure they behave as expected.
-    - Verify test setup and teardown logic.
-- **Issue**: LLM provider errors (e.g., API key issues, model not found, rate limits).
-  - **Solution**:
-    - Ensure correct API keys are set in your `.env` file and are loaded.
-    - Verify the LLM provider and model names in `llm.config.json` are correct and supported.
-    - Check the LLM provider's status page for outages.
-    - Be mindful of rate limits; wait and retry if necessary.
-- **Issue**: Dependency conflicts or installation problems.
-  - **Solution**:
-    - Remove `node_modules` and `package-lock.json`, then run `npm install` again.
-    - Check for peer dependency warnings during installation and address them.
-    - Ensure your npm and Node.js versions are compatible with the project requirements.
-- **Issue**: File system errors (e.g., permission denied when writing files).
-  - **Solution**:
-    - Check that the application has write permissions for the target directories.
-    - Ensure paths are correctly resolved, especially when dealing with relative paths.
+- **Build failures (`npm run build`)**:
+  - **Solution**: Check TypeScript errors (`npm run type-check`) and ESLint errors (`npm run lint`). Ensure all dependencies are installed (`npm install`).
+- **Test failures (`npm test`)**:
+  - **Solution**: Examine the test output for specific error messages. Use `npm test:watch` to re-run tests automatically as you fix code. Debug failing tests individually.
+- **CLI command not found (`roocode`)**:
+  - **Solution**: Ensure you have built the project (`npm run build`) and linked the executable if running locally (`npm link` in the project root) or installed it globally (`npm install -g .`). If using `npx`, ensure you are in the project root or specify the path.
+- **LLM API Errors**:
+  - **Solution**: Verify your `.env` file is correctly configured with the necessary API keys for the selected provider. Check the LLM provider's documentation and your API key status. Enable verbose logging (`--verbose` flag if available, or adjust logger config) to see detailed API request/response information.
+- **File System Errors**:
+  - **Solution**: Ensure the user running the command has appropriate read/write permissions for the project directory and target output directories. Check for invalid or non-existent paths in your configuration or command arguments.
+- **Build Issues Due to Deferred Test Updates (Post TSK-020)**:
+  - **Context**: Task TSK-020 (Optimize ProjectContext Structure) significantly refactored core data structures. To enable manual CLI testing of these changes, automated tests (unit and integration) were temporarily excluded from the TypeScript build process via modifications to `tsconfig.json`.
+  - **Issue**: If you encounter build failures after pulling recent changes related to TSK-020, or if tests are not running as expected, it might be related to this temporary state.
+  - **CRITICAL Follow-up**: A dedicated follow-up task is **required** to:
+    1.  Revert the temporary `tsconfig.json` modifications that exclude test files.
+    2.  Update all existing unit and integration tests to be compatible with the new minimal `ProjectContext` structure and its associated utility functions.
+    3.  Add new tests to cover the refactored logic and ensure adequate test coverage.
+  - **Current Status**: Until this follow-up task is completed, full automated testing is not operational for components affected by `ProjectContext` changes.
 
 ## 10. Contribution Guidelines
 
-- Follow the Development Workflow outlined in Section 4.
-- Ensure your code adheres to the Coding Standards & Conventions (Section 5).
-- Write clear, well-documented code. Use TSDoc comments for public APIs (classes, methods, functions, types).
-- Write comprehensive tests for any new features or bug fixes (Section 6). Aim for good test coverage.
-- For significant changes, new features, or architectural modifications, it's recommended to discuss the approach first by creating an issue or discussing with the team.
-- Ensure your commits follow the Conventional Commits format.
-- Keep Pull Requests focused on a single feature or bug fix.
-- Update any relevant documentation in the `docs` directory if your changes affect user guides, architecture, etc.
+- Follow the Development Workflow outlined above (Section 4).
+- Ensure code is well-documented using TSDoc/JSDoc comments for functions, classes, and interfaces.
+- Write appropriate tests (Section 6) for new or modified logic.
+- For significant changes or new features, it's recommended to open an issue first to discuss the approach.
+- Adhere to the established coding standards (Section 5).
 
 ## 11. Resources & Contacts
 
-- **Repository**: `https://github.com/yourusername/roocode-generator.git`
-- **Issue Tracker**: `https://github.com/yourusername/roocode-generator.git/issues`
+- **Repository**: https://github.com/yourusername/roocode-generator.git
+- **Issue Tracker**: https://github.com/yourusername/roocode-generator/issues
 - **Key Contacts**:
-  - Author: Abdallah Khalil `<abdallah@nghive.tech>`
-  - (If applicable, list other key team members or points of contact for specific areas of the codebase.)
+  - Abdallah Khalil (abdallah@nghive.tech) - Project Author

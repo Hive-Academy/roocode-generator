@@ -2,203 +2,165 @@
 
 ## 1. Introduction
 
-This document outlines the technical architecture for the **roocode-generator** project. It details the system's structure, components, technologies, and design decisions. The architecture is designed to support the primary goal of analyzing software projects and generating contextual documentation (Memory Bank) and configuration files (RooModes, VSCode Copilot Rules) by leveraging Large Language Models (LLMs). This enables developers to quickly bootstrap and maintain a rich, AI-assisted development environment.
+This document outlines the technical architecture for roocode-generator. It details the system's structure, components, technologies, and design decisions. The primary purpose of the `roocode-generator` is to serve as a CLI tool to generate RooCode workflow configuration files for any tech stack. The architecture is designed to support this goal by providing modular components for project analysis, LLM interaction, template processing, and file generation.
 
 ## 2. Architectural Goals & Constraints
 
 - **Goals**:
-  - **Modularity**: Components are designed to be independent and interchangeable where possible.
-  - **Extensibility**: The architecture should allow for easy addition of new generators, LLM providers, and analysis capabilities.
-  - **Maintainability**: Clear separation of concerns, strong typing (TypeScript), and comprehensive linting/formatting rules facilitate ease of maintenance.
-  - **LLM Agnosticism**: Abstracting LLM interactions to support multiple providers (OpenAI, Anthropic, Google GenAI, OpenRouter).
-  - **Accuracy**: Provide high-quality, relevant generated content through detailed project analysis and effective prompting.
-  - **Developer Experience**: A user-friendly CLI and robust error handling.
+  - **Maintainability**: Achieved through a modular design and Dependency Injection (DI).
+  - **Extensibility**: New generators and LLM providers can be added with minimal changes to the core.
+  - **LLM Agnosticism**: Abstracting LLM interactions allows support for various providers.
+  - **Configurability**: Allowing users to configure LLM settings and generation options.
+  - **Robustness**: Handling errors gracefully, especially during file operations and LLM interactions.
 - **Constraints**:
-  - **Technology Choices**: Primarily a Node.js and TypeScript ecosystem.
-  - **Performance**: While not a real-time system, analysis and generation should be reasonably fast for typical project sizes. LLM API latency is an external factor.
-  - **Security**: Secure handling of LLM API keys is paramount.
-  - **Offline Capability**: Primarily an online tool due to LLM dependencies, though project analysis can be performed offline.
+  - **Technology Choices**: Primarily built with TypeScript and Node.js, leveraging the npm ecosystem.
+  - **Performance**: Analysis of very large codebases might be time-consuming, requiring optimization strategies like file prioritization and token limits.
+  - **LLM API Costs/Limits**: Reliance on external LLM APIs introduces potential costs and rate limits.
 
 ## 3. System Overview (Logical View)
 
-The system operates as a CLI tool that orchestrates several key processes: project analysis, LLM interaction, and content generation.
+The system operates as a command-line interface tool. The core flow involves receiving user commands, analyzing the target project, interacting with an LLM (if required), processing templates, and generating output files.
 
 - **Diagram**:
   graph TD
-  A[CLI Interface (Commander/Inquirer)] --> B{ApplicationContainer};
-  B -- Generate Command --> C[GeneratorOrchestrator];
-  C -- Project Path --> D[ProjectAnalyzer];
-  D -- Analyzes --> E[Target Project Files];
-  D -- Produces --> F[ProjectContext Data];
-  C -- ProjectContext --> G[Specific Generators (e.g., AiMagicGenerator, MemoryBankService)];
-  G -- Uses --> F;
-  G -- Interacts with --> H[LLMAgent];
-  H -- Uses --> I[LLM Providers (OpenAI, Anthropic, etc.)];
-  I -- API Calls --> J[External LLM Services];
-  J -- Responses --> I;
-  I -- Results --> H;
-  H -- Generated Content --> G;
-  G -- Writes --> K[Output Files (Memory Bank, RooModes, etc.)];
-  L[ConfigurationService (LLMConfig, ProjectConfig)] --> B;
-  L --> H;
-  M[DependencyInjection Container] -. Manages .-> B;
-  M -. Manages .-> C;
-  M -. Manages .-> D;
-  M -. Manages .-> G;
-  M -. Manages .-> H;
-  M -. Manages .-> L;
+  A[CLI Interface] --> B(Application Container)
+  B --> C(Generator Orchestrator)
+  C --> D{Select Generator}
+  D --> E[Project Analysis]
+  E --> F[LLM Interaction]
+  F --> G[Template Processing]
+  G --> H[Content Generation]
+  H --> I[File Operations]
+  I --> J[Generated Files]
+  E --> K[Project Context Data]
+  F --> K
+  G --> K
+  H --> K
+  B --> L[Configuration Services]
+  L --> F
+  L --> G
+  L --> H
+  C --> L
+  D --> M[Specific Generators]
+  M --> E
+  M --> F
+  M --> G
+  M --> H
+  M --> I
+  M --> K
+  M --> L
+  Subgraph Core
+  B
+  C
+  E
+  F
+  G
+  H
+  I
+  K
+  L
+  End
+  SubGraph Generators
+  M
+  End
 - **Key Components**:
-
-  - `ProjectAnalyzer (src/core/analysis/project-analyzer.ts)`: Responsible for deeply analyzing the target software project. This includes identifying the tech stack, project structure, dependencies, and performing Abstract Syntax Tree (AST) analysis on source files using Tree-sitter. It produces a comprehensive `ProjectContext` object.
-  - `LLMAgent (src/core/llm/llm-agent.ts)`: Manages all interactions with Large Language Models. It abstracts the specifics of different LLM providers, handles prompt construction, API calls, and response parsing. It supports multiple providers like OpenAI, Anthropic, Google GenAI, and OpenRouter.
-    - **Structured Output Handling**: For requests requiring structured JSON output (e.g., `codeInsights` from `AstAnalysisService`), the `LLMAgent` now orchestrates calls to a standardized `getStructuredCompletion` method implemented by each LLM provider. This method typically utilizes Langchain's `withStructuredOutput` (or an equivalent mechanism) along with Zod schemas to ensure that the LLM's response is parsed, validated against the expected schema, and returned as a typed object. This pattern includes pre-call validation (e.g., token limits), retry logic for transient API errors, and consistent error mapping. This significantly improves the reliability and type safety of consuming structured data from LLMs.
-  - `GeneratorOrchestrator (src/core/application/generator-orchestrator.ts)`: Coordinates the execution of various generator modules based on user commands and project configuration. It ensures that generators receive the necessary `ProjectContext` and other inputs.
-  - `MemoryBankService (src/memory-bank/memory-bank-service.ts)`: Orchestrates the generation of Memory Bank documents (e.g., Project Overview, Technical Architecture, Developer Guide). It utilizes templates and the `ProjectContext` to prompt LLMs via the `LLMAgent`.
-  - `AiMagicGenerator (src/generators/ai-magic-generator.ts)`: A versatile generator that can produce various types of content, including RooModes and potentially other AI-driven outputs, leveraging the `ProjectContext` and `LLMAgent`.
-  - `CommandLineInterface (src/core/cli/cli-interface.ts)`: Provides the user interface for the tool using `commander` for argument parsing and `inquirer` for interactive prompts. It translates user input into actions for the `ApplicationContainer`.
-  - `DependencyInjectionContainer (src/core/di/container.ts)`: A custom DI container using `reflect-metadata` to manage the lifecycle and dependencies of various services and components throughout the application, promoting loose coupling and testability.
-  - `ConfigurationService (src/core/config/*)`: Manages loading, validation, and saving of project-specific (`roocode.config.json`) and LLM configurations (`llm.config.json`).
+  - `ApplicationContainer`: The main entry point after CLI parsing, orchestrates the application flow and resolves dependencies.
+  - `GeneratorOrchestrator`: Manages different generator types (e.g., Memory Bank, VSCode Rules) and executes the selected one.
+  - `ProjectAnalyzer`: Collects and analyzes project data, including file structure, tech stack, and potentially AST information.
+  - `LLMAgent`: Handles all interactions with external LLM providers, including prompt building, completion requests, and token management.
+  - `MemoryBankService`: Orchestrates the generation of memory bank content based on project context and templates.
+  - `RulesTemplateManager`: Manages loading, merging, and validating templates used for generating rules or memory bank content.
+  - `FileOperations`: Provides an abstraction layer for file system interactions (reading, writing, directory creation).
+  - `LoggerService`: Handles logging output to the console or files.
+  - `CliInterface`: Parses command-line arguments and interacts with the user via prompts.
 
 ## 4. Technology Stack
 
-- **Programming Language**: TypeScript (`^5.8.3`)
-- **Runtime Environment**: Node.js (`>=16`)
+- **Programming Language**: TypeScript
+- **Runtime Environment**: Node.js (>=16)
 - **Package Manager**: npm
 - **Core Frameworks/Libraries**:
-
-  - `tree-sitter (^0.21.1)`: For robust and efficient Abstract Syntax Tree (AST) parsing of various programming languages, enabling detailed code analysis.
-  - `langchain (^0.3.21)` (with `@langchain/openai`, `@langchain/anthropic`, `@langchain/google-genai`): A framework for developing applications powered by LLMs, providing abstractions for interacting with multiple LLM providers.
-  - `commander (^13.1.0)`: For building the command-line interface, handling argument parsing and command definitions.
-  - `inquirer (^12.5.2)`: For creating interactive command-line user prompts.
-  - `zod (3.24.4)`: For schema declaration and validation, ensuring data integrity, especially for LLM responses and configurations.
-  - `reflect-metadata (^0.2.2)`: Used in conjunction with the custom Dependency Injection (DI) system to manage class metadata for dependency resolution.
-  - `jest (^29.7.0)`: A testing framework for unit and integration tests.
-  - `eslint (^9.24.0)` & `prettier (^3.5.3)`: For code linting and formatting, ensuring code quality and consistency.
-
+  - `commander`: For building the command-line interface.
+  - `inquirer`: For interactive command-line prompts.
+  - `langchain`: Provides a framework for interacting with various LLM providers.
+  - `tree-sitter`: Used for parsing code into Abstract Syntax Trees (ASTs) for analysis.
+  - `zod`: For data validation, particularly for LLM responses and configuration.
+  - `reflect-metadata`: Used by the Dependency Injection container.
+  - `jest`: The primary testing framework.
+  - `eslint`: For code linting.
+  - `prettier`: For code formatting.
+  - `ora`: For displaying progress indicators in the CLI.
 - **Build Tools**:
-
-  - `TypeScript Compiler (tsc)`: For compiling TypeScript code to JavaScript and performing type checking.
-  - `Vite (^6.3.3)`: Used as the build tool for bundling the application.
-
-- **LLM Providers**:
-  - OpenAI (via `@langchain/openai`)
-  - Anthropic (via `@langchain/anthropic`)
-  - Google GenAI (via `@langchain/google-genai`)
-  - OpenRouter (via custom provider `src/core/llm/providers/open-router-provider.ts` using `@langchain/openai` client)
+  - `TypeScript Compiler (tsc)`: Compiles TypeScript code to JavaScript.
+  - `Vite`: Used for bundling the application.
+- **LLM Providers**: Integrated via Langchain, including support for OpenAI, Google GenAI, and Anthropic (with potential for OpenRouter via OpenAI compatibility).
 
 ## 5. Data Design & Management
 
-- **`ProjectContext` Structure & Generation**:
-  - The `ProjectContext` (defined in `src/core/analysis/types.ts` and `src/memory-bank/interfaces/project-context.interface.ts`) is a central data structure. It encapsulates all analyzed information about the target project, including its tech stack, directory structure, dependencies, configuration files, main entry points, and detailed code insights (AST summaries, identified classes/functions) for relevant files.
-  - This data is primarily generated by the `ProjectAnalyzer` service. It uses `FileOperations` to read the project's file system, `TechStackAnalyzerService` to determine technologies, `TreeSitterParserService` for AST generation, and `AstAnalysisService` (potentially with LLM assistance) to extract insights from ASTs.
-- **`ProjectContext` Consumption**:
-  - The `ProjectContext` is consumed by various generator modules (e.g., `AiMagicGenerator`, `MemoryBankService` and its underlying `MemoryBankContentGenerator`).
-  - The `LLMAgent` uses parts of the `ProjectContext` to construct highly contextualized prompts for LLMs, tailoring requests for specific generation tasks.
-  - Generators use this data to understand the project's nuances, enabling them to produce more relevant and accurate documentation or code.
+- **`ProjectContext` Structure & Generation**: The `ProjectContext` (defined in `src/core/analysis/types.ts`) is a central data structure encapsulating analyzed information about the target project. Following TSK-020, this structure has been significantly minimized to optimize payloads for LLMs and reduce data redundancy. It now primarily consists of:
+  - `projectRootPath: string`: The absolute path to the project root.
+  - `techStack: TechStackAnalysis`: Details about the project's technology stack.
+  - `packageJson: PackageJsonMinimal`: A minimal representation of the project's `package.json`, serving as the SSoT for external dependencies.
+  - `codeInsights: { [filePath: string]: CodeInsights }`: A map where keys are file paths (relative to `projectRootPath`) and values are `CodeInsights` objects (defined in `src/core/analysis/ast-analysis.interfaces.ts`) containing summaries of file content (functions, classes, imports).
+- Explicit structures like `directoryTree` and `internalDependencyGraph` have been removed from `ProjectContext`. Project structural information (like file lists, specific file roles e.g., config files, entry points) and internal dependencies are now primarily derived/inferred from the keys and content of `codeInsights` (e.g., `ImportInfo` where `isExternal` is false), often with the assistance of helper utilities (e.g., in `src/core/analysis/project-context.utils.ts`) or by the LLM itself during content generation.
+- This context is generated by the `ProjectAnalyzer` service, which focuses on populating these core pieces of information.
+- **`ProjectContext` Consumption**: The minimized `ProjectContext` data is passed to various components, including `LLMAgent` (for prompt building), `MemoryBankContentGenerator`, and `RulesPromptBuilder`. These consumers now rely on the lean context and helper utilities or LLM inference to obtain detailed structural or dependency views as needed. The primary goal of this change was to make LLM interactions more efficient.
 - **Data Persistence**:
-  - **Configuration**: LLM provider settings and API keys are stored in `llm.config.json`. Project-specific settings for roocode-generator can be stored in `roocode.config.json`. These are managed by `LLMConfigService` and `ProjectConfigService` respectively.
-  - **Memory Bank**: Generated Memory Bank documents (Project Overview, Technical Architecture, etc.) are stored as Markdown files in the `memory-bank/` directory within the target project (or a specified output directory).
-  - **Generated Rules/Code**: RooModes and VSCode Copilot rules are saved as JSON or other relevant file formats in appropriate locations (e.g., `.vscode/` or a user-defined path).
-  - **Task Tracking**: Task-related documents (descriptions, implementation plans, completion reports) are stored in the `task-tracking/` directory.
+  - Configuration: User and project-specific configurations (`.roocode.json`, `.roocode-llm.json`) are loaded and saved to the filesystem using `ProjectConfigService` and `LLMConfigService`, leveraging `FileOperations`.
+  - Generated Output: The primary output, such as memory bank files (`.roocode/memory-bank/`) and VSCode rules files (`.vscode/copilot/`), are written to the filesystem using `MemoryBankFileManager` and `RulesFileManager`, also relying on `FileOperations`.
 
 ## 6. Code Structure (Development View)
 
-The project follows a modular structure, primarily within the `src/` directory:
-
 - `src/`: Core source code.
-  - `core/`: Contains the foundational framework and shared utilities.
-    - `analysis/`: Components for project analysis (AST parsing, tech stack identification, file collection, etc.).
-    - `application/`: Orchestration logic, including the main application container and generator orchestrator.
-    - `cli/`: Command-line interface handling.
-    - `config/`: Configuration loading and management services.
-    - `di/`: Custom Dependency Injection container and related utilities.
-    - `errors/`: Custom error classes for the application.
-    - `file-operations/`: Abstractions for file system interactions.
-    - `generators/`: Base classes and interfaces for generator modules.
-    - `llm/`: LLM interaction logic, including the `LLMAgent`, provider implementations, and interfaces.
-    - `services/`: Shared services like logging.
-    - `template-manager/`: Manages loading and processing of template files.
-    - `ui/`: User interface elements like progress indicators.
-    - `utils/`: General utility functions.
-  - `generators/`: Specific code/document generator implementations (e.g., `AiMagicGenerator`, `RoomodesGenerator`).
-    - `rules/`: Sub-module for handling RooMode rule generation specifics.
-  - `memory-bank/`: Logic specific to generating and managing the Memory Bank documents.
-    - `interfaces/`: Defines interfaces for the memory bank components.
-  - `types/`: Shared TypeScript type definitions used across modules.
-- `tests/`: Automated tests (unit and integration) using Jest.
-  - `fixtures/`: Sample files and data used for testing.
-  - `__mocks__/`: Mock implementations for dependencies.
-- `templates/`: Template files (Markdown, JSON schemas) used by generators.
-  - `memory-bank/`: Templates for Memory Bank documents.
-  - `system-prompts/`: Base system prompts for different LLM personas/tasks.
-- `bin/`: Executable scripts, including the main entry point `roocode-generator.js`.
-- `task-tracking/`: Project management and documentation for development tasks.
-- `docs/`: General project documentation and presentations.
+  - `core/`: Contains the foundational framework components.
+    - `analysis/`: Project analysis, file collection, AST parsing, tech stack detection.
+    - `application/`: Application entry point and orchestration.
+    - `cli/`: Command-line interface parsing and interaction.
+    - `config/`: Configuration loading, saving, and management.
+    - `di/`: Dependency Injection container and related utilities.
+    - `errors/`: Custom error classes.
+    - `file-operations/`: Abstraction for file system operations.
+    - `generators/`: Base generator class and interfaces.
+    - `llm/`: LLM agent, provider interfaces, and specific provider implementations.
+    - `result/`: Implementation of a Result type for functional error handling.
+    - `services/`: Base service class and common services like logging.
+    - `template-manager/`: Core template loading and processing logic.
+    - `templating/`: Specific template processing logic (e.g., for rules).
+    - `types/`: Shared core type definitions.
+    - `ui/`: User interface components (e.g., progress indicator).
+    - `utils/`: Common utility functions.
+  - `generators/`: Implementations of specific content generators (e.g., `ai-magic-generator`, `roomodes-generator`, `system-prompts-generator`, `vscode-copilot-rules-generator`).
+  - `memory-bank/`: Logic specific to generating and managing memory bank content.
+  - `types/`: Shared type definitions across the project.
+- `tests/`: Automated tests for various modules.
+- `templates/`: Template files used by the generators.
+- `bin/`: Executable scripts, including the main CLI entry point.
+- `task-tracking/`: Project management and task documentation.
 
 ## 7. Key Architectural Decisions (ADRs)
 
-- **Decision 1**: Use of TypeScript for static typing.
-  - **Rationale**: Enhances code quality, maintainability, and developer experience by catching errors early and improving code navigation and refactoring.
-- **Decision 2**: Custom Dependency Injection (DI) framework (`src/core/di`).
-  - **Rationale**: Promotes loose coupling between components, improves testability by allowing easy mocking of dependencies, and centralizes object creation and lifecycle management. `reflect-metadata` is used for metadata.
-- **Decision 3**: Modular architecture with clear separation of concerns.
-  - **Rationale**: Divides the system into logical units (analysis, LLM interaction, generation, CLI, configuration) making it easier to understand, develop, and extend.
-- **Decision 4**: Abstraction layer for LLM providers (`src/core/llm/providers`).
-  - **Rationale**: Allows the system to be LLM-agnostic, enabling support for multiple LLM backends (OpenAI, Anthropic, Google GenAI, OpenRouter) and facilitating easier switching or addition of new providers. Langchain is leveraged for this.
-- **Decision 5**: AST-based code analysis using Tree-sitter.
-  - **Rationale**: Provides a deep and accurate understanding of the project's source code structure, enabling more contextually relevant and precise generation tasks compared to regex or simple string matching.
-- **Decision 6**: Schema validation using Zod.
-  - **Rationale**: Ensures the integrity of data, particularly for LLM configurations, LLM responses, and inter-component data structures, reducing runtime errors and improving robustness.
-- **Decision 7**: Vite for building the application.
-  - **Rationale**: Provides a fast and modern build process for the TypeScript project, configured to output a Node.js compatible bundle.
+- **Dependency Injection (DI)**: A custom DI container (`src/core/di`) is used to manage dependencies between services and components. This promotes loose coupling, testability, and maintainability.
+- **Modular Design**: The codebase is divided into distinct modules (`core`, `generators`, `memory-bank`) with clear responsibilities, enhancing organization and allowing for independent development and testing.
+- **LLM Provider Abstraction**: An interface-based approach (`src/core/llm/interfaces.ts`) is used for LLM providers, allowing the `LLMAgent` to interact with different models and services without being tied to a specific vendor implementation.
+- **Tree-sitter for Code Analysis**: Utilizing Tree-sitter enables robust and language-agnostic parsing of source code into structured ASTs, providing rich context for LLM analysis.
+- **Result Type for Error Handling**: The `Result` type (`src/core/result/result.ts`) is employed for explicit error handling in operations that might fail, improving code clarity and reliability compared to traditional exception handling in many cases.
+- **Zod for Validation**: Zod is used extensively for validating data structures, particularly for configuration and LLM outputs, ensuring data integrity.
 
 ## 8. Interface Design / Integration Points
 
-- **LLM APIs**:
-  - Interactions with external LLM services (OpenAI, Anthropic, Google GenAI, OpenRouter) are managed by the `LLMAgent` and specific provider implementations in `src/core/llm/providers/`.
-  - These interactions are primarily HTTP-based API calls, abstracted by the Langchain library.
-- **Filesystem**:
-  - Extensive interaction with the local filesystem for:
-    - Reading target project source code, `package.json`, `tsconfig.json`, and other configuration files.
-    - Reading template files from the `templates/` directory.
-    - Writing generated Memory Bank documents, RooModes, VSCode settings, and other outputs.
-    - Reading and writing application configuration files (`llm.config.json`, `roocode.config.json`).
-  - `FileOperations` service (`src/core/file-operations/file-operations.ts`) provides a consistent interface for these operations.
-- **Internal Component APIs**:
-  - Components interact via well-defined TypeScript interfaces (e.g., `ILLMAgent`, `IProjectAnalyzer`, `IFileOperations`, `ILoggerService`).
-  - The Dependency Injection container (`src/core/di/container.ts`) is responsible for resolving and injecting dependencies based on these interfaces, promoting loose coupling.
-- **Command Line Interface (CLI)**:
-  - `commander` library is used to define commands, options, and parse arguments.
-  - `inquirer` library is used for interactive prompts to gather user input (e.g., for configuration).
-  - The `CliInterface` (`src/core/cli/cli-interface.ts`) encapsulates this logic.
-- **(Future) Version Control**: No direct integration currently, but generated files are intended to be committed to version control by the user.
+- **LLM APIs**: The system integrates with external LLM providers (OpenAI, Google GenAI, Anthropic, OpenRouter) via the `langchain` library and custom provider implementations (`src/core/llm/providers`). Interaction involves sending prompts and receiving text or structured JSON completions.
+- **Filesystem**: Extensive interaction with the local filesystem is managed through the `FileOperations` service, including reading source files, reading/writing configuration, and writing generated output files.
+- **Internal Component APIs**: Key interfaces (`src/core/*/interfaces.ts`) define the contracts between core modules and services, enabling DI and promoting modularity. Examples include `IProjectAnalyzer`, `ILLMAgent`, `IFileOperations`, `ILoggerService`, `IMemoryBankService`, `IRulesTemplateManager`.
+- **(Future) Version Control**: While not directly integrated currently, the generated files (e.g., `.roocode/`, `.vscode/copilot/`) are intended to be checked into version control, serving as a passive integration point.
 
 ## 9. Security Considerations
 
-- **API Keys**:
-  - LLM API keys are sensitive credentials. They are managed through the `llm.config.json` file or can be sourced from environment variables.
-  - The `dotenv` package is used to load environment variables, allowing keys to be kept out of version control.
-  - Users are responsible for securing their `llm.config.json` file if it contains API keys directly.
-- **Input Sanitization**:
-  - The tool reads and analyzes source code from user-specified projects. While the primary risk is to the LLM (prompt injection), care must be taken if any analyzed content is directly executed or unsafely embedded in outputs. Currently, the tool focuses on analysis and generation, not execution of arbitrary code.
-  - JSON parsing of LLM responses includes robust error handling and repair mechanisms (`jsonrepair`) to handle potentially malformed JSON.
-- **Dependency Security**:
-  - The project relies on third-party npm packages. Regular audits (e.g., using `npm audit`) should be performed to identify and mitigate known vulnerabilities in dependencies.
-  - Dependencies are kept up-to-date where feasible.
-- **File System Access**:
-  - The tool requires read access to the target project and write access to output directories (e.g., `memory-bank/`, `.vscode/`). Users should run the tool with appropriate permissions.
+- **API Keys**: LLM API keys are handled via configuration files and environment variables (`.env`), processed by `LLMConfigService`. Users are instructed to manage these securely and avoid committing sensitive keys directly into source control.
+- **Input Sanitization**: While the primary input is source code for analysis, LLM outputs are parsed and validated using Zod (`ResponseParser`, `JsonSchemaHelper`) to mitigate risks associated with malformed or unexpected responses.
+- **Dependency Security**: Standard practices like using `npm audit` are available to check for known vulnerabilities in third-party packages listed in `package.json`. The `husky` setup suggests pre-commit checks which could include security hooks.
 
 ## 10. Deployment Strategy (Physical View)
 
-- **Packaging**:
-  - The application is packaged as an npm package, as defined in `package.json`.
-  - The `vite build` script compiles TypeScript to JavaScript and bundles the application into the `dist/` directory.
-  - The `files` array in `package.json` specifies which files are included in the published npm package (e.g., `dist`, `bin`, `templates`).
-- **Execution**:
-  - The tool is a Node.js command-line application.
-  - The main entry point is `bin/roocode-generator.js`, which is made executable and linked via the `bin` field in `package.json` (e.g., `roocode` command).
-  - It requires Node.js (version `>=16`) to be installed on the user's system.
-- **CI/CD**:
-  - The project uses Semantic Release (`semantic-release` devDependency) for automated versioning, changelog generation, and publishing to npm.
-  - Configuration for Semantic Release is in `.releaserc.json`, which includes plugins for commit analysis, release notes, npm publishing, and GitHub integration (changelog, releases).
-  - This setup typically integrates with a CI/CD pipeline (e.g., GitHub Actions) triggered on pushes to the main branch.
+- **Packaging**: The application is packaged as an npm package, defined by the `package.json` file. Build tools like `tsc` and `Vite` are used to compile and bundle the source code into the `dist` directory.
+- **Execution**: The application is designed to be executed as a Node.js command-line interface tool. The `bin/roocode-generator.js` file serves as the main executable entry point, as specified in `package.json`. Users install it globally or locally via npm/yarn and run commands like `roocode generate`.
+- **CI/CD**: The project includes development dependencies like `husky` for managing Git hooks (e.g., pre-commit, pre-push), which can enforce code quality standards (linting, formatting, testing) before changes are committed or pushed. While not explicitly defined in the provided context, this structure supports integration into CI/CD pipelines (e.g., GitHub Actions, GitLab CI) for automated testing, linting, and potentially publishing.
