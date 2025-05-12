@@ -1,8 +1,5 @@
-import { Dirent } from 'fs';
 import * as path from 'path';
 import { IFileOperations } from '../file-operations/interfaces';
-import { DirectoryNode } from './types';
-import { SKIP_DIRECTORIES } from './constants';
 
 export interface TsConfigLike {
   // Added export
@@ -10,91 +7,11 @@ export interface TsConfigLike {
     rootDir?: string;
     baseUrl?: string;
     paths?: Record<string, string[]>;
-    // Potentially other options if needed by helpers
   };
   include?: string[];
   files?: string[];
-  // We can add more specific types from tsconfig schema if needed
 }
 
-// Placeholder for IFileOperations for now, will be passed as an argument
-// const fileOps: IFileOperations = {} as any;
-
-// Component 1: directoryTree Generation
-export async function generateDirectoryTree(
-  rootDir: string,
-  currentPath: string, // Path currently being scanned, relative to rootDir initially, then becomes absolute
-  fileOps: IFileOperations,
-  shouldAnalyzeFile: (filePath: string) => boolean
-): Promise<DirectoryNode[]> {
-  const absoluteCurrentPath = path.resolve(rootDir, currentPath);
-  const dirContentsResult = await fileOps.readDir(absoluteCurrentPath);
-
-  if (dirContentsResult.isErr()) {
-    // dirContentsResult.error is guaranteed to be defined here due to isErr() check
-    console.error(
-      `Error reading directory ${absoluteCurrentPath}: ${dirContentsResult.error!.message}`
-    );
-    return []; // Return empty array on error
-  }
-
-  // dirContentsResult.value is guaranteed to be defined here after isErr() check
-  const items: Dirent[] = dirContentsResult.value!;
-  const nodes: DirectoryNode[] = [];
-
-  for (const item of items) {
-    // item is now explicitly Dirent from items: Dirent[]
-    const itemPath = path.join(absoluteCurrentPath, item.name);
-    const relativePath = path.relative(rootDir, itemPath);
-
-    // --- INSERT NEW EXCLUSION LOGIC HERE ---
-    if (item.isDirectory()) {
-      // Check if it's a directory first for this exclusion logic
-      if (SKIP_DIRECTORIES.has(item.name) || item.name.startsWith('.')) {
-        continue; // Skip this directory
-      }
-    }
-    // --- END OF NEW EXCLUSION LOGIC ---
-
-    if (item.isDirectory()) {
-      // This is the existing block for recursive calls
-      const children = await generateDirectoryTree(
-        rootDir,
-        relativePath, // Pass relative path for recursion
-        fileOps,
-        shouldAnalyzeFile
-      );
-
-      // Pruning: Only include directory if it has children or contains analyzable files directly
-      // The direct analyzable file check within a directory itself is not explicitly covered by children check.
-      // For now, relying on children.length > 0. Refinement might be needed if a dir has analyzable files but no sub-dirs with analyzable files.
-      // The requirement is: "A directory should only be included in the tree if it (or any of its subdirectories, recursively) contains at least one analyzable file."
-      // This means if children.length > 0, it's included.
-      if (children.length > 0) {
-        nodes.push({
-          name: item.name,
-          path: relativePath,
-          type: 'directory',
-          children: children.length > 0 ? children : undefined,
-        });
-      }
-    } else if (item.isFile()) {
-      if (shouldAnalyzeFile(relativePath)) {
-        nodes.push({
-          name: item.name,
-          path: relativePath,
-          type: 'file',
-        });
-      }
-    }
-  }
-  // Filter out directories that became empty after their children were pruned
-  // This is implicitly handled by the `children.length > 0` check before pushing a directory node.
-  // However, the top-level call needs to return nodes that survived.
-  return nodes;
-}
-
-// Component 2: sourceDir and testDir Determination
 export async function findSourceDir(
   rootDir: string,
   fileOps: IFileOperations,
@@ -103,20 +20,6 @@ export async function findSourceDir(
 ): Promise<string | undefined> {
   const commonSrcDirs = ['src', 'source', 'app', 'lib'];
   const tsconfigContent = parsedTsConfig;
-
-  // Fallback to reading if parsedTsConfig is not provided (though ProjectAnalyzer should provide it)
-  // This part of the logic might be simplified or removed if ProjectAnalyzer always passes content.
-  // For now, keeping it as a less robust fallback.
-  // if (!tsconfigContent && tsconfigPath) {
-  //   const absoluteTsconfigPath = path.join(rootDir, tsconfigPath);
-  //   const tsconfigExistsResult = await fileOps.exists(absoluteTsconfigPath);
-  //   if (tsconfigExistsResult.isOk() && tsconfigExistsResult.value) {
-  //     tsconfigContent = await safeReadJsonFile<{
-  //       compilerOptions?: { rootDir?: string; baseUrl?: string };
-  //       include?: string[];
-  //     }>(absoluteTsconfigPath, fileOps);
-  //   }
-  // }
 
   if (tsconfigContent) {
     // Use the provided or parsed content
@@ -182,28 +85,7 @@ export async function findTestDir(
   const commonTestDirs = ['tests', 'test', '__tests__', 'specs', 'spec']; // Added __tests__ and specs
   const tsconfigContent = parsedTsConfig;
 
-  // Fallback logic for reading tsconfig if not provided (similar to findSourceDir)
-  // Can be simplified if ProjectAnalyzer always provides it.
-  // if (!tsconfigContent && tsconfigPath) {
-  //   const absoluteTsconfigPath = path.join(rootDir, tsconfigPath);
-  //   const tsconfigExistsResult = await fileOps.exists(absoluteTsconfigPath);
-  //   if (tsconfigExistsResult.isOk() && tsconfigExistsResult.value) {
-  //     tsconfigContent = await safeReadJsonFile<{ include?: string[]; exclude?: string[] }>(
-  //       absoluteTsconfigPath,
-  //       fileOps
-  //     );
-  //   }
-  // }
-
-  // tsconfig.json usually doesn't specify test directories directly in compilerOptions.
-  // Test runners (Jest, Vitest) configs are more reliable.
-  // However, 'include' or 'exclude' might give hints, but it's less direct.
-  // For now, primarily relying on heuristics for testDir.
-  // Future enhancement: check jest.config.js, vitest.config.js for rootDir/roots.
-
   if (tsconfigContent) {
-    // Use the provided or parsed content
-    // Check include patterns for test-like paths
     if (tsconfigContent?.include) {
       for (const pattern of tsconfigContent.include) {
         for (const commonDir of commonTestDirs) {
