@@ -11,6 +11,7 @@ import { ProjectConfig } from '../../types/shared';
 import { MemoryBankService } from '@memory-bank/memory-bank-service';
 import { IRulesPromptBuilder } from '@generators/rules/interfaces';
 import { IContentProcessor } from '@memory-bank/interfaces';
+import { RooFileOpsHelper } from './roo-file-ops-helper';
 
 @Injectable()
 export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
@@ -26,7 +27,8 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
     @Inject('LLMAgent') private readonly llmAgent: LLMAgent,
     @Inject('MemoryBankService') private readonly memoryBankService: MemoryBankService,
     @Inject('IRulesPromptBuilder') private readonly rulesPromptBuilder: IRulesPromptBuilder,
-    @Inject('IContentProcessor') private readonly contentProcessor: IContentProcessor
+    @Inject('IContentProcessor') private readonly contentProcessor: IContentProcessor,
+    @Inject('RooFileOpsHelper') private readonly rooFileOpsHelper: RooFileOpsHelper
   ) {
     super(container);
     this.logger.debug(`${this.name} generator initialized`);
@@ -46,7 +48,8 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
       !this.llmAgent ||
       !this.memoryBankService ||
       !this.rulesPromptBuilder ||
-      !this.contentProcessor
+      !this.contentProcessor ||
+      !this.rooFileOpsHelper
     ) {
       return Result.err(new Error(`${this.name} generator is missing required dependencies.`));
     }
@@ -151,70 +154,134 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
    */
   private async generateRooContent(
     projectContext: ProjectContext,
-    _options: ProjectConfig // Renamed options to _options
+    _options: ProjectConfig
   ): Promise<Result<string, Error>> {
-    this.logger.info('Generating roo (rules) content...');
+    this.logger.info('Generating roo content...');
     try {
-      // 1. Build Prompts
-      const promptResult = this.buildRooPrompts(projectContext);
-      if (promptResult.isErr()) {
-        return Result.err(promptResult.error ?? new Error('Unknown error building roo prompts')); // Added nullish coalescing
+      // 1. List and filter mode template files
+      const modeFilesResult = await this.rooFileOpsHelper.listAndFilterModeFiles(
+        'templates/system-prompts'
+      );
+      if (modeFilesResult.isErr()) {
+        return Result.err(modeFilesResult.error ?? new Error('Failed to list mode files'));
       }
 
-      // Access value only after checking isOk()
-      if (!promptResult.isOk()) {
-        // This case should theoretically not be reached due to the isErr() check above,
-        // but as a safeguard, return an error if value is unexpectedly not available.
-        return Result.err(new Error('Failed to build roo prompts: Result value is not OK.'));
-      }
-      const { systemPrompt, userPrompt } = promptResult.value as {
-        systemPrompt: string;
-        userPrompt: string;
-      };
-
-      // 2. Get Completion from LLM
-      const completionResult = await this.getRooCompletion(systemPrompt, userPrompt);
-      if (completionResult.isErr()) {
-        return Result.err(
-          completionResult.error ?? new Error('Unknown error getting roo completion')
-        ); // Added nullish coalescing
-      }
-      const rawContent = completionResult.value;
-
-      // Check if rawContent is defined before processing
-      if (rawContent === undefined || rawContent === null) {
-        return Result.err(new Error('LLM returned undefined or null content for roo file.'));
+      const modeFiles = modeFilesResult.value;
+      if (!modeFiles || modeFiles.length === 0) {
+        this.logger.warn('No mode template files found in templates/system-prompts');
+        return Result.err(new Error('No mode template files found'));
       }
 
-      // 3. Process Content
-      const processedContentResult = this.processRooContent(rawContent);
-      if (processedContentResult.isErr()) {
-        // Log warning and return the error
-        this.logger.warn(`Content processing failed: ${processedContentResult.error?.message}`);
-        return Result.err(
-          processedContentResult.error ?? new Error('Unknown error processing roo content')
-        ); // Return the error
-      }
-      const finalContent = processedContentResult.value; // Use value directly as processRooContent now returns string on Ok
+      this.logger.info(`Found ${modeFiles.length} mode template files`);
 
-      if (!finalContent || finalContent.trim().length === 0) {
-        return Result.err(new Error('Roo content became empty after processing.'));
+      // 2. Read roo-rules.md content once
+      const rulesResult = await this.rooFileOpsHelper.readRooRulesFile(
+        'templates/system-prompts/roo-rules.md'
+      );
+      if (rulesResult.isErr()) {
+        return Result.err(rulesResult.error ?? new Error('Failed to read roo rules file'));
       }
 
-      // 4. Write File
-      const writeResult = await this.writeRooFile(finalContent);
-      if (writeResult.isErr()) {
-        return Result.err(writeResult.error ?? new Error('Unknown error writing roo file')); // Added nullish coalescing
+      const rulesContent = rulesResult.value;
+      if (!rulesContent) {
+        return Result.err(new Error('Roo rules content is empty'));
       }
 
-      const successMessage = `Roo file generated successfully at ${writeResult.value!}`; // Added non-null assertion
-      this.logger.info(successMessage);
-      return Result.ok(writeResult.value!); // Return the path with non-null assertion
+      // 3. Process each mode template
+      let successfulModes = 0;
+      let totalContent = '';
+
+      for (const modeFile of modeFiles) {
+        // Extract mode name from filename
+        const modeName = modeFile.name.replace('system-prompt-', '').replace('.md', '');
+        this.logger.info(`Processing mode: ${modeName}`);
+
+        // Read mode template content
+        const templateResult = await this.rooFileOpsHelper.readModeTemplateFile(
+          `templates/system-prompts/${modeFile.name}`
+        );
+        if (templateResult.isErr()) {
+          const errorMessage = templateResult.error?.message ?? 'Unknown error';
+          this.logger.warn(
+            `Failed to read template for mode ${modeName}, skipping: ${errorMessage}`
+          );
+          continue;
+        }
+
+        const templateContent = templateResult.value;
+        if (!templateContent) {
+          this.logger.warn(`Empty template content for mode ${modeName}, skipping`);
+          continue;
+        }
+
+        // Build prompts for this mode
+        const promptResult = this.buildModeRooPrompt(projectContext, rulesContent, templateContent);
+        if (promptResult.isErr()) {
+          const errorMessage = promptResult.error?.message ?? 'Unknown error';
+          this.logger.warn(
+            `Failed to build prompts for mode ${modeName}, skipping: ${errorMessage}`
+          );
+          continue;
+        }
+
+        // Safely access value after error check
+        const prompts = promptResult.value;
+        if (!prompts) {
+          this.logger.warn(`Unexpected undefined prompts for mode ${modeName}, skipping`);
+          continue;
+        }
+
+        const { systemPrompt, userPrompt } = prompts;
+
+        // Get completion from LLM
+        const completionResult = await this.getRooCompletion(systemPrompt, userPrompt);
+        if (completionResult.isErr()) {
+          const errorMessage = completionResult.error?.message ?? 'Unknown error';
+          this.logger.warn(
+            `Failed to get LLM completion for mode ${modeName}, skipping: ${errorMessage}`
+          );
+          continue;
+        }
+
+        const rawContent = completionResult.value;
+        if (!rawContent) {
+          this.logger.warn(`Unexpected empty LLM response for mode ${modeName}, skipping`);
+          continue;
+        }
+
+        // Process the raw content
+        const processedResult = this.processRooContent(rawContent);
+        if (processedResult.isErr()) {
+          const errorMessage = processedResult.error?.message ?? 'Unknown error';
+          this.logger.warn(
+            `Failed to process content for mode ${modeName}, skipping: ${errorMessage}`
+          );
+          continue;
+        }
+
+        // Add mode-specific content to total content
+        totalContent += `\n\n# ${modeName.toUpperCase()} MODE RULES\n\n${processedResult.value}`;
+        successfulModes++;
+      }
+
+      // Write combined content to file if we have any successful modes
+      if (successfulModes > 0) {
+        const writeResult = await this.writeRooFile(totalContent.trim());
+        if (writeResult.isErr()) {
+          return Result.err(writeResult.error ?? new Error('Unknown error writing file'));
+        }
+
+        const summaryMessage = `Successfully generated roo content for ${successfulModes} modes. Output written to: ${writeResult.value}`;
+        this.logger.info(summaryMessage);
+        return Result.ok(summaryMessage);
+      } else {
+        const errorMessage = 'Failed to generate content for any modes';
+        this.logger.error(errorMessage);
+        return Result.err(new Error(errorMessage));
+      }
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : 'Unknown error during roo generation orchestration';
+        error instanceof Error ? error.message : 'Unknown error during roo generation';
       const errorInstance = error instanceof Error ? error : new Error(message);
       this.logger.error(`Error in generateRooContent: ${message}`, errorInstance);
       return Result.err(errorInstance);
@@ -342,6 +409,71 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
       const message = error instanceof Error ? error.message : 'Unknown error writing roo file';
       const errorInstance = error instanceof Error ? error : new Error(message);
       this.logger.error(`Error in writeRooFile: ${message}`, errorInstance);
+      return Result.err(errorInstance);
+    }
+  }
+
+  /**
+   * Builds mode-specific system and user prompts for roo generation.
+   * @param projectContext The analyzed project context
+   * @param rooRulesContent The content of the roo rules file
+   * @param modeTemplateContent The content of the mode-specific template
+   * @returns Result containing the system and user prompts or an error
+   */
+  private buildModeRooPrompt(
+    projectContext: ProjectContext,
+    rooRulesContent: string,
+    modeTemplateContent: string
+  ): Result<{ systemPrompt: string; userPrompt: string }, Error> {
+    try {
+      // Convert project context to string for prompt inclusion
+      const contextString = JSON.stringify(projectContext, null, 2);
+
+      // Build system prompt using the existing builder
+      const systemPromptResult = this.rulesPromptBuilder.buildSystemPrompt('code');
+      if (systemPromptResult.isErr()) {
+        return Result.err(
+          systemPromptResult.error ??
+            new Error('Unknown error building mode-specific system prompt')
+        );
+      }
+
+      // Build user prompt with specific instructions for mode-based rules
+      const instructions = `
+Generate at least 100 distinct, context-aware rules that are specific to this mode.
+Use the following mode-specific template content as additional context:
+
+${modeTemplateContent}
+
+Also consider these base roo rules as reference for rule structure and format:
+
+${rooRulesContent}`;
+
+      const userPromptResult = this.rulesPromptBuilder.buildPrompt(
+        instructions,
+        contextString,
+        modeTemplateContent
+      );
+
+      if (userPromptResult.isErr()) {
+        return Result.err(
+          userPromptResult.error ?? new Error('Unknown error building mode-specific user prompt')
+        );
+      }
+
+      const systemPrompt = systemPromptResult.value;
+      const userPrompt = userPromptResult.value;
+
+      if (!systemPrompt || !userPrompt) {
+        return Result.err(new Error('System or user prompt became undefined unexpectedly.'));
+      }
+
+      return Result.ok({ systemPrompt, userPrompt });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown error building mode-specific prompts';
+      const errorInstance = error instanceof Error ? error : new Error(message);
+      this.logger.error(`Error in buildModeRooPrompt: ${message}`, errorInstance);
       return Result.err(errorInstance);
     }
   }
