@@ -55,7 +55,7 @@ const CONFIG_FILE_PATTERNS: RegExp[] = [
   /(^|\/)(dockerfile|docker-compose\.yml|\.dockerignore)$/i,
   /(^|\/)(package\.json|pnpm-lock\.yaml|yarn\.lock|package-lock\.json)$/i,
   /(^|\/)(nest-cli\.json|angular\.json|vue\.config\.js|nuxt\.config\.(js|ts))$/i, // Added more common framework/tool configs
-  /(^|\/)(\.env(\.[^/]+)*|\.npmrc|\.yarnrc|\.gitattributes|\.gitignore)$/i, // Added env files and other common rc files
+  /(^|\/)(\.env(\.[^/.]+)*|\.npmrc|\.yarnrc|\.gitattributes|\.gitignore)$/i, // Added env files and other common rc files
 ];
 
 const ENTRY_POINT_PATTERNS: RegExp[] = [
