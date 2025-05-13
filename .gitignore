@@ -17,3 +17,4 @@ coverage/
 /.eslintcache
 /test-output
 /.cache
+/llm.config.gen.json
