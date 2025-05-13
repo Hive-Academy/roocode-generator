@@ -28,6 +28,7 @@ import { ProgressIndicator } from '@core/ui/progress-indicator';
 // Import necessary interfaces for AiMagicGenerator dependencies
 import { IRulesPromptBuilder } from '@generators/rules/interfaces';
 import { IContentProcessor } from '@memory-bank/interfaces';
+import { RooFileOpsHelper } from '@generators/roo-file-ops-helper';
 
 // Stub for IProjectManager as it was in registrations.ts
 @Injectable()
@@ -97,8 +98,9 @@ export function registerAppModule(container: Container): void {
       'IRulesPromptBuilder'
     ); // Use specific interface
     const contentProcessor = resolveDependency<IContentProcessor>(container, 'IContentProcessor'); // Use specific interface
+    const rooFileOpsHelper = resolveDependency<RooFileOpsHelper>(container, 'RooFileOpsHelper'); // Resolve new helper
 
-    // Pass dependencies in the correct constructor order (now 8 arguments)
+    // Pass dependencies in the correct constructor order (now 9 arguments)
     return new AiMagicGenerator(
       serviceContainer, // For super(container)
       logger,
@@ -107,7 +109,8 @@ export function registerAppModule(container: Container): void {
       llmAgent, // Pass LLMAgent
       memoryBankService,
       rulesPromptBuilder, // Pass RulesPromptBuilder
-      contentProcessor // Pass ContentProcessor
+      contentProcessor, // Pass ContentProcessor
+      rooFileOpsHelper // Pass new helper
     );
   });
 

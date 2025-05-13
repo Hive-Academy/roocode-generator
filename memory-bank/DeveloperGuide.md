@@ -153,6 +153,16 @@ All development work should happen on feature or bugfix branches.
 - Use `console.log` or the `LoggerService` (`src/core/services/logger-service.ts`) for basic logging.
 - Utilize the Node.js debugger. You can often set breakpoints directly in your IDE (like VS Code) and run the main script (`bin/roocode-generator.js`) with debugging enabled. Check the `.vscode/launch.json` file if it exists for pre-configured launch profiles.
 
+### 4.6. Effective Delegation Patterns
+
+Based on successful task execution (e.g., TSK-021), effective delegation to Junior roles for specific code removal and modification tasks has proven beneficial. This involves:
+
+- Clearly identifying isolated components or specific code sections suitable for delegation.
+- Providing precise instructions and context for the required changes.
+- Utilizing Junior roles for implementing well-defined components (like utility parsers) or performing targeted code cleanup based on review feedback.
+
+This strategy contributes to task completion and improves overall code quality.
+
 ## 5. Coding Standards & Conventions
 
 - **Language**: TypeScript and JavaScript.
@@ -203,8 +213,23 @@ All development work should happen on feature or bugfix branches.
     - `getDependencyVersion(projectContext, packageName)`: Retrieves version for an external dependency from `packageJson`.
     - `getFilesByPattern(projectContext, patterns)`: Gets files matching glob patterns from `codeInsights` keys.
   - This approach relies more on `codeInsights` as the SSoT for file-level information and on utility functions or LLM inference for higher-level structural understanding.
+    <<<<<<< HEAD
+- **Generators**: Modules in `src/generators` implement the logic for creating specific types of workflow configuration files.
+- # **Memory Bank**: Modules in `src/memory-bank` handle the generation of contextual documentation or "memory" about the project for use by LLMs.
+- **Dedicated File Operation Helpers**: For complex file interactions within specific generators (like the Roo generator), dedicated helper classes (e.g., `RooFileOpsHelper` in `src/generators/roo-file-ops-helper.ts`) are used to encapsulate file system logic. This improves modularity and separation of concerns within the generator classes.
 - **Generators**: Modules in `src/generators` implement the logic for creating specific types of workflow configuration files.
 - **Memory Bank**: Modules in `src/memory-bank` handle the generation of contextual documentation or "memory" about the project for use by LLMs.
+
+### 8.x. LLM Output Formatting and Parsing
+
+To ensure reliable data extraction from LLM responses, especially for structured content like rule lists, we employ a pattern of:
+
+1. Providing strict instructions in the prompt to the LLM to output _only_ the desired content in a specific format (e.g., Markdown list, JSON).
+2. Using dedicated parsing logic (like the `MarkdownListParser` implemented in TSK-021) to robustly extract the content from the LLM's response.
+
+This approach minimizes the impact of potential conversational filler or formatting variations from the LLM.
+
+> > > > > > > ff6dd956b6c09bcf7110370e07157b5066eb89db
 
 ## 9. Troubleshooting
 
