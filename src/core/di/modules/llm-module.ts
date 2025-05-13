@@ -8,14 +8,14 @@ import { Container } from '@core/di/container';
 import { assertIsDefined, resolveDependency } from '@core/di/utils'; // Import helpers from utils
 import { IFileOperations } from '@core/file-operations/interfaces';
 import { ILLMProvider, IModelListerService, LLMProviderFactory } from '@core/llm/interfaces';
-import { LLMProviderError } from '@core/llm/llm-provider-errors'; // Added import
 import { LLMAgent } from '@core/llm/llm-agent';
+import { LLMProviderError } from '@core/llm/llm-provider-errors'; // Added import
 import { ModelListerService } from '@core/llm/model-lister.service';
+import { LLMProviderRegistry } from '@core/llm/provider-registry';
 import { AnthropicProvider } from '@core/llm/providers/anthropic-provider';
 import { GoogleGenAIProvider } from '@core/llm/providers/google-genai-provider';
-import { OpenAIProvider } from '@core/llm/providers/openai-provider';
-import { LLMProviderRegistry } from '@core/llm/provider-registry';
 import { OpenRouterProvider } from '@core/llm/providers/open-router-provider';
+import { OpenAIProvider } from '@core/llm/providers/openai-provider';
 import { Result } from '@core/result/result';
 import { ILogger } from '@core/services/logger-service';
 import { createPromptModule } from 'inquirer';
@@ -205,7 +205,6 @@ export function registerLlmModule(container: Container): void {
 
   // Register LLMProviderRegistry
   container.registerFactory<LLMProviderRegistry>('LLMProviderRegistry', () => {
-    const configService = resolveDependency<ILLMConfigService>(container, 'ILLMConfigService');
     const providerFactories = {
       openai: resolveDependency<LLMProviderFactory>(container, 'ILLMProvider.OpenAI.Factory'),
       'google-genai': resolveDependency<LLMProviderFactory>(
@@ -218,7 +217,7 @@ export function registerLlmModule(container: Container): void {
         'ILLMProvider.OpenRouter.Factory'
       ),
     };
-    return new LLMProviderRegistry(configService, providerFactories);
+    return new LLMProviderRegistry(providerFactories);
   });
 
   // Register provider factories for ModelListerService
@@ -261,11 +260,47 @@ export function registerLlmModule(container: Container): void {
       container,
       'IModelListerService'
     );
+    const providerRegistry = resolveDependency<LLMProviderRegistry>(
+      container,
+      'LLMProviderRegistry'
+    );
+
     assertIsDefined(fileOps, 'IFileOperations dependency not found');
     assertIsDefined(logger, 'ILogger dependency not found');
     assertIsDefined(inquirer, 'Inquirer dependency not found');
     assertIsDefined(modelListerService, 'IModelListerService dependency not found');
-    return new LLMConfigService(fileOps, logger, inquirer, modelListerService);
+    assertIsDefined(providerRegistry, 'LLMProviderRegistry dependency not found');
+
+    const configService = new LLMConfigService(
+      fileOps,
+      logger,
+      inquirer,
+      modelListerService,
+      providerRegistry
+    );
+
+    // Initialize provider with current config
+    configService
+      .loadConfig()
+      .then((configResult) => {
+        if (configResult.isOk() && configResult.value) {
+          const initResult = providerRegistry.initializeProvider(configResult.value);
+          if (initResult.isErr() && initResult.error) {
+            logger.error(
+              `Failed to initialize LLM provider: ${initResult.error.message}`,
+              initResult.error
+            );
+          }
+        }
+      })
+      .catch((error) => {
+        logger.error(
+          `Failed to load LLM config during initialization: ${error instanceof Error ? error.message : String(error)}`,
+          error as Error
+        );
+      });
+
+    return configService;
   });
 
   // Register LLMAgent

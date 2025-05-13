@@ -9,8 +9,9 @@ import { LLMConfig } from 'types/shared';
 import { z } from 'zod';
 import {
   GoogleGenAIErrorResponse,
-  GoogleGenAITokenResponse, // Use existing interface
-  GoogleModelInfoResponse, // Added interface
+  GoogleGenAITokenResponse,
+  GoogleModel, // Updated to GoogleModel
+  GoogleListModelsResponse, // Added for listModels
 } from '../types/google-genai.types';
 import type { BaseLanguageModelInput } from '@langchain/core/language_models/base';
 import { LLMCompletionConfig } from '../interfaces'; // Import from interfaces
@@ -315,9 +316,120 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
       return Result.err(LLMProviderError.fromError(err, this.name));
     }
   }
+
+  public async listModels(): Promise<Result<string[], LLMProviderError>> {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${this.config.apiKey}`;
+    const redactedUrl = url.replace(/key=([^&]+)/, 'key=[REDACTED_API_KEY]');
+    this.logger.info(`Fetching list of Google GenAI models from: ${redactedUrl}`);
+
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        let errorBodyText: string | undefined;
+        try {
+          errorBodyText = await response.text();
+          const errorData = JSON.parse(errorBodyText) as GoogleGenAIErrorResponse;
+          const errorMessage = `Failed to list Google GenAI models. Status: ${response.status}. API Error: ${errorData?.error?.message || 'Unknown API error'}`;
+          const details = {
+            rawApiError: errorData,
+            statusCode: response.status,
+            responseBody: errorBodyText?.substring(0, 500),
+          };
+          // Stringify details into the message for the logger, as logger.error only takes Error as second arg
+          const logMessage = `${errorMessage} - Details: ${JSON.stringify(details)}`;
+          const llmError = new LLMProviderError(
+            errorMessage,
+            `API_ERROR_${response.status}`,
+            this.name,
+            details
+          );
+          this.logger.error(logMessage, llmError); // Pass the actual LLMError instance
+          return Result.err(llmError);
+        } catch (e: unknown) {
+          const errorMessage = `Failed to list Google GenAI models. Status: ${response.status}. Response body: ${errorBodyText || 'Could not read error body.'}`;
+          const errorMeta = {
+            statusCode: response.status,
+            bodyPreview: errorBodyText?.substring(0, 100),
+            parseError: e instanceof Error ? e.message : String(e),
+          };
+          // Stringify details into the message
+          const logMessage = `${errorMessage} - Parsing Details: ${JSON.stringify(errorMeta)}`;
+          const llmError = new LLMProviderError(
+            errorMessage,
+            `API_ERROR_${response.status}`,
+            this.name,
+            { parsingDetails: errorMeta }
+          );
+          this.logger.error(logMessage, llmError); // Pass the actual LLMError instance
+          return Result.err(llmError);
+        }
+      }
+
+      const data = (await response.json()) as GoogleListModelsResponse;
+
+      if (!data.models || data.models.length === 0) {
+        this.logger.warn('No models found from Google GenAI API.');
+        return Result.err(new LLMProviderError('No models found', 'NO_MODELS_RETURNED', this.name));
+      }
+
+      // Prefer baseModelId if available, otherwise fallback to name (e.g. models/gemini-pro)
+      // The config usually expects the shorter ID like "gemini-1.5-pro"
+      const modelIds = data.models
+        .map((model: GoogleModel) => model.baseModelId || model.name)
+        .filter((id): id is string => !!id); // Filter out any undefined/null ids
+
+      if (modelIds.length === 0) {
+        this.logger.warn(
+          'No usable model IDs (baseModelId or name) found in the Google GenAI API response.'
+        );
+        return Result.err(
+          new LLMProviderError('No usable model IDs found', 'NO_USABLE_MODEL_IDS', this.name)
+        );
+      }
+
+      // Deduplicate model IDs, as different versions might share the same baseModelId
+      const uniqueModelIds = [...new Set(modelIds)];
+
+      this.logger.info(`Successfully listed ${uniqueModelIds.length} unique Google GenAI models.`);
+      this.logger.debug(`Available Google GenAI models: ${uniqueModelIds.join(', ')}`); // Stringify for debug
+      return Result.ok(uniqueModelIds);
+    } catch (error: unknown) {
+      const errorMessage = `Error listing Google GenAI models: ${error instanceof Error ? error.message : String(error)}`;
+      let llmError: LLMProviderError;
+      if (error instanceof Error) {
+        llmError = new LLMProviderError(errorMessage, 'NETWORK_ERROR', this.name, {
+          cause: {
+            name: error.name,
+            message: error.message,
+            stackPreview: error.stack?.substring(0, 200),
+          },
+        });
+        this.logger.error(llmError.message, llmError); // Pass the LLMProviderError instance
+      } else {
+        const details = { caughtErrorString: String(error) };
+        llmError = new LLMProviderError(errorMessage, 'NETWORK_ERROR', this.name, details);
+        // Stringify details into the message for the logger
+        this.logger.error(`${llmError.message} - Non-Error Cause: ${String(error)}`, llmError);
+      }
+      return Result.err(llmError);
+    }
+  }
+
   async getContextWindowSize(): Promise<number> {
-    // TODO: Potentially update this based on fetched model info if available?
-    // For now, return the fetched input limit or the original default.
+    // Return the fetched input limit or the original default.
+    // Ensure initialization has a chance to complete or has completed.
+    if (this.inputTokenLimit === null) {
+      this.logger.debug(
+        'getContextWindowSize called before inputTokenLimit was initialized. Attempting to initialize now.'
+      );
+      await this.initialize(); // Ensure initialization is attempted if not done.
+    }
     return Promise.resolve(this.inputTokenLimit ?? this.defaultContextSize);
   }
 
@@ -350,53 +462,91 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
    * Returns the fetched limit or a fallback value if the API call fails or the limit is not found.
    */
   private async fetchModelLimits(): Promise<number> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}?key=${this.config.apiKey}`;
+    if (!this.config.model) {
+      this.logger.warn('fetchModelLimits called without a model configured. Using fallback limit.');
+      return this.FALLBACK_TOKEN_LIMIT;
+    }
+    if (!this.config.apiKey) {
+      this.logger.error(
+        'fetchModelLimits called without an API key configured for Google GenAI. Using fallback limit.'
+      );
+      return this.FALLBACK_TOKEN_LIMIT;
+    }
+
+    // The model ID in the path should be like "gemini-1.5-pro" not "models/gemini-1.5-pro"
+    // this.config.model should already be in the correct format.
+    const modelIdForPath = this.config.model.startsWith('models/')
+      ? this.config.model.split('/')[1]
+      : this.config.model;
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelIdForPath}?key=${this.config.apiKey}`;
     const redactedUrl = url.replace(/key=([^&]+)/, 'key=[REDACTED_API_KEY]');
-    this.logger.debug(`Fetching model limits from: ${redactedUrl}`);
+    this.logger.info(`Fetching model limits for "${modelIdForPath}" from: ${redactedUrl}`);
 
     try {
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          // Assuming apiKey is the correct credential for this endpoint
-          // Authorization: `Bearer ${this.config.apiKey}`, // Usually Bearer is for OAuth, API keys might be different
-          'Content-Type': 'application/json', // Often not needed for GET but doesn't hurt
+          'Content-Type': 'application/json',
         },
       });
 
       if (!response.ok) {
-        this.logger.warn(
-          `Failed to fetch model limits for ${this.config.model}. Status: ${response.status}. Using fallback.`
-        );
-        return this.FALLBACK_TOKEN_LIMIT;
-      }
-
-      // Try parsing the successful response
-      try {
-        const data = (await response.json()) as GoogleModelInfoResponse;
-        const limit = data?.inputTokenLimit;
-
-        if (typeof limit === 'number') {
-          this.logger.info(`Retrieved input token limit for ${this.config.model}: ${limit}`);
-          return limit;
-        } else {
+        let errorBodyText: string | undefined;
+        let errorData: GoogleGenAIErrorResponse | undefined;
+        try {
+          errorBodyText = await response.text();
+          errorData = JSON.parse(errorBodyText) as GoogleGenAIErrorResponse;
+          const apiErrorMessage = errorData?.error?.message || 'Unknown API error';
           this.logger.warn(
-            `Input token limit not found or invalid type (${typeof limit}) for model ${this.config.model} in API response. Using fallback.`
+            `Failed to fetch model limits for ${modelIdForPath}. Status: ${response.status}. API Error: "${apiErrorMessage}". Response: ${errorBodyText.substring(0, 200)}. Raw Error Data: ${JSON.stringify(errorData)}. Using fallback.`
           );
-          return this.FALLBACK_TOKEN_LIMIT;
+        } catch (e: unknown) {
+          this.logger.warn(
+            `Failed to fetch model limits for ${modelIdForPath}. Status: ${response.status}. Could not parse error response: "${errorBodyText || 'empty response'}". Parse Error: ${e instanceof Error ? e.message : String(e)}. Using fallback.`
+          );
         }
-      } catch (jsonError) {
+        // Specific handling for 404, as per user feedback and task.
+        if (response.status === 404) {
+          const llmErrorFor404 = new LLMProviderError(
+            `Received 404 Not Found for model "${modelIdForPath}". This could mean the model doesn't exist, is not available with the provided API key, or the API key is invalid/misconfigured. URL: ${redactedUrl}. Using fallback.`,
+            'FETCH_LIMITS_404',
+            this.name,
+            { modelId: modelIdForPath, url: redactedUrl }
+          );
+          this.logger.error(llmErrorFor404.message, llmErrorFor404);
+        }
+        return this.FALLBACK_TOKEN_LIMIT;
+      }
+
+      const data = (await response.json()) as GoogleModel; // Uses the enhanced GoogleModel type
+
+      // Check for inputTokenLimit specifically
+      if (typeof data.inputTokenLimit === 'number') {
+        this.logger.info(
+          `Successfully retrieved input token limit for ${modelIdForPath}: ${data.inputTokenLimit}`
+        );
+        return data.inputTokenLimit;
+      } else {
         this.logger.warn(
-          `Failed to parse successful model limits response for ${this.config.model}: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}. Using fallback.`
+          `Input token limit not found or invalid type (${typeof data.inputTokenLimit}) for model ${modelIdForPath} in API response. Full response: ${JSON.stringify(data).substring(0, 500)}. Using fallback.`
         );
         return this.FALLBACK_TOKEN_LIMIT;
       }
-    } catch (error) {
-      // Network errors or other fetch-related issues
-      this.logger.error(
-        `Network error fetching model limits for ${this.config.model}: ${error instanceof Error ? error.message : String(error)}. Using fallback.`,
-        error instanceof Error ? error : new Error(String(error))
-      );
+    } catch (error: unknown) {
+      const errorMessage = `Network or unexpected error fetching model limits for ${modelIdForPath}: ${error instanceof Error ? error.message : String(error)}. Using fallback.`;
+      let llmErrorToLog: Error;
+      if (error instanceof Error) {
+        llmErrorToLog = error;
+      } else {
+        llmErrorToLog = new LLMProviderError(
+          errorMessage,
+          'UNKNOWN_FETCH_LIMITS_ERROR',
+          this.name,
+          { caughtErrorString: String(error) }
+        );
+      }
+      this.logger.error(errorMessage, llmErrorToLog);
       return this.FALLBACK_TOKEN_LIMIT;
     }
   }

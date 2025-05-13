@@ -5,6 +5,7 @@ import { IFileOperations } from '../file-operations/interfaces';
 import { Result } from '../result/result';
 import { ILogger } from '../services/logger-service';
 import { ILLMConfigService } from './interfaces';
+import { LLMProviderRegistry } from '../llm/provider-registry';
 /**
  * Service for managing LLM configuration.
  * Handles loading, saving, and interactive editing of LLM config from llm.config.json.
@@ -18,7 +19,8 @@ export class LLMConfigService implements ILLMConfigService {
     @Inject('ILogger') private readonly logger: ILogger,
     @Inject('Inquirer')
     private readonly inquirer: ReturnType<typeof import('inquirer').createPromptModule>,
-    @Inject('IModelListerService') private readonly modelListerService: IModelListerService
+    @Inject('IModelListerService') private readonly modelListerService: IModelListerService,
+    @Inject('LLMProviderRegistry') private readonly providerRegistry: LLMProviderRegistry
   ) {}
 
   /**
@@ -133,8 +135,8 @@ export class LLMConfigService implements ILLMConfigService {
         modelName = await this.promptForModelName(providerName);
       }
 
-      // Get advanced configuration
-      const advancedConfig = await this.promptForAdvancedConfig();
+      // Get advanced configuration with context from selected model
+      const advancedConfig = await this.promptForAdvancedConfig(providerName, modelName, apiKey);
 
       // Create and save final config
       const updatedConfig: LLMConfig = {
@@ -228,29 +230,79 @@ export class LLMConfigService implements ILLMConfigService {
    * Prompts for advanced configuration options
    * @returns Advanced configuration values
    */
-  private async promptForAdvancedConfig(): Promise<{ temperature: number; maxTokens: number }> {
+  private async promptForAdvancedConfig(
+    providerName: string,
+    modelName: string,
+    apiKey: string
+  ): Promise<{ temperature: number; maxTokens: number }> {
+    let suggestedMaxTokens = 4096; // Default fallback
+    let contextWindow = 0;
+
+    // Get the provider factory and create a temporary provider instance
+    const factoryResult = this.providerRegistry.getProviderFactory(providerName);
+    if (factoryResult.isOk() && factoryResult.value) {
+      const factory = factoryResult.value;
+      // Create a temporary config with default values
+      const tempConfig: LLMConfig = {
+        provider: providerName,
+        apiKey: apiKey,
+        model: modelName,
+        temperature: 0.1, // Default value
+        maxTokens: 4096, // Default value
+      };
+
+      const providerResult = factory(tempConfig);
+
+      if (providerResult.isOk() && providerResult.value) {
+        const provider = providerResult.value;
+        // Type guard to check if provider has getTokenContextWindow method
+        if (typeof (provider as any).getTokenContextWindow === 'function') {
+          const contextResult = (provider as any).getTokenContextWindow(modelName);
+          if (contextResult.isOk()) {
+            contextWindow = contextResult.value;
+            // Suggest 25% of the context window as maxTokens
+            suggestedMaxTokens = Math.floor(contextWindow * 0.25);
+            this.logger.debug(
+              `Using context window size ${contextWindow} for model ${modelName}, suggesting ${suggestedMaxTokens} tokens`
+            );
+          } else {
+            this.logger.warn(
+              `Could not get context window for model ${modelName}, using default suggestion: ${suggestedMaxTokens}`
+            );
+          }
+        }
+      }
+    }
+
     const answer = await this.inquirer([
       {
         type: 'number',
         name: 'temperature',
         message:
-          'Set temperature for response creativity (0-2):\n  0: focused/deterministic\n  1: balanced\n  2: more creative',
+          'Set temperature for response creativity (0-1):\n  0: focused/deterministic\n  0.5: balanced\n  1: more creative',
         default: 0.1,
         validate: (input: number) =>
-          (input >= 0 && input <= 2) || 'Temperature must be between 0 and 2',
+          (input >= 0 && input <= 1) || 'Temperature must be between 0 and 1',
       },
       {
         type: 'number',
         name: 'maxTokens',
-        message: 'Set maximum tokens per response (1000-8192):',
-        default: 80000,
-        validate: (input: number) =>
-          (input >= 10000 && input <= 1000000) ||
-          'Maximum tokens must be between 10000 and 1000000',
+        message: contextWindow
+          ? `Set maximum tokens per response (suggested: ${suggestedMaxTokens}, max: ${contextWindow}):`
+          : `Set maximum tokens per response:`,
+        default: suggestedMaxTokens,
+        validate: (input: number) => {
+          if (contextWindow) {
+            return (
+              (input > 0 && input <= contextWindow) ||
+              `Maximum tokens must be between 1 and ${contextWindow}`
+            );
+          }
+          return input > 0 || 'Maximum tokens must be greater than 0';
+        },
       },
     ]);
 
-    // Note: maxTokens is configurable here, but actual token limits may vary by provider and model
     return {
       temperature: answer.temperature as number,
       maxTokens: answer.maxTokens as number,

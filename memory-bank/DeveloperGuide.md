@@ -150,7 +150,7 @@ All development work should happen on feature or bugfix branches.
 
 ### 4.5. Debugging
 
-- Use `console.log` or the `LoggerService` (`src/core/services/logger-service.ts`) for basic logging.
+- Use `console.log` or the `LoggerService` (`src/core/services/logger-service.ts`) for basic logging. Note that the `ILogger` interface defines specific method signatures: `debug`, `info`, and `warn` typically accept a single string argument, while `error` accepts a message string and an optional `Error` instance. Adhere to these signatures for consistent logging.
 - Utilize the Node.js debugger. You can often set breakpoints directly in your IDE (like VS Code) and run the main script (`bin/roocode-generator.js`) with debugging enabled. Check the `.vscode/launch.json` file if it exists for pre-configured launch profiles.
 
 ### 4.6. Effective Delegation Patterns
@@ -203,6 +203,7 @@ This strategy contributes to task completion and improves overall code quality.
 - **Dependency Injection (DI)**: The project uses a custom DI container (`src/core/di`) to manage service dependencies and improve testability.
 - **Result Type**: A custom `Result` type (`src/core/result`) is used throughout the codebase for explicit error handling, distinguishing between successful outcomes and failures.
 - **Project Analysis & `ProjectContext`**: Modules in `src/core/analysis` are responsible for collecting project files, analyzing tech stack, parsing ASTs, and preparing context for LLMs.
+
   - The central data structure produced is `ProjectContext` (defined in `src/core/analysis/types.ts`). Following TSK-020, this structure has been significantly minimized to optimize LLM payloads and reduce data redundancy.
   - **Minimal Structure**: It now primarily consists of `projectRootPath`, `techStack` (detailing technologies), `packageJson` (a minimal representation of `package.json` for external dependencies), and `codeInsights` (a map of file paths to their AST-derived summaries including functions, classes, and imports).
   - **Removed Components**: Explicit structures like `directoryTree` and `internalDependencyGraph` have been removed from `ProjectContext`.
@@ -213,7 +214,7 @@ This strategy contributes to task completion and improves overall code quality.
     - `getDependencyVersion(projectContext, packageName)`: Retrieves version for an external dependency from `packageJson`.
     - `getFilesByPattern(projectContext, patterns)`: Gets files matching glob patterns from `codeInsights` keys.
   - This approach relies more on `codeInsights` as the SSoT for file-level information and on utility functions or LLM inference for higher-level structural understanding.
-    <<<<<<< HEAD
+
 - **Generators**: Modules in `src/generators` implement the logic for creating specific types of workflow configuration files.
 - # **Memory Bank**: Modules in `src/memory-bank` handle the generation of contextual documentation or "memory" about the project for use by LLMs.
 - **Dedicated File Operation Helpers**: For complex file interactions within specific generators (like the Roo generator), dedicated helper classes (e.g., `RooFileOpsHelper` in `src/generators/roo-file-ops-helper.ts`) are used to encapsulate file system logic. This improves modularity and separation of concerns within the generator classes.
@@ -228,8 +229,6 @@ To ensure reliable data extraction from LLM responses, especially for structured
 2. Using dedicated parsing logic (like the `MarkdownListParser` implemented in TSK-021) to robustly extract the content from the LLM's response.
 
 This approach minimizes the impact of potential conversational filler or formatting variations from the LLM.
-
-> > > > > > > ff6dd956b6c09bcf7110370e07157b5066eb89db
 
 ## 9. Troubleshooting
 

@@ -93,7 +93,7 @@ The system operates as a command-line interface tool. The core flow involves rec
 - **Build Tools**:
   - `TypeScript Compiler (tsc)`: Compiles TypeScript code to JavaScript.
   - `Vite`: Used for bundling the application.
-- **LLM Providers**: Integrated via Langchain, including support for OpenAI, Google GenAI, and Anthropic (with potential for OpenRouter via OpenAI compatibility).
+- **LLM Providers**: Integrated via Langchain, including support for OpenAI, Google GenAI, and Anthropic (with potential for OpenRouter via OpenAI compatibility). Specific API interaction patterns for providers like OpenAI (`/v1/models` for listing, `/v1/models/{model_id}` for limits) and Google GenAI (`v1beta/models` for listing, `v1beta/models/{modelId}` for limits) are implemented within their respective provider classes.
 
 ## 5. Data Design & Management
 
@@ -122,7 +122,7 @@ The system operates as a command-line interface tool. The core flow involves rec
     - `errors/`: Custom error classes.
     - `file-operations/`: Abstraction for file system operations.
     - `generators/`: Base generator class and interfaces.
-    - `llm/`: LLM agent, provider interfaces, and specific provider implementations.
+    - `llm/`: LLM agent, provider interfaces, and specific provider implementations. Note that some provider properties (e.g., token limits) may be initialized asynchronously via API calls during provider instantiation to fetch up-to-date information.
     - `result/`: Implementation of a Result type for functional error handling.
     - `services/`: Base service class and common services like logging.
     - `template-manager/`: Core template loading and processing logic.

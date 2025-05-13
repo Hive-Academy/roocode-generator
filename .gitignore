@@ -11,7 +11,7 @@ dist/
 *.bak
 *.tmp
 coverage/
-/llm.config.json
+/llm.config.**
 /RooCode-Common-Code-Practices.md
 /.vscode/mcp.json
 /.eslintcache
