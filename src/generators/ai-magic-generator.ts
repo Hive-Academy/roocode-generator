@@ -471,7 +471,7 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
 
       // Build user prompt with specific instructions for mode-based rules
       const instructions = `
-Based on the provided project context and the system prompt (which includes base roo rules and the "${modeName}" mode template), generate at least 100 distinct, context-aware rules specifically tailored for the "${modeName}" mode.
+Based on the provided project context and the system prompt (which includes base roo rules and the "${modeName}" mode template), generate a list of distinct, context-aware rules specifically tailored for the "${modeName}" mode.
 
 The rules should be actionable and relevant to the codebase structure, technologies, and patterns found in the project context. Focus on rules that would be helpful for an AI assistant operating in the "${modeName}" mode within this specific project.
 
@@ -480,7 +480,13 @@ Project Context:
 ${contextString}
 \`\`\`
 
-Generate the rules in a clear, list format. Ensure there are at least 100 rules.`;
+**IMPORTANT INSTRUCTIONS:**
+1. Provide **ONLY** the list of rules.
+2. Format the rules as a **Markdown unordered list** using hyphens (\`-\`).
+3. Each rule should be a single list item.
+4. Do **NOT** include any introductory sentences, concluding remarks, or any other text before or after the list.
+5. Ensure there are at least 100 rules.
+`;
 
       // The rulesPromptBuilder is not needed for building the system/user prompts directly
       // as we are constructing them from the template contents and project context.
