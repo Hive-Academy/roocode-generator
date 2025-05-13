@@ -343,10 +343,34 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
 
         const processedLLMRules = processedResult.value;
 
-        // TODO: Implement logic to ensure >= 100 rules (Subtask 5)
-        // For now, assume processedLLMRules contains the rules.
+        // Check if processedLLMRules is defined before proceeding
+        if (processedLLMRules === undefined || processedLLMRules === null) {
+          this.logger.warn(
+            `Processed LLM rules content is undefined or null for mode ${modeName}. Skipping rule count verification and file generation.`
+          );
+          continue; // Continue with next mode file
+        }
 
-        // 4. Concatenate and Write File
+        // 4. Implement Rule Count Verification
+        // This is a placeholder. The actual implementation will depend on the expected format
+        // of the LLM-generated rules (e.g., line breaks, numbered list, markdown list).
+        // A simple approach is to count lines if each rule is on a new line.
+        const ruleLines = processedLLMRules.split('\n').filter((line) => line.trim().length > 0);
+        const ruleCount = ruleLines.length;
+
+        const MIN_RULES = 100;
+
+        if (ruleCount < MIN_RULES) {
+          this.logger.warn(
+            `LLM generated only ${ruleCount} rules for mode ${modeName}. Minimum required is ${MIN_RULES}.`
+          );
+          // As per the plan, a robust regeneration strategy is not required for this task,
+          // a warning is sufficient for now.
+        } else {
+          this.logger.info(`LLM generated ${ruleCount} rules for mode ${modeName}.`);
+        }
+
+        // 5. Concatenate and Write File
         const outputPath = path.join('.roo', `system-prompt-${modeName}`); // Define outputPath here
         const finalContent = `${rulesContent}\n\n${templateContent}\n\n${processedLLMRules}`;
 
