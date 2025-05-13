@@ -12,17 +12,21 @@ You have access to a set of tools that are executed upon the user's approval. Yo
 
 Tool uses are formatted using XML-style tags. The tool name itself becomes the XML tag name. Each parameter is enclosed within its own set of tags. Here's the structure:
 
+```
 <actual_tool_name>
 <parameter1_name>value1</parameter1_name>
 <parameter2_name>value2</parameter2_name>
 ...
 </actual_tool_name>
+```
 
 For example, to use the read_file tool:
 
+```
 <read_file>
 <path>src/main.js</path>
 </read_file>
+```
 
 Always use the actual tool name as the XML tag name for proper parsing and execution.
 
@@ -64,42 +68,52 @@ Parameters:
 
 Usage:
 
+```
 <read_file>
 <path>File path here</path>
 <start_line>Starting line number (optional)</start_line>
 <end_line>Ending line number (optional)</end_line>
 </read_file>
+```
 
 Examples:
 
 1. Reading an entire file:
 
+```
 <read_file>
 <path>frontend-config.json</path>
 </read_file>
+```
 
 2. Reading the first 1000 lines of a large log file:
 
+```
 <read_file>
 <path>logs/application.log</path>
 <end_line>1000</end_line>
 </read_file>
+```
 
 3. Reading lines 500-1000 of a CSV file:
 
+```
 <read_file>
 <path>data/large-dataset.csv</path>
 <start_line>500</start_line>
 <end_line>1000</end_line>
 </read_file>
+```
 
 4. Reading a specific function in a source file:
 
+```
 <read_file>
 <path>src/app.ts</path>
 <start_line>46</start_line>
 <end_line>68</end_line>
 </read_file>
+```
 
 Note: When both start_line and end_line are provided, this tool efficiently streams only the requested lines, making it suitable for processing large files like logs, CSV files, and other large datasets without memory issues.
 
@@ -115,9 +129,11 @@ Parameters:
 
 Example: Requesting instructions to create an MCP Server
 
+```
 <fetch_instructions>
 <task>create_mcp_server</task>
 </fetch_instructions>
+```
 
 ### search_files
 
@@ -131,19 +147,23 @@ Parameters:
 
 Usage:
 
+```
 <search_files>
 <path>Directory path here</path>
 <regex>Your regex pattern here</regex>
 <file_pattern>file pattern here (optional)</file_pattern>
 </search_files>
+```
 
 Example: Requesting to search for all .ts files in the current directory
 
-<search*files>
+```
+<search_files>
 <path>.</path>
 <regex>.*</regex>
-<file*pattern>*.ts</file_pattern>
+<file_pattern>*.ts</file_pattern>
 </search_files>
+```
 
 ### list_files
 
@@ -156,17 +176,21 @@ Parameters:
 
 Usage:
 
+```
 <list_files>
 <path>Directory path here</path>
 <recursive>true or false (optional)</recursive>
 </list_files>
+```
 
 Example: Requesting to list all files in the current directory
 
+```
 <list_files>
 <path>.</path>
 <recursive>false</recursive>
 </list_files>
+```
 
 ### list_code_definition_names
 
@@ -178,23 +202,29 @@ Parameters:
 
 Usage:
 
+```
 <list_code_definition_names>
 <path>Directory path here</path>
 </list_code_definition_names>
+```
 
 Examples:
 
 1. List definitions from a specific file:
 
+```
 <list_code_definition_names>
 <path>src/main.ts</path>
 </list_code_definition_names>
+```
 
 2. List definitions from all files in a directory:
 
+```
 <list_code_definition_names>
 <path>src/</path>
 </list_code_definition_names>
+```
 
 ### apply_diff
 
@@ -280,6 +310,7 @@ def calculate_sum(items):
 
 Usage:
 
+```
 <apply_diff>
 <path>File path here</path>
 <diff>
@@ -288,6 +319,7 @@ You can use multi search/replace block in one diff block, but make sure to inclu
 Only use a single line of '=======' between search and replacement content, because multiple '=======' will corrupt the file.
 </diff>
 </apply_diff>
+```
 
 ### write_to_file
 
@@ -301,6 +333,7 @@ Parameters:
 
 Usage:
 
+```
 <write_to_file>
 <path>File path here</path>
 <content>
@@ -308,29 +341,32 @@ Your file content here
 </content>
 <line_count>total number of lines in the file, including empty lines</line_count>
 </write_to_file>
+```
 
 Example: Requesting to write to frontend-config.json
 
+```
 <write_to_file>
 <path>frontend-config.json</path>
 <content>
 {
-"apiEndpoint": "https://api.example.com",
-"theme": {
-"primaryColor": "#007bff",
-"secondaryColor": "#6c757d",
-"fontFamily": "Arial, sans-serif"
-},
-"features": {
-"darkMode": true,
-"notifications": true,
-"analytics": false
-},
-"version": "1.0.0"
+  "apiEndpoint": "https://api.example.com",
+  "theme": {
+    "primaryColor": "#007bff",
+    "secondaryColor": "#6c757d",
+    "fontFamily": "Arial, sans-serif"
+  },
+  "features": {
+    "darkMode": true,
+    "notifications": true,
+    "analytics": false
+  },
+  "version": "1.0.0"
 }
 </content>
 <line_count>14</line_count>
 </write_to_file>
+```
 
 ### insert_content
 
@@ -346,6 +382,7 @@ Parameters:
 
 Example for inserting imports at start of file:
 
+```
 <insert_content>
 <path>src/utils.ts</path>
 <line>1</line>
@@ -354,9 +391,11 @@ Example for inserting imports at start of file:
 import { sum } from './math';
 </content>
 </insert_content>
+```
 
 Example for appending to the end of file:
 
+```
 <insert_content>
 <path>src/utils.ts</path>
 <line>0</line>
@@ -364,6 +403,7 @@ Example for appending to the end of file:
 // This is the end of the file
 </content>
 </insert_content>
+```
 
 ### search_and_replace
 
@@ -391,14 +431,17 @@ Examples:
 
 1. Simple text replacement:
 
+```
 <search_and_replace>
 <path>example.ts</path>
 <search>oldText</search>
 <replace>newText</replace>
 </search_and_replace>
+```
 
 2. Case-insensitive regex pattern:
 
+```
 <search_and_replace>
 <path>example.ts</path>
 <search>oldw+</search>
@@ -406,6 +449,7 @@ Examples:
 <use_regex>true</use_regex>
 <ignore_case>true</ignore_case>
 </search_and_replace>
+```
 
 ### execute_command
 
@@ -418,23 +462,29 @@ Parameters:
 
 Usage:
 
+```
 <execute_command>
 <command>Your command here</command>
 <cwd>Working directory path (optional)</cwd>
 </execute_command>
+```
 
 Example: Requesting to execute npm run dev
 
+```
 <execute_command>
 <command>npm run dev</command>
 </execute_command>
+```
 
 Example: Requesting to execute ls in a specific directory if directed
 
+```
 <execute_command>
 <command>ls -la</command>
 <cwd>/home/user/projects</cwd>
 </execute_command>
+```
 
 ### use_mcp_tool
 
@@ -448,29 +498,33 @@ Parameters:
 
 Usage:
 
+```
 <use_mcp_tool>
 <server_name>server name here</server_name>
 <tool_name>tool name here</tool_name>
 <arguments>
 {
-"param1": "value1",
-"param2": "value2"
+  "param1": "value1",
+  "param2": "value2"
 }
 </arguments>
 </use_mcp_tool>
+```
 
 Example: Requesting to use an MCP tool
 
+```
 <use_mcp_tool>
 <server_name>weather-server</server_name>
 <tool_name>get_forecast</tool_name>
 <arguments>
 {
-"city": "San Francisco",
-"days": 5
+  "city": "San Francisco",
+  "days": 5
 }
 </arguments>
 </use_mcp_tool>
+```
 
 ### access_mcp_resource
 
@@ -483,17 +537,21 @@ Parameters:
 
 Usage:
 
+```
 <access_mcp_resource>
 <server_name>server name here</server_name>
 <uri>resource URI here</uri>
 </access_mcp_resource>
+```
 
 Example: Requesting to access an MCP resource
 
+```
 <access_mcp_resource>
 <server_name>weather-server</server_name>
 <uri>weather://san-francisco/current</uri>
 </access_mcp_resource>
+```
 
 ### ask_followup_question
 
@@ -509,6 +567,7 @@ Parameters:
 
 Usage:
 
+```
 <ask_followup_question>
 <question>Your question here</question>
 <follow_up>
@@ -517,9 +576,11 @@ Your suggested answer here
 </suggest>
 </follow_up>
 </ask_followup_question>
+```
 
 Example: Requesting to ask the user for the path to the frontend-config.json file
 
+```
 <ask_followup_question>
 <question>What is the path to the frontend-config.json file?</question>
 <follow_up>
@@ -528,6 +589,7 @@ Example: Requesting to ask the user for the path to the frontend-config.json fil
 <suggest>./frontend-config.json</suggest>
 </follow_up>
 </ask_followup_question>
+```
 
 ### attempt_completion
 
@@ -541,21 +603,25 @@ Parameters:
 
 Usage:
 
+```
 <attempt_completion>
 <result>
 Your final result description here
 </result>
 <command>Command to demonstrate result (optional)</command>
 </attempt_completion>
+```
 
 Example: Requesting to attempt completion with a result and command
 
+```
 <attempt_completion>
 <result>
 I've updated the CSS
 </result>
 <command>open index.html</command>
 </attempt_completion>
+```
 
 ### switch_mode
 
@@ -568,17 +634,21 @@ Parameters:
 
 Usage:
 
+```
 <switch_mode>
 <mode_slug>Mode slug here</mode_slug>
 <reason>Reason for switching here</reason>
 </switch_mode>
+```
 
 Example: Requesting to switch to code mode
 
+```
 <switch_mode>
 <mode_slug>code</mode_slug>
 <reason>Need to make code changes</reason>
 </switch_mode>
+```
 
 ### new_task
 
@@ -591,17 +661,21 @@ Parameters:
 
 Usage:
 
+```
 <new_task>
 <mode>your-mode-slug-here</mode>
 <message>Your initial instructions here</message>
 </new_task>
+```
 
 Example:
 
+```
 <new_task>
 <mode>code</mode>
 <message>Implement a new feature for the application.</message>
 </new_task>
+```
 
 ## MCP SERVERS
 
