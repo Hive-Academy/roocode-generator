@@ -1029,6 +1029,7 @@ The Model Context Protocol (MCP) enables communication between the system and MC
 9. **Documentation**: Always refer to the server's documentation for the most up-to-date information.
 10. **Progress indication**: For long-running operations, provide feedback to the user about the progress.
 
+
 # CORE RESPONSIBILITIES
 
 The Code Review role is responsible for:
@@ -1785,156 +1786,36 @@ Evaluate implementation against acceptance criteria:
 - [ ] Memory bank update recommendations documented
 - [ ] For NEEDS CHANGES, required changes section completed with prioritized changes
 
-Here is a list of 100+ distinct, context-aware, actionable rules specifically tailored for the **code-review** mode for the given project context (`roocode-generator`), focusing on the technologies, codebase structure, and patterns found:
 
----
-
-### General Code Quality and Style
-
-1. Always ensure TypeScript strict typing is used and no implicit `any` types exist.
-2. Verify that all source files conform to the ESLint rules configured for `.ts`, `.js`, and `.mjs` files.
-3. Confirm that Prettier formatting is consistent across all source files, including `.ts`, `.js`, `.mjs`, `.json`, and `.md`.
-4. Check that import statements are sorted logically and grouped by external, internal, and relative imports.
-5. Validate that no console logs remain in production code unless explicitly allowed.
-6. Ensure all functions and methods have clear and descriptive JSDoc or TSDoc comments where complex logic exists.
-7. Confirm that all files have consistent line endings and no trailing whitespace.
-8. Verify that no unused variables, imports, or functions exist in any file.
-9. Ensure that all functions have explicit return types declared.
-10. Confirm that all promises are properly awaited or handled with `.catch()` to avoid unhandled rejections.
-
-### TypeScript and Language-Specific
-
-11. Verify that interfaces and types are used consistently and appropriately for data structures.
-12. Check that union and intersection types are used to improve type safety where applicable.
-13. Ensure enums or string literal types are used for fixed sets of values, especially in configuration files.
-14. Confirm that all external dependencies are typed, using `@types` packages or custom typings.
-15. Check that generics are used effectively to maximize code reuse and type safety.
-16. Validate that `unknown` is used instead of `any` where data types are uncertain, with proper type guards.
-17. Ensure no `// @ts-ignore` or similar directives are used without strong justification and comments.
-18. Confirm that all async functions return `Promise<T>` explicitly.
-19. Validate that error types are properly typed and handled using custom error classes (e.g., `RooCodeError`).
-20. Check that `readonly` modifiers are used on immutable properties where applicable.
-
-### Project Structure and Modularization
-
-21. Verify that core logic is encapsulated within the `src/core` directory, respecting separation of concerns.
-22. Ensure that DI (Dependency Injection) patterns via the container and decorators (`@Injectable`, `@Inject`) are correctly applied.
-23. Confirm that modules in `src/core/di/modules` register services properly with lifetimes documented.
-24. Validate that generators (`src/generators`) follow a consistent interface and extend from `BaseGenerator`.
-25. Ensure that interfaces are defined in dedicated files and imported properly; no inline interface definitions in implementation files.
-26. Check that utility functions are placed in appropriate utility files (e.g., `src/core/utils`).
-27. Confirm that error classes are centralized under `src/core/errors` and used consistently.
-28. Validate that the `memory-bank` folder contains well-encapsulated logic related to memory bank functionality.
-29. Check that CLI-related code is isolated under `src/core/cli` and does not leak into core logic.
-30. Verify that configuration services (LLM, project config) are singletons and accessed via DI.
-
-### Dependency Injection and Container Usage
-
-31. Ensure that all injectable services are decorated with `@Injectable()`.
-32. Verify that dependencies are resolved via the container using `resolve()` and not manually instantiated.
-33. Confirm that circular dependencies are avoided or handled explicitly with clear error messages.
-34. Check that factory registrations are used appropriately for transient or scoped lifetimes.
-35. Validate that the container initialization (`initialize()`) is called before any service resolution.
-36. Ensure error handling around DI failures uses `DependencyResolutionError` or `CircularDependencyError`.
-37. Confirm that service registration uses consistent token names and no duplicate registrations exist.
-38. Verify that container clearing/resetting is only done during testing or initialization phases.
-39. Check that helper utilities in `di/utils.ts` are used for common DI operations.
-40. Ensure that DI-related errors provide actionable context for debugging.
-
-### Error Handling and Logging
-
-41. Confirm that all critical operations are wrapped with try/catch and errors are wrapped in domain-specific error classes.
-42. Ensure logging uses the `LoggerService` with appropriate log levels (`trace`, `debug`, `info`, `warn`, `error`).
-43. Verify that error messages include sufficient context for troubleshooting without leaking sensitive information.
-44. Check that errors in asynchronous flows propagate correctly using `Result` or exceptions.
-45. Validate that error classes extend from a base error (`RooCodeError`) for consistent behavior.
-46. Ensure that memory bank and file operation errors are correctly categorized and handled.
-47. Confirm that retry logic uses utilities like `retryWithBackoff` with proper max attempts and delays.
-48. Verify that progress indicators (`ProgressIndicator`) are used to report long-running operations.
-49. Check that error stack traces are preserved when wrapping errors.
-50. Ensure that all warnings and errors are actionable and logged consistently.
-
-### Testing and Mocks
-
-51. Confirm that Jest is configured correctly and all test files have `.test.ts` or `.spec.ts` extensions.
-52. Verify that mocks are used for external dependencies, especially for file operations, LLM agents, and logger services.
-53. Ensure unit tests cover all public methods and critical logic branches.
-54. Check that tests use proper setup and teardown hooks (`beforeEach`, `afterEach`).
-55. Validate that test coverage reports meet project standards and critical paths have 100% coverage.
-56. Confirm that edge cases and error handling paths are tested explicitly.
-57. Ensure that test assertions are clear, meaningful, and use Jest matchers effectively.
-58. Verify that snapshot tests are used judiciously and updated intentionally.
-59. Check that mock implementations in `tests/__mocks__` reflect the current interfaces and behavior.
-60. Validate that integration tests exist for key flows, such as project analysis and generation orchestration.
-
-### Code Patterns and Best Practices
-
-61. Verify that async/await is used consistently instead of raw promises.
-62. Confirm that functions are small, single-responsibility, and have descriptive names.
-63. Check that no deeply nested callbacks exist; prefer async functions or flat structures.
-64. Ensure consistent use of ES6+ features such as destructuring, template literals, and arrow functions.
-65. Validate that constants and enums are used instead of magic strings or numbers.
-66. Confirm that configuration values are loaded once and cached where appropriate.
-67. Check that file paths use `path` module utilities for cross-platform compatibility.
-68. Verify that all external API calls (e.g., LLM providers) handle rate limits and errors gracefully.
-69. Ensure that code avoids synchronous FS operations; prefer async/promises.
-70. Confirm that code avoids side effects in pure functions.
-
-### Code Documentation and Comments
-
-71. Ensure that all public classes and methods have TSDoc comments describing purpose and parameters.
-72. Check that TODOs and FIXMEs are either resolved or documented with tickets.
-73. Verify that complex business logic has inline comments explaining rationale.
-74. Confirm that deprecated code is marked clearly and has migration notes.
-75. Ensure README.md and package.json metadata are accurate and up to date.
-76. Validate that changelogs (if present) follow semantic-release conventions.
-
-### Configuration and Build
-
-77. Verify that `tsconfig.json` enables strict mode and appropriate compiler options for safety.
-78. Confirm that Vite config (`vite.config.ts`) uses path aliases consistent with `tsconfig.json`.
-79. Check that build scripts in package.json run lint, type-check, and tests before build.
-80. Ensure that lint and format scripts cover all relevant file extensions.
-81. Validate that husky hooks are installed and configured to run lint and tests on commit.
-82. Confirm that semantic-release is configured properly for automated versioning and changelog generation.
-83. Verify that environment variables are loaded securely via `dotenv` and accessed safely.
-84. Ensure no sensitive keys or secrets are hardcoded in the source code.
-85. Check that package.json dependencies and devDependencies are up to date and minimal.
-86. Validate that npm scripts are well documented and consistent with project conventions.
-
-### Security and Privacy
-
-87. Confirm that user inputs (e.g., CLI args) are validated and sanitized.
-88. Verify that no sensitive data (API keys, tokens) are logged or exposed in error messages.
-89. Ensure that dependencies are audited for known vulnerabilities.
-90. Check that file system operations handle path traversal and invalid paths safely.
-91. Validate that all external requests (e.g., to LLM providers) use secure protocols (HTTPS).
-92. Confirm that access to configuration files is restricted appropriately.
-93. Ensure that error handling avoids leaking stack traces or internal states in production.
-94. Verify that dependencies like `dotenv` are only used in development or build environments.
-95. Check that dependency injection prevents unauthorized service instantiation.
-
-### Performance and Optimization
-
-96. Verify that file reading and writing use streaming or buffered IO when handling large files.
-97. Confirm that token counting and LLM interactions batch requests where possible.
-98. Ensure that caching mechanisms are used for repeated expensive operations (e.g., parsing).
-99. Check that asynchronous operations are parallelized where safe.
-100.  Validate that logging does not introduce significant overhead in production.
-101.  Confirm that progress indicators update efficiently without excessive console output.
-102.  Ensure that no memory leaks or unclosed resources exist in long-running services.
-
-### Acceptance Criteria and Integration
-
-103. Verify that implementation matches the architectural plan and subtask specifications exactly.
-104. Confirm that all acceptance criteria are explicitly verified in the review document.
-105. Ensure that integration points (DI container, LLM agent, file ops) are tested and documented.
-106. Validate that error cases and edge scenarios from acceptance criteria are covered by tests.
-107. Confirm that trunk-based development practices are followed in commit history.
-108. Check that commit messages follow conventional commit format and describe changes clearly.
-109. Ensure feature flags are used for incomplete or experimental features with proper naming.
-110. Verify that the codebase remains buildable and testable after the changes.
-
----
-
-If you want, I can format these rules in a numbered markdown list for direct inclusion or create a file with these rules. Would you like me to proceed with that?
+- Ensure all TypeScript code strictly adheres to ESLint and Prettier configurations without exceptions.
+- Verify that all code changes are accompanied by corresponding Jest unit tests with meaningful coverage.
+- Confirm that commit messages follow conventional commit format and are concise, descriptive, and scoped.
+- Validate that dependency injection is used consistently via the project’s DI container and decorators.
+- Check that error handling uses the project’s custom error classes with appropriate context and cause chaining.
+- Ensure all asynchronous operations use proper async/await syntax and include error handling.
+- Confirm that all file operations utilize the centralized FileOperations service for consistency and error handling.
+- Verify that all code respects the project’s layered architecture, separating concerns between analysis, application, CLI, core services, and generators.
+- Validate that all public methods and classes are properly typed and avoid usage of `any`.
+- Ensure that all logging is done through the LoggerService with appropriate log levels.
+- Confirm that all LLM-related interactions use the LLMAgent and provider abstractions as per the project structure.
+- Check that generated content (e.g., RooCode files) is validated and formatted according to project standards before writing.
+- Verify that all configuration loading and saving is done through dedicated config services with validation.
+- Ensure that all template processing uses the TemplateManager and TemplateProcessor services with error handling.
+- Confirm that project analysis and file collection respect skippable directories and file analyzability rules.
+- Validate that all new code is compatible with Node.js version 16 or higher as specified in engines.
+- Check that all imports use absolute or project-root-relative paths consistent with existing code style.
+- Ensure that all test files use mocks appropriately and isolate external dependencies.
+- Verify that all code changes maintain or improve performance, avoiding unnecessary file reads or computations.
+- Confirm that all CLI commands and interactions use the CliInterface abstraction for consistency.
+- Validate that all memory bank generation and processing follows the orchestrator and service patterns defined.
+- Ensure that all new modules and services are properly registered in the DI container modules.
+- Check that all JSON parsing and validation uses the JsonSchemaHelper and robust parsing utilities.
+- Confirm that all retry logic uses the project’s retry utilities with backoff strategies.
+- Verify that all source code files include appropriate JSDoc or inline comments for complex logic.
+- Ensure that all markdown and JSON files are formatted with Prettier before committing.
+- Validate that all usage of third-party libraries matches the versions and APIs defined in package.json.
+- Check that all code changes follow trunk-based development best practices with small, focused commits.
+- Confirm that all test scripts and lint/format scripts in package.json are used and respected in development workflows.
+- Verify that all error classes and service classes follow the project’s inheritance and interface conventions.
+- Ensure that all asynchronous progress updates use the ProgressIndicator service correctly.
+- Check that all code changes are free of circular dependencies and properly handle DI registration errors.
