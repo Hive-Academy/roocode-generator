@@ -150,7 +150,7 @@ All development work should happen on feature or bugfix branches.
 
 ### 4.5. Debugging
 
-- Use `console.log` or the `LoggerService` (`src/core/services/logger-service.ts`) for basic logging.
+- Use `console.log` or the `LoggerService` (`src/core/services/logger-service.ts`) for basic logging. Note that the `ILogger` interface defines specific method signatures: `debug`, `info`, and `warn` typically accept a single string argument, while `error` accepts a message string and an optional `Error` instance. Adhere to these signatures for consistent logging.
 - Utilize the Node.js debugger. You can often set breakpoints directly in your IDE (like VS Code) and run the main script (`bin/roocode-generator.js`) with debugging enabled. Check the `.vscode/launch.json` file if it exists for pre-configured launch profiles.
 
 ### 4.6. Effective Delegation Patterns
