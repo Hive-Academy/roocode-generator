@@ -203,6 +203,7 @@ All development work should happen on feature or bugfix branches.
     - `getDependencyVersion(projectContext, packageName)`: Retrieves version for an external dependency from `packageJson`.
     - `getFilesByPattern(projectContext, patterns)`: Gets files matching glob patterns from `codeInsights` keys.
   - This approach relies more on `codeInsights` as the SSoT for file-level information and on utility functions or LLM inference for higher-level structural understanding.
+- **Dedicated File Operation Helpers**: For complex file interactions within specific generators (like the Roo generator), dedicated helper classes (e.g., `RooFileOpsHelper` in `src/generators/roo-file-ops-helper.ts`) are used to encapsulate file system logic. This improves modularity and separation of concerns within the generator classes.
 - **Generators**: Modules in `src/generators` implement the logic for creating specific types of workflow configuration files.
 - **Memory Bank**: Modules in `src/memory-bank` handle the generation of contextual documentation or "memory" about the project for use by LLMs.
 
