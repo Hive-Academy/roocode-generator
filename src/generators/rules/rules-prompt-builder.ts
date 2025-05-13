@@ -12,7 +12,7 @@ export class RulesPromptBuilder implements IRulesPromptBuilder {
    * @param template - Template content (likely ignored).
    * @returns A Result containing the user prompt string or an error.
    */
-  buildPrompt(instructions: string, context: string, _template: string): Result<string, Error> {
+  buildPrompt(instructions: string, context: string): Result<string, Error> {
     if (!context) {
       return Result.err(new Error('Project context is required to build the rules prompt.'));
     }
@@ -27,7 +27,13 @@ ${context}
 \`\`\`
 
 ${instructions ? `\n**Additional Instructions:**\n${instructions}\n` : ''}
-Generate the complete Markdown rules document now, following the structural and stylistic guidelines provided in the system prompt.
+
+**IMPORTANT OUTPUT INSTRUCTIONS:**
+1. Provide **ONLY** the list of rules.
+2. Format the rules as a **Markdown unordered list** using hyphens (\`-\`).
+3. Each rule should be a single list item.
+4. Do **NOT** include any introductory sentences, concluding remarks, or any other text before or after the list.
+5. Each rule must be relevant to the project context and provide clear, actionable guidance.
 `;
     return Result.ok(prompt);
   }
@@ -51,31 +57,25 @@ You are an expert software architect and technical writer. Your task is to gener
 
 **Output Requirements:**
 
-*   **Format:** Valid Markdown (.md).
-*   **Structure:**
-    *   **Title:** Start with a Level 1 Heading (\`#\`) providing a suitable title (e.g., "# [Project Language/Framework] Code Standards").
-    *   **Introduction:** Include a brief (1-2 sentence) introduction stating the purpose of the rules (e.g., "These standards ensure consistency and maintainability...").
-    *   **Sections:** Use Level 2 Headings (\`##\`) to categorize rules. Infer relevant categories from the project context, such as:
-        *   Code Style & Patterns
-        *   Project Architecture
-        *   Naming Conventions
-        *   Code Organization
-        *   Testing (if applicable)
-        *   Dependencies (if applicable)
-        *   Security (if applicable)
-    *   **Rules:** List individual rules under each section using bullet points (\`-\`). Rules should be derived from the project context (languages, frameworks, patterns identified).
-    *   **Conclusion:** End with a brief concluding sentence (e.g., "Adherence to these guidelines is expected...").
-*   **Content:**
-    *   Rules MUST be relevant to the specific project context provided.
-    *   Rules should be clear, concise, and actionable.
-    *   Include brief examples within rule descriptions only where necessary for clarity.
-*   **Style:**
-    *   Maintain a professional and authoritative tone.
-    *   Present rules as requirements, not suggestions.
-*   **Inspiration (Format/Tone ONLY):** You can draw inspiration for the *structure and tone* from typical coding standards documents (like the one at '.roo/rules-code/rules.md'), but DO NOT copy its content directly. Generate rules based *only* on the provided project context.
-*   **Strict Adherence:** The final output MUST strictly follow the specified Markdown structure and generate contextually relevant rules. Avoid extra commentary.
+* **Format:** Markdown unordered list only.
+* **Structure:**
+  * Each rule must be a single list item starting with a hyphen (\`-\`).
+  * NO title, introduction, sections, or conclusion.
+  * NO categorization or grouping - just a flat list of rules.
+* **Content:**
+  * Rules MUST be relevant to the specific project context provided.
+  * Rules should be clear, concise, and actionable.
+  * Include brief examples within rule descriptions only where necessary for clarity.
+* **Style:**
+  * Maintain a professional and authoritative tone.
+  * Present rules as requirements, not suggestions.
+* **Strict Adherence:** 
+  * The output MUST be ONLY the list of rules.
+  * NO introductory text before the list.
+  * NO concluding text after the list.
+  * ONLY the markdown list of rules with no other content.
 
-Generate the rules document based *only* on the user prompt's project context, adhering strictly to these instructions.
+Generate the rules based *only* on the user prompt's project context, adhering strictly to these instructions.
 `;
     return Result.ok(systemPrompt);
   }
