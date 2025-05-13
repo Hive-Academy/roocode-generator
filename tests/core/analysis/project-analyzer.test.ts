@@ -173,20 +173,6 @@ describe('ProjectAnalyzer Analysis Result', () => {
     expect(context.codeInsights[path.join('src/app.ts')]).toEqual(defaultCodeInsights);
     expect(context.codeInsights[path.join('src/utils.ts')]).toEqual(defaultCodeInsights);
 
-    // Verify structure.componentStructure defaults to {}
-    expect(context.structure.componentStructure).toEqual({});
-
-    // Verify dependencies defaults (overridden by package.json merge)
-    expect(context.dependencies.dependencies).toEqual({ express: '4.17.1' }); // From package.json
-    expect(context.dependencies.devDependencies).toEqual({});
-    expect(context.dependencies.peerDependencies).toEqual({});
-    // Internal dependencies might still come from LLM if not derived otherwise
-    expect(context.dependencies.internalDependencies).toEqual({ 'src/app.ts': ['./utils'] });
-
-    // Verify definedFunctions and definedClasses are NOT present (AC9)
-    expect(context.structure).not.toHaveProperty('definedFunctions');
-    expect(context.structure).not.toHaveProperty('definedClasses');
-
     // Verify other LLM-derived data is preserved (AC9) - Tech stack
     expect(context.techStack.languages).toEqual(['TypeScript']); // From LLM mock
   });
@@ -202,22 +188,12 @@ describe('ProjectAnalyzer Analysis Result', () => {
 
     // Check existing fields
     expect(context.techStack.languages).toEqual(['JavaScript']); // From LLM mock
-    expect(context.structure.rootDir).toBe(rootPath); // Should use the provided root path
 
     // Verify codeInsights is PRESENT and reflects the (empty) result from AstAnalysisService
     expect(context).toHaveProperty('codeInsights');
     expect(typeof context.codeInsights).toBe('object');
     expect(context.codeInsights[path.join('src/app.ts')]).toEqual(defaultCodeInsights);
     expect(context.codeInsights[path.join('src/utils.ts')]).toEqual(defaultCodeInsights);
-
-    // Verify definedFunctions and definedClasses are NOT present (AC9)
-    expect(context.structure).not.toHaveProperty('definedFunctions');
-    expect(context.structure).not.toHaveProperty('definedClasses');
-
-    // Verify other LLM-derived data is preserved (or defaults if missing) (AC9)
-    expect(context.dependencies.internalDependencies).toEqual({}); // Defaults correctly
-    // Check external dependencies derived from package.json mock (AC9)
-    expect(context.dependencies.dependencies).toEqual({ express: '4.17.1' }); // From package.json
   });
 
   it('should return error if LLM response generation fails', async () => {
@@ -282,8 +258,6 @@ describe('ProjectAnalyzer Analysis Result', () => {
 
     // Verify other fields are still populated (AC9)
     expect(context.techStack.languages).toEqual(['JavaScript']); // From LLM mock
-    expect(context.structure.rootDir).toBe(rootPath);
-    expect(context.dependencies.dependencies).toEqual({ express: '4.17.1' }); // From package.json mock
   });
 
   // --- New Test: Handling Unsupported Files (AC7) ---
@@ -371,7 +345,5 @@ describe('ProjectAnalyzer Analysis Result', () => {
 
     // Verify other fields are still populated (AC9)
     expect(context.techStack.languages).toEqual(['JavaScript']);
-    expect(context.structure.rootDir).toBe(rootPath);
-    expect(context.dependencies.dependencies).toEqual({ express: '4.17.1' });
   });
 });

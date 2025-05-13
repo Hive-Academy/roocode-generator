@@ -82,9 +82,6 @@ export const createMockProjectContext = (
     ...defaultContextBase,
     ...overrides, // Apply top-level overrides (like projectName)
     techStack: { ...defaultContextBase.techStack, ...overrides.techStack },
-    structure: { ...defaultContextBase.structure, ...overrides.structure },
-    dependencies: { ...defaultContextBase.dependencies, ...overrides.dependencies },
-    // Handle codeInsights separately below
   };
 
   // 2. Create the final codeInsights object (map part) for the mock context
@@ -118,11 +115,9 @@ export const createMockProjectContext = (
   // 4. Construct the final ProjectContext object
   const finalContext: ProjectContext = {
     techStack: mergedBase.techStack as ProjectContext['techStack'],
-    structure: mergedBase.structure as ProjectContext['structure'],
-    dependencies: mergedBase.dependencies as ProjectContext['dependencies'],
-    // Assign the object that has both map structure and extra properties.
-    // Type system sees it as CodeInsightsMap, runtime sees the extra props.
     codeInsights: finalCodeInsightsObjectWithExtras,
+    projectRootPath: '',
+    packageJson: {},
   };
 
   return finalContext;

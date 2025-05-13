@@ -45,20 +45,7 @@ describe('MemoryBankOrchestrator', () => {
       linters: [],
       packageManager: 'npm',
     },
-    structure: {
-      rootDir: '/test/base/dir',
-      sourceDir: 'src',
-      testDir: 'tests',
-      configFiles: [],
-      mainEntryPoints: [],
-      componentStructure: {},
-    },
-    dependencies: {
-      dependencies: {},
-      devDependencies: {},
-      peerDependencies: {},
-      internalDependencies: {},
-    },
+
     // codeInsights: {} // Default is {}, override if specific insights needed
   });
 

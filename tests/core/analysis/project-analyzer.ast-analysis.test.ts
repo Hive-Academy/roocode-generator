@@ -47,21 +47,6 @@ const mockBasicProjectContext: Partial<ProjectContext> = {
     linters: [],
     packageManager: '',
   },
-  structure: {
-    rootDir: '',
-    sourceDir: '',
-    testDir: '',
-    configFiles: [],
-    mainEntryPoints: [],
-    componentStructure: {},
-    directoryTree: [],
-  },
-  dependencies: {
-    dependencies: {},
-    devDependencies: {},
-    peerDependencies: {},
-    internalDependencies: {},
-  },
 };
 
 // Mocks
@@ -317,15 +302,6 @@ describe('ProjectAnalyzer - IAstAnalysisService Integration', () => {
     expect(Object.keys(context.codeInsights)).toEqual([file1RelativePath, file2RelativePath]);
     expect(context.codeInsights[file1RelativePath]).toEqual(mockCodeInsights1);
     expect(context.codeInsights[file2RelativePath]).toEqual(mockCodeInsights2);
-
-    // Verify structure.componentStructure defaults to {}
-    expect(context.structure.componentStructure).toEqual({});
-
-    // Verify dependencies defaults
-    expect(context.dependencies.dependencies).toEqual({});
-    expect(context.dependencies.devDependencies).toEqual({});
-    expect(context.dependencies.peerDependencies).toEqual({});
-    expect(context.dependencies.internalDependencies).toEqual({});
 
     // CRITICAL: Verify final context structure
     const contextKeys = Object.keys(context);

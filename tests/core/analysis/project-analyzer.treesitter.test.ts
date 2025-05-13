@@ -279,8 +279,6 @@ describe('ProjectAnalyzer TreeSitter Integration', () => {
 
     // Verify other parts of context are still present (using defaults from beforeEach)
     expect(finalContext.techStack).toBeDefined();
-    expect(finalContext.structure).toBeDefined();
-    expect(finalContext.dependencies).toBeDefined();
   });
 
   it('should log a warning if parsing fails and exclude failed file from context', async () => {
