@@ -238,7 +238,7 @@ const { systemPrompt, userPrompt } = promptResult.value;
 
 ### 3. Call LLM and Process Response
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Implement logic within the loop in `generateRooContent` to call the LLM with the generated prompts, handle the response, and process it using `contentProcessor.stripMarkdownCodeBlock`. Include basic error handling for the LLM call and processing.
 
@@ -305,7 +305,7 @@ const processedLLMRules = processedContentResult.value;
 
 ### 4. Concatenate Content and Write Output File
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Implement logic within the loop in `generateRooContent` to concatenate the `rooRulesContent`, `modeTemplateContent`, and `processedLLMRules`. Then, write the final combined content to the target output path (`.roo/system-prompt-[mode-name]`) using `this.fileOps.writeFile`.
 
