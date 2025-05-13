@@ -274,38 +274,57 @@ export class LLMConfigService implements ILLMConfigService {
       }
     }
 
-    const answer = await this.inquirer([
+    const prompts: any[] = [
       {
         type: 'number',
         name: 'temperature',
         message:
           'Set temperature for response creativity (0-1):\n  0: focused/deterministic\n  0.5: balanced\n  1: more creative',
         default: 0.1,
-        validate: (input: number) =>
-          (input >= 0 && input <= 1) || 'Temperature must be between 0 and 1',
-      },
-      {
-        type: 'number',
-        name: 'maxTokens',
-        message: contextWindow
-          ? `Set maximum tokens per response (suggested: ${suggestedMaxTokens}, max: ${contextWindow}):`
-          : `Set maximum tokens per response:`,
-        default: suggestedMaxTokens,
-        validate: (input: number) => {
-          if (contextWindow) {
-            return (
-              (input > 0 && input <= contextWindow) ||
-              `Maximum tokens must be between 1 and ${contextWindow}`
-            );
+
+        validate: (input: string | number) => {
+          // Allow string in case inquirer passes it as such before parsing
+          const num = parseFloat(String(input));
+          if (isNaN(num)) {
+            return 'Please enter a valid number.';
           }
-          return input > 0 || 'Maximum tokens must be greater than 0';
+          return (num >= 0 && num <= 1) || 'Temperature must be between 0 and 1';
         },
       },
-    ]);
+    ];
+
+    // Determine if maxTokens needs to be prompted
+    const promptForMaxTokens = contextWindow === 0;
+
+    if (promptForMaxTokens) {
+      // A warning about not being able to determine context window is already logged around line 270.
+      prompts.push({
+        type: 'number',
+        name: 'maxTokens',
+        message: `Set maximum tokens per response (e.g., 4096):`,
+        default: suggestedMaxTokens, // Fallback default
+        validate: (input: number) => input > 0 || 'Maximum tokens must be greater than 0',
+      });
+    } else {
+      // Log automatic setting if contextWindow is known
+      this.logger.info(
+        `Automatically setting maxTokens to ${suggestedMaxTokens} (25% of context window ${contextWindow}) for model ${modelName}.`
+      );
+    }
+
+    const answers = await this.inquirer(prompts);
+
+    let finalMaxTokens: number;
+
+    if (promptForMaxTokens) {
+      finalMaxTokens = answers.maxTokens as number;
+    } else {
+      finalMaxTokens = suggestedMaxTokens; // Auto-calculated value
+    }
 
     return {
-      temperature: answer.temperature as number,
-      maxTokens: answer.maxTokens as number,
+      temperature: answers.temperature as number,
+      maxTokens: finalMaxTokens,
     };
   }
 }
