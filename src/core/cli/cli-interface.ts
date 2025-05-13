@@ -34,16 +34,18 @@ export class CliInterface implements ICliInterface {
     const generateCommand = this.program.command('generate').description('Run code generators');
 
     // Add existing options for generate command
+
     generateCommand.option(
       '-g, --generators <type>', // Changed from <names...>
-      'Specify which type of content to generate within ai-magic (memory-bank, roo, cursor)'
+      'Specify which type of content to generate within ai-magic (roo, cursor)'
     ); // Removed .choices()
 
     // Adjust action handler to expect a single string or undefined and perform manual validation
     generateCommand.action((options: Record<string, any>) => {
       this.parsedArgs.command = 'generate';
       const generatorType = options.generators as string | undefined; // Expect single value
-      const allowedGeneratorTypes = ['memory-bank', 'roo', 'cursor'];
+
+      const allowedGeneratorTypes = ['roo', 'cursor'];
 
       if (generatorType && !allowedGeneratorTypes.includes(generatorType)) {
         // Handle invalid generator type - log error and prevent further action
