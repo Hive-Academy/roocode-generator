@@ -203,6 +203,7 @@ This strategy contributes to task completion and improves overall code quality.
 - **Dependency Injection (DI)**: The project uses a custom DI container (`src/core/di`) to manage service dependencies and improve testability.
 - **Result Type**: A custom `Result` type (`src/core/result`) is used throughout the codebase for explicit error handling, distinguishing between successful outcomes and failures.
 - **Project Analysis & `ProjectContext`**: Modules in `src/core/analysis` are responsible for collecting project files, analyzing tech stack, parsing ASTs, and preparing context for LLMs.
+
   - The central data structure produced is `ProjectContext` (defined in `src/core/analysis/types.ts`). Following TSK-020, this structure has been significantly minimized to optimize LLM payloads and reduce data redundancy.
   - **Minimal Structure**: It now primarily consists of `projectRootPath`, `techStack` (detailing technologies), `packageJson` (a minimal representation of `package.json` for external dependencies), and `codeInsights` (a map of file paths to their AST-derived summaries including functions, classes, and imports).
   - **Removed Components**: Explicit structures like `directoryTree` and `internalDependencyGraph` have been removed from `ProjectContext`.
@@ -213,6 +214,9 @@ This strategy contributes to task completion and improves overall code quality.
     - `getDependencyVersion(projectContext, packageName)`: Retrieves version for an external dependency from `packageJson`.
     - `getFilesByPattern(projectContext, patterns)`: Gets files matching glob patterns from `codeInsights` keys.
   - This approach relies more on `codeInsights` as the SSoT for file-level information and on utility functions or LLM inference for higher-level structural understanding.
+
+- **Generators**: Modules in `src/generators` implement the logic for creating specific types of workflow configuration files.
+- # **Memory Bank**: Modules in `src/memory-bank` handle the generation of contextual documentation or "memory" about the project for use by LLMs.
 - **Dedicated File Operation Helpers**: For complex file interactions within specific generators (like the Roo generator), dedicated helper classes (e.g., `RooFileOpsHelper` in `src/generators/roo-file-ops-helper.ts`) are used to encapsulate file system logic. This improves modularity and separation of concerns within the generator classes.
 - **Generators**: Modules in `src/generators` implement the logic for creating specific types of workflow configuration files.
 - **Memory Bank**: Modules in `src/memory-bank` handle the generation of contextual documentation or "memory" about the project for use by LLMs.
