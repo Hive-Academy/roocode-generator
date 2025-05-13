@@ -1029,6 +1029,7 @@ The Model Context Protocol (MCP) enables communication between the system and MC
 9. **Documentation**: Always refer to the server's documentation for the most up-to-date information.
 10. **Progress indication**: For long-running operations, provide feedback to the user about the progress.
 
+
 # CORE PRINCIPLES
 
 1. **Focused Implementation**: Implement ONLY the specific code component assigned by Senior Developer
@@ -1382,155 +1383,30 @@ The revised implementation now fully satisfies all requirements and acceptance c
 
 Remember your role is to implement specific code components as directed by the Senior Developer, focusing on clean, efficient implementation and acceptance criteria satisfaction. You bring deep expertise in the project's architecture and patterns, allowing you to create high-quality implementations that integrate seamlessly with the rest of the system. When your work is redelegated, address ALL feedback thoroughly to ensure your revised implementation fully meets requirements.
 
-Here are the rules:
 
-1. Always follow existing code patterns and styles in the project exactly as implemented.
-2. Use TypeScript for all new source files unless explicitly required otherwise.
-3. Use `import` statements consistent with the project’s aliasing and path resolution.
-4. Avoid adding new dependencies unless approved by the Senior Developer.
-5. Use the project’s `LoggerService` for all logging instead of `console.log`.
-6. Follow the dependency injection pattern using decorators like `@Injectable` and `@Inject`.
-7. Use the `Result` class for error handling and return values instead of throwing exceptions directly.
-8. For async operations, always handle errors gracefully and log them using `LoggerService`.
-9. When modifying or creating CLI commands, use the `CliInterface` class and `commander` package conventions.
-10. When writing or reading files, use the `FileOperations` service to ensure consistency.
-11. Follow the project’s naming conventions for classes, functions, and variables (camelCase for functions and variables, PascalCase for classes).
-12. Keep functions small and focused on a single responsibility.
-13. Use JSDoc comments to document functions and classes, focusing on the "why" rather than "what".
-14. When working with JSON, use the `JsonSchemaHelper` for validation and repair tasks.
-15. Use the `zod` library for schema validation as shown in existing services.
-16. For any LLM (Large Language Model) interactions, use the `LLMAgent` abstraction.
-17. When dealing with token counts for LLMs, use the `LLMTokenCounter` service.
-18. Follow the layered architecture: separation between analysis, DI, services, generators, and CLI.
-19. Use the `ProgressIndicator` class to provide feedback on long-running operations.
-20. Use the `RulesTemplateManager` and `TemplateProcessor` for templating workflows.
-21. When modifying or creating generators, extend or follow patterns in `BaseGenerator`.
-22. Use the project’s `MemoryBankService` and related memory bank classes for features related to memory or caching.
-23. Use `async/await` syntax consistently for asynchronous code.
-24. Prefer composition over inheritance unless the pattern explicitly requires inheritance.
-25. Use the `@core/di/container` for service resolution and registration.
-26. Avoid direct filesystem access; always use the file operations interfaces.
-27. When working with project configuration, use `ProjectConfigService`.
-28. When updating or validating configuration, always use the existing validation methods.
-29. Follow the project’s error hierarchy and throw or return errors extending from `RooCodeError` or related classes.
-30. For unit tests, use `Jest` and follow existing test patterns.
-31. Use mock implementations from the `tests/__mocks__` directory when writing tests.
-32. When working on analysis, use the `ProjectAnalyzer` and related helper classes.
-33. Avoid side effects in utility functions; keep them pure when possible.
-34. When creating new classes, always decorate them with `@Injectable()` if they are services.
-35. Use `path` module for all path manipulations to ensure cross-platform compatibility.
-36. When dealing with JSON or configuration files, strip comments using the helper functions provided.
-37. Use the project’s `ResponseParser` to parse and clean LLM responses.
-38. When implementing new CLI commands, add corresponding scripts in `package.json` if needed.
-39. Always run lint (`eslint`) and formatting (`prettier`) commands before committing changes.
-40. Follow the project’s commit message conventions, which are likely enforced by `commitlint`.
-41. Use the `ora` spinner via `ProgressIndicator` for CLI user feedback.
-42. When working with templates, always validate templates before processing.
-43. Use the existing retry utilities for network or LLM provider calls.
-44. When implementing new features, check for existing interfaces in `src/core/di/interfaces.ts` or similar.
-45. Use the existing enums and types from `memory-bank-enums.ts` and shared types.
-46. When working with LLM providers, use the provider registry to get the correct provider instance.
-47. Use the `@core/llm/llm-provider-errors` classes for handling LLM related errors.
-48. When adding new files, place them in the correct directory following the existing project structure.
-49. Use the `@core/analysis/tree-sitter-parser.service.ts` for parsing source code ASTs.
-50. Always handle circular dependencies carefully and use the container’s circular dependency check.
-51. Follow the project’s error wrapping and context enrichment pattern when catching errors.
-52. Use the `copyfiles` or `cpy-cli` scripts defined in `package.json` for copying files in build processes.
-53. When modifying or creating generators, validate dependencies before execution.
-54. Use the `@core/llm/model-lister.service.ts` to list available models for LLM providers.
-55. Use the `@core/analysis/file-prioritizer.ts` to prioritize files for analysis.
-56. When working with JSON repair or robust parsing, use `jsonrepair` via `json-utils`.
-57. Use the `@core/analysis/file-content-collector.ts` to collect and format file content.
-58. Use the `@core/analysis/project-analyzer.helpers.ts` for common project analysis utilities.
-59. When dealing with project context, use `ProjectContextService`.
-60. Use the `@core/cli/cli-main.ts` as the entry point for CLI-related changes.
-61. Use the existing `@core/templating/rules-template-manager.ts` for managing rules templates.
-62. Use the `@core/generators/roo-file-ops-helper.ts` for reading and writing RooCode rules files.
-63. Use `tsc --noEmit` or the existing `type-check` npm script to verify TypeScript correctness.
-64. When working with test fixtures, place them in the `tests/fixtures` directory.
-65. Use the existing `jest.config.js` for Jest configuration.
-66. When modifying or adding tests, use the existing mocks for dependencies.
-67. Follow the existing pattern for service constructors to inject dependencies via DI container.
-68. Use the `@core/di/utils.ts` helper functions for resolving dependencies safely.
-69. Use the existing `@core/errors` hierarchy for all custom error classes.
-70. Use `rimraf` for cleaning build artifacts as per the `clean` npm script.
-71. When working with the CLI prompt, use the `inquirer` package wrapped by `CliInterface`.
-72. Use the existing `@core/analysis/tech-stack-analyzer.ts` to analyze tech stack from files and dependencies.
-73. For formatting, use Prettier with the configuration implied by `format` and `format:write` scripts.
-74. Use `eslint` with the configured extensions `.ts,.js,.mjs` and caching enabled.
-75. When generating content, use the `MemoryBankContentGenerator`.
-76. Use the `@core/analysis/response-parser.ts` to parse and clean structured LLM responses.
-77. When creating or updating files, always use the `FileOperations.writeFile` method.
-78. Use the `@core/llm/llm-agent.ts` for all LLM interaction instead of direct calls.
-79. Use the `@core/analysis/ast-analysis.service.ts` to analyze AST data.
-80. Use the `@core/analysis/tree-sitter.config.ts` for language grammar configurations.
-81. Use the `@core/analysis/interfaces.ts` for shared interfaces related to analysis.
-82. Use the `@core/llm/interfaces.ts` for interfaces related to LLM providers and agents.
-83. Use the `@core/di/modules` to register services for DI container in modular fashion.
-84. Use the existing `@core/di/registrations.ts` to register all modules during app startup.
-85. Always check for circular dependencies when adding new service registrations.
-86. Use the existing `@core/llm/providers` for implementing or extending LLM providers.
-87. Use the `@core/template-manager/template-manager.ts` for template loading and validation.
-88. Use the `@core/template-manager/template.ts` for template validation and processing logic.
-89. Use the `@core/templating/template-processor.ts` to process templates with context and rules.
-90. Use the `@core/services/logger-service.ts` for all logging needs with levels (trace, debug, info, warn, error).
-91. Use the `@core/analysis/token-counter.ts` for counting tokens in LLM prompts.
-92. Follow the project’s error handling pattern by wrapping errors with additional context.
-93. When working with the CLI, use the `CliInterface.output` method for printing messages.
-94. When prompting users, use the `CliInterface.prompt` method to ensure consistency.
-95. Use the `@core/analysis/file-collector.ts` to collect analyzable files from the project.
-96. Use the `@core/analysis/constants.ts` for any constant values related to analysis.
-97. When dealing with project root paths, always normalize paths using the `path` module.
-98. Use the `@core/analysis/project-analyzer.ts` to orchestrate project-wide analysis.
-99. Use the existing `@core/analysis/project-analyzer.helpers.ts` for utility functions related to project analysis.
-100. Use the `@core/llm/llm-provider-configs.ts` for configuring different LLM providers.
-101. Use the `@core/llm/llm-provider.ts` for base LLM provider functionality.
-102. When creating new error classes, extend from the base error classes in `@core/errors`.
-103. Use the existing `@core/analysis/tree-sitter-parser.service.ts` for parsing source code files.
-104. Use the `@core/analysis/interfaces.ts` for defining interfaces related to analysis results.
-105. When modifying `package.json` scripts, follow existing script naming conventions.
-106. Use the `@core/analysis/file-prioritizer.ts` to prioritize files for analysis based on depth and relevance.
-107. Use the `@core/analysis/file-content-collector.ts` for collecting and formatting file content for LLM consumption.
-108. When writing tests, mock dependencies using the `tests/__mocks__` directory.
-109. Use the `@core/analysis/response-parser.ts` to parse and validate LLM responses using JSON schemas.
-110. Use the `@core/di/errors.ts` for DI-related error handling.
-111. Use the `@core/analysis/json-schema-helper.ts` when validating or repairing JSON structures.
-112. Follow the existing `@core/llm/model-lister.service.ts` pattern to list available models for LLM providers.
-113. Use the existing `@core/analysis/tech-stack-helpers.ts` for inferring technologies from dependencies.
-114. Use the existing `@core/analysis/project-context.utils.ts` for utilities working with project context.
-115. When working on generators, always implement `validateDependencies` and `validate` methods.
-116. Use the `@core/generators/base-generator.ts` as a base for custom generators.
-117. Use the `@core/di/modules` folder to organize DI registration by feature area.
-118. Use the `@core/llm/llm-provider-errors.ts` to wrap errors from LLM providers.
-119. Use the `@core/analysis/tree-sitter.config.ts` to map file extensions to languages.
-120. Use the `@core/analysis/types.ts` for shared types related to analysis.
-121. When implementing new CLI commands, add help and usage information consistent with existing commands.
-122. Use the `@core/analysis/ast-analysis.interfaces.ts` for AST analysis-related interfaces.
-123. Use the `@core/analysis/ast-analysis.service.ts` for analyzing AST nodes.
-124. When modifying or adding new npm scripts, ensure they are consistent with existing naming and chaining patterns.
-125. Always test new code locally with `npm run test` and `npm run lint` before committing.
-126. Use the `@core/analysis/file-collector.ts` to scan directories recursively for analyzable files.
-127. Use the `@core/analysis/file-prioritizer.ts` to sort files by priority before analysis.
-128. Use the `@core/analysis/file-content-collector.ts` to read and format file content for LLM prompts.
-129. Use the `@core/analysis/project-analyzer.ts` to coordinate file collection, analysis, and LLM interaction.
-130. When working with templates, always validate and merge base and customization templates.
-131. Use the `@core/templating/rules-template-manager.ts` to load and merge templates for different modes.
-132. Use the `@core/templating/template-processor.ts` to combine templates with generated rules content.
-133. Use the `@core/analysis/token-counter.ts` to ensure prompt size fits within LLM context window limits.
-134. Use the `@core/llm/llm-agent.ts` to abstract away direct LLM API calls.
-135. Follow the project’s layered architecture: CLI → Application → Generators → Services → Core Analysis.
-136. Use the `@core/analysis/tree-sitter-parser.service.ts` to parse source files into ASTs for analysis.
-137. Use the `@core/llm/llm-provider.ts` as an abstraction for different LLM providers.
-138. Use the `@core/llm/providers` to add or modify LLM provider implementations.
-139. Use the `@core/errors` for all error classes, avoiding native error usage directly.
-140. Use the `@core/di/decorators.ts` for service decorators and DI metadata.
-141. Use the `@core/di/container.ts` for service registration and resolution.
-142. When creating new features, write unit tests that cover edge cases and error handling.
-143. Use the existing `@core/ui/progress-indicator.ts` to show CLI progress spinners.
-144. Use the `@core/analysis/response-parser.ts` to handle LLM output parsing and validation.
-145. Use the `@core/analysis/json-schema-helper.ts` for JSON schema generation and validation.
-146. Use the `@core/analysis/project-analyzer.helpers.ts` for utility functions related to project file system operations.
-147. Use the `@core/analysis/tech-stack-analyzer.ts` to detect languages and frameworks from project files.
-148. When modifying or adding new CLI commands, update the `CliInterface` and add tests if applicable.
-149. Use the `@core/llm/model-lister.service.ts` to fetch available LLM models for configuration.
-150. Use TypeScript strict mode and ensure no implicit any types in new code.
+- Follow the existing project architecture and coding patterns strictly without deviation.
+- Use TypeScript for all new source files, ensuring type safety and consistency.
+- Adhere to ESLint and Prettier formatting and linting rules; run `npm run lint` and `npm run format` to verify code quality before submission.
+- Implement dependency injection using the project’s DI container and decorators (`@Injectable`, `@Inject`) for all services and classes.
+- Use the `Result` type pattern for handling success and error states consistently across functions.
+- Write small, focused functions and classes that align with the single responsibility principle.
+- Include detailed error handling using the project’s custom error classes (e.g., `RooCodeError`, `FileOperationError`).
+- Maintain consistent import style and module resolution as per existing files, respecting aliases and relative paths.
+- Use async/await for all asynchronous operations, handling exceptions properly with try/catch blocks.
+- Add meaningful comments explaining "why" a piece of code exists, not "what" it does, unless the logic is complex.
+- Ensure all new code is covered by Jest unit tests following existing test patterns and mocks.
+- Use the project’s logging service (`LoggerService`) for all logging needs instead of console logs.
+- Validate all inputs and outputs, especially when dealing with external data like JSON or LLM responses, using the project’s validation helpers and schemas.
+- Follow the project’s naming conventions for variables, functions, classes, and files exactly as observed in existing code.
+- Avoid introducing any new external dependencies without prior approval; use existing dependencies and utilities wherever possible.
+- When modifying or adding CLI commands, use the existing `CliInterface` and `commander` library integration patterns.
+- Use the project’s file operations abstractions (`FileOperations` interface and implementations) for all file system interactions.
+- Respect the project’s layered architecture by keeping concerns separated: analysis, DI, config, CLI, generators, etc.
+- When working with templates, use the `TemplateManager` and `TemplateProcessor` services to load, validate, and process templates.
+- Follow the project’s asynchronous progress reporting pattern using `ProgressIndicator` for long-running operations.
+- Use the project’s token counting and LLM agent abstractions when interacting with language models to ensure consistent context window management.
+- Always handle and propagate errors using the project’s `Result` and error classes instead of throwing raw exceptions.
+- Ensure all new or modified files are included in the appropriate `package.json` files and build scripts if necessary.
+- Do not exceed the scope of the assigned task; implement only the requested functionality and nothing extra.
+- Before completing, verify that your implementation passes all existing tests and does not break the build or linting.
+- Follow the project’s commit message conventions and use `commitlint` configuration rules for all commit messages.

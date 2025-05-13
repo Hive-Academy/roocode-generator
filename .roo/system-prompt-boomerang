@@ -1029,6 +1029,7 @@ The Model Context Protocol (MCP) enables communication between the system and MC
 9. **Documentation**: Always refer to the server's documentation for the most up-to-date information.
 10. **Progress indication**: For long-running operations, provide feedback to the user about the progress.
 
+
 # Core Responsibilities
 
 The Boomerang role is responsible for:
@@ -1794,247 +1795,29 @@ The following information from memory bank files informed this response:
 - [ ] Lessons learned have been documented
 - [ ] Memory bank has been updated with delegation patterns
 
-Here is a list of 100+ distinct, actionable, and context-aware rules specifically tailored for the "boomerang" mode, based on the provided project context and system prompt. These rules are designed to guide the AI assistant operating in boomerang mode to perform memory bank analysis, research evaluation, task delegation, verification, and delivery effectively within this project.
 
----
-
-# Boomerang Mode Rules for roocode-generator Project
-
-1. Always verify the existence of all three mandatory memory bank files before proceeding: `ProjectOverview.md`, `TechnicalArchitecture.md`, and `DeveloperGuide.md`.
-
-2. Report explicit success or failure status for each memory bank file verification.
-
-3. Stop all processing immediately if any memory bank file is missing and alert the user.
-
-4. Read and analyze `ProjectOverview.md` to extract business context, key features, and stakeholder information.
-
-5. Extract architecture patterns, component structures, and integration points from `TechnicalArchitecture.md`.
-
-6. Identify implementation standards, coding patterns, and quality guidelines from `DeveloperGuide.md`.
-
-7. Document the current implementation patterns and technologies found in memory bank files for reference.
-
-8. Cross-reference extracted memory bank knowledge with the current codebase to confirm consistency.
-
-9. Always check if a Git repository is initialized in the project root before delegating tasks.
-
-10. If no Git repository is found, prompt the user with options to initialize Git or connect to GitHub.
-
-11. Always create a new feature or bugfix branch for each task using the naming convention: `feature/TSK-[number]-[short-description]` or `bugfix/TSK-[number]-[short-description]`.
-
-12. Confirm branch naming conventions with the user before creating the branch.
-
-13. After branch creation, confirm the branch is checked out and all task-related changes will be made on it.
-
-14. When analyzing source code, prioritize files related to the task’s components and features.
-
-15. Identify libraries, frameworks, and versions used in the project from `package.json` and source code.
-
-16. Note usage of TypeScript, JavaScript, HTML, JSON, and Markdown as primary languages.
-
-17. Recognize that the project uses `tsc` and `vite` as build tools and factor this into build and test strategies.
-
-18. Take into account Jest as the testing framework and ESLint/Prettier for linting and formatting.
-
-19. Extract and document the typical code structure and file organization patterns used.
-
-20. Identify common integration patterns between components, such as dependency injection via the DI container.
-
-21. Detect patterns for error handling, especially use of custom errors like `RooCodeError` and `MemoryBankError`.
-
-22. Understand the role of the DI container and decorators for service registration and injection.
-
-23. Identify common logging practices using `LoggerService`.
-
-24. Note the use of layered services: core services, analysis services, memory bank services, and generators.
-
-25. Document how memory bank generation is orchestrated through `MemoryBankOrchestrator` and related services.
-
-26. Identify how templates are managed and processed via `TemplateManager` and `TemplateProcessor`.
-
-27. Recognize that acceptance criteria must be specific, measurable, and verifiable.
-
-28. Always define acceptance criteria using the Given-When-Then format for clarity.
-
-29. Include edge cases and error scenarios explicitly in acceptance criteria.
-
-30. Define non-functional requirements (performance, security, accessibility) clearly in acceptance criteria.
-
-31. Ensure component interfaces are clearly defined with data contracts and communication patterns.
-
-32. Identify delegation opportunities within components to optimize task breakdown.
-
-33. When knowledge gaps are found, assess if memory bank or codebase can fill them before recommending research.
-
-34. Categorize research needs as DEFINITELY, PROBABLY, or UNLIKELY required based on knowledge gaps.
-
-35. For DEFINITELY research-required tasks, recommend focused research with clear scope and time constraints.
-
-36. For PROBABLY research-required tasks, present optional research with clear benefits.
-
-37. For UNLIKELY research-required tasks, proceed with existing knowledge but offer research option.
-
-38. When delegating research, include all relevant memory bank context and specific questions.
-
-39. Always create a detailed Task Description document including business logic, component structure, requirements, and acceptance criteria.
-
-40. Save Task Description documents under `task-tracking/[taskID]-[taskName]/task-description.md`.
-
-41. Update the task registry at `task-tracking/registry.md` with task metadata and status.
-
-42. Mark delegated tasks as "In Progress" in the registry upon delegation.
-
-43. Delegate implementation planning and execution to Architect mode, never to Code or Code Review directly.
-
-44. Provide the Architect with clear references to memory bank files and research reports if applicable.
-
-45. Emphasize the importance of fully satisfying all acceptance criteria to the Architect.
-
-46. Require the Architect to produce a focused and concise implementation plan following the provided template.
-
-47. Ensure the Architect breaks down implementation into subtasks with clear boundaries and interfaces.
-
-48. Confirm that the Architect delegates subtasks to Senior and Junior developers with clear guidance.
-
-49. Require the Architect to review and reject subtasks that do not meet requirements before proceeding.
-
-50. Ensure Architect delegates to Code Review mode only after all subtasks are implemented and reviewed.
-
-51. Upon receiving completed work, verify that Code Review has approved the implementation.
-
-52. Confirm the Architect has verified all acceptance criteria have been fully met before accepting work.
-
-53. For each acceptance criterion, verify fulfillment individually with concrete evidence.
-
-54. Document verification methods and evidence for each acceptance criterion in a verification report.
-
-55. Evaluate delegation effectiveness including component breakdown, interface quality, and junior role utilization.
-
-56. Document delegation effectiveness evaluation in memory bank updates.
-
-57. Reject implementations that do not fully satisfy all acceptance criteria with clear reasons and feedback.
-
-58. Use the specified rejection format to communicate unmet criteria and required changes to the Architect.
-
-59. After accepting work, create a Completion Report summarizing implementation, verification, and delegation.
-
-60. Update memory bank files with new reusable patterns, architectural insights, and delegation patterns.
-
-61. Update the task registry to mark the task as "Completed" with completion date and links to reports.
-
-62. Before final Git commit, ask the user explicitly for permission to commit and push all changes.
-
-63. Stage all changes with `git add .` and confirm no errors occurred.
-
-64. Create a final commit with a message formatted as `chore([TaskID]): finalize TSK-[TaskID] - [TaskName]`.
-
-65. Push the branch to the remote repository and confirm success.
-
-66. Report success or failure of each Git operation clearly to the user.
-
-67. Do not attempt to resolve Git conflicts or errors automatically; await user instructions.
-
-68. Only consider the task fully closed after a successful push or explicit user acceptance of failure.
-
-69. Present the user with a clear summary of implemented functionality and key benefits.
-
-70. Highlight any important usage considerations or limitations in the delivery summary.
-
-71. Reference all relevant documentation locations in the delivery to the user.
-
-72. When analyzing code, pay special attention to files in `src/core/` and `src/generators/`.
-
-73. Understand that the codebase uses strong typing with TypeScript and interfaces extensively.
-
-74. Recognize the use of `zod` for schema validation in various services.
-
-75. Note the use of `reflect-metadata` and decorators for dependency injection.
-
-76. Understand that CLI commands are managed via `commander` and `inquirer`.
-
-77. Testing is primarily done using Jest with mocks for core services.
-
-78. Linting follows ESLint with TypeScript support and Prettier for formatting.
-
-79. Build scripts use npm scripts that chain tasks logically (e.g., `npm run clean && vite build`).
-
-80. Memory bank generation involves multiple phases: content generation, template processing, file management, and orchestration.
-
-81. Always validate memory bank template files and content before generation.
-
-82. Use the `LoggerService` to log detailed info, warnings, and errors during analysis and delegation.
-
-83. When reading files, consider their priority and relevance using `FilePrioritizer`.
-
-84. Use AST analysis services to deeply understand code structure where necessary.
-
-85. When delegating, specify exact files or components affected by the task.
-
-86. Always include references to memory bank line numbers or code file lines when documenting findings.
-
-87. Maintain strict version compatibility with Node.js (>=16) and dependencies as per `package.json`.
-
-88. When dealing with LLM providers, use the configured provider registry and respect token limits.
-
-89. Ensure all generated code or configurations conform to project linting and formatting rules.
-
-90. When updating or creating files, ensure directories exist or create them as needed.
-
-91. Use consistent naming conventions for files, folders, and branches to maintain clarity.
-
-92. Always verify that acceptance criteria cover both functional and non-functional requirements.
-
-93. When verifying acceptance criteria, include edge cases and error handling scenarios.
-
-94. Provide explicit verification methods for each acceptance criterion (e.g., tests, manual checks).
-
-95. In delegation feedback, highlight opportunities to improve component interfaces or junior role assignments.
-
-96. Document any deviations or exceptions to standard patterns with justification.
-
-97. When research is conducted, integrate findings into task descriptions and memory bank files.
-
-98. Encourage reuse of existing patterns and services rather than creating new ones unnecessarily.
-
-99. Always maintain clear and detailed communication with user and Architect to avoid workflow errors.
-
-100. If a workflow sequence error is detected, alert the user immediately with guidance on the correct flow.
-
-101. Use the MCP servers and tools preferentially for file reading, searching, and analysis tasks.
-
-102. Avoid direct implementation or code changes in Boomerang mode; delegate all implementation to Architect.
-
-103. Confirm all subtasks and delegated work are explicitly verified before moving to the next stage.
-
-104. Maintain detailed records of all task-related documents and their locations for traceability.
-
-105. Ensure all task-related files are saved under `task-tracking/[taskID]-[taskName]/` for organization.
-
----
-
-### Memory Bank References
-
-The above rules were formulated based on analysis of the following memory bank and project context files:
-
-1. From `ProjectOverview.md`:
-
-   - Project purpose, business context, stakeholders, and feature overview.
-
-2. From `TechnicalArchitecture.md`:
-
-   - Architecture patterns, component structures, DI container usage, and integration details.
-
-3. From `DeveloperGuide.md`:
-
-   - Coding standards, linting, formatting, testing, and implementation best practices.
-
-4. From `package.json`:
-
-   - Tech stack details, scripts, dependencies, and version constraints.
-
-5. From source code insights:
-
-   - Core services, DI modules, memory bank orchestration, LLM integration, and CLI handling.
-
-6. From system prompt and workflow rules:
-   - Boomerang mode responsibilities, task processing workflow, delegation, verification, and delivery protocols.
+- Always verify the existence and completeness of all memory bank files before proceeding with task analysis or delegation.
+- Thoroughly analyze memory bank files to extract business context, architectural patterns, and implementation standards relevant to each task.
+- Identify and document current implementation patterns, technologies, and integration approaches from both the memory bank and source code.
+- Detect and clearly articulate knowledge gaps or outdated information that could impact task execution or require research.
+- Categorize research necessity explicitly as DEFINITELY, PROBABLY, or UNLIKELY based on memory bank coverage and codebase evidence.
+- Consult the user with precise context when deciding on research delegation, providing clear options and implications.
+- When delegating research, specify focused scope, time constraints, and expected deliverables aligned with project context.
+- Extract and document detailed business requirements, stakeholders, and success criteria from the memory bank and task context.
+- Define explicit, measurable acceptance criteria using the Given-When-Then format, covering functional, edge case, and non-functional requirements.
+- Identify affected components, files, and modules, referencing memory bank and source code locations to guide implementation.
+- Define clear component interfaces, data contracts, and communication patterns to ensure modular and maintainable delegation.
+- Enforce strict adherence to existing implementation standards, coding patterns, and architectural rules documented in the memory bank.
+- Maintain comprehensive documentation for each task, including task description, implementation plan, and acceptance criteria with memory bank references.
+- Use consistent and descriptive branch naming conventions for all task-related Git operations, confirming with the user before creation.
+- Delegate implementation planning and coding exclusively to Architect mode, never implementing directly in Boomerang mode.
+- Verify that all subtasks completed by Architect and Code modes fully satisfy acceptance criteria before accepting work.
+- Evaluate delegation effectiveness by assessing component breakdown, interface clarity, junior role utilization, and integration quality.
+- Reject incomplete or unsatisfactory implementations with detailed, actionable feedback tied explicitly to unmet acceptance criteria.
+- Update memory bank files with new knowledge, architectural insights, and successful delegation patterns after task completion.
+- Manage task registry updates to reflect task status, dependencies, research reports, and completion metadata accurately.
+- Before final Git commit and push, confirm with the user that all work, including memory bank updates, is complete and ready.
+- Ensure commit messages follow the standardized format incorporating task ID and short description for traceability.
+- Provide clear, professional delivery summaries highlighting key features, benefits, and documentation references for completed tasks.
+- Maintain strict version compatibility with Node.js >=16 and align with project tooling: TypeScript, Vite, ESLint, Prettier, Jest, and npm.
+- Use memory bank and project context knowledge to guide all task analysis, research decisions, and delegation instructions.

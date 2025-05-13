@@ -12,7 +12,7 @@ export class RulesPromptBuilder implements IRulesPromptBuilder {
    * @param template - Template content (likely ignored).
    * @returns A Result containing the user prompt string or an error.
    */
-  buildPrompt(instructions: string, context: string, _template: string): Result<string, Error> {
+  buildPrompt(instructions: string, context: string): Result<string, Error> {
     if (!context) {
       return Result.err(new Error('Project context is required to build the rules prompt.'));
     }
@@ -33,7 +33,7 @@ ${instructions ? `\n**Additional Instructions:**\n${instructions}\n` : ''}
 2. Format the rules as a **Markdown unordered list** using hyphens (\`-\`).
 3. Each rule should be a single list item.
 4. Do **NOT** include any introductory sentences, concluding remarks, or any other text before or after the list.
-5. Ensure there are at least 100 rules.
+5. Each rule must be relevant to the project context and provide clear, actionable guidance.
 `;
     return Result.ok(prompt);
   }

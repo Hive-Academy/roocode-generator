@@ -1029,6 +1029,7 @@ The Model Context Protocol (MCP) enables communication between the system and MC
 9. **Documentation**: Always refer to the server's documentation for the most up-to-date information.
 10. **Progress indication**: For long-running operations, provide feedback to the user about the progress.
 
+
 # CORE WORKFLOW
 
 The Architect role MUST follow this precise end-to-end workflow:
@@ -1745,225 +1746,34 @@ For each completed implementation, document:
 
 Document these learnings in the final implementation report to improve future work.
 
-### 1-10: General Project Structure and Style Rules
 
-1. Always align new code with existing naming conventions found in `src/core` for consistency.
-2. Follow the established TypeScript strict typing patterns throughout all new code.
-3. Use `zod` schemas for runtime validation where applicable, consistent with `src/core/analysis/json-schema-helper.ts`.
-4. Adhere strictly to ESLint and Prettier formatting rules as configured in the project.
-5. Maintain the single responsibility principle in all new classes and services.
-6. Prefer dependency injection via decorators (`@Injectable`, `@Inject`) for all new services.
-7. Add detailed JSDoc comments for all public classes and methods.
-8. Avoid direct file system calls; use abstractions from `src/core/file-operations/file-operations.ts`.
-9. Use the existing `LoggerService` for all logging instead of `console.log`.
-10. Ensure all asynchronous operations use async/await syntax with proper error handling.
-
----
-
-### 11-20: Dependency Injection and Module Rules
-
-11. Register all new services in the appropriate DI module under `src/core/di/modules/`.
-12. Avoid circular dependencies by carefully designing service interactions and using DI container checks.
-13. Use singleton lifetime for stateless services unless a factory or transient lifetime is explicitly needed.
-14. Use `@core/di/container` utilities for resolving dependencies in constructors.
-15. Validate DI registrations during container initialization to catch errors early.
-16. Use `@Injectable()` decorator on all injectable classes.
-17. Avoid creating service instances manually; always resolve from the DI container.
-18. Group related services logically within modules (e.g., analysis-related services in `analysis-module.ts`).
-19. Avoid mixing UI concerns with core logic; keep UI components separate.
-20. Use `@Inject()` for explicit token injection when constructor parameter names are ambiguous.
-
----
-
-### 21-30: File and Directory Handling Rules
-
-21. Use `FileOperations` abstraction for all file reads/writes.
-22. Always validate paths using `FileOperations.validatePath()` before accessing files.
-23. Use asynchronous file operations exclusively.
-24. When creating directories, use `FileOperations.createDirectory()` to ensure existence.
-25. Avoid hardcoding file paths; use path utilities from `path` module.
-26. Use relative paths anchored at the project root where possible.
-27. Skip non-analyzable files using logic from `ProjectFileCollector.isAnalyzableFile`.
-28. For large file collections, prioritize files using `FilePrioritizer` logic.
-29. Always handle file operation errors with specific error classes (`FileOperationError` etc.).
-30. Avoid reading entire large files into memory; stream or chunk if needed.
-
----
-
-### 31-40: AST and Code Analysis Rules
-
-31. Use `TreeSitterParserService` for parsing source files to ASTs.
-32. Limit AST node traversal depth to avoid performance degradation.
-33. Reuse cached parsers for the same language to improve efficiency.
-34. Use `AstAnalysisService` to analyze ASTs and build prompts.
-35. Avoid manual string parsing of source code; rely on AST analysis.
-36. Support JavaScript and TypeScript ASTs with existing tree-sitter grammars.
-37. Use `src/core/analysis/types.ts` for AST-related type definitions.
-38. Use `zod` schemas to validate AST analysis results.
-39. Log detailed debug info when AST parsing fails.
-40. Integrate AST analysis results into project context for downstream processing.
-
----
-
-### 41-50: LLM and Prompt Handling Rules
-
-41. Use `LLMAgent` as the single interface for all LLM interactions.
-42. Use structured completion methods (`getStructuredCompletion`) with JSON schemas for predictable outputs.
-43. Always count tokens before sending prompts using `LLMTokenCounter`.
-44. Limit prompt size to model context window to avoid truncation.
-45. Use system and user prompts separation consistently.
-46. Use existing LLM provider configs for OpenAI, Anthropic, GoogleGenAI, OpenRouter.
-47. Handle LLM errors via `LLMProviderError` and log appropriately.
-48. Cache model context window sizes per provider to optimize token usage.
-49. Build prompts incrementally with contextual awareness from project analysis.
-50. Use `RulesPromptBuilder` and `PromptBuilder` for assembling prompts from rules and project context.
-
----
-
-### 51-60: Template and Rule Generation Rules
-
-51. Use `TemplateManager` to load and validate templates before processing.
-52. Process templates with `TemplateProcessor` to merge user context and base templates.
-53. Validate all templates with `TemplateValidationError` catching.
-54. Follow the RooCode rules syntax and structure strictly in generated files.
-55. Use `RulesTemplateManager` for mode-specific rules management.
-56. Merge customizations carefully to avoid overwriting base template sections.
-57. Save generated rules using `RulesFileManager` with atomic write operations.
-58. Maintain separation between base templates and mode customizations.
-59. Use Markdown code blocks consistently for embedding code snippets in rules.
-60. Validate generated rules with automated tests before integration.
-
----
-
-### 61-70: CLI and Command Handling Rules
-
-61. Use `CliInterface` class for all CLI command parsing and prompting.
-62. Follow commander.js patterns for defining commands and options.
-63. Provide clear, user-friendly error messages on CLI failures.
-64. Support interactive editing of LLM config via CLI prompts.
-65. Use environment variables and `.env` for configuration management.
-66. Provide version and help commands consistent with npm package.json.
-67. Validate CLI input thoroughly before execution.
-68. Use progress indicators (`ProgressIndicator`) for long-running CLI tasks.
-69. Log CLI command start and completion for auditability.
-70. Support watch mode for tests and linting as per package.json scripts.
-
----
-
-### 71-80: Testing and Quality Assurance Rules
-
-71. Write Jest unit tests for all new services and utilities.
-72. Mock external dependencies using Jest mocks in `tests/__mocks__`.
-73. Test edge cases for file operations and error handling.
-74. Use snapshot testing for generated content where appropriate.
-75. Ensure 100% code coverage on critical core modules.
-76. Run lint and format checks in CI pipelines using `npm run lint` and `npm run format`.
-77. Validate JSON schemas in tests for all structured data.
-78. Test LLM prompt generation logic with mocked LLM responses.
-79. Use `jest-mock-extended` for strongly typed mocks.
-80. Automate test runs with watch mode during development.
-
----
-
-### 81-90: Error Handling and Logging Rules
-
-81. Use specific error classes for different failure domains (e.g., `FileOperationError`, `TemplateError`).
-82. Wrap all external calls with try/catch and enrich errors with context.
-83. Log errors with stack traces and relevant metadata.
-84. Avoid swallowing errors silently; always propagate up or log.
-85. Provide user-friendly error messages for CLI output.
-86. Use `LoggerService` levels appropriately: trace, debug, info, warn, error.
-87. Fail fast on critical errors to prevent corrupted state.
-88. Use `Result` wrapper for returning success/failure from service methods.
-89. Validate inputs and outputs rigorously to prevent runtime failures.
-90. Include operation names and parameters in error logs for traceability.
-
----
-
-### 91-100: Project Configuration and Context Rules
-
-91. Load project configuration via `ProjectConfigService` with validation.
-92. Support incremental updates to project config files.
-93. Use `ProjectContextService` to gather and manage project-wide context.
-94. Skip irrelevant files/directories during project analysis (e.g., `node_modules`, `dist`).
-95. Use `project-analyzer.helpers.ts` utilities for identifying source and test directories.
-96. Prioritize entry point files during analysis for better context.
-97. Validate gathered project context against schemas before use.
-98. Store intermediate analysis results for reuse in generation phases.
-99. Use `memory-bank` abstractions to cache and reuse project knowledge.
-100.  Support multiple language contexts (JS, TS, JSON) seamlessly in analysis.
-
----
-
-### 101-110: Codebase and Architectural Patterns
-
-101. Follow layered architecture separating core analysis, DI, CLI, template management, and generators.
-102. Keep generators (e.g., `AiMagicGenerator`, `RoomodesGenerator`) stateless and configurable.
-103. Use orchestrators (`GeneratorOrchestrator`, `MemoryBankOrchestrator`) to coordinate complex flows.
-104. Separate concerns between analysis, generation, and file output.
-105. Avoid direct dependencies between generators; use DI and interfaces.
-106. Use interfaces extensively for testability and abstraction.
-107. Follow SOLID principles in all new code.
-108. Prefer composition over inheritance in service design.
-109. Use consistent error propagation patterns across layers.
-110. Document architectural decisions in the implementation plan for new features.
-
----
-
-### 111-120: Delegation and Workflow Rules for Architect Mode
-
-111. Always create focused, implementable subtasks sized for 15-30 minutes of work.
-112. Break down tasks by specific files and functions with clear boundaries.
-113. Define explicit testing requirements and acceptance criteria for each subtask.
-114. Identify components suitable for Junior Coder and Junior Tester delegation.
-115. Provide concrete code examples in subtask specifications.
-116. Track progress and update implementation plans with status changes.
-117. Review delegated work for architectural alignment and quality.
-118. Reject and redelegate subtasks that do not meet acceptance criteria.
-119. Delegate to Code Review only after all subtasks are completed and verified.
-120. Verify all acceptance criteria explicitly before handing off to Boomerang.
-
----
-
-### 121-130: Performance and Optimization Rules
-
-121. Cache expensive computations like AST parsing and token counts.
-122. Avoid unnecessary re-parsing of files during analysis.
-123. Use asynchronous concurrency where safe to speed up file operations.
-124. Limit depth and breadth of analysis to balance thoroughness and speed.
-125. Use incremental analysis results to minimize repeated work.
-126. Profile LLM prompt lengths to avoid costly token overages.
-127. Optimize template processing by caching parsed templates.
-128. Avoid blocking operations on main event loop.
-129. Use efficient data structures for project context storage.
-130. Monitor memory usage during large project scans.
-
----
-
-### 131-140: Documentation and Knowledge Sharing Rules
-
-131. Maintain up-to-date README and package.json metadata.
-132. Document all new public APIs with examples.
-133. Include architectural diagrams or flowcharts in implementation plans if helpful.
-134. Use Markdown format consistently for all documentation files.
-135. Capture delegation patterns and lessons learned in memory bank.
-136. Include comments in code to explain complex logic or decisions.
-137. Document error handling strategies clearly.
-138. Provide onboarding notes for Junior roles on delegated components.
-139. Use changelog automation tools (`@semantic-release/changelog`) to track releases.
-140. Encourage knowledge sharing through code reviews and documentation updates.
-
----
-
-### 141-150: Security and Best Practices
-
-141. Never log sensitive information such as API keys or secrets.
-142. Validate all external inputs rigorously to prevent injection or corruption.
-143. Use environment variables for all sensitive configuration.
-144. Keep dependencies up to date and monitor for vulnerabilities.
-145. Use semantic versioning strictly for package releases.
-146. Avoid leaking internal error details to end users.
-147. Use typed interfaces to prevent runtime type errors.
-148. Follow npm best practices for packaging and publishing CLI tool.
-149. Use Husky hooks to enforce commit message and linting rules.
-150. Ensure generated code does not introduce security risks.
+- Enforce strict adherence to the existing dependency injection pattern using the `@core/di` container and decorators for all new services and modules.
+- Follow the established TypeScript coding conventions, including explicit typing, consistent use of interfaces, and avoidance of `any` except when absolutely necessary.
+- Maintain separation of concerns by organizing code into clearly defined layers: core analysis, DI modules, application orchestration, CLI interface, generators, memory bank, and template management.
+- Ensure all new code integrates with existing logging via the `LoggerService` and uses appropriate log levels (`trace`, `debug`, `info`, `warn`, `error`).
+- Use the existing error hierarchy (`RooCodeError` and specialized errors) for all error handling, and propagate errors with context for easier debugging.
+- Preserve immutability and pure functions where possible, especially in analysis and transformation services.
+- Follow the current asynchronous patterns using `async/await` consistently for I/O and external calls.
+- Align all new CLI commands and options with the existing `CliInterface` and `commander` usage patterns.
+- Adhere to the project’s testing strategy by writing Jest unit tests for all new functions and classes, including mock implementations for dependencies.
+- Respect the project’s file and directory structure conventions, placing files in their respective feature or core folders and maintaining consistent naming schemes.
+- Use existing utility functions and services (e.g., `FileOperations`, `Result` wrapper) rather than reinventing similar functionality.
+- Ensure all new or modified JSON schemas and validation logic leverage the `zod` library and integrate with the `JsonSchemaHelper` where applicable.
+- Maintain consistent import ordering and grouping as observed in existing files, separating external, internal, and type imports clearly.
+- Follow the established code documentation style with concise JSDoc comments on all public classes and methods.
+- Enforce formatting and linting compliance by running `prettier` and `eslint` with the project’s configured rules before submitting changes.
+- When creating or modifying generators, extend from `BaseGenerator` and follow the existing orchestration patterns in `GeneratorOrchestrator`.
+- Delegate modular, testable components to junior roles with clear interface boundaries, as per the project’s delegation and workflow guidelines.
+- Use the existing progress indication mechanisms (`ProgressIndicator`) for long-running operations to provide user feedback.
+- Validate all configuration and project context data using the project’s config services and schema validation before use.
+- Avoid direct file system access; always use the `FileOperations` abstraction for reading, writing, and directory operations.
+- Follow the project’s semantic versioning and commit message conventions enforced by `commitlint` and `semantic-release`.
+- Ensure all asynchronous operations handle cancellation and timeouts gracefully using existing error types like `CancellationError` and `TimeoutError`.
+- Maintain backward compatibility for CLI and API interfaces unless explicitly approved for breaking changes.
+- Integrate new LLM or AI provider code through the existing provider registry and configuration services.
+- Use the project’s prompt building and template processing utilities when generating or manipulating textual content.
+- Ensure all new modules register their dependencies properly in the DI container modules following the established pattern.
+- When modifying or adding new analysis logic, leverage the existing tree-sitter parser service and AST analysis framework.
+- Keep all external dependencies up to date within the versions specified in `package.json` and ensure compatibility with Node.js >=16.
+- Use the existing project context and memory bank services for managing project-wide state and data sharing.
+- Structure all code changes to facilitate easy incremental code review, testing, and redelegation as per the project workflow.

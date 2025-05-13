@@ -12,6 +12,7 @@ import { MemoryBankService } from '@memory-bank/memory-bank-service';
 import { IRulesPromptBuilder } from '@generators/rules/interfaces';
 import { IContentProcessor } from '@memory-bank/interfaces';
 import { RooFileOpsHelper } from './roo-file-ops-helper';
+import { MarkdownListParser } from '@core/utils/markdown-list-parser';
 
 @Injectable()
 export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
@@ -184,21 +185,45 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
    */
   private processRooContent(rawContent: string): Result<string, Error> {
     try {
+      // First strip any markdown code blocks
       const strippedContentResult = this.contentProcessor.stripMarkdownCodeBlock(rawContent);
       if (strippedContentResult.isErr()) {
         return Result.err(
           strippedContentResult.error ?? new Error('Unknown error stripping markdown')
         );
       }
+
       const strippedContent = strippedContentResult.value;
-      if (
-        strippedContent === undefined ||
-        strippedContent === null ||
-        strippedContent.trim().length === 0
-      ) {
+      if (!strippedContent || strippedContent.trim().length === 0) {
         return Result.err(new Error('Stripped roo content is empty or undefined.'));
       }
-      return Result.ok(strippedContent);
+
+      // Extract rules from the content using MarkdownListParser
+      const rulesResult = MarkdownListParser.extractListItems(strippedContent);
+      if (rulesResult.isErr()) {
+        return Result.err(rulesResult.error ?? new Error('Failed to extract rules from content'));
+      }
+
+      const rules = rulesResult.value;
+      if (!rules) {
+        return Result.err(new Error('Extracted rules array is undefined'));
+      }
+
+      // Validate minimum number of rules
+      const MIN_RULES = 100;
+      if (rules.length < MIN_RULES) {
+        this.logger.warn(
+          `LLM generated only ${rules.length} rules. Minimum required is ${MIN_RULES}. Proceeding with available rules.`
+        );
+      }
+
+      // Convert rules back to markdown list format
+      const formattedRules = rules.map((rule) => `- ${rule}`).join('\n');
+      if (!formattedRules) {
+        return Result.err(new Error('Failed to format rules as markdown list'));
+      }
+
+      return Result.ok(formattedRules);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unknown error processing roo content';
@@ -405,7 +430,7 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
 
         // 5. Concatenate and Write File
         const outputPath = path.join('.roo', `system-prompt-${modeName}`); // Define outputPath here
-        const finalContent = `${rulesContent}\n\n${templateContent}\n\n${processedLLMRules}`;
+        const finalContent = processedLLMRules;
         this.logger.debug(`Writing final content to ${outputPath} for mode "${modeName}"`); // Added debug log
 
         const writeResult = await this.writeRooFile(outputPath, finalContent); // Modify writeRooFile or create new method
@@ -456,45 +481,37 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
    */
   private buildModeRooPrompt(
     projectContext: ProjectContext,
-    rooRulesContent: string,
-    modeTemplateContent: string,
-    modeName: string // Added modeName parameter
+    _rooRulesContent: string, // Kept but unused to maintain interface compatibility
+    _modeTemplateContent: string, // Kept but unused to maintain interface compatibility
+    modeName: string
   ): Result<{ systemPrompt: string; userPrompt: string }, Error> {
     try {
+      this.logger.debug(`Building prompts for mode "${modeName}" with project context`);
+
+      // Get system prompt from RulesPromptBuilder - this is now the only source of system prompt
+      const systemPromptResult = this.rulesPromptBuilder.buildSystemPrompt(modeName);
+      if (systemPromptResult.isErr()) {
+        return Result.err(systemPromptResult.error ?? new Error('Failed to build system prompt'));
+      }
+
+      // Use the system prompt directly from RulesPromptBuilder
+      const systemPrompt = systemPromptResult.value;
+      this.logger.debug(`System prompt obtained from RulesPromptBuilder for mode "${modeName}"`);
+
       // Convert project context to string for prompt inclusion
       const contextString = JSON.stringify(projectContext, null, 2);
-      this.logger.debug(`Building prompts for mode "${modeName}" with project context`); // Added debug log
 
-      // Use modeTemplateContent directly for the system prompt
-      const systemPrompt = `${rooRulesContent}\n\n${modeTemplateContent}`;
-      this.logger.debug(`System prompt constructed for mode "${modeName}"`); // Added debug log
+      // Build mode-specific instructions
+      const modeInstructions = `Generate a list of distinct, context-aware rules specifically tailored for the "${modeName}" mode. Focus on rules that would be helpful for an AI assistant operating in this mode within this specific project.`;
 
-      // Build user prompt with specific instructions for mode-based rules
-      const instructions = `
-Based on the provided project context and the system prompt (which includes base roo rules and the "${modeName}" mode template), generate a list of distinct, context-aware rules specifically tailored for the "${modeName}" mode.
+      // Get user prompt from RulesPromptBuilder
+      const userPromptResult = this.rulesPromptBuilder.buildPrompt(modeInstructions, contextString);
+      if (userPromptResult.isErr()) {
+        return Result.err(userPromptResult.error ?? new Error('Failed to build user prompt'));
+      }
 
-The rules should be actionable and relevant to the codebase structure, technologies, and patterns found in the project context. Focus on rules that would be helpful for an AI assistant operating in the "${modeName}" mode within this specific project.
-
-Project Context:
-\`\`\`json
-${contextString}
-\`\`\`
-
-**IMPORTANT INSTRUCTIONS:**
-1. Provide **ONLY** the list of rules.
-2. Format the rules as a **Markdown unordered list** using hyphens (\`-\`).
-3. Each rule should be a single list item.
-4. Do **NOT** include any introductory sentences, concluding remarks, or any other text before or after the list.
-5. Ensure there are at least 100 rules.
-`;
-
-      // The rulesPromptBuilder is not needed for building the system/user prompts directly
-      // as we are constructing them from the template contents and project context.
-      // The builder might be useful for other prompt types, but not this specific roo generation.
-      // Removing the calls to this.rulesPromptBuilder.buildSystemPrompt and buildPrompt.
-
-      const userPrompt = instructions; // The instructions string is the user prompt
-      this.logger.debug(`User prompt constructed for mode "${modeName}"`); // Added debug log
+      const userPrompt = userPromptResult.value;
+      this.logger.debug(`User prompt constructed for mode "${modeName}"`);
 
       if (!systemPrompt || !userPrompt) {
         return Result.err(
@@ -516,7 +533,7 @@ ${contextString}
 
   private handleCursorGenerationPlaceholder(
     _projectContext: ProjectContext,
-    _options: ProjectConfig // Renamed _config to _options for consistency
+    _options: ProjectConfig
   ): Result<string, Error> {
     // Added context and config parameters, changed return type
     // Basic placeholder implementation

@@ -134,7 +134,7 @@ The system operates as a command-line interface tool. The core flow involves rec
   - `memory-bank/`: Logic specific to generating and managing memory bank content.
   - `types/`: Shared type definitions across the project.
 - `tests/`: Automated tests for various modules.
-- `templates/`: Template files used by the generators.
+- `templates/`: Template files used by the generators. This includes templates for system prompts (`templates/system-prompts/`) which are used _within_ LLM prompts to guide generation, and templates for final output files. It is important to distinguish between templates intended for LLM input and those for final file output.
 - `bin/`: Executable scripts, including the main CLI entry point.
 - `task-tracking/`: Project management and task documentation.
 
@@ -153,6 +153,15 @@ The system operates as a command-line interface tool. The core flow involves rec
 - **Filesystem**: Extensive interaction with the local filesystem is managed through the `FileOperations` service, including reading source files, reading/writing configuration, and writing generated output files.
 - **Internal Component APIs**: Key interfaces (`src/core/*/interfaces.ts`) define the contracts between core modules and services, enabling DI and promoting modularity. Examples include `IProjectAnalyzer`, `ILLMAgent`, `IFileOperations`, `ILoggerService`, `IMemoryBankService`, `IRulesTemplateManager`.
 - **(Future) Version Control**: While not directly integrated currently, the generated files (e.g., `.roocode/`, `.vscode/copilot/`) are intended to be checked into version control, serving as a passive integration point.
+
+### 8.x. LLM Output Formatting and Parsing Pattern
+
+For reliable data extraction from LLM responses, particularly for structured outputs like rule lists, we implement a pattern involving:
+
+1.  **Strict Prompting**: Explicitly instructing the LLM within the prompt to generate _only_ the required content in a predefined format (e.g., Markdown list, JSON array), minimizing conversational text.
+2.  **Dedicated Parsing**: Utilizing specific parsing logic (e.g., `MarkdownListParser` as introduced in TSK-021) to robustly extract the structured data from the LLM's raw response.
+
+This pattern enhances the predictability and usability of LLM-generated content.
 
 ## 9. Security Considerations
 

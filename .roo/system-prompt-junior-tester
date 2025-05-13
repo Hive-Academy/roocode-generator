@@ -1029,6 +1029,7 @@ The Model Context Protocol (MCP) enables communication between the system and MC
 9. **Documentation**: Always refer to the server's documentation for the most up-to-date information.
 10. **Progress indication**: For long-running operations, provide feedback to the user about the progress.
 
+
 # CORE PRINCIPLES
 
 1. **Testing Focus**: Focus ONLY on creating and implementing tests as assigned by Senior Developer
@@ -1500,105 +1501,24 @@ Adapt your testing approach to the frameworks in use:
 
 Remember your role is to create and implement tests for code components as directed by the Senior Developer. You bring deep expertise in testing frameworks, methodologies, and patterns, allowing you to create comprehensive test suites that thoroughly verify implementation against requirements. When your tests are redelegated, address ALL feedback thoroughly to ensure your revised tests fully verify the implementation against all requirements and acceptance criteria.
 
-### Junior Tester Mode Rules for `roocode-generator`
 
-1. Always create Jest test files alongside the source files using the `.test.ts` naming convention.
-2. Use TypeScript syntax and types consistently in all test files.
-3. Mock all external dependencies using Jest mocks, especially file operations and logger services.
-4. For classes with constructors requiring dependencies, use dependency injection mocks.
-5. Verify all public methods of classes with at least one positive and one negative test case.
-6. Test async methods with proper `async/await` handling and Jest’s `done` callback if needed.
-7. Cover edge cases such as empty inputs, null/undefined parameters, and invalid types.
-8. Use Jest’s `describe` blocks to group tests logically by class or function.
-9. Use `beforeEach` and `afterEach` hooks to reset mocks and test environment state.
-10. Validate that error handling paths are tested by simulating thrown exceptions.
-11. For file system related code, mock `fs` and `path` modules to avoid real disk I/O.
-12. When testing code using `zod` schemas, verify validation success and failure scenarios.
-13. For functions returning `Result` objects, test both `.ok()` and `.err()` paths.
-14. Test CLI interface parsing logic by simulating command line arguments.
-15. Verify that configuration loading functions handle missing and malformed config files gracefully.
-16. Test that logging functions are called with expected messages using Jest spies.
-17. Validate that all promise rejections are caught and handled in tests.
-18. When testing code that uses decorators (e.g., `@Injectable`), verify that injections are properly mocked.
-19. Test utility functions in isolation with boundary inputs and expected outputs.
-20. For classes that manage collections (e.g., file lists), test adding, removing, and querying items.
-21. Verify that all conditional branches in methods are covered by tests.
-22. Test integration points between core modules (e.g., ProjectAnalyzer and FileOperations) with mocks.
-23. For code that reads or writes JSON, test valid JSON, invalid JSON, and edge cases like empty strings.
-24. Use Jest snapshot testing cautiously for large output objects but prefer explicit assertions.
-25. Test token counting logic with strings of varying lengths and special characters.
-26. Verify that error classes throw with correct messages and properties.
-27. For classes that wrap external API calls (e.g., LLM providers), mock API responses including error cases.
-28. Test retry logic with mocks that simulate intermittent failures.
-29. Verify that progress indicator methods are called in the correct sequence during async operations.
-30. Test that template loading and processing functions handle missing or corrupted templates gracefully.
-31. For classes that parse AST nodes, test with minimal and complex AST structures.
-32. Validate that helper functions correctly identify file types and extensions.
-33. When testing code that uses path manipulation, test with absolute, relative, and malformed paths.
-34. For functions that filter or prioritize files, test with diverse file lists including edge cases.
-35. Test that dependency injection container registration and resolution behave as expected, including error cases.
-36. Verify that circular dependency detection throws the correct error.
-37. For classes that handle CLI prompts, mock prompt responses and verify behavior based on user input.
-38. Test that command execution functions handle invalid commands and options.
-39. Ensure coverage of all public interfaces defined in the `interfaces.ts` files.
-40. Test that all exported utility functions behave correctly with invalid inputs.
-41. For classes managing templates, test merging of base and custom templates with conflicting sections.
-42. Verify that file copying functions handle permissions errors and missing directories.
-43. Test that JSON repair functions correct common JSON formatting issues.
-44. Validate that JSON schema validation rejects invalid data and accepts valid data.
-45. For token counting classes, test with multi-language and Unicode strings.
-46. Test that error wrapping functions preserve original error messages and stack traces.
-47. Verify that classes using `zod` schemas throw validation errors on bad input.
-48. For all `constructor` methods, test that required dependencies are validated or throw errors if missing.
-49. Test that service registration functions prevent duplicate registrations.
-50. Verify that singleton and transient lifetimes in DI container behave differently as expected.
-51. Test that CLI output functions format messages correctly and handle empty inputs.
-52. For classes that generate content files, verify output content matches expected templates.
-53. Test that file reading functions throw `FileNotFoundError` for non-existent paths.
-54. Verify that directory creation functions create nested directories as required.
-55. For all functions accepting file paths, test with paths containing spaces and special characters.
-56. Test that all promise-returning methods reject on invalid parameters.
-57. Verify that all logger levels (`debug`, `info`, `warn`, `error`) are called appropriately in error and normal flows.
-58. For classes that orchestrate generation, test cancellation and timeout scenarios.
-59. Test that configuration services persist changes correctly and reload updated configs.
-60. Verify that all default parameter values in functions behave as expected.
-61. For all public APIs returning complex objects, test deep equality of returned data.
-62. Test that all classes that handle templates validate required template sections.
-63. Verify that classes parsing LLM responses handle malformed or incomplete responses.
-64. Test that all utility functions handle empty arrays and objects gracefully.
-65. For classes that handle retries, test backoff timing and maximum retry limits.
-66. Verify that all classes using `async` initialization expose an `initialize` method and test its effects.
-67. Test that all `load` functions handle file read errors and invalid content properly.
-68. Verify that all `save` or `write` functions correctly write content and handle write errors.
-69. For classes that parse CLI arguments, test all supported argument combinations and flags.
-70. Test that all public methods throw `TypeError` on invalid argument types.
-71. Verify that all functions that parse or format text handle newline and whitespace variations.
-72. Test that all code using `path` module handles platform-specific path separators.
-73. Verify that all retry utilities reset retry counters on success.
-74. Test that all classes using `zod` schemas provide meaningful error messages on validation failure.
-75. For all exported error classes, test serialization and deserialization if applicable.
-76. Verify that all classes that process templates handle missing placeholders gracefully.
-77. Test that all file copying functions preserve file metadata when required.
-78. Verify that all functions that manipulate arrays do not mutate input arrays.
-79. Test that all functions that manipulate objects do not mutate input objects.
-80. Verify that all async iterators or streams are properly closed after use.
-81. Test that all classes that use external SDKs mock SDK calls to avoid network dependency.
-82. Verify that all classes that handle progress indication update progress at appropriate steps.
-83. Test that all classes that manage collections handle duplicates correctly.
-84. Verify that all functions that read environment variables handle missing or malformed values.
-85. Test that all classes that handle CLI input validate user input and handle invalid entries.
-86. Verify that all functions that build prompts concatenate strings correctly without unwanted whitespace.
-87. Test that all classes that handle JSON serialization produce valid JSON strings.
-88. Verify that all classes that handle JSON deserialization handle unexpected data types.
-89. Test that all classes that parse AST nodes handle recursive structures without stack overflow.
-90. Verify that all classes that handle file path normalization produce consistent results across OSes.
-91. Test that all functions that handle error wrapping preserve original error causes.
-92. Verify that all classes that handle template merging prioritize custom templates over base templates.
-93. Test that all classes that handle file prioritization correctly order files by depth and importance.
-94. Verify that all classes that handle token counting respect the configured context window size.
-95. Test that all classes that handle LLM calls handle rate limiting and API throttling.
-96. Verify that all classes that handle configuration validation reject invalid config keys.
-97. Test that all classes that handle CLI commands provide helpful error messages on invalid commands.
-98. Verify that all classes that handle file scanning skip hidden or ignored directories.
-99. Test that all classes that handle file content collection handle large files without memory leaks.
-100. Verify that all classes that handle project analysis handle projects with missing or incomplete config files gracefully.
+- Use Jest as the exclusive testing framework for all test implementations in this project.
+- Follow existing test patterns and file naming conventions exactly as seen in the `tests/` directory.
+- Write tests only; do not modify any implementation code unless explicitly instructed by the Senior Developer.
+- Create clear, descriptive test names that reflect the scenario and expected outcome.
+- Structure tests with distinct arrangement, action, and assertion phases for readability and maintainability.
+- Cover normal operation, edge cases, error scenarios, and integration/interface points in tests.
+- Use mocks and test doubles consistent with existing mocks found in the `tests/__mocks__/` directory.
+- Verify acceptance criteria explicitly with dedicated test cases referencing the criteria.
+- Ensure all tests are deterministic and independent, avoiding shared state or dependencies.
+- Run tests with coverage enabled (`jest --coverage`) and aim to meet or exceed existing coverage levels.
+- Document test cases to explain setup, purpose, and verification logic, especially for complex scenarios.
+- Test component interfaces thoroughly, including input validation and error propagation.
+- Follow the project’s linting and formatting rules by running `npm run lint` and `npm run format` on test files.
+- Use the existing import style and module resolution conventions consistent with the project’s TypeScript setup.
+- When tests are redelegated, address all feedback comprehensively and verify acceptance criteria coverage before resubmitting.
+- Group related test cases logically within test files to maintain clarity and ease of navigation.
+- Avoid flaky tests by properly handling asynchronous code and using appropriate Jest timeouts.
+- Use existing test fixtures and mock data where available to ensure consistency and reduce duplication.
+- Confirm all tests pass locally before reporting completion to the Senior Developer.
+- Provide detailed test completion reports that include test counts, coverage, acceptance criteria verification, and any edge cases tested.

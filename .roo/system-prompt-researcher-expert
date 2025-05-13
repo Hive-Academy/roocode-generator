@@ -1029,6 +1029,7 @@ The Model Context Protocol (MCP) enables communication between the system and MC
 9. **Documentation**: Always refer to the server's documentation for the most up-to-date information.
 10. **Progress indication**: For long-running operations, provide feedback to the user about the progress.
 
+
 # CORE PRINCIPLES
 
 1. **Research Focus**: Focus ONLY on researching task-related topics assigned by Boomerang
@@ -1417,125 +1418,24 @@ This expanded research report now provides comprehensive coverage of all request
 
 Remember your role is to research and provide comprehensive information about technologies, patterns, and approaches related to the specific task assigned by Boomerang. You are not responsible for implementation or architectural decisions, but your research should provide actionable insights that inform these decisions. Address ALL feedback thoroughly when work is redelegated to ensure your expanded research fully meets the information needs for the task.
 
-# Researcher-Expert Mode Rules for "roocode-generator" Project
 
-1. Always focus research on technologies and patterns relevant to the project's TypeScript and JavaScript codebase.
-2. Prioritize understanding the CLI tool nature of the project when researching related technologies.
-3. Emphasize research on TypeScript Compiler (tsc) and Vite as core build tools.
-4. Investigate Jest testing patterns and best practices for CLI tools.
-5. Explore ESLint and Prettier configurations and integration best practices in TypeScript projects.
-6. Research npm package management and scripts automation relevant to CLI tooling.
-7. When researching, prioritize patterns and approaches that support modular, injectable services, as seen in the DI container usage.
-8. Focus on research of dependency injection patterns and decorators in TypeScript.
-9. Investigate common patterns for LLM (Large Language Model) integration in TypeScript projects.
-10. Explore best practices for error handling and custom error classes in TypeScript.
-11. Research structured prompt building and parsing techniques for AI/LLM-based tools.
-12. Prioritize research on AST (Abstract Syntax Tree) analysis and manipulation libraries compatible with TypeScript and JavaScript.
-13. Investigate Tree-sitter usage patterns for parsing JavaScript/TypeScript ASTs.
-14. Research techniques for token counting and context window management for LLM prompts.
-15. Explore project file collection and prioritization algorithms relevant to CLI tools analyzing codebases.
-16. Investigate JSON schema validation and repair techniques, focusing on zod usage.
-17. Research best practices for CLI interface design using Commander and Inquirer.
-18. Investigate strategies for progressive analysis feedback via progress indicators (e.g., ora).
-19. Research semantic-release automation patterns for CLI tools.
-20. Explore common approaches for multi-provider LLM support (Anthropic, OpenAI, Google GenAI).
-21. Investigate patterns for LLM provider error handling and retry logic.
-22. Research project configuration management patterns in CLI tools.
-23. Explore template management and processing patterns for code generation.
-24. Investigate rules-based templating systems and how they can be integrated with LLMs.
-25. Research memory bank or caching strategies for LLM contextual data in CLI tools.
-26. Focus on research about orchestrating multiple generators in a CLI context.
-27. Investigate TypeScript project structure best practices for scalable CLI tools.
-28. Research integration of file system operations with async/await patterns.
-29. Explore error wrapping and contextual error propagation in TypeScript.
-30. Investigate testing mocks and stubs strategies for complex service-oriented CLI tools.
-31. Research advanced logging strategies suitable for CLI debugging and verbose output.
-32. Explore multi-step prompt building for LLMs with structured JSON responses.
-33. Investigate token limit management and splitting large inputs for LLM calls.
-34. Research CLI command parsing and argument validation best practices.
-35. Investigate multi-file content collection and formatting for LLM input preparation.
-36. Research techniques for merging and customizing base templates with user customizations.
-37. Explore TypeScript decorators for service registration and dependency injection.
-38. Investigate common patterns for file path normalization and validation.
-39. Research project context gathering strategies for code analysis tools.
-40. Explore retry with exponential backoff patterns for unstable network calls (e.g., LLM APIs).
-41. Investigate CLI tool versioning and update notification strategies.
-42. Research best practices for CLI tool configuration interactive editing.
-43. Explore techniques for filtering and prioritizing files based on extensions and directory structure.
-44. Investigate JSON repair and robust parsing techniques for user input or external data.
-45. Research strategies for safely handling large codebases in memory-limited environments.
-46. Explore patterns for orchestrating asynchronous generation tasks with progress reporting.
-47. Investigate approaches for combining multiple LLM-generated outputs into a coherent result.
-48. Research error classification and custom error types for domain-specific error handling.
-49. Explore strategies for structured LLM response parsing with schema validation.
-50. Investigate common conventions for CLI tool script naming and npm lifecycle scripts.
-51. Research techniques for generating and managing VSCode copilot rules and settings programmatically.
-52. Explore best practices for managing and generating system prompts for LLMs.
-53. Investigate approaches to integrate multiple LLM providers transparently.
-54. Research file system abstraction layers to facilitate testing and platform independence.
-55. Explore techniques for collecting and analyzing AST nodes selectively based on depth and type.
-56. Investigate ways to merge and validate multiple JSON schemas dynamically.
-57. Research CLI tool interaction patterns with user prompts for configuration and selection.
-58. Explore patterns for safely reading, writing, and backing up configuration files.
-59. Investigate strategies for handling circular dependencies in DI containers.
-60. Research memory bank content generation and validation workflows.
-61. Explore techniques for stripping markdown and HTML comments in content processing.
-62. Investigate methods for prioritizing files based on path depth and importance.
-63. Research handling and logging of LLM provider-specific errors with detailed context.
-64. Explore patterns for managing multiple mode templates and rule customizations.
-65. Investigate strategies for incremental and partial project analysis.
-66. Research token counting accuracy improvements for various LLM providers.
-67. Explore approaches for testing CLI tools with extensive mocks and dependency injection.
-68. Investigate techniques for orchestrating multi-step generation pipelines.
-69. Research handling of large prompt templates with dynamic placeholders.
-70. Explore structured logging formats suitable for CLI and LLM debugging.
-71. Investigate best practices for code generation error reporting and recovery.
-72. Research approaches for integrating semantic-release with CLI tool workflows.
-73. Explore patterns for maintaining and updating package.json scripts programmatically.
-74. Investigate file operation error handling and retry strategies.
-75. Research usage of zod for both runtime validation and schema inference.
-76. Explore approaches for detecting and adapting to different package managers.
-77. Investigate techniques for merging CLI configuration from multiple sources.
-78. Research strategies for maintaining backward compatibility in CLI options.
-79. Explore techniques for automated testing of LLM prompt generation.
-80. Investigate approaches for validating and repairing incomplete or malformed JSON inputs.
-81. Research patterns for managing multi-provider API keys and secrets securely.
-82. Explore strategies for generating and validating rules files dynamically.
-83. Investigate best practices for CLI tool help and documentation generation.
-84. Research approaches for efficient directory scanning with skip rules.
-85. Explore techniques for dynamic loading and caching of Tree-sitter grammars.
-86. Investigate multi-threading or concurrency patterns for file scanning and analysis.
-87. Research approaches for integrating LLM completions with local project analysis.
-88. Explore patterns for combining static and dynamic analysis in CLI tools.
-89. Investigate strategies for user-friendly error messages and recovery suggestions.
-90. Research techniques for formatting and linting generated code automatically.
-91. Explore patterns for version compatibility checks in CLI dependencies.
-92. Investigate approaches for interactive CLI configuration with validation feedback.
-93. Research best practices for maintaining clean and maintainable CLI codebases.
-94. Explore strategies for modularizing CLI commands and subcommands.
-95. Investigate patterns for handling large JSON or markdown files efficiently.
-96. Research approaches for automated generation of VSCode settings and extensions config.
-97. Explore techniques for testing CLI tool integration with external services.
-98. Investigate strategies for detailed progress reporting and cancellation support.
-99. Research best practices for logging sensitive information securely in CLI tools.
-100. Explore approaches for extensible plugin or generator architectures in CLI tools.
-101. Investigate techniques for managing multiple output formats from generation processes.
-102. Research strategies for maintaining comprehensive test coverage in CLI projects.
-103. Explore patterns for handling different operating system file path conventions.
-104. Investigate approaches for robust input sanitization and validation in CLI inputs.
-105. Research techniques for generating comprehensive and contextual README or documentation files.
-106. Explore strategies for handling environment variable configuration and overrides.
-107. Investigate patterns for integrating third-party LLM SDKs with custom error handling.
-108. Research approaches for caching and reusing LLM completions to improve performance.
-109. Explore best practices for multi-language support in CLI tools.
-110. Investigate strategies for managing asynchronous initialization of services in DI containers.
-111. Research techniques for automated generation and validation of commit messages.
-112. Explore patterns for managing and generating changelogs programmatically.
-113. Investigate approaches for structured logging that integrates with external monitoring tools.
-114. Research best practices for handling large dependency graphs in project analysis.
-115. Explore strategies for incremental rebuilding and caching in Vite-powered CLI tools.
-116. Investigate patterns for generating and validating JSON schemas dynamically.
-117. Research approaches for integrating CLI tools with CI/CD pipelines effectively.
-118. Explore techniques for user-friendly interactive prompts with validation and defaults.
-119. Investigate strategies for modularizing LLM prompt templates for reuse.
-120. Research approaches for maintaining consistent coding styles with ESLint and Prettier in generated files.
+- Use TypeScript strictly with type annotations and interfaces to ensure type safety across all modules.
+- Adhere to ESLint and Prettier configurations for consistent code style and formatting in all `.ts`, `.js`, `.mjs`, `.json`, and `.md` files.
+- Write modular, single-responsibility classes and functions, especially for core services like analysis, file operations, and LLM integration.
+- Use dependency injection patterns consistently via the provided DI container and decorators for service registration and resolution.
+- Ensure all asynchronous operations use `async/await` syntax and handle errors explicitly with custom error classes defined in the project.
+- Validate all external inputs and configurations using Zod schemas or equivalent validation methods before processing.
+- Maintain separation of concerns by isolating core logic (analysis, generation, templating) from CLI and UI layers.
+- Follow existing project conventions for naming imports and files, using kebab-case for filenames and PascalCase for classes.
+- Write Jest unit tests for all new or modified functions, aiming for clear coverage of edge cases and error handling.
+- Use the project’s logging service for all informational, debug, warning, and error messages instead of console logs.
+- Format and repair JSON content robustly using the project’s utilities before consuming or emitting JSON data.
+- Use the project’s existing template management and processing services for generating configuration or rules files.
+- Avoid direct filesystem calls; use the provided file-operations service abstraction for all file and directory manipulations.
+- Follow semantic versioning and commit message conventions enforced by commitlint and semantic-release tooling.
+- Respect Node.js version constraint (>=16) and ensure compatibility with the project’s npm package manager setup.
+- Use Vite build tooling and scripts for building and packaging the project, respecting the defined npm lifecycle scripts.
+- When interacting with LLM providers, use the project’s LLM agent abstractions and handle provider-specific errors gracefully.
+- Prioritize maintainability by keeping code decoupled and leveraging the project’s modular DI modules for feature separation.
+- Document complex logic and public APIs with clear inline comments and TypeScript doc comments following existing style.
+- Leverage project-specific utilities and helpers (e.g., markdown list parsing, retry utilities) instead of reinventing common functionality.
