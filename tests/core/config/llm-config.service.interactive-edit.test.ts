@@ -6,7 +6,9 @@ import { Result } from '../../../src/core/result/result';
 import { ILogger } from '../../../src/core/services/logger-service'; // Keep type import
 import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
 import { LLMConfig } from '../../../types/shared';
-import { LLMProviderError } from '@core/llm/llm-provider-errors';
+import { LLMProviderError } from '../../../src/core/llm/llm-provider-errors'; // Corrected path
+import { ILLMProvider } from '../../../src/core/llm/interfaces'; // Corrected path for interface
+import { LLMProviderRegistry } from '../../../src/core/llm/provider-registry'; // Corrected path for class
 
 describe('LLMConfigService - interactiveEditConfig', () => {
   let service: LLMConfigService;
@@ -14,6 +16,7 @@ describe('LLMConfigService - interactiveEditConfig', () => {
   let mockLogger: jest.Mocked<ILogger>; // Keep declaration
   let mockInquirer: jest.Mock;
   let mockModelListerService: jest.Mocked<IModelListerService>;
+  let mockLLMProviderRegistry: jest.Mocked<LLMProviderRegistry>; // Added mock
   const configPath = `${process.cwd()}/llm.config.json`;
 
   beforeEach(() => {
@@ -32,39 +35,38 @@ describe('LLMConfigService - interactiveEditConfig', () => {
     mockLogger = createMockLogger(); // Initialize mock logger here
 
     // Create a proper mock for inquirer that returns the expected structure
-    mockInquirer = jest.fn().mockImplementation((questions) => {
-      // If questions is an array, return answers for all questions
-      if (Array.isArray(questions)) {
-        return Promise.resolve({
-          temperature: baseConfig.temperature,
-          maxTokens: baseConfig.maxTokens,
-        });
-      }
-
-      // Otherwise handle individual questions based on name
-      const question = questions;
-      if (question.name === 'provider') {
-        return Promise.resolve({ provider: userAnswers.provider });
-      } else if (question.name === 'apiKey') {
-        return Promise.resolve({ apiKey: userAnswers.apiKey });
-      } else if (question.name === 'model') {
-        return Promise.resolve({ model: userAnswers.model });
-      } else if (question.name === 'temperature') {
-        return Promise.resolve({ temperature: baseConfig.temperature });
-      }
-
-      return Promise.resolve({});
+    // This will be overridden in specific tests for maxTokens logic
+    mockInquirer = jest.fn().mockImplementation((promptOrQuestions) => {
+      const questions = Array.isArray(promptOrQuestions) ? promptOrQuestions : [promptOrQuestions];
+      const answers: any = {};
+      questions.forEach((q) => {
+        if (q.name === 'provider') answers.provider = userAnswers.provider;
+        else if (q.name === 'apiKey') answers.apiKey = userAnswers.apiKey;
+        else if (q.name === 'model') answers.model = userAnswers.model;
+        else if (q.name === 'temperature') answers.temperature = baseConfig.temperature;
+        else if (q.name === 'maxTokens') answers.maxTokens = baseConfig.maxTokens; // Default fallback
+      });
+      return Promise.resolve(answers);
     });
 
     mockModelListerService = {
       listModelsForProvider: jest.fn(),
     };
+    mockLLMProviderRegistry = {
+      getProviderFactory: jest.fn(),
+      getProvider: jest.fn(),
+      initializeProvider: jest.fn(),
+      // Add private members to satisfy the Mocked<T> type
+      cachedProvider: null,
+      providerFactories: new Map(),
+    } as any as jest.Mocked<LLMProviderRegistry>; // Use 'as any' to bypass strict private member check
 
     service = new LLMConfigService(
       mockFileOps,
       mockLogger,
       mockInquirer as any,
-      mockModelListerService
+      mockModelListerService,
+      mockLLMProviderRegistry // Added registry
     );
   });
 
@@ -340,5 +342,318 @@ describe('LLMConfigService - interactiveEditConfig', () => {
     expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('No models available'));
     // Check that writeFile was called, but don't verify exact content
     expect(mockFileOps.writeFile).toHaveBeenCalledWith(configPath, expect.any(String));
+  });
+
+  // --- Tests for promptForAdvancedConfig logic (via interactiveEditConfig) ---
+  describe('Advanced Config Prompting (maxTokens logic)', () => {
+    const providerName = 'test-advanced-provider';
+    const modelName = 'test-advanced-model';
+    const apiKey = 'test-advanced-key';
+    let mockProvider: jest.Mocked<ILLMProvider>;
+
+    beforeEach(() => {
+      // Base config for these tests
+      userAnswers.provider = providerName;
+      userAnswers.apiKey = apiKey;
+      userAnswers.model = modelName;
+
+      mockProvider = {
+        name: providerName,
+        getCompletion: jest.fn(),
+        getStructuredCompletion: jest.fn(),
+        listModels: jest.fn(),
+        getContextWindowSize: jest.fn(), // Corrected method name
+        countTokens: jest.fn(),
+      };
+
+      // Mock model lister to avoid its prompts/logic interfering
+      mockModelListerService.listModelsForProvider.mockResolvedValue(Result.ok([modelName]));
+      mockFileOps.writeFile.mockResolvedValue(Result.ok(undefined)); // Assume save is successful
+    });
+
+    it('Test Case 1: should automatically set maxTokens if contextWindow is retrieved, only prompt for temperature', async () => {
+      const validContextWindow = 16000;
+      const expectedMaxTokens = Math.floor(validContextWindow * 0.25);
+      const promptedTemperature = 0.65;
+
+      // Setup provider factory and provider
+      const mockProviderFactory = jest.fn().mockReturnValue(Result.ok(mockProvider));
+      mockLLMProviderRegistry.getProviderFactory.mockReturnValue(Result.ok(mockProviderFactory));
+      mockProvider.getContextWindowSize.mockResolvedValue(validContextWindow);
+
+      mockInquirer.mockImplementation(async (promptsArg: any) => {
+        const prompts = Array.isArray(promptsArg) ? promptsArg : [promptsArg];
+        expect(prompts.length).toBe(1);
+        expect(prompts[0].name).toBe('temperature');
+        return Promise.resolve({ temperature: promptedTemperature });
+      });
+
+      const loggerDebugSpy = jest.spyOn(mockLogger, 'debug');
+      const loggerInfoSpy = jest.spyOn(mockLogger, 'info');
+
+      const result = await service.interactiveEditConfig({
+        ...baseConfig,
+        provider: providerName,
+        apiKey: apiKey,
+        model: modelName,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(mockLLMProviderRegistry.getProviderFactory).toHaveBeenCalledWith(providerName);
+      expect(mockProviderFactory).toHaveBeenCalledWith(
+        expect.objectContaining({ provider: providerName, model: modelName, apiKey: apiKey })
+      );
+      expect(mockProvider.getContextWindowSize).toHaveBeenCalled();
+
+      expect(loggerDebugSpy).toHaveBeenCalledWith(
+        `Successfully retrieved context window size ${validContextWindow} for model ${modelName}. Suggested maxTokens: ${expectedMaxTokens}.`
+      );
+      expect(loggerInfoSpy).toHaveBeenCalledWith(
+        `Automatically setting maxTokens to ${expectedMaxTokens} (25% of context window ${validContextWindow}) for model ${modelName}.`
+      );
+
+      expect(mockFileOps.writeFile).toHaveBeenCalledWith(
+        configPath,
+        JSON.stringify(
+          expect.objectContaining({
+            provider: providerName,
+            model: modelName,
+            apiKey: apiKey,
+            maxTokens: expectedMaxTokens,
+            temperature: promptedTemperature,
+          }),
+          null,
+          2
+        )
+      );
+    });
+
+    it('Test Case 2a: should prompt for maxTokens if getContextWindowSize returns an error', async () => {
+      const promptedMaxTokens = 2048;
+      const promptedTemperature = 0.75;
+      const contextWindowError = new LLMProviderError(
+        'Failed to get context window',
+        'TEST_ERROR',
+        providerName
+      );
+
+      const mockProviderFactory = jest.fn().mockReturnValue(Result.ok(mockProvider));
+      mockLLMProviderRegistry.getProviderFactory.mockReturnValue(Result.ok(mockProviderFactory));
+      mockProvider.getContextWindowSize.mockRejectedValue(contextWindowError); // Simulate rejection
+
+      mockInquirer.mockImplementation(async (promptsArg: any) => {
+        const prompts = Array.isArray(promptsArg) ? promptsArg : [promptsArg];
+        expect(prompts.length).toBe(2);
+        expect(prompts.find((p) => p.name === 'temperature')).toBeDefined();
+        expect(prompts.find((p) => p.name === 'maxTokens')).toBeDefined();
+        return Promise.resolve({ temperature: promptedTemperature, maxTokens: promptedMaxTokens });
+      });
+
+      const loggerWarnSpy = jest.spyOn(mockLogger, 'warn');
+
+      const result = await service.interactiveEditConfig({
+        ...baseConfig,
+        provider: providerName,
+        apiKey: apiKey,
+        model: modelName,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(mockLLMProviderRegistry.getProviderFactory).toHaveBeenCalledWith(providerName);
+      expect(mockProviderFactory).toHaveBeenCalled();
+      expect(mockProvider.getContextWindowSize).toHaveBeenCalled();
+
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        `Error getting context window size for model ${modelName}: ${contextWindowError.message}. Will prompt for maxTokens. Using default suggestion: 4096.`
+      );
+
+      expect(mockFileOps.writeFile).toHaveBeenCalledWith(
+        configPath,
+        JSON.stringify(
+          expect.objectContaining({
+            provider: providerName,
+            model: modelName,
+            apiKey: apiKey,
+            maxTokens: promptedMaxTokens,
+            temperature: promptedTemperature,
+          }),
+          null,
+          2
+        )
+      );
+    });
+
+    it('Test Case 2b: should prompt for maxTokens if getContextWindowSize returns 0', async () => {
+      const promptedMaxTokens = 1024;
+      const promptedTemperature = 0.22;
+
+      const mockProviderFactory = jest.fn().mockReturnValue(Result.ok(mockProvider));
+      mockLLMProviderRegistry.getProviderFactory.mockReturnValue(Result.ok(mockProviderFactory));
+      mockProvider.getContextWindowSize.mockResolvedValue(0); // Simulate context window of 0
+
+      mockInquirer.mockImplementation(async (promptsArg: any) => {
+        const prompts = Array.isArray(promptsArg) ? promptsArg : [promptsArg];
+        expect(prompts.length).toBe(2);
+        expect(prompts.find((p) => p.name === 'temperature')).toBeDefined();
+        expect(prompts.find((p) => p.name === 'maxTokens')).toBeDefined();
+        return Promise.resolve({ temperature: promptedTemperature, maxTokens: promptedMaxTokens });
+      });
+
+      const loggerWarnSpy = jest.spyOn(mockLogger, 'warn');
+
+      const result = await service.interactiveEditConfig({
+        ...baseConfig,
+        provider: providerName,
+        apiKey: apiKey,
+        model: modelName,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        `Provider returned context window size 0 for model ${modelName}. Will prompt for maxTokens. Using default suggestion: 4096.`
+      );
+      expect(mockFileOps.writeFile).toHaveBeenCalledWith(
+        configPath,
+        JSON.stringify(
+          expect.objectContaining({
+            maxTokens: promptedMaxTokens,
+            temperature: promptedTemperature,
+          }),
+          null,
+          2
+        )
+      );
+    });
+
+    it('Test Case 3a: should prompt for maxTokens if provider factory lookup fails', async () => {
+      const promptedMaxTokens = 4001;
+      const promptedTemperature = 0.81;
+      const factoryError = new LLMProviderError('Factory not found', 'FACTORY_NOT_FOUND', 'Test');
+
+      mockLLMProviderRegistry.getProviderFactory.mockReturnValue(Result.err(factoryError));
+
+      mockInquirer.mockImplementation(async (promptsArg: any) => {
+        const prompts = Array.isArray(promptsArg) ? promptsArg : [promptsArg];
+        expect(prompts.length).toBe(2); // temperature and maxTokens
+        expect(prompts.find((p) => p.name === 'temperature')).toBeDefined();
+        expect(prompts.find((p) => p.name === 'maxTokens')).toBeDefined();
+        return Promise.resolve({ temperature: promptedTemperature, maxTokens: promptedMaxTokens });
+      });
+
+      const loggerWarnSpy = jest.spyOn(mockLogger, 'warn');
+
+      const result = await service.interactiveEditConfig({
+        ...baseConfig,
+        provider: providerName, // This provider won't be found by the factory
+        apiKey: apiKey,
+        model: modelName,
+      });
+
+      expect(result.isOk()).toBe(true); // interactiveEditConfig still completes by prompting
+      expect(mockLLMProviderRegistry.getProviderFactory).toHaveBeenCalledWith(providerName);
+
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        `Could not get provider factory for ${providerName}: ${factoryError.message}. Will prompt for maxTokens.`
+      );
+
+      expect(mockFileOps.writeFile).toHaveBeenCalledWith(
+        configPath,
+        JSON.stringify(
+          expect.objectContaining({
+            provider: providerName, // providerName is still set from initial prompt before factory failure
+            model: modelName, // modelName is still set from initial prompt
+            apiKey: apiKey, // apiKey is still set
+            maxTokens: promptedMaxTokens,
+            temperature: promptedTemperature,
+          }),
+          null,
+          2
+        )
+      );
+    });
+
+    it('Test Case 3b: should prompt for maxTokens if provider factory execution fails', async () => {
+      const promptedMaxTokens = 4002;
+      const promptedTemperature = 0.82;
+      const factoryExecutionError = new LLMProviderError(
+        'Factory execution failed',
+        'FACTORY_ERROR',
+        'Test'
+      );
+
+      const mockProviderFactory = jest.fn().mockReturnValue(Result.err(factoryExecutionError));
+      mockLLMProviderRegistry.getProviderFactory.mockReturnValue(Result.ok(mockProviderFactory));
+
+      mockInquirer.mockImplementation(async (promptsArg: any) => {
+        const prompts = Array.isArray(promptsArg) ? promptsArg : [promptsArg];
+        expect(prompts.length).toBe(2);
+        return Promise.resolve({ temperature: promptedTemperature, maxTokens: promptedMaxTokens });
+      });
+      const loggerWarnSpy = jest.spyOn(mockLogger, 'warn');
+
+      const result = await service.interactiveEditConfig({
+        ...baseConfig,
+        provider: providerName,
+        apiKey: apiKey,
+        model: modelName,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        `Could not create provider instance for ${providerName}. Will prompt for maxTokens.`
+      );
+      expect(mockFileOps.writeFile).toHaveBeenCalledWith(
+        configPath,
+        JSON.stringify(
+          expect.objectContaining({
+            maxTokens: promptedMaxTokens,
+            temperature: promptedTemperature,
+          }),
+          null,
+          2
+        )
+      );
+    });
+
+    it('Test Case 3c: should prompt for maxTokens if provider.getContextWindowSize call fails (e.g., rejects)', async () => {
+      const promptedMaxTokens = 4003;
+      const promptedTemperature = 0.83;
+      const getContextWindowError = new Error('Simulated getContextWindowSize failure');
+
+      const mockProviderFactory = jest.fn().mockReturnValue(Result.ok(mockProvider));
+      mockLLMProviderRegistry.getProviderFactory.mockReturnValue(Result.ok(mockProviderFactory));
+      mockProvider.getContextWindowSize.mockRejectedValue(getContextWindowError); // Simulate a rejection
+
+      mockInquirer.mockImplementation(async (promptsArg: any) => {
+        const prompts = Array.isArray(promptsArg) ? promptsArg : [promptsArg];
+        expect(prompts.length).toBe(2);
+        return Promise.resolve({ temperature: promptedTemperature, maxTokens: promptedMaxTokens });
+      });
+      const loggerWarnSpy = jest.spyOn(mockLogger, 'warn');
+
+      const result = await service.interactiveEditConfig({
+        ...baseConfig,
+        provider: providerName,
+        apiKey: apiKey,
+        model: modelName,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        `Error getting context window size for model ${modelName}: ${getContextWindowError.message}. Will prompt for maxTokens. Using default suggestion: 4096.`
+      );
+
+      expect(mockFileOps.writeFile).toHaveBeenCalledWith(
+        configPath,
+        JSON.stringify(
+          expect.objectContaining({
+            maxTokens: promptedMaxTokens,
+            temperature: promptedTemperature,
+          }),
+          null,
+          2
+        )
+      );
+    });
   });
 });

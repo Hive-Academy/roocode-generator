@@ -3,6 +3,7 @@
 | Task ID | Task Name | Status | Dependencies | Start Date | Completion Date | Notes/Follow-up |
 | Task ID | Task Name | Status | Dependencies | Start Date | Completion Date | Notes/Follow-up |
 | :------ | :------------------------------------------------------------------- | :-------- | :----------- | :--------- | :-------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TSK-025 | Fix LLM Config Redundant Token Prompt | Completed | None | 2025-05-13 | 2025-05-14 | [Task Description](task-tracking/TSK-025-FixLLMConfigRedundantTokenPrompt/task-description.md) \| [Completion Report](task-tracking/TSK-025-FixLLMConfigRedundantTokenPrompt/completion-report.md) |
 | TSK-024 | Fix Google GenAI Model Listing and Limits | To Do | None | 2025-05-13 | - | [Task Description](task-tracking/TSK-024-FixGoogleGenAIModelListingAndLimits/task-description.md) |
 | TSK-001 | Revamp Roo Generator for Mode-Aware System Prompts | Completed | None | 2025-05-13 | 2025-05-13 | Critical: TSK-020 deferred automated test updates; tsconfig.json modified. |
 | TSK-003 | Fix OpenRouter Invalid Response Error in AiMagicGenerator | Completed | None | 2025-04-30 | 2025-04-30 | |

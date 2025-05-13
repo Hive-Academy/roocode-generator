@@ -1,19 +1,21 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import 'reflect-metadata';
 import './llm-config.service.interactive-edit.test'; // Import the new test file
-import { LLMConfigService } from '@core/config/llm-config.service';
-import { IFileOperations } from '@core/file-operations/interfaces';
-import { IModelListerService } from '@core/llm/interfaces';
-import { Result } from '@core/result/result';
-import { ILogger } from '@core/services/logger-service'; // Keep type import
+import { LLMConfigService } from '../../../src/core/config/llm-config.service'; // Relative path
+import { IFileOperations } from '../../../src/core/file-operations/interfaces'; // Relative path
+import { IModelListerService } from '../../../src/core/llm/interfaces'; // Relative path
+import { Result } from '../../../src/core/result/result'; // Relative path
+import { ILogger } from '../../../src/core/services/logger-service'; // Relative path
 import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
-import { LLMConfig } from 'types/shared';
+import { LLMConfig } from '../../../types/shared'; // Relative path
+import { LLMProviderRegistry } from '../../../src/core/llm/provider-registry'; // Relative path
 
 describe('LLMConfigService', () => {
   let mockFileOps: jest.Mocked<IFileOperations>;
   let mockLogger: jest.Mocked<ILogger>; // Keep declaration
   let mockInquirer: jest.Mock;
   let mockModelListerService: jest.Mocked<IModelListerService>;
+  let mockLLMProviderRegistry: jest.Mocked<LLMProviderRegistry>; // Added mock
 
   beforeEach(() => {
     // Setup mocks
@@ -36,6 +38,14 @@ describe('LLMConfigService', () => {
     mockModelListerService = {
       listModelsForProvider: jest.fn(),
     };
+
+    mockLLMProviderRegistry = {
+      getProviderFactory: jest.fn(),
+      getProvider: jest.fn(),
+      initializeProvider: jest.fn(),
+      cachedProvider: null,
+      providerFactories: new Map(),
+    } as any as jest.Mocked<LLMProviderRegistry>;
   });
 
   // interactiveEditConfig tests have been moved to a separate file
@@ -53,7 +63,13 @@ describe('LLMConfigService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Provide the mocked inquirer instance during service creation
-    service = new LLMConfigService(mockFileOps, mockLogger, mockInquirer, mockModelListerService);
+    service = new LLMConfigService(
+      mockFileOps,
+      mockLogger,
+      mockInquirer,
+      mockModelListerService,
+      mockLLMProviderRegistry // Added registry
+    );
   });
 
   // --- validateConfig ---

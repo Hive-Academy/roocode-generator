@@ -255,23 +255,55 @@ export class LLMConfigService implements ILLMConfigService {
 
       if (providerResult.isOk() && providerResult.value) {
         const provider = providerResult.value;
-        // Type guard to check if provider has getTokenContextWindow method
-        if (typeof (provider as any).getTokenContextWindow === 'function') {
-          const contextResult = (provider as any).getTokenContextWindow(modelName);
-          if (contextResult.isOk()) {
-            contextWindow = contextResult.value;
-            // Suggest 25% of the context window as maxTokens
-            suggestedMaxTokens = Math.floor(contextWindow * 0.25);
-            this.logger.debug(
-              `Using context window size ${contextWindow} for model ${modelName}, suggesting ${suggestedMaxTokens} tokens`
+        // Check if provider has getContextWindowSize method
+        if (typeof provider.getContextWindowSize === 'function') {
+          try {
+            this.logger.trace(
+              `Attempting to get context window size for model ${modelName} from provider ${providerName}`
             );
-          } else {
+            const cwSize = await provider.getContextWindowSize();
+            if (cwSize > 0) {
+              contextWindow = cwSize;
+              // Suggest 25% of the context window as maxTokens
+              suggestedMaxTokens = Math.floor(contextWindow * 0.25);
+              this.logger.debug(
+                `Successfully retrieved context window size ${contextWindow} for model ${modelName}. Suggested maxTokens: ${suggestedMaxTokens}.`
+              );
+            } else {
+              this.logger.warn(
+                `Provider returned context window size 0 for model ${modelName}. Will prompt for maxTokens. Using default suggestion: ${suggestedMaxTokens}.`
+              );
+              contextWindow = 0; // Ensure it's 0 if provider returns 0
+            }
+          } catch (error) {
             this.logger.warn(
-              `Could not get context window for model ${modelName}, using default suggestion: ${suggestedMaxTokens}`
+              `Error getting context window size for model ${modelName}: ${(error as Error).message}. Will prompt for maxTokens. Using default suggestion: ${suggestedMaxTokens}.`
             );
+            contextWindow = 0; // Ensure it's 0 on error
           }
+        } else {
+          this.logger.warn(
+            `Provider ${providerName} does not implement getContextWindowSize. Will prompt for maxTokens. Using default suggestion: ${suggestedMaxTokens}.`
+          );
+          contextWindow = 0; // Ensure it's 0 if method doesn't exist
         }
+      } else if (factoryResult.isErr()) {
+        const errMsg = factoryResult.error?.message ?? 'Unknown error getting provider factory';
+        this.logger.warn(
+          `Could not get provider factory for ${providerName}: ${errMsg}. Will prompt for maxTokens.`
+        );
+        contextWindow = 0;
+      } else {
+        this.logger.warn(
+          `Could not create provider instance for ${providerName}. Will prompt for maxTokens.`
+        );
+        contextWindow = 0;
       }
+    } else {
+      this.logger.warn(
+        `Provider factory for ${providerName} not found. Will prompt for maxTokens.`
+      );
+      contextWindow = 0;
     }
 
     const prompts: any[] = [

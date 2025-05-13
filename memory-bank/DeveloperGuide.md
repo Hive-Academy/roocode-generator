@@ -230,6 +230,56 @@ To ensure reliable data extraction from LLM responses, especially for structured
 
 This approach minimizes the impact of potential conversational filler or formatting variations from the LLM.
 
+### 8.y. Best Practices for Provider Interface Interactions
+
+When interacting with provider interfaces (e.g., for LLMs, file systems, or other external services), especially methods that might be optional, unreliable, or have varying success states:
+
+1.  **Method Existence Check (If Applicable)**:
+
+    - If a provider _might not_ implement a method, check for its existence before calling:
+      `if (typeof provider.optionalMethod === 'function') { /* ... */ }`
+
+2.  **Asynchronous Operations & Error Handling**:
+
+    - Always call asynchronous methods that might reject (e.g., network requests, complex computations) within a `try/catch` block.
+      ```typescript
+      try {
+        const result = await provider.riskyOperation();
+        // Process successful result
+      } catch (error) {
+        // Handle error, log it, and potentially fallback
+        logger.error('Operation failed', error as Error);
+      }
+      ```
+
+3.  **Graceful Handling of Varied Return States**:
+
+    - Be prepared for methods that might return specific values indicating "not found" or "not applicable" (e.g., `0`, `null`, an empty array) which are not strictly errors but require different handling.
+      ```typescript
+      const contextWindow = await provider.getContextWindowSize(); // Assuming it returns Promise<number>
+      if (contextWindow > 0) {
+        // Valid context window found
+      } else if (contextWindow === 0) {
+        // Context window explicitly not found or not applicable
+        logger.warn('Context window not available (returned 0).');
+      } else {
+        // Unexpected non-positive value if the contract implies positive or 0
+        logger.error('Unexpected context window value:', contextWindow);
+      }
+      ```
+
+4.  **Clear Logging**:
+
+    - Implement comprehensive logging for each significant path (success, failure, specific non-error states). This is crucial for debugging and understanding behavior with different providers. Use appropriate log levels (`debug` for detailed flow, `info` for key successful operations, `warn` for recoverable issues or fallbacks, `error` for failures).
+
+5.  **Testing Provider Interactions**:
+    - **Accurate Mocking**: Ensure mocks accurately reflect the provider interface contract (e.g., `Promise<number>` vs. `Result<number, Error>`, expected parameters).
+    - **Scenario Coverage**: Unit tests should cover:
+      - Successful method execution with valid data.
+      - Method failure (e.g., promise rejection, thrown error).
+      - Different valid return states (e.g., method resolves with `0`, `null`, or an empty array if these are meaningful).
+    - **Log Verification**: Assert that the correct log messages and levels are emitted for each scenario.
+
 ## 9. Troubleshooting
 
 - **Build failures (`npm run build`)**:
