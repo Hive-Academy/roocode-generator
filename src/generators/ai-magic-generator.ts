@@ -152,6 +152,84 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
    * @param options The project configuration including CLI options.
    * @returns Result containing the path to the generated file or an error.
    */
+  /**
+   * Gets completion content from the LLM for roo generation.
+   * @param systemPrompt The system prompt.
+   * @param userPrompt The user prompt.
+   * @returns Result containing the raw content from the LLM or an error.
+   */
+  private async getRooCompletion(
+    systemPrompt: string,
+    userPrompt: string
+  ): Promise<Result<string, Error>> {
+    this.logger.debug('Requesting roo content from LLM...');
+    const completionResult = await this.llmAgent.getCompletion(systemPrompt, userPrompt);
+    if (completionResult.isErr()) {
+      return Result.err(
+        completionResult.error ?? new Error('Unknown error getting roo completion from LLM')
+      );
+    }
+    const rawContent = completionResult.value;
+    if (!rawContent || rawContent.trim().length === 0) {
+      return Result.err(new Error('LLM returned empty content for roo file.'));
+    }
+    this.logger.debug('Received roo content from LLM.');
+    return Result.ok(rawContent);
+  }
+
+  /**
+   * Processes the raw content for roo generation (e.g., stripping markdown).
+   * @param rawContent The raw content from the LLM.
+   * @returns Result containing the processed content or an error.
+   */
+  private processRooContent(rawContent: string): Result<string, Error> {
+    try {
+      const strippedContentResult = this.contentProcessor.stripMarkdownCodeBlock(rawContent);
+      if (strippedContentResult.isErr()) {
+        return Result.err(
+          strippedContentResult.error ?? new Error('Unknown error stripping markdown')
+        );
+      }
+      const strippedContent = strippedContentResult.value;
+      if (
+        strippedContent === undefined ||
+        strippedContent === null ||
+        strippedContent.trim().length === 0
+      ) {
+        return Result.err(new Error('Stripped roo content is empty or undefined.'));
+      }
+      return Result.ok(strippedContent);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unknown error processing roo content';
+      const errorInstance = error instanceof Error ? error : new Error(message);
+      this.logger.error(`Error in processRooContent: ${message}`, errorInstance);
+      return Result.err(errorInstance);
+    }
+  }
+
+  /**
+   * Writes the final roo content to a file.
+   * @param outputPath The path to write the file to.
+   * @param content The final content to write.
+   * @returns Result containing the path to the written file or an error.
+   */
+  private async writeRooFile(outputPath: string, content: string): Promise<Result<string, Error>> {
+    try {
+      this.logger.debug(`Writing generated roo to ${outputPath}`);
+      const writeResult = await this.fileOps.writeFile(outputPath, content);
+      if (writeResult.isErr()) {
+        return Result.err(writeResult.error ?? new Error('Unknown error writing roo file'));
+      }
+      return Result.ok(outputPath);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error writing roo file';
+      const errorInstance = error instanceof Error ? error : new Error(message);
+      this.logger.error(`Error in writeRooFile: ${message}`, errorInstance);
+      return Result.err(errorInstance);
+    }
+  }
+
   private async generateRooContent(
     projectContext: ProjectContext,
     _options: ProjectConfig
@@ -189,7 +267,7 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
 
       // 3. Process each mode template
       let successfulModes = 0;
-      let totalContent = '';
+      const generatedFiles: string[] = [];
 
       for (const modeFile of modeFiles) {
         // Extract mode name from filename
@@ -233,182 +311,76 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
 
         const { systemPrompt, userPrompt } = prompts;
 
-        // Get completion from LLM
+        // 2. Get Completion from LLM
         const completionResult = await this.getRooCompletion(systemPrompt, userPrompt);
         if (completionResult.isErr()) {
           const errorMessage = completionResult.error?.message ?? 'Unknown error';
           this.logger.warn(
             `Failed to get LLM completion for mode ${modeName}, skipping: ${errorMessage}`
           );
-          continue;
+          continue; // Continue with next mode file
         }
 
         const rawContent = completionResult.value;
-        if (!rawContent) {
-          this.logger.warn(`Unexpected empty LLM response for mode ${modeName}, skipping`);
-          continue;
+
+        // Check if rawContent is defined before processing
+        if (rawContent === undefined || rawContent === null || rawContent.trim().length === 0) {
+          this.logger.warn(
+            `LLM returned empty or null content for mode ${modeName}. Skipping file generation.`
+          );
+          continue; // Continue with next mode file
         }
 
-        // Process the raw content
+        // 3. Process Content
         const processedResult = this.processRooContent(rawContent);
         if (processedResult.isErr()) {
           const errorMessage = processedResult.error?.message ?? 'Unknown error';
           this.logger.warn(
             `Failed to process content for mode ${modeName}, skipping: ${errorMessage}`
           );
-          continue;
+          continue; // Continue with next mode file
         }
 
-        // Add mode-specific content to total content
-        totalContent += `\n\n# ${modeName.toUpperCase()} MODE RULES\n\n${processedResult.value}`;
-        successfulModes++;
+        const processedLLMRules = processedResult.value;
+
+        // TODO: Implement logic to ensure >= 100 rules (Subtask 5)
+        // For now, assume processedLLMRules contains the rules.
+
+        // 4. Concatenate and Write File
+        const outputPath = path.join('.roo', `system-prompt-${modeName}`); // Define outputPath here
+        const finalContent = `${rulesContent}\n\n${templateContent}\n\n${processedLLMRules}`;
+
+        const writeResult = await this.writeRooFile(outputPath, finalContent); // Modify writeRooFile or create new method
+        if (writeResult.isErr()) {
+          this.logger.error(
+            `Failed to write roo file for mode ${modeName} at ${outputPath}`,
+            writeResult.error
+          );
+          continue; // Continue with next mode file
+        }
+
+        this.logger.info(
+          `Successfully generated roo file for mode ${modeName} at ${writeResult.value!}`
+        );
+        generatedFiles.push(writeResult.value!); // Add generated file path to list
+        successfulModes++; // Increment successfulModes
       }
 
-      // Write combined content to file if we have any successful modes
+      // Update the success message to list generated files
       if (successfulModes > 0) {
-        const writeResult = await this.writeRooFile(totalContent.trim());
-        if (writeResult.isErr()) {
-          return Result.err(writeResult.error ?? new Error('Unknown error writing file'));
-        }
-
-        const summaryMessage = `Successfully generated roo content for ${successfulModes} modes. Output written to: ${writeResult.value}`;
-        this.logger.info(summaryMessage);
-        return Result.ok(summaryMessage);
+        return Result.ok(
+          `Successfully generated roo content for ${successfulModes} mode(s):\n${generatedFiles.join('\n')}`
+        );
       } else {
-        const errorMessage = 'Failed to generate content for any modes';
-        this.logger.error(errorMessage);
-        return Result.err(new Error(errorMessage));
+        return Result.ok('No roo files were generated as no modes were processed successfully.');
       }
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Unknown error during roo generation';
+        error instanceof Error
+          ? error.message
+          : 'Unknown error during roo generation orchestration';
       const errorInstance = error instanceof Error ? error : new Error(message);
       this.logger.error(`Error in generateRooContent: ${message}`, errorInstance);
-      return Result.err(errorInstance);
-    }
-  }
-
-  /**
-   * Builds the system and user prompts for roo generation.
-   * @param projectContext The analyzed project context.
-   * @returns Result containing the system and user prompts or an error.
-   */
-  private buildRooPrompts(
-    projectContext: ProjectContext
-  ): Result<{ systemPrompt: string; userPrompt: string }, Error> {
-    try {
-      const contextString = JSON.stringify(projectContext, null, 2);
-
-      const systemPromptResult = this.rulesPromptBuilder.buildSystemPrompt('code');
-      if (systemPromptResult.isErr()) {
-        return Result.err(
-          systemPromptResult.error ?? new Error('Unknown error building roo system prompt') // Added nullish coalescing
-        );
-      }
-
-      const userPromptResult = this.rulesPromptBuilder.buildPrompt(
-        'Generate project-specific roo based on the context.',
-        contextString,
-        ''
-      );
-      if (userPromptResult.isErr()) {
-        return Result.err(
-          userPromptResult.error ?? new Error('Unknown error building roo user prompt') // Added nullish coalescing
-        );
-      }
-
-      const systemPrompt = systemPromptResult.value;
-      const userPrompt = userPromptResult.value;
-
-      if (!systemPrompt || !userPrompt) {
-        return Result.err(new Error('System or user prompt became undefined unexpectedly.'));
-      }
-
-      return Result.ok({ systemPrompt, userPrompt });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error building roo prompts';
-      const errorInstance = error instanceof Error ? error : new Error(message);
-      this.logger.error(`Error in buildRooPrompts: ${message}`, errorInstance);
-      return Result.err(errorInstance);
-    }
-  }
-
-  /**
-   * Gets completion content from the LLM for roo generation.
-   * @param systemPrompt The system prompt.
-   * @param userPrompt The user prompt.
-   * @returns Result containing the raw content from the LLM or an error.
-   */
-  private async getRooCompletion(
-    systemPrompt: string,
-    userPrompt: string
-  ): Promise<Result<string, Error>> {
-    this.logger.debug('Requesting roo content from LLM...');
-    const completionResult = await this.llmAgent.getCompletion(systemPrompt, userPrompt);
-    if (completionResult.isErr()) {
-      return Result.err(
-        completionResult.error ?? new Error('Unknown error getting roo completion from LLM') // Added nullish coalescing
-      );
-    }
-    const rawContent = completionResult.value;
-    if (!rawContent || rawContent.trim().length === 0) {
-      return Result.err(new Error('LLM returned empty content for roo file.'));
-    }
-    this.logger.debug('Received roo content from LLM.');
-    return Result.ok(rawContent);
-  }
-
-  /**
-   * Processes the raw content for roo generation (e.g., stripping markdown).
-   * @param rawContent The raw content from the LLM.
-   * @returns Result containing the processed content or an error.
-   */
-  private processRooContent(rawContent: string): Result<string, Error> {
-    try {
-      const strippedContentResult = this.contentProcessor.stripMarkdownCodeBlock(rawContent);
-      if (strippedContentResult.isErr()) {
-        // Log warning and return the error
-        return Result.err(
-          strippedContentResult.error ?? new Error('Unknown error stripping markdown') // Added nullish coalescing
-        );
-      }
-      const strippedContent = strippedContentResult.value;
-      if (
-        strippedContent === undefined ||
-        strippedContent === null ||
-        strippedContent.trim().length === 0
-      ) {
-        return Result.err(new Error('Stripped roo content is empty or undefined.'));
-      }
-      return Result.ok(strippedContent); // Return string on Ok
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Unknown error processing roo content';
-      const errorInstance = error instanceof Error ? error : new Error(message);
-      this.logger.error(`Error in processRooContent: ${message}`, errorInstance);
-      return Result.err(errorInstance);
-    }
-  }
-
-  /**
-   * Writes the final roo content to a file.
-   * @param content The final content to write.
-   * @returns Result containing the path to the written file or an error.
-   */
-  private async writeRooFile(content: string): Promise<Result<string, Error>> {
-    try {
-      this.logger.debug(`Writing generated roo to ${this.rooOutputPath}`);
-      const writeResult = await this.fileOps.writeFile(this.rooOutputPath, content);
-      if (writeResult.isErr()) {
-        return Result.err(
-          writeResult.error ?? new Error('Unknown error writing roo file') // Added nullish coalescing
-        );
-      }
-      return Result.ok(this.rooOutputPath);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error writing roo file';
-      const errorInstance = error instanceof Error ? error : new Error(message);
-      this.logger.error(`Error in writeRooFile: ${message}`, errorInstance);
       return Result.err(errorInstance);
     }
   }
