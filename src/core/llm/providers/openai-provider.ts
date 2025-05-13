@@ -2,6 +2,7 @@ import { Injectable, Inject } from '@core/di/decorators';
 import { Result } from '@core/result/result';
 import { BaseLLMProvider } from '@core/llm/llm-provider';
 import { LLMProviderError } from '@core/llm/llm-provider-errors';
+import { ModelNotFoundError } from '../../errors/model-not-found-error';
 import type { ILogger } from '@core/services/logger-service';
 import { LLMConfig } from 'types/shared';
 import {
@@ -49,6 +50,88 @@ type OpenAIModelResponse = {
 export class OpenAIProvider extends BaseLLMProvider {
   public readonly name = 'openai';
   private model: ChatOpenAI;
+
+  private async makeOpenAIRequest<T>(
+    endpoint: string,
+    errorContext: string
+  ): Promise<Result<T, LLMProviderError>> {
+    try {
+      const response = await fetch(`https://api.openai.com/v1/${endpoint}`, {
+        headers: {
+          Authorization: `Bearer ${this.config.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const statusCode = response.status;
+        const errorCode =
+          statusCode === 401
+            ? 'AUTHENTICATION_ERROR'
+            : statusCode === 429
+              ? 'RATE_LIMIT_ERROR'
+              : 'API_ERROR';
+        const message = `OpenAI API request failed: ${errorContext}`;
+
+        this.logger.warn(`${message} (status ${statusCode})`);
+        return Result.err(new LLMProviderError(message, errorCode, this.name, { statusCode }));
+      }
+
+      const responseData = await response.json();
+      return Result.ok(responseData as T);
+    } catch (error) {
+      const message = `Failed to ${errorContext}: ${error instanceof Error ? error.message : String(error)}`;
+      this.logger.error(message, error instanceof Error ? error : undefined);
+
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        return Result.err(
+          new LLMProviderError(
+            'Network error connecting to OpenAI API',
+            'NETWORK_ERROR',
+            this.name,
+            {
+              cause: error,
+            }
+          )
+        );
+      }
+
+      return Result.err(LLMProviderError.fromError(error, this.name));
+    }
+  }
+
+  async listModels(): Promise<Result<string[], LLMProviderError>> {
+    this.logger.debug('Fetching available models from OpenAI API');
+
+    const result = await this.makeOpenAIRequest<OpenAIModelResponse>(
+      'models',
+      'fetch OpenAI models'
+    );
+    if (result.isErr()) {
+      const error =
+        result.error ||
+        new LLMProviderError('Unknown error fetching OpenAI models', 'API_ERROR', this.name);
+      this.logger.error('Failed to fetch OpenAI models:', error);
+      return Result.err(error);
+    }
+
+    const data = result.value;
+    if (!data?.data || !Array.isArray(data.data)) {
+      const message = 'Invalid response format from OpenAI API: missing or invalid data array';
+      this.logger.warn(message);
+      return Result.err(new LLMProviderError(message, 'INVALID_RESPONSE', this.name));
+    }
+
+    const modelIds = data.data.map((model) => model.id);
+    if (modelIds.length === 0) {
+      const message = 'No models found in OpenAI API response';
+      this.logger.warn(message);
+      return Result.err(new LLMProviderError(message, 'NO_MODELS_FOUND', this.name));
+    }
+
+    this.logger.debug(`Successfully fetched ${modelIds.length} models from OpenAI API`);
+    return Result.ok(modelIds);
+  }
   // private tiktokenEncoder: Tiktoken | undefined; // Removed, using this.model.getNumTokens()
 
   constructor(
@@ -61,15 +144,19 @@ export class OpenAIProvider extends BaseLLMProvider {
       modelName: this.config.model,
       temperature: this.config.temperature,
       maxTokens: this.config.maxTokens,
-      // topP: this.config.topP, // Example: Add if in LLMConfig & ActualChatOpenAIConstructorParams
-      // frequencyPenalty: this.config.frequencyPenalty, // Example
-      // presencePenalty: this.config.presencePenalty, // Example
     };
     this.model = new ChatOpenAI(constructorParams);
-    this.defaultContextSize = this._getDefaultContextSizeForModel(this.config.model);
+
+    const contextSize = this._getDefaultContextSizeForModel(this.config.model);
+    this.defaultContextSize = contextSize ?? 4096; // Fallback to 4096 for unknown models
+    if (contextSize === undefined) {
+      this.logger.warn(
+        `OpenAIProvider: Using fallback context size (4096) for unknown model: ${this.config.model}`
+      );
+    }
   }
 
-  private _getDefaultContextSizeForModel(modelName: string): number {
+  private _getDefaultContextSizeForModel(modelName: string): number | undefined {
     // Based on https://platform.openai.com/docs/models/overview
     if (modelName.includes('gpt-4-turbo')) return 128000;
     if (modelName.includes('gpt-4-32k')) return 32768;
@@ -78,17 +165,38 @@ export class OpenAIProvider extends BaseLLMProvider {
       !modelName.includes('gpt-4-turbo') &&
       !modelName.includes('gpt-4-32k')
     )
-      return 8192; // More specific for base gpt-4
+      return 8192;
     if (modelName.includes('gpt-3.5-turbo-16k')) return 16385;
-    if (modelName.includes('gpt-3.5-turbo-0125')) return 16385; // Explicitly 16k
-    if (modelName.includes('gpt-3.5-turbo-1106')) return 16385; // Explicitly 16k
+    if (modelName.includes('gpt-3.5-turbo-0125')) return 16385;
+    if (modelName.includes('gpt-3.5-turbo-1106')) return 16385;
     if (modelName.includes('gpt-3.5-turbo-instruct')) return 4096;
-    if (modelName.includes('gpt-3.5-turbo')) return 4096; // Fallback for older or unspecified gpt-3.5-turbo
+    if (modelName.includes('gpt-3.5-turbo')) return 4096;
 
-    this.logger.warn(
-      `OpenAIProvider: Unknown model name "${modelName}" for default context size. Using fallback 4096.`
-    );
-    return 4096;
+    this.logger.warn(`OpenAIProvider: Unknown model name "${modelName}" for context size.`);
+    return undefined;
+  }
+
+  /**
+   * Get the maximum token context window size for a specific OpenAI model
+   * @param modelName The name of the OpenAI model
+   * @returns Result containing either the context window size or an error
+   */
+  public getTokenContextWindow(modelName: string): Result<number, LLMProviderError> {
+    this.logger.debug(`Getting token context window for OpenAI model: ${modelName}`);
+
+    const contextSize = this._getDefaultContextSizeForModel(modelName);
+
+    if (contextSize === undefined) {
+      const error = new ModelNotFoundError(
+        `Model '${modelName}' not found in OpenAI context window mapping`,
+        this.name
+      );
+      this.logger.error('Failed to get token context window:', error);
+      return Result.err(error);
+    }
+
+    this.logger.debug(`Found context window size for ${modelName}: ${contextSize} tokens`);
+    return Result.ok(contextSize);
   }
 
   // _initializeTiktoken method removed
@@ -154,30 +262,42 @@ export class OpenAIProvider extends BaseLLMProvider {
 
   private async _validateInputTokens(
     prompt: string,
-    maxOutputTokensConfig?: number // Changed to optional type syntax
+    maxOutputTokensConfig?: number
   ): Promise<Result<void, LLMProviderError>> {
     try {
       const currentInputTokens = await this.countTokens(prompt);
-      const modelContextWindow = await this.getContextWindowSize();
+
+      const contextWindowResult = this.getTokenContextWindow(this.config.model);
+      if (contextWindowResult.isErr()) {
+        // Create a new LLMProviderError from the one returned by getTokenContextWindow
+        const originalError = contextWindowResult.error!; // Assert non-null
+        const newError = new LLMProviderError(
+          originalError.message,
+          originalError.code,
+          originalError.provider,
+          { cause: originalError.cause }
+        );
+        return Result.err(newError);
+      }
+      const modelContextWindow = contextWindowResult.value!;
 
       const maxOutputTokens = maxOutputTokensConfig ?? this.config.maxTokens ?? 2048;
-
       const availableForInput = modelContextWindow - maxOutputTokens;
 
       this.logger.debug(
         `OpenAIProvider: Input tokens: ${currentInputTokens}, Available for input: ${availableForInput} (Model Context: ${modelContextWindow}, Reserved for Output: ${maxOutputTokens}) for model ${this.config.model}`
-      ); // This logger call seems fine if it supports one string arg.
+      );
 
       if (currentInputTokens > availableForInput) {
         const errorMsg = `Input prompt (${currentInputTokens} tokens) for OpenAI structured completion exceeds model's available input token limit (${availableForInput} tokens). Model: ${this.config.model}, Total Context: ${modelContextWindow}, Reserved for Output: ${maxOutputTokens}.`;
-        this.logger.warn(errorMsg); // Assuming logger.warn takes a single string argument
+        this.logger.warn(errorMsg);
         return Result.err(new LLMProviderError(errorMsg, 'VALIDATION_ERROR', this.name));
       }
       return Result.ok(undefined);
     } catch (validationError: unknown) {
       const message = `Error during pre-call token validation in OpenAIProvider: ${validationError instanceof Error ? validationError.message : String(validationError)}`;
       const errorToLog = validationError instanceof Error ? validationError : new Error(message);
-      this.logger.error(message, errorToLog); // Pass error instance directly if logger supports (string, Error)
+      this.logger.error(message, errorToLog);
       return Result.err(
         new LLMProviderError(message, 'UNKNOWN_ERROR', this.name, {
           cause: errorToLog,
