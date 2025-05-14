@@ -68,6 +68,7 @@ The system operates as a command-line interface tool. The core flow involves rec
   - `GeneratorOrchestrator`: Manages different generator types (e.g., Memory Bank, VSCode Rules) and executes the selected one.
   - `ProjectAnalyzer`: Collects and analyzes project data, including file structure, tech stack, and potentially AST information.
   - `LLMAgent`: Handles all interactions with external LLM providers, including prompt building, completion requests, and token management.
+  - `RoomodesService`: Responsible for generating the static `.roomodes` file content based on project context and mode templates. This service encapsulates the logic previously found in the removed `RoomodesGenerator`. Dynamic roo system prompt generation remains within the `AiMagicGenerator`.
   - `MemoryBankService`: Orchestrates the generation of memory bank content based on project context and templates.
   - `RulesTemplateManager`: Manages loading, merging, and validating templates used for generating rules or memory bank content.
   - `FileOperations`: Provides an abstraction layer for file system interactions (reading, writing, directory creation).
