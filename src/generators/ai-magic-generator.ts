@@ -13,6 +13,7 @@ import { IRulesPromptBuilder } from '@generators/rules/interfaces';
 import { IContentProcessor } from '@memory-bank/interfaces';
 import { RooFileOpsHelper } from './roo-file-ops-helper';
 import { MarkdownListParser } from '@core/utils/markdown-list-parser';
+import { IRoomodesService } from '@core/services/roomodes.service';
 
 @Injectable()
 export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
@@ -29,7 +30,8 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
     @Inject('MemoryBankService') private readonly memoryBankService: MemoryBankService,
     @Inject('IRulesPromptBuilder') private readonly rulesPromptBuilder: IRulesPromptBuilder,
     @Inject('IContentProcessor') private readonly contentProcessor: IContentProcessor,
-    @Inject('RooFileOpsHelper') private readonly rooFileOpsHelper: RooFileOpsHelper
+    @Inject('RooFileOpsHelper') private readonly rooFileOpsHelper: RooFileOpsHelper,
+    @Inject('IRoomodesService') private readonly roomodesService: IRoomodesService
   ) {
     super(container);
     this.logger.debug(`${this.name} generator initialized`);
@@ -50,7 +52,8 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
       !this.memoryBankService ||
       !this.rulesPromptBuilder ||
       !this.contentProcessor ||
-      !this.rooFileOpsHelper
+      !this.rooFileOpsHelper ||
+      !this.roomodesService
     ) {
       return Result.err(new Error(`${this.name} generator is missing required dependencies.`));
     }
@@ -72,11 +75,6 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
         return Result.err(new Error('The --generators flag is required when using --generate.'));
       }
 
-      if (!contextPaths?.length) {
-        return Result.err(new Error('No context path provided for analysis'));
-      }
-
-      // 1. Analyze Project (needed for both memory-bank and roo)
       const projectContextResult = await this.analyzeProject(contextPaths);
       if (projectContextResult.isErr()) {
         return Result.err(projectContextResult.error ?? new Error('Project analysis failed'));
@@ -87,18 +85,36 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
       }
 
       switch (generatorType) {
-        case 'memory-bank':
-          return this.generateMemoryBankContent(projectContext, options);
-        case 'roo':
-          return this.generateRooContent(projectContext, options);
+        case 'roo': {
+          // First generate memory bank content using the shared ProjectContext
+          const mbResult = await this.generateMemoryBankContent(projectContext, options);
+          if (mbResult.isErr()) {
+            // Halt the roo flow if memory bank generation fails
+            return Result.err(
+              mbResult.error ?? new Error('Unknown error during memory bank generation')
+            );
+          }
+
+          // Then generate roomodes file
+          const roomodesResult = await this.roomodesService.generateStaticRoomodesFile();
+          if (roomodesResult.isErr()) {
+            return Result.err(
+              roomodesResult.error ?? new Error('Unknown error during roomodes generation')
+            );
+          }
+
+          // Finally, generate roo system prompts using the shared ProjectContext
+          return this.generateRooSystemPrompts(projectContext, options);
+        }
         case 'cursor':
-          return this.handleCursorGenerationPlaceholder(projectContext, options); // Corrected method name
+          // Keep cursor behavior unchanged
+          return this.handleCursorGenerationPlaceholder(projectContext, options);
         default: {
-          // Added curly braces for scope
+          // Handle unknown generator types
           const errorMsg = `Unknown generator type: ${generatorType}`;
           this.logger.error(errorMsg);
           return Result.err(new Error(errorMsg));
-        } // Added closing curly brace
+        }
       }
     } catch (error: unknown) {
       const message =
@@ -218,7 +234,7 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
       }
 
       // Convert rules back to markdown list format
-      const formattedRules = rules.map((rule) => `- ${rule}`).join('\n');
+      const formattedRules = rules.map((rule: string) => `- ${rule}`).join('\n');
       if (!formattedRules) {
         return Result.err(new Error('Failed to format rules as markdown list'));
       }
@@ -255,7 +271,7 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
     }
   }
 
-  private async generateRooContent(
+  private async generateRooSystemPrompts(
     projectContext: ProjectContext,
     _options: ProjectConfig
   ): Promise<Result<string, Error>> {
@@ -341,9 +357,9 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
           modeName
         ); // Pass modeName
         if (promptResult.isErr()) {
-          const errorMessage = promptResult.error?.message ?? 'Unknown error';
+          const errorMessage = String(promptResult.error?.message ?? 'Unknown error');
           this.logger.warn(
-            `Failed to build prompts for mode "${modeName}", skipping: ${errorMessage}` // Added quotes
+            `Failed to build prompts for mode "${modeName}", skipping: ${errorMessage}`
           );
           continue;
         }
@@ -363,9 +379,9 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
         this.logger.debug(`Requesting LLM completion for mode "${modeName}"`); // Added debug log
         const completionResult = await this.getRooCompletion(systemPrompt, userPrompt);
         if (completionResult.isErr()) {
-          const errorMessage = completionResult.error?.message ?? 'Unknown error';
+          const errorMessage = String(completionResult.error?.message ?? 'Unknown error');
           this.logger.warn(
-            `Failed to get LLM completion for mode "${modeName}", skipping: ${errorMessage}` // Added quotes
+            `Failed to get LLM completion for mode "${modeName}", skipping: ${errorMessage}`
           );
           continue; // Continue with next mode file
         }
@@ -376,7 +392,7 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
         // Check if rawContent is defined before processing (already present, good)
         if (rawContent === undefined || rawContent === null || rawContent.trim().length === 0) {
           this.logger.warn(
-            `LLM returned empty or null content for mode "${modeName}". Skipping file generation.` // Added quotes
+            `LLM returned empty or null content for mode "${modeName}". Skipping file generation.`
           );
           continue; // Continue with next mode file
         }
@@ -385,9 +401,9 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
         this.logger.debug(`Processing raw LLM content for mode "${modeName}"`); // Added debug log
         const processedResult = this.processRooContent(rawContent);
         if (processedResult.isErr()) {
-          const errorMessage = processedResult.error?.message ?? 'Unknown error';
+          const errorMessage = String(processedResult.error?.message ?? 'Unknown error');
           this.logger.warn(
-            `Failed to process content for mode "${modeName}", skipping: ${errorMessage}` // Added quotes
+            `Failed to process content for mode "${modeName}", skipping: ${errorMessage}`
           );
           continue; // Continue with next mode file
         }
@@ -403,7 +419,7 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
         ) {
           // Added trim() check
           this.logger.warn(
-            `Processed LLM rules content is empty, undefined, or null for mode "${modeName}". Skipping rule count verification and file generation.` // Added quotes
+            `Processed LLM rules content is empty, undefined, or null for mode "${modeName}". Skipping rule count verification and file generation.`
           );
           continue; // Continue with next mode file
         }
@@ -412,19 +428,21 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
         // This is a placeholder. The actual implementation will depend on the expected format
         // of the LLM-generated rules (e.g., line breaks, numbered list, markdown list).
         // A simple approach is to count lines if each rule is on a new line.
-        const ruleLines = processedLLMRules.split('\n').filter((line) => line.trim().length > 0);
+        const ruleLines = processedLLMRules
+          .split('\n')
+          .filter((line: string) => line.trim().length > 0);
         const ruleCount = ruleLines.length;
 
         const MIN_RULES = 100;
 
         if (ruleCount < MIN_RULES) {
           this.logger.warn(
-            `LLM generated only ${ruleCount} rules for mode "${modeName}". Minimum required is ${MIN_RULES}. Proceeding with available rules.` // Added quotes and clarification
+            `LLM generated only ${ruleCount} rules for mode "${modeName}". Minimum required is ${MIN_RULES}. Proceeding with available rules.`
           );
           // As per the plan, a robust regeneration strategy is not required for this task,
           // a warning is sufficient for now.
         } else {
-          this.logger.info(`LLM generated ${ruleCount} rules for mode "${modeName}".`); // Added quotes
+          this.logger.info(`LLM generated ${ruleCount} rules for mode "${modeName}".`);
         }
         this.logger.debug(`Rule count verification complete for mode "${modeName}"`); // Added debug log
 
@@ -435,15 +453,19 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
 
         const writeResult = await this.writeRooFile(outputPath, finalContent); // Modify writeRooFile or create new method
         if (writeResult.isErr()) {
+          const errorForLog =
+            writeResult.error instanceof Error
+              ? writeResult.error
+              : new Error(String(writeResult.error));
           this.logger.error(
-            `Failed to write roo file for mode "${modeName}" at ${outputPath}`, // Added quotes
-            writeResult.error
+            `Failed to write roo file for mode "${modeName}" at ${outputPath}`,
+            errorForLog
           );
           continue; // Continue with next mode file
         }
 
         this.logger.info(
-          `Successfully generated roo file for mode "${modeName}" at ${writeResult.value!}` // Added quotes
+          `Successfully generated roo file for mode "${modeName}" at ${String(writeResult.value)}`
         );
         generatedFiles.push(writeResult.value!); // Add generated file path to list
         successfulModes++; // Increment successfulModes
@@ -466,7 +488,7 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
           ? error.message
           : 'Unknown error during roo generation orchestration';
       const errorInstance = error instanceof Error ? error : new Error(message);
-      this.logger.error(`Error in generateRooContent: ${message}`, errorInstance);
+      this.logger.error(`Error in generateRooSystemPrompts: ${message}`, errorInstance);
       return Result.err(errorInstance);
     }
   }

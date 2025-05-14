@@ -5,7 +5,7 @@ import { IFileOperations } from '../file-operations/interfaces';
 import { Result } from '../result/result';
 import { ILogger } from '../services/logger-service';
 import { ILLMConfigService } from './interfaces';
-import { LLMProviderRegistry } from '../llm/provider-registry';
+
 /**
  * Service for managing LLM configuration.
  * Handles loading, saving, and interactive editing of LLM config from llm.config.json.
@@ -19,14 +19,9 @@ export class LLMConfigService implements ILLMConfigService {
     @Inject('ILogger') private readonly logger: ILogger,
     @Inject('Inquirer')
     private readonly inquirer: ReturnType<typeof import('inquirer').createPromptModule>,
-    @Inject('IModelListerService') private readonly modelListerService: IModelListerService,
-    @Inject('LLMProviderRegistry') private readonly providerRegistry: LLMProviderRegistry
+    @Inject('IModelListerService') private readonly modelListerService: IModelListerService
   ) {}
 
-  /**
-   * Loads the LLM configuration from file.
-   * @returns Result wrapping LLMConfig or error
-   */
   async loadConfig(): Promise<Result<LLMConfig, Error>> {
     try {
       const readResult = await this.fileOps.readFile(this.configPath);
@@ -51,11 +46,6 @@ export class LLMConfigService implements ILLMConfigService {
     }
   }
 
-  /**
-   * Validates the LLMConfig object.
-   * @param config The config to validate
-   * @returns string error message if invalid, or null if valid
-   */
   public validateConfig(config: LLMConfig): string | null {
     if (!config.provider || typeof config.provider !== 'string' || config.provider.trim() === '') {
       return "Missing or invalid 'provider'";
@@ -69,11 +59,6 @@ export class LLMConfigService implements ILLMConfigService {
     return null;
   }
 
-  /**
-   * Saves the LLM configuration to file.
-   * @param config LLMConfig to save
-   * @returns Result indicating success or failure
-   */
   async saveConfig(config: LLMConfig): Promise<Result<void, Error>> {
     try {
       const content = JSON.stringify(config, null, 2);
@@ -91,23 +76,11 @@ export class LLMConfigService implements ILLMConfigService {
     }
   }
 
-  /**
-   * Performs interactive editing of the LLM configuration with validation and real-time feedback.
-   * @param config LLMConfig to edit
-   * @returns Result indicating success or failure
-   */
-  /**
-   * Interactively edits the LLM configuration through a series of prompts
-   * @param _config Optional existing config (unused, kept for backward compatibility)
-   * @returns Result indicating success or failure
-   */
   async interactiveEditConfig(_config?: LLMConfig): Promise<Result<void, Error>> {
     try {
-      // Get provider and API key
       const providerName = await this.promptForProvider();
       const apiKey = await this.promptForApiKey(providerName);
 
-      // Try to list models or fallback to manual input
       let modelName = '';
       const modelsResult = await this.modelListerService.listModelsForProvider(
         providerName,
@@ -115,30 +88,25 @@ export class LLMConfigService implements ILLMConfigService {
       );
 
       if (modelsResult.isOk() && modelsResult.value && modelsResult.value.length > 0) {
-        // If models were successfully retrieved, prompt user to select one
         const answer = await this.inquirer({
           type: 'list',
           name: 'model',
           message: 'Select model:',
-          choices: modelsResult.value,
+          choices: modelsResult.value, // value is string[] here
           pageSize: 10,
         });
-
         modelName = answer.model as string;
       } else {
-        // If model listing failed, log a warning and fall back to manual input
-        if (modelsResult.isErr() && modelsResult.error) {
-          this.logger.warn(`Could not fetch available models: ${modelsResult.error.message}`);
+        if (modelsResult.isErr()) {
+          this.logger.warn(`Could not fetch available models: ${modelsResult.error!.message}`); // Added !
         } else {
           this.logger.warn(`No models available for ${providerName}`);
         }
         modelName = await this.promptForModelName(providerName);
       }
 
-      // Get advanced configuration with context from selected model
       const advancedConfig = await this.promptForAdvancedConfig(providerName, modelName, apiKey);
 
-      // Create and save final config
       const updatedConfig: LLMConfig = {
         provider: providerName,
         apiKey: apiKey,
@@ -165,10 +133,6 @@ export class LLMConfigService implements ILLMConfigService {
     }
   }
 
-  /**
-   * Prompts for provider selection from available options
-   * @returns Selected provider name
-   */
   private async promptForProvider(): Promise<string> {
     const providerChoices = [
       { name: 'OpenAI - GPT-3.5/4', value: 'openai', short: 'OpenAI' },
@@ -189,11 +153,6 @@ export class LLMConfigService implements ILLMConfigService {
     return answer.provider as string;
   }
 
-  /**
-   * Prompts for and validates API key
-   * @param providerName Selected provider name
-   * @returns Validated API key
-   */
   private async promptForApiKey(providerName: string): Promise<string> {
     const answer = await this.inquirer({
       type: 'password',
@@ -201,7 +160,6 @@ export class LLMConfigService implements ILLMConfigService {
       message: `Enter API key for ${providerName}:\n  (Will be stored in llm.config.json)`,
       validate: (input: string) => {
         if (!input) return 'API key is required';
-        // Updated regex to allow for a wider range of valid API key formats
         if (!/^[a-zA-Z0-9_\-.]+$/.test(input)) return 'Invalid API key format';
         return true;
       },
@@ -210,11 +168,6 @@ export class LLMConfigService implements ILLMConfigService {
     return answer.apiKey as string;
   }
 
-  /**
-   * Prompts for manual model name input
-   * @param providerName Provider to get model for
-   * @returns Entered model name
-   */
   private async promptForModelName(providerName: string): Promise<string> {
     const answer = await this.inquirer({
       type: 'input',
@@ -226,86 +179,93 @@ export class LLMConfigService implements ILLMConfigService {
     return answer.model as string;
   }
 
-  /**
-   * Prompts for advanced configuration options
-   * @returns Advanced configuration values
-   */
   private async promptForAdvancedConfig(
     providerName: string,
     modelName: string,
     apiKey: string
   ): Promise<{ temperature: number; maxTokens: number }> {
-    let suggestedMaxTokens = 4096; // Default fallback
+    let suggestedMaxTokens = 4096;
     let contextWindow = 0;
 
-    // Get the provider factory and create a temporary provider instance
-    const factoryResult = this.providerRegistry.getProviderFactory(providerName);
-    if (factoryResult.isOk() && factoryResult.value) {
-      const factory = factoryResult.value;
-      // Create a temporary config with default values
-      const tempConfig: LLMConfig = {
-        provider: providerName,
-        apiKey: apiKey,
-        model: modelName,
-        temperature: 0.1, // Default value
-        maxTokens: 4096, // Default value
-      };
+    this.logger.trace(
+      `Attempting to get context window size for model ${modelName} from provider ${providerName} via ModelListerService.`
+    );
+    const cwResult = await this.modelListerService.getContextWindowSize(
+      providerName,
+      apiKey,
+      modelName
+    );
 
-      const providerResult = factory(tempConfig);
-
-      if (providerResult.isOk() && providerResult.value) {
-        const provider = providerResult.value;
-        // Type guard to check if provider has getTokenContextWindow method
-        if (typeof (provider as any).getTokenContextWindow === 'function') {
-          const contextResult = (provider as any).getTokenContextWindow(modelName);
-          if (contextResult.isOk()) {
-            contextWindow = contextResult.value;
-            // Suggest 25% of the context window as maxTokens
-            suggestedMaxTokens = Math.floor(contextWindow * 0.25);
-            this.logger.debug(
-              `Using context window size ${contextWindow} for model ${modelName}, suggesting ${suggestedMaxTokens} tokens`
-            );
-          } else {
-            this.logger.warn(
-              `Could not get context window for model ${modelName}, using default suggestion: ${suggestedMaxTokens}`
-            );
-          }
-        }
+    if (cwResult.isOk()) {
+      // cwResult.value is number here
+      if (cwResult.value! > 0) {
+        // Added !
+        contextWindow = cwResult.value!; // Added !
+        suggestedMaxTokens = Math.floor(contextWindow * 0.25);
+        this.logger.debug(
+          `Successfully retrieved context window size ${contextWindow} for model ${modelName}. Suggested maxTokens: ${suggestedMaxTokens}.`
+        );
+      } else {
+        this.logger.warn(
+          `ModelListerService returned context window size 0 or less for model ${modelName}. Will prompt for maxTokens. Using default suggestion: ${suggestedMaxTokens}.`
+        );
+        contextWindow = 0;
       }
+    } else {
+      // cwResult.isErr()
+      // cwResult.error is LLMProviderError here
+      this.logger.warn(
+        `Error getting context window size for model ${modelName} via ModelListerService: ${cwResult.error!.message}. Will prompt for maxTokens. Using default suggestion: ${suggestedMaxTokens}.` // Added !
+      );
+      contextWindow = 0;
     }
 
-    const answer = await this.inquirer([
+    const prompts: any[] = [
       {
         type: 'number',
         name: 'temperature',
         message:
           'Set temperature for response creativity (0-1):\n  0: focused/deterministic\n  0.5: balanced\n  1: more creative',
         default: 0.1,
-        validate: (input: number) =>
-          (input >= 0 && input <= 1) || 'Temperature must be between 0 and 1',
-      },
-      {
-        type: 'number',
-        name: 'maxTokens',
-        message: contextWindow
-          ? `Set maximum tokens per response (suggested: ${suggestedMaxTokens}, max: ${contextWindow}):`
-          : `Set maximum tokens per response:`,
-        default: suggestedMaxTokens,
-        validate: (input: number) => {
-          if (contextWindow) {
-            return (
-              (input > 0 && input <= contextWindow) ||
-              `Maximum tokens must be between 1 and ${contextWindow}`
-            );
+        validate: (input: string | number) => {
+          const num = parseFloat(String(input));
+          if (isNaN(num)) {
+            return 'Please enter a valid number.';
           }
-          return input > 0 || 'Maximum tokens must be greater than 0';
+          return (num >= 0 && num <= 1) || 'Temperature must be between 0 and 1';
         },
       },
-    ]);
+    ];
+
+    const promptForMaxTokens = contextWindow === 0;
+
+    if (promptForMaxTokens) {
+      prompts.push({
+        type: 'number',
+        name: 'maxTokens',
+        message: `Set maximum tokens per response (e.g., ${suggestedMaxTokens}):`,
+        default: suggestedMaxTokens,
+        validate: (input: number) => input > 0 || 'Maximum tokens must be greater than 0',
+      });
+    } else {
+      this.logger.info(
+        `Automatically setting maxTokens to ${suggestedMaxTokens} (25% of context window ${contextWindow}) for model ${modelName}.`
+      );
+    }
+
+    const answers = await this.inquirer(prompts);
+
+    let finalMaxTokens: number;
+
+    if (promptForMaxTokens) {
+      finalMaxTokens = answers.maxTokens as number;
+    } else {
+      finalMaxTokens = suggestedMaxTokens;
+    }
 
     return {
-      temperature: answer.temperature as number,
-      maxTokens: answer.maxTokens as number,
+      temperature: answers.temperature as number,
+      maxTokens: finalMaxTokens,
     };
   }
 }

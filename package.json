@@ -70,6 +70,8 @@
     "cpy-cli": "^5.0.0",
     "cross-env": "^7.0.3",
     "eslint": "^9.24.0",
+    "eslint-import-resolver-typescript": "^4.3.4",
+    "eslint-plugin-import": "^2.31.0",
     "fs-extra": "^11.3.0",
     "globals": "^16.0.0",
     "husky": "^9.1.7",

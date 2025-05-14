@@ -8,6 +8,7 @@ import { registerMemoryBankModule } from './modules/memory-bank-module';
 import { registerAppModule } from './modules/app-module';
 import { registerAnalysisServices } from './modules/analysis-module';
 import { registerGeneratorModule } from './modules/generator-module';
+import { registerRoomodesModule } from './modules/roomodes-module';
 
 /**
  *  @description Registers services with the DI container by calling modular registration functions.
@@ -25,6 +26,7 @@ export function registerServices(): void {
   registerAppModule(container);
   registerAnalysisServices(container);
   registerGeneratorModule(container);
+  registerRoomodesModule(container);
 
   // Optional: Add any remaining top-level or cross-cutting registrations here if needed
   // For example, if there were registrations not fitting into specific modules.

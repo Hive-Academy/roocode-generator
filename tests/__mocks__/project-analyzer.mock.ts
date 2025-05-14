@@ -24,21 +24,7 @@ const defaultMockProjectContextData: ProjectContext = {
     linters: ['mockLinter'],
     packageManager: 'mockPM',
   },
-  structure: {
-    rootDir: '/mock/root',
-    sourceDir: 'src',
-    testDir: 'tests',
-    configFiles: ['package.json'],
-    mainEntryPoints: ['src/index.ts'],
-    directoryTree: [],
-    componentStructure: {},
-  },
-  dependencies: {
-    dependencies: { 'mock-dep': '1.0.0' },
-    devDependencies: { 'mock-dev-dep': '1.0.0' },
-    peerDependencies: {},
-    internalDependencies: {},
-  },
+  projectRootPath: 'roocode',
   codeInsights: {},
   packageJson: { name: 'mock-package', version: '1.0.0' },
 };

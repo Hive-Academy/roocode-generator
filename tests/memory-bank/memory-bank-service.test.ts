@@ -23,20 +23,7 @@ describe('MemoryBankService', () => {
       linters: ['ESLint'],
       packageManager: 'npm',
     },
-    structure: {
-      rootDir: '/project',
-      sourceDir: 'src',
-      testDir: 'tests',
-      configFiles: ['tsconfig.json'],
-      mainEntryPoints: ['src/index.ts'],
-      componentStructure: { 'src/components': ['Button.tsx'] },
-    },
-    dependencies: {
-      dependencies: { react: '18.0.0' },
-      devDependencies: { jest: '29.0.0' },
-      peerDependencies: {},
-      internalDependencies: { 'src/utils': ['src/core/result'] },
-    },
+
     // codeInsights: {} // Default is {}, override if specific insights needed
   });
 

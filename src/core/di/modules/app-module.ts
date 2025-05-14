@@ -15,10 +15,10 @@ import {
 import { GeneratorOrchestrator } from '@core/application/generator-orchestrator';
 import { CliInterface } from '@core/cli/cli-interface';
 import { IGenerator } from '@core/generators/base-generator';
-import { RoomodesGenerator } from '@generators/roomodes-generator';
 import { SystemPromptsGenerator } from '@generators/system-prompts-generator';
 import { VSCodeCopilotRulesGenerator } from '@generators/vscode-copilot-rules-generator';
 import { AiMagicGenerator } from '@generators/ai-magic-generator';
+import { IRoomodesService } from '@core/services/roomodes.service';
 import { IProjectAnalyzer } from '@core/analysis/types';
 // Corrected import for MemoryBankService and added LLMAgent
 import { MemoryBankService } from '@memory-bank/memory-bank-service';
@@ -57,17 +57,6 @@ export function registerAppModule(container: Container): void {
     );
   });
 
-  container.registerFactory<IGenerator<string>>('IGenerator.Roomodes', () => {
-    const serviceContainer = container;
-    const fileOperations = resolveDependency<IFileOperations>(container, 'IFileOperations');
-    const logger = resolveDependency<ILogger>(container, 'ILogger');
-    const projectConfigService = resolveDependency<IProjectConfigService>(
-      container,
-      'IProjectConfigService'
-    );
-    return new RoomodesGenerator(serviceContainer, fileOperations, logger, projectConfigService);
-  });
-
   container.registerFactory<IGenerator<string>>('IGenerator.VSCodeCopilotRules', () => {
     const serviceContainer = container;
     const fileOperations = resolveDependency<IFileOperations>(container, 'IFileOperations');
@@ -99,8 +88,9 @@ export function registerAppModule(container: Container): void {
     ); // Use specific interface
     const contentProcessor = resolveDependency<IContentProcessor>(container, 'IContentProcessor'); // Use specific interface
     const rooFileOpsHelper = resolveDependency<RooFileOpsHelper>(container, 'RooFileOpsHelper'); // Resolve new helper
+    const roomodesService = resolveDependency<IRoomodesService>(container, 'IRoomodesService'); // Resolve RoomodesService
 
-    // Pass dependencies in the correct constructor order (now 9 arguments)
+    // Pass dependencies in the correct constructor order (now 10 arguments)
     return new AiMagicGenerator(
       serviceContainer, // For super(container)
       logger,
@@ -110,7 +100,8 @@ export function registerAppModule(container: Container): void {
       memoryBankService,
       rulesPromptBuilder, // Pass RulesPromptBuilder
       contentProcessor, // Pass ContentProcessor
-      rooFileOpsHelper // Pass new helper
+      rooFileOpsHelper, // Pass new helper
+      roomodesService // Pass RoomodesService
     );
   });
 
@@ -120,7 +111,6 @@ export function registerAppModule(container: Container): void {
     const generatorTokens = [
       // 'IGenerator.Rules', // Removed deprecated RulesGenerator token
       'IGenerator.SystemPrompts',
-      'IGenerator.Roomodes',
       'IGenerator.VSCodeCopilotRules',
       // 'MemoryBankGenerator', // Removed old generator token
       'IGenerator.AiMagic', // Added new generator token

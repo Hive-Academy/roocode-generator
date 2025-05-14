@@ -66,6 +66,21 @@ export interface IModelListerService {
     providerName: string,
     apiKey: string
   ): Promise<Result<string[], LLMProviderError>>; // Changed Error to LLMProviderError
+
+  /**
+   * Gets the context window size for a specific model of a given provider.
+   * This method may create a temporary, isolated instance of the provider.
+   *
+   * @param providerName The name of the LLM provider (e.g., 'openai', 'anthropic').
+   * @param apiKey The API key for the provider.
+   * @param modelName The specific model name.
+   * @returns A Promise resolving to a Result containing the context window size (number) or an LLMProviderError.
+   */
+  getContextWindowSize(
+    providerName: string,
+    apiKey: string,
+    modelName: string
+  ): Promise<Result<number, LLMProviderError>>;
 }
 
 export type LLMProviderFactory = (config: LLMConfig) => Result<ILLMProvider, LLMProviderError>; // Changed Error to LLMProviderError

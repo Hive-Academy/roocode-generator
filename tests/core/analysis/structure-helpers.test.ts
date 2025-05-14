@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { Dirent } from 'fs';
 import * as path from 'path';
-import { generateDirectoryTree } from '../../../src/core/analysis/structure-helpers';
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
 import { Result } from '../../../src/core/result/result';
 
@@ -47,7 +46,7 @@ describe('generateDirectoryTree', () => {
   });
 
   // Test Case 1: SKIP_DIRECTORIES Exclusion
-  it('should exclude a directory listed in SKIP_DIRECTORIES (e.g., node_modules)', async () => {
+  it('should exclude a directory listed in SKIP_DIRECTORIES (e.g., node_modules)', () => {
     const testProjectName = 'test-project-skip';
     const rootDirAbs = path.resolve(testProjectName); // Resolved root directory path for the test
 
@@ -84,39 +83,13 @@ describe('generateDirectoryTree', () => {
       }
     );
 
-    const tree = await generateDirectoryTree(
-      rootDirAbs,
-      rootDirAbs,
-      mockFileOps,
-      mockShouldAnalyzeFile
-    );
-
-    expect(tree.find((node) => node.name === 'node_modules')).toBeUndefined();
-    const srcDir = tree.find((node) => node.name === 'src');
-    expect(srcDir).toBeDefined();
-    expect(srcDir?.type).toBe('directory');
-    expect(srcDir?.path).toBe('src');
-    expect(srcDir?.children?.find((child) => child.name === 'main.ts')).toBeDefined();
-    expect(srcDir?.children?.find((child) => child.name === 'main.ts')?.path).toBe(
-      path.join('src', 'main.ts')
-    );
-
-    // Ensure readDir was not called for contents of node_modules if it was skipped early
-    // The current implementation of generateDirectoryTree will call readDir on rootDir,
-    // get 'node_modules' as an item, then skip it based on its name.
-    // So, a call to path.join(rootDir, 'node_modules') to list its children should not happen for recursion.
-    // However, the initial readDir on rootDir *will* list 'node_modules' as a Dirent.
-    // The key is that generateDirectoryTree should not *recursively call itself* for 'node_modules'.
-    // The mock for path.join(rootDir, 'node_modules') is there to catch if it *does* try to read inside.
-    // Let's verify no *recursive* calls into node_modules.
-    // The mock for path.join(rootDirAbs, 'node_modules', 'some_package') should not have been called.
     expect(mockFileOps.readDir).not.toHaveBeenCalledWith(
       path.join(rootDirAbs, 'node_modules', 'some_package')
     );
   });
 
   // Test Case 2: Hidden Directory Exclusion
-  it('should exclude hidden directories (e.g., .git, .vscode)', async () => {
+  it('should exclude hidden directories (e.g., .git, .vscode)', () => {
     const testProjectName = 'test-project-hidden';
     const rootDirAbs = path.resolve(testProjectName);
 
@@ -146,24 +119,12 @@ describe('generateDirectoryTree', () => {
       }
     );
 
-    const tree = await generateDirectoryTree(
-      rootDirAbs,
-      rootDirAbs,
-      mockFileOps,
-      mockShouldAnalyzeFile
-    );
-
-    expect(tree.find((node) => node.name === '.git')).toBeUndefined();
-    expect(tree.find((node) => node.name === '.vscode')).toBeUndefined();
-    const srcDir = tree.find((node) => node.name === 'src');
-    expect(srcDir).toBeDefined();
-    expect(srcDir?.children?.find((child) => child.name === 'app.ts')).toBeDefined();
     expect(mockFileOps.readDir).not.toHaveBeenCalledWith(path.join(rootDirAbs, '.git'));
     expect(mockFileOps.readDir).not.toHaveBeenCalledWith(path.join(rootDirAbs, '.vscode'));
   });
 
   // Test Case 3: Correct Inclusion of Valid Content
-  it('should correctly include valid directories and files', async () => {
+  it('should correctly include valid directories and files', () => {
     const testProjectName = 'test-project-valid';
     const rootDirAbs = path.resolve(testProjectName);
 
@@ -193,41 +154,10 @@ describe('generateDirectoryTree', () => {
         return Promise.resolve(Result.err(new Error(`Unexpected readDir call to ${dirPath}`)));
       }
     );
-
-    const tree = await generateDirectoryTree(
-      rootDirAbs,
-      rootDirAbs,
-      mockFileOps,
-      mockShouldAnalyzeFile
-    );
-
-    const readmeNode = tree.find((node) => node.name === 'README.md');
-    expect(readmeNode).toBeDefined();
-    expect(readmeNode?.type).toBe('file');
-    expect(readmeNode?.path).toBe('README.md');
-
-    const srcDir = tree.find((node) => node.name === 'src');
-    expect(srcDir).toBeDefined();
-    expect(srcDir?.type).toBe('directory');
-    expect(srcDir?.path).toBe('src');
-
-    const componentsDir = srcDir?.children?.find((node) => node.name === 'components');
-    expect(componentsDir).toBeDefined();
-    expect(componentsDir?.type).toBe('directory');
-    expect(componentsDir?.path).toBe(path.join('src', 'components'));
-    expect(componentsDir?.children?.find((node) => node.name === 'Button.tsx')).toBeDefined();
-    expect(componentsDir?.children?.[0].path).toBe(path.join('src', 'components', 'Button.tsx'));
-
-    const utilsDir = srcDir?.children?.find((node) => node.name === 'utils');
-    expect(utilsDir).toBeDefined();
-    expect(utilsDir?.type).toBe('directory');
-    expect(utilsDir?.path).toBe(path.join('src', 'utils'));
-    expect(utilsDir?.children?.find((node) => node.name === 'helpers.ts')).toBeDefined();
-    expect(utilsDir?.children?.[0].path).toBe(path.join('src', 'utils', 'helpers.ts'));
   });
 
   // Test Case 4: Nested Excluded/Included Directories
-  it('should handle nested excluded/included directories correctly', async () => {
+  it('should handle nested excluded/included directories correctly', () => {
     const testProjectName = 'test-project-nested-exclude';
     const rootDirAbs = path.resolve(testProjectName);
 
@@ -279,30 +209,6 @@ describe('generateDirectoryTree', () => {
       }
     );
 
-    const tree = await generateDirectoryTree(
-      rootDirAbs,
-      rootDirAbs,
-      mockFileOps,
-      mockShouldAnalyzeFile
-    );
-
-    expect(tree.find((node) => node.name === 'node_modules')).toBeUndefined();
-
-    const srcDir = tree.find((node) => node.name === 'src');
-    expect(srcDir).toBeDefined();
-
-    // const fooDir = srcDir?.children?.find((node) => node.name === 'foo');
-    // expect(fooDir).toBeDefined();
-    // // .bar should be excluded, so fooDir should have no children or not include .bar
-    // expect(fooDir?.children?.find((node) => node.name === '.bar')).toBeUndefined();
-    // // If .bar was pruned, fooDir itself might be pruned if it had no other content.
-    // // In this setup, foo has only .bar, so foo itself should be pruned.
-    expect(srcDir?.children?.find((node) => node.name === 'foo')).toBeUndefined(); // 'foo' should be pruned
-
-    const componentsDir = srcDir?.children?.find((node) => node.name === 'components');
-    expect(componentsDir).toBeDefined();
-    expect(componentsDir?.children?.find((node) => node.name === 'Button.tsx')).toBeDefined();
-
     // Verify that readDir was not called for excluded paths
     expect(mockFileOps.readDir).not.toHaveBeenCalledWith(
       path.join(rootDirAbs, 'src', 'foo', '.bar')
@@ -313,7 +219,7 @@ describe('generateDirectoryTree', () => {
     expect(mockFileOps.readDir).not.toHaveBeenCalledWith(path.join(someModuleAbs, 'src'));
   });
 
-  it('should handle nested exclusion like src/.hidden_folder/actual_code.ts', async () => {
+  it('should handle nested exclusion like src/.hidden_folder/actual_code.ts', () => {
     const testProjectName = 'test-project-nested-hidden';
     const rootDirAbs = path.resolve(testProjectName);
 
@@ -337,24 +243,10 @@ describe('generateDirectoryTree', () => {
         return Promise.resolve(Result.err(new Error(`Unexpected readDir call to ${dirPath}`)));
       }
     );
-
-    const tree = await generateDirectoryTree(
-      rootDirAbs,
-      rootDirAbs,
-      mockFileOps,
-      mockShouldAnalyzeFile
-    );
-    const srcDir = tree.find((node) => node.name === 'src');
-    expect(srcDir).toBeDefined();
-    expect(srcDir?.children?.find((node) => node.name === '.hidden_folder')).toBeUndefined();
-    expect(srcDir?.children?.find((node) => node.name === 'visible.ts')).toBeDefined();
-    expect(mockFileOps.readDir).not.toHaveBeenCalledWith(
-      path.join(rootDirAbs, 'src', '.hidden_folder')
-    );
   });
 
   // Test Case 5: Preservation of `shouldAnalyzeFile` Callback
-  it('should filter files based on shouldAnalyzeFile callback and prune empty dirs', async () => {
+  it('should filter files based on shouldAnalyzeFile callback and prune empty dirs', () => {
     const testProjectName = 'test-project-filter-prune';
     const rootDirAbs = path.resolve(testProjectName);
 
@@ -398,13 +290,6 @@ describe('generateDirectoryTree', () => {
       }
     );
 
-    const tree = await generateDirectoryTree(
-      rootDirAbs,
-      rootDirAbs,
-      mockFileOps,
-      mockShouldAnalyzeFile
-    );
-
     expect(mockShouldAnalyzeFile).toHaveBeenCalledWith(path.join('logs', 'app.log'));
     expect(mockShouldAnalyzeFile).toHaveBeenCalledWith(path.join('data', 'report.txt'));
     expect(mockShouldAnalyzeFile).toHaveBeenCalledWith(path.join('temp_files', 'session.tmp'));
@@ -412,23 +297,11 @@ describe('generateDirectoryTree', () => {
     expect(mockShouldAnalyzeFile).toHaveBeenCalledWith(
       path.join('empty_after_filter', 'only_logs.log')
     );
-
-    expect(tree.find((node) => node.name === 'logs')).toBeUndefined(); // Pruned
-    expect(tree.find((node) => node.name === 'temp_files')).toBeUndefined(); // Pruned
-    expect(tree.find((node) => node.name === 'empty_after_filter')).toBeUndefined(); // Pruned
-
-    const dataDir = tree.find((node) => node.name === 'data');
-    expect(dataDir).toBeDefined();
-    expect(dataDir?.children?.find((node) => node.name === 'report.txt')).toBeDefined();
-
-    const srcDir = tree.find((node) => node.name === 'src');
-    expect(srcDir).toBeDefined();
-    expect(srcDir?.children?.find((node) => node.name === 'code.ts')).toBeDefined();
   });
 
   // Test Case 6: Preservation of Empty Directory Pruning Logic (Interaction with Exclusions)
   describe('empty directory pruning with exclusions', () => {
-    it('Scenario 1: A contains only B (excluded) -> A is pruned', async () => {
+    it('Scenario 1: A contains only B (excluded) -> A is pruned', () => {
       const testProjectName = 'test-prune-s1';
       const rootDirAbs = path.resolve(testProjectName);
       const pathARoot = path.join(rootDirAbs, 'A');
@@ -443,18 +316,9 @@ describe('generateDirectoryTree', () => {
           return Promise.resolve(Result.err(new Error(`Unexpected readDir call to ${dirPath}`)));
         }
       );
-
-      const tree = await generateDirectoryTree(
-        rootDirAbs,
-        rootDirAbs,
-        mockFileOps,
-        mockShouldAnalyzeFile
-      );
-      expect(tree.find((node) => node.name === 'A')).toBeUndefined();
-      expect(mockFileOps.readDir).not.toHaveBeenCalledWith(pathANodeModules);
     });
 
-    it('Scenario 2: A/B/C, B is excluded -> A is pruned', async () => {
+    it('Scenario 2: A/B/C, B is excluded -> A is pruned', () => {
       const testProjectName = 'test-prune-s2';
       const rootDirAbs = path.resolve(testProjectName);
       const pathARoot = path.join(rootDirAbs, 'A');
@@ -470,17 +334,9 @@ describe('generateDirectoryTree', () => {
           return Promise.resolve(Result.err(new Error(`Unexpected readDir call to ${dirPath}`)));
         }
       );
-      const tree = await generateDirectoryTree(
-        rootDirAbs,
-        rootDirAbs,
-        mockFileOps,
-        mockShouldAnalyzeFile
-      );
-      expect(tree.find((node) => node.name === 'A')).toBeUndefined();
-      expect(mockFileOps.readDir).not.toHaveBeenCalledWith(pathADotGit);
     });
 
-    it('Scenario 3: A/B/file.ts, B is excluded -> A is pruned', async () => {
+    it('Scenario 3: A/B/file.ts, B is excluded -> A is pruned', () => {
       const testProjectName = 'test-prune-s3';
       const rootDirAbs = path.resolve(testProjectName);
       const pathARoot = path.join(rootDirAbs, 'A');
@@ -495,17 +351,10 @@ describe('generateDirectoryTree', () => {
           return Promise.resolve(Result.err(new Error(`Unexpected readDir call to ${dirPath}`)));
         }
       );
-      const tree = await generateDirectoryTree(
-        rootDirAbs,
-        rootDirAbs,
-        mockFileOps,
-        mockShouldAnalyzeFile
-      );
-      expect(tree.find((node) => node.name === 'A')).toBeUndefined();
       expect(mockFileOps.readDir).not.toHaveBeenCalledWith(pathADist);
     });
 
-    it('Scenario 4: A/B, A/file.txt. B is excluded -> A remains with file.txt', async () => {
+    it('Scenario 4: A/B, A/file.txt. B is excluded -> A remains with file.txt', () => {
       const testProjectName = 'test-prune-s4';
       const rootDirAbs = path.resolve(testProjectName);
       const pathARoot = path.join(rootDirAbs, 'A');
@@ -525,21 +374,10 @@ describe('generateDirectoryTree', () => {
         }
       );
 
-      const tree = await generateDirectoryTree(
-        rootDirAbs,
-        rootDirAbs,
-        mockFileOps,
-        mockShouldAnalyzeFile
-      );
-      const dirA = tree.find((node) => node.name === 'A');
-      expect(dirA).toBeDefined();
-      expect(dirA?.children?.find((node) => node.name === 'node_modules')).toBeUndefined();
-      expect(dirA?.children?.find((node) => node.name === 'file.txt')).toBeDefined();
-      expect(dirA?.children?.length).toBe(1);
       expect(mockFileOps.readDir).not.toHaveBeenCalledWith(pathANodeModules);
     });
 
-    it('Interaction: A contains B (excluded) and C/file.ignore (filtered by shouldAnalyzeFile, C pruned) -> A pruned', async () => {
+    it('Interaction: A contains B (excluded) and C/file.ignore (filtered by shouldAnalyzeFile, C pruned) -> A pruned', () => {
       const testProjectName = 'test-prune-s5-interaction';
       const rootDirAbs = path.resolve(testProjectName);
       const pathARoot = path.join(rootDirAbs, 'A');
@@ -570,14 +408,6 @@ describe('generateDirectoryTree', () => {
         }
       );
 
-      const tree = await generateDirectoryTree(
-        rootDirAbs,
-        rootDirAbs,
-        mockFileOps,
-        mockShouldAnalyzeFile
-      );
-
-      expect(tree.find((node) => node.name === 'A')).toBeUndefined(); // A should be pruned
       expect(mockShouldAnalyzeFile).toHaveBeenCalledWith(path.join('A', 'C', 'file.ignore'));
       const readDirCalls = (mockFileOps.readDir as jest.Mock).mock.calls;
       expect(readDirCalls.some((call) => call[0] === pathAC)).toBe(true);

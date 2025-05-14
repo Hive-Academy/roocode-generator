@@ -3,6 +3,8 @@ import { Result } from '../result/result';
 import { Injectable, Inject } from '../di/decorators';
 import { LLMProviderError } from './llm-provider-errors';
 import { LLMConfig } from 'types/shared';
+import { ILogger } from '../services/logger-service';
+import { ILLMConfigService } from '../config/interfaces';
 
 /**
  * Registry to manage LLM provider instantiation and caching.
@@ -12,58 +14,127 @@ import { LLMConfig } from 'types/shared';
 export class LLMProviderRegistry {
   private cachedProvider: ILLMProvider | null = null;
   private readonly providerFactories: Map<string, LLMProviderFactory>;
+  private readonly initializationPromise: Promise<Result<ILLMProvider, LLMProviderError>>;
 
   constructor(
-    @Inject('ILLMProviderFactories') providerFactories: Record<string, LLMProviderFactory>
+    @Inject('ILLMProviderFactories') providerFactories: Record<string, LLMProviderFactory>,
+    @Inject('ILogger') private readonly logger: ILogger,
+    @Inject('ILLMConfigService') configService: ILLMConfigService
   ) {
     this.providerFactories = new Map(Object.entries(providerFactories));
+
+    this.initializationPromise = this._loadConfigAndInitializeProvider(configService);
+  }
+
+  private async _loadConfigAndInitializeProvider(
+    configService: ILLMConfigService
+  ): Promise<Result<ILLMProvider, LLMProviderError>> {
+    try {
+      const configResult = await configService.loadConfig();
+
+      if (configResult.isErr()) {
+        const configLoadError = configResult.error!;
+
+        // Wrap the generic Error from configService into an LLMProviderError
+        // LLMProviderError.fromError typically takes (error: any, context: string)
+        return Result.err(
+          LLMProviderError.fromError(configLoadError, 'LLMProviderRegistry-ConfigLoad')
+        );
+      }
+      if (!configResult.value) {
+        const noConfigValError = new LLMProviderError(
+          'Config loaded but value is missing.',
+          'CONFIG_ERROR',
+          'LLMProviderRegistry'
+        );
+
+        return Result.err(noConfigValError);
+      }
+
+      return this._initializeProviderWithConfig(configResult.value);
+    } catch (error) {
+      const catchAllError = LLMProviderError.fromError(error, 'LLMProviderRegistry-LoadAndInit');
+      this.logger.error(
+        `[INVESTIGATION] _loadConfigAndInitializeProvider: Unhandled error: ${catchAllError.message}`,
+        catchAllError
+      );
+      return Result.err(catchAllError);
+    }
   }
 
   /**
-   * Gets the cached LLM provider instance.
-   * Returns error if no provider has been initialized.
+   * Gets the initialized LLM provider instance.
+   * Awaits initialization if it's in progress.
    * @returns Promise<Result> with provider or error
    */
-  public getProvider(): Result<ILLMProvider, LLMProviderError> {
-    if (!this.cachedProvider) {
-      return Result.err(
-        new LLMProviderError(
-          'No provider initialized. Call initializeProvider first.',
-          'PROVIDER_NOT_INITIALIZED',
-          'LLMProviderRegistry'
-        )
+  public async getProvider(): Promise<Result<ILLMProvider, LLMProviderError>> {
+    const result = await this.initializationPromise;
+
+    if (result.isErr()) {
+      this.logger.error(
+        `[INVESTIGATION] getProvider: initializationPromise resolved with Error: ${result.error!.message}`,
+        result.error
       );
     }
-    return Result.ok(this.cachedProvider);
+    return result;
   }
 
   /**
-   * Initializes a new LLM provider instance with the given configuration.
+   * Internal method to initialize a new LLM provider instance with the given configuration.
    * Caches the provider for future use.
    * @param config The LLM configuration to use
    * @returns Result with the initialized provider or error
    */
-  public initializeProvider(config: LLMConfig): Result<ILLMProvider, LLMProviderError> {
-    try {
-      const providerName = config.provider.toLowerCase();
-      const factory = this.providerFactories.get(providerName);
+  private _initializeProviderWithConfig(config: LLMConfig): Result<ILLMProvider, LLMProviderError> {
+    this.cachedProvider = null;
 
+    try {
+      const providerName = config.provider?.toLowerCase();
+      if (!providerName) {
+        const errMsg = `Provider name is undefined in LLMConfig. Cannot initialize provider.`;
+        this.logger.error(`[INVESTIGATION] _initializeProviderWithConfig: ${errMsg}`);
+        return Result.err(new LLMProviderError(errMsg, 'CONFIG_ERROR', 'LLMProviderRegistry'));
+      }
+
+      const factory = this.providerFactories.get(providerName);
       if (!factory) {
-        const message = `LLM provider '${providerName}' not found. Available providers: ${Array.from(this.providerFactories.keys()).join(', ')}`;
+        const message = `LLM provider '${providerName}' not found. Available: ${Array.from(this.providerFactories.keys()).join(', ')}`;
+        this.logger.error(`[INVESTIGATION] _initializeProviderWithConfig: ${message}`);
         return Result.err(
           new LLMProviderError(message, 'PROVIDER_NOT_FOUND', 'LLMProviderRegistry')
         );
       }
 
       const providerResult = factory(config);
-      if (providerResult.isErr()) {
-        return Result.err(LLMProviderError.fromError(providerResult.error!, 'LLMProviderRegistry'));
-      }
 
-      this.cachedProvider = providerResult.value!;
-      return Result.ok(this.cachedProvider);
+      if (providerResult.isOk()) {
+        const provider: ILLMProvider = providerResult.value!;
+        this.cachedProvider = provider;
+
+        return Result.ok(provider);
+      } else if (providerResult.isErr()) {
+        const errorFromResult: LLMProviderError = providerResult.error!;
+
+        return Result.err(errorFromResult);
+      } else {
+        const unknownError = new LLMProviderError(
+          'Unknown result state from factory after isOk/isErr checks.',
+          'INTERNAL_ERROR',
+          'LLMProviderRegistry'
+        );
+        this.logger.error(
+          `[INVESTIGATION] _initializeProviderWithConfig: Unknown result state from factory for '${providerName}'.`,
+          unknownError
+        );
+        return Result.err(unknownError);
+      }
     } catch (error) {
-      return Result.err(LLMProviderError.fromError(error, 'LLMProviderRegistry'));
+      const err = LLMProviderError.fromError(error, 'LLMProviderRegistry-InitializeCatchAll');
+      this.logger.error(
+        `[INVESTIGATION] _initializeProviderWithConfig: Critical error during initialization. Error: ${err.message}`,
+        err
+      );
+      return Result.err(err);
     }
   }
 
@@ -74,7 +145,6 @@ export class LLMProviderRegistry {
    * @returns Result with provider factory or error
    */
   public getProviderFactory(providerName: string): Result<LLMProviderFactory, LLMProviderError> {
-    // Changed Error to LLMProviderError
     try {
       const factory = this.providerFactories.get(providerName.toLowerCase());
       if (!factory) {

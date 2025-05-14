@@ -10,11 +10,11 @@ import { z } from 'zod';
 import {
   GoogleGenAIErrorResponse,
   GoogleGenAITokenResponse,
-  GoogleModel, // Updated to GoogleModel
-  GoogleListModelsResponse, // Added for listModels
+  GoogleModel,
+  GoogleListModelsResponse,
 } from '../types/google-genai.types';
 import type { BaseLanguageModelInput } from '@langchain/core/language_models/base';
-import { LLMCompletionConfig } from '../interfaces'; // Import from interfaces
+import { LLMCompletionConfig } from '../interfaces';
 
 // Define a custom error for fetch failures to include status
 class FetchError extends Error {
@@ -31,9 +31,7 @@ const RETRY_OPTIONS = {
   retries: 3,
   initialDelay: 500, // ms
   shouldRetry: (error: any): boolean => {
-    // Check for status code in common error structures (fetch response, axios error, potentially langchain errors)
     const status = error?.status ?? error?.response?.status;
-    // Do not retry on the specific HTML error we throw
     if (error instanceof Error && error.message.includes('unexpected HTML response')) {
       return false;
     }
@@ -45,8 +43,8 @@ const RETRY_OPTIONS = {
 export class GoogleGenAIProvider extends BaseLLMProvider {
   public readonly name = 'google-genai';
   private model: ChatGoogleGenerativeAI;
-  private inputTokenLimit: number | null = null; // Added property
-  private readonly FALLBACK_TOKEN_LIMIT = 1000000; // Added constant
+  private inputTokenLimit: number | null = null;
+  private readonly FALLBACK_TOKEN_LIMIT = 1000000;
 
   constructor(
     private readonly config: LLMConfig,
@@ -54,26 +52,22 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
     private readonly clientFactory: () => ChatGoogleGenerativeAI
   ) {
     super();
-    this.defaultContextSize = 8192; // This might need updating based on fetched limits? For now, keep as is.
+    this.defaultContextSize = 8192;
     const model = this.clientFactory();
     model.temperature = this.config.temperature;
-    model.model = this.config.model;
+    model.model = this.config.model; // Langchain client expects "models/model-name" or just "model-name"
     this.model = model;
-    // Initialize limit fetching asynchronously - don't block constructor
     void this.initialize();
   }
 
-  // Method to fetch limits asynchronously after construction
   private async initialize(): Promise<void> {
     try {
       this.inputTokenLimit = await this.fetchModelLimits();
     } catch (error) {
-      // fetchModelLimits already logs and returns fallback, but log here too if needed
       this.logger.error(
         'Error during async initialization of GoogleGenAIProvider limits',
         error instanceof Error ? error : new Error(String(error))
       );
-      // Ensure fallback is set if fetchModelLimits somehow threw before returning
       if (this.inputTokenLimit === null) {
         this.inputTokenLimit = this.FALLBACK_TOKEN_LIMIT;
         this.logger.warn(
@@ -87,30 +81,21 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
     systemPrompt: string,
     userPrompt: string
   ): Promise<Result<string, LLMProviderError>> {
-    // --- Pre-call Validation ---
     try {
       const inputText = `${systemPrompt}\n\nUser Input: ${userPrompt}`;
-      // Use countTokens which includes retry and approximation logic
       const currentInputTokens = await this.countTokens(inputText);
-
-      // Use fetched limit or fallback if initialization hasn't completed or failed
       const limit = this.inputTokenLimit ?? this.FALLBACK_TOKEN_LIMIT;
-
       this.logger.debug(`Input tokens: ${currentInputTokens}, Limit: ${limit}`);
-
       if (currentInputTokens > limit) {
         const errorMsg = `Input (${currentInputTokens} tokens) exceeds model token limit (${limit}).`;
         this.logger.warn(`${errorMsg} Skipping API call.`);
-        // Return an Error Result consistent with other provider errors
         return Result.err(new LLMProviderError(errorMsg, 'INPUT_VALIDATION_ERROR', this.name));
       }
     } catch (validationError) {
-      // Catch errors during the validation step itself (e.g., unexpected error in countTokens)
       this.logger.error(
         'Error during pre-call validation in getCompletion',
         validationError instanceof Error ? validationError : new Error(String(validationError))
       );
-      // Return an error Result, as we can't proceed
       return Result.err(
         LLMProviderError.fromError(
           validationError instanceof Error ? validationError : new Error(String(validationError)),
@@ -118,23 +103,18 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
         )
       );
     }
-    // --- End Pre-call Validation ---
 
     try {
       this.logger.debug(
         `Sending completion request to Google GenAI (model: ${this.config.model}) with retry`
       );
-
       const response = await retryWithBackoff(async () => {
-        // The actual API call using langchain client
-        // Note: Langchain client might have its own token counting/limits, but we are enforcing ours beforehand.
         const message = await this.model.invoke(`${systemPrompt}\n\nUser Input: ${userPrompt}`);
         if (typeof message.content === 'string') {
           return message.content;
         } else if (Array.isArray(message.content)) {
           let combinedText = '';
           for (const part of message.content) {
-            // Ensure part and part.text are valid before trying to access/append
             if (
               part &&
               typeof part.type === 'string' &&
@@ -143,33 +123,26 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
             ) {
               combinedText += part.text;
             }
-            // Not handling other part types like 'image_url' for now
           }
           if (combinedText) {
             return combinedText;
           } else {
-            // This case means we got an array, but no text parts, or empty text parts.
             throw new Error(
               'LLM response content array did not contain any processable text parts. Received: ' +
                 JSON.stringify(message.content)
             );
           }
         } else {
-          // Fallback for unexpected content types
           throw new Error(
             'LLM response content is not a string or a recognized array structure. Received: ' +
               JSON.stringify(message.content)
           );
         }
       }, RETRY_OPTIONS);
-
-      // The 'response' variable from retryWithBackoff will now be the string content
       return Result.ok(response);
     } catch (error) {
-      // This catches the final error after retries are exhausted or if shouldRetry returned false
       const err = error instanceof Error ? error : new Error(String(error));
       this.logger.error('Failed to get completion from Google GenAI after retries', err);
-      // Wrap the final error
       return Result.err(LLMProviderError.fromError(err, this.name));
     }
   }
@@ -179,20 +152,15 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
     schema: T,
     completionConfig?: LLMCompletionConfig
   ): Promise<Result<z.infer<T>, LLMProviderError>> {
-    // --- Pre-call Validation ---
     let promptStringForTokenCount: string;
-    // Convert BaseLanguageModelInput to a string for token counting.
     if (typeof prompt === 'string') {
       promptStringForTokenCount = prompt;
     } else if (Array.isArray(prompt)) {
-      // Handles BaseMessageLike[]
       promptStringForTokenCount = prompt
         .map((msgLike) => {
           if (typeof msgLike === 'string') return msgLike;
-          // Check for [role, content] tuple if msgLike is an array
           if (Array.isArray(msgLike) && msgLike.length === 2 && typeof msgLike[1] === 'string')
             return msgLike[1];
-          // Check for BaseMessage structure if msgLike is an object
           if (
             typeof msgLike === 'object' &&
             msgLike !== null &&
@@ -200,10 +168,9 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
             typeof msgLike.content === 'string'
           )
             return msgLike.content;
-          // Fallback for other message-like structures in the array
           return '';
         })
-        .filter((content) => !!content) // Remove empty strings resulting from fallback
+        .filter((content) => !!content)
         .join('\n');
     } else if (
       typeof prompt === 'object' &&
@@ -211,13 +178,9 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
       'content' in prompt &&
       typeof prompt.content === 'string'
     ) {
-      // Handles single BaseMessage
       promptStringForTokenCount = prompt.content;
     } else {
-      // Fallback for other BaseLanguageModelInput types (e.g., complex PromptValues)
       try {
-        // Attempt to get a string representation if possible (e.g. from a PromptValue)
-        // This is a best-effort conversion for complex types.
         if (typeof (prompt as any)?.toChatMessages === 'function') {
           const messages = (prompt as any).toChatMessages();
           promptStringForTokenCount = messages
@@ -230,14 +193,13 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
         ) {
           promptStringForTokenCount = (prompt as any).toString();
         } else {
-          // If toString is generic or toChatMessages doesn't exist, fallback to JSON.stringify
           promptStringForTokenCount = JSON.stringify(prompt);
           this.logger.debug(
             `GoogleGenAIProvider: promptStringForTokenCount fell back to JSON.stringify for prompt type: ${typeof prompt}. Output: ${promptStringForTokenCount.substring(0, 100)}...`
           );
         }
       } catch (e) {
-        promptStringForTokenCount = ''; // Ultimate fallback
+        promptStringForTokenCount = '';
         this.logger.warn(
           `GoogleGenAIProvider: promptStringForTokenCount could not be stringified for type ${typeof prompt}, falling back to empty string. Error: ${e instanceof Error ? e.message : String(e)}`
         );
@@ -248,7 +210,7 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
       const currentInputTokens = await this.countTokens(promptStringForTokenCount);
       const limit = this.inputTokenLimit ?? this.FALLBACK_TOKEN_LIMIT;
       const maxOutputTokensForThisCall =
-        completionConfig?.maxTokens ?? this.config.maxTokens ?? this.model.maxOutputTokens ?? 2048; // Get maxTokens from model if available
+        completionConfig?.maxTokens ?? this.config.maxTokens ?? this.model.maxOutputTokens ?? 2048;
       const availableForInput = limit - maxOutputTokensForThisCall;
 
       this.logger.debug(
@@ -268,7 +230,6 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
         new LLMProviderError(message, 'UNKNOWN_ERROR', this.name, { cause: errorToLog })
       );
     }
-    // --- End Pre-call Validation ---
 
     try {
       this.logger.debug(
@@ -276,17 +237,13 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
       );
 
       let modelToInvoke = this.model;
-
-      // Apply per-call configurations if any
       const bindOptions: Partial<GoogleGenerativeAIChatInput> = {};
       if (completionConfig) {
         if (completionConfig.temperature !== undefined)
           bindOptions.temperature = completionConfig.temperature;
         if (completionConfig.maxTokens !== undefined)
-          bindOptions.maxOutputTokens = completionConfig.maxTokens; // maps to maxOutputTokens
+          bindOptions.maxOutputTokens = completionConfig.maxTokens;
         if (completionConfig.topP !== undefined) bindOptions.topP = completionConfig.topP;
-        // GoogleGenAI specific: topK
-        // if (completionConfig.topK !== undefined) bindOptions.topK = completionConfig.topK;
         if (completionConfig.stopSequences && completionConfig.stopSequences.length > 0) {
           bindOptions.stopSequences = completionConfig.stopSequences;
         }
@@ -304,12 +261,10 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
       });
 
       const response = await retryWithBackoff(() => structuredModel.invoke(prompt), RETRY_OPTIONS);
-
       return Result.ok(response);
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
       this.logger.error('Failed to get structured completion from Google GenAI after retries', err);
-      // Ensure LLMProviderError is returned
       if (error instanceof LLMProviderError) {
         return Result.err(error);
       }
@@ -341,7 +296,6 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
             statusCode: response.status,
             responseBody: errorBodyText?.substring(0, 500),
           };
-          // Stringify details into the message for the logger, as logger.error only takes Error as second arg
           const logMessage = `${errorMessage} - Details: ${JSON.stringify(details)}`;
           const llmError = new LLMProviderError(
             errorMessage,
@@ -349,7 +303,7 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
             this.name,
             details
           );
-          this.logger.error(logMessage, llmError); // Pass the actual LLMError instance
+          this.logger.error(logMessage, llmError);
           return Result.err(llmError);
         } catch (e: unknown) {
           const errorMessage = `Failed to list Google GenAI models. Status: ${response.status}. Response body: ${errorBodyText || 'Could not read error body.'}`;
@@ -358,7 +312,6 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
             bodyPreview: errorBodyText?.substring(0, 100),
             parseError: e instanceof Error ? e.message : String(e),
           };
-          // Stringify details into the message
           const logMessage = `${errorMessage} - Parsing Details: ${JSON.stringify(errorMeta)}`;
           const llmError = new LLMProviderError(
             errorMessage,
@@ -366,7 +319,7 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
             this.name,
             { parsingDetails: errorMeta }
           );
-          this.logger.error(logMessage, llmError); // Pass the actual LLMError instance
+          this.logger.error(logMessage, llmError);
           return Result.err(llmError);
         }
       }
@@ -377,12 +330,9 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
         this.logger.warn('No models found from Google GenAI API.');
         return Result.err(new LLMProviderError('No models found', 'NO_MODELS_RETURNED', this.name));
       }
-
-      // Prefer baseModelId if available, otherwise fallback to name (e.g. models/gemini-pro)
-      // The config usually expects the shorter ID like "gemini-1.5-pro"
       const modelIds = data.models
         .map((model: GoogleModel) => model.baseModelId || model.name)
-        .filter((id): id is string => !!id); // Filter out any undefined/null ids
+        .filter((id): id is string => !!id);
 
       if (modelIds.length === 0) {
         this.logger.warn(
@@ -392,12 +342,9 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
           new LLMProviderError('No usable model IDs found', 'NO_USABLE_MODEL_IDS', this.name)
         );
       }
-
-      // Deduplicate model IDs, as different versions might share the same baseModelId
       const uniqueModelIds = [...new Set(modelIds)];
-
       this.logger.info(`Successfully listed ${uniqueModelIds.length} unique Google GenAI models.`);
-      this.logger.debug(`Available Google GenAI models: ${uniqueModelIds.join(', ')}`); // Stringify for debug
+      this.logger.debug(`Available Google GenAI models: ${uniqueModelIds.join(', ')}`);
       return Result.ok(uniqueModelIds);
     } catch (error: unknown) {
       const errorMessage = `Error listing Google GenAI models: ${error instanceof Error ? error.message : String(error)}`;
@@ -410,11 +357,10 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
             stackPreview: error.stack?.substring(0, 200),
           },
         });
-        this.logger.error(llmError.message, llmError); // Pass the LLMProviderError instance
+        this.logger.error(llmError.message, llmError);
       } else {
         const details = { caughtErrorString: String(error) };
         llmError = new LLMProviderError(errorMessage, 'NETWORK_ERROR', this.name, details);
-        // Stringify details into the message for the logger
         this.logger.error(`${llmError.message} - Non-Error Cause: ${String(error)}`, llmError);
       }
       return Result.err(llmError);
@@ -422,13 +368,11 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
   }
 
   async getContextWindowSize(): Promise<number> {
-    // Return the fetched input limit or the original default.
-    // Ensure initialization has a chance to complete or has completed.
     if (this.inputTokenLimit === null) {
       this.logger.debug(
         'getContextWindowSize called before inputTokenLimit was initialized. Attempting to initialize now.'
       );
-      await this.initialize(); // Ensure initialization is attempted if not done.
+      await this.initialize();
     }
     return Promise.resolve(this.inputTokenLimit ?? this.defaultContextSize);
   }
@@ -442,25 +386,16 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
       );
       return tokenCount;
     } catch (error: any) {
-      // This catch block handles the final error after retries or non-retriable errors (like HTML)
       this.logger.warn(
         `Failed to count tokens for Google GenAI model ${this.config.model} after retries or due to non-retriable error, using approximation: ${error?.message}`
       );
-      // Log specific details if it was a FetchError that wasn't retried
       if (error instanceof FetchError && error.status) {
         this.logger.warn(`Final error status code: ${error.status}`);
       }
-      // Return approximation on final failure
       return Math.ceil(text.length / 4);
     }
   }
 
-  // --- New/Updated Private Methods ---
-
-  /**
-   * Fetches the input token limit for the configured model from the Google API.
-   * Returns the fetched limit or a fallback value if the API call fails or the limit is not found.
-   */
   private async fetchModelLimits(): Promise<number> {
     if (!this.config.model) {
       this.logger.warn('fetchModelLimits called without a model configured. Using fallback limit.');
@@ -473,8 +408,6 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
       return this.FALLBACK_TOKEN_LIMIT;
     }
 
-    // The model ID in the path should be like "gemini-1.5-pro" not "models/gemini-1.5-pro"
-    // this.config.model should already be in the correct format.
     const modelIdForPath = this.config.model.startsWith('models/')
       ? this.config.model.split('/')[1]
       : this.config.model;
@@ -506,7 +439,6 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
             `Failed to fetch model limits for ${modelIdForPath}. Status: ${response.status}. Could not parse error response: "${errorBodyText || 'empty response'}". Parse Error: ${e instanceof Error ? e.message : String(e)}. Using fallback.`
           );
         }
-        // Specific handling for 404, as per user feedback and task.
         if (response.status === 404) {
           const llmErrorFor404 = new LLMProviderError(
             `Received 404 Not Found for model "${modelIdForPath}". This could mean the model doesn't exist, is not available with the provided API key, or the API key is invalid/misconfigured. URL: ${redactedUrl}. Using fallback.`,
@@ -519,9 +451,8 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
         return this.FALLBACK_TOKEN_LIMIT;
       }
 
-      const data = (await response.json()) as GoogleModel; // Uses the enhanced GoogleModel type
+      const data = (await response.json()) as GoogleModel;
 
-      // Check for inputTokenLimit specifically
       if (typeof data.inputTokenLimit === 'number') {
         this.logger.info(
           `Successfully retrieved input token limit for ${modelIdForPath}: ${data.inputTokenLimit}`
@@ -551,25 +482,22 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
     }
   }
 
-  /**
-   * Performs the actual fetch request to the Google GenAI countTokens endpoint.
-   * Handles response parsing, error detection (including HTML), and throws appropriate errors.
-   * Returns the token count on success, or throws an error (FetchError for retriable, Error for non-retriable).
-   * Note: The calling function (`countTokens`) handles the final approximation on error.
-   */
   private async performCountTokensRequest(text: string): Promise<number> {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.config.model}:countTokens?key=${this.config.apiKey}`;
+    // Correctly format modelId for the API path
+    const modelIdForPath = this.config.model.startsWith('models/')
+      ? this.config.model // Already in models/model-id format
+      : `models/${this.config.model}`; // Prepend models/ if not present
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/${modelIdForPath}:countTokens?key=${this.config.apiKey}`;
     let response: Response;
 
     try {
       response = await fetch(url, {
         method: 'POST',
         headers: {
-          // Authorization: `Bearer ${this.config.apiKey}`, // Use API Key in URL as per spec
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          // Assuming the structure matches the 'generateContent' format for consistency
           contents: [
             {
               parts: [
@@ -582,11 +510,9 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
         }),
       });
     } catch (fetchError) {
-      // Catch network errors during the fetch itself
       this.logger.warn(
         `Network error during countTokens fetch: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`
       );
-      // Throw a FetchError so retry logic might catch it (though network errors might not have status)
       throw new FetchError(
         `Network error during countTokens: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`
       );
@@ -596,66 +522,51 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
       let errorBodyText: string | null = null;
       try {
         errorBodyText = await response.text();
-        // Attempt to parse as JSON first
         try {
           const errorData = JSON.parse(errorBodyText) as GoogleGenAIErrorResponse;
-          // Log specific API error if available
           this.logger.warn(
-            `countTokens API Error: ${errorData?.error?.message} (Code: ${errorData?.error?.code}, Status: ${response.status}).` // Removed "Using approximation" here, caller handles it
+            `countTokens API Error: ${errorData?.error?.message} (Code: ${errorData?.error?.code}, Status: ${response.status}).`
           );
         } catch (jsonError) {
           this.logger.debug(
             `JSON parse failed in countTokens error handler: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}`
           );
-          // JSON parsing failed, check for HTML
           if (errorBodyText && errorBodyText.trim().toLowerCase().startsWith('<!doctype html')) {
-            // More specific HTML check
             this.logger.error(
               'Received non-JSON (HTML) response during token count. Check API Key/URL/Permissions/Proxy.'
             );
             this.logger.error(`Raw Response Snippet: ${errorBodyText.substring(0, 500)}`);
-            // Throw a standard Error to PREVENT retries for HTML responses
             throw new Error(
               `Token counting failed due to unexpected HTML response. Status: ${response.status}`
             );
           } else {
-            // Non-JSON, Non-HTML error body
             this.logger.warn(
               `countTokens failed. Non-OK response (${response.status}) and non-JSON/non-HTML body. Body snippet: ${errorBodyText?.substring(0, 200)}`
             );
           }
         }
       } catch (textError) {
-        // Error reading response body text itself (less likely)
         this.logger.warn(
           `Error reading error response body for countTokens: ${textError instanceof Error ? textError.message : String(textError)}`
         );
       }
-
-      // Always throw FetchError for non-ok responses to allow retry logic to evaluate
-      // (unless the specific HTML error was already thrown)
       throw new FetchError(`API request failed with status ${response.status}`, response.status);
     }
 
-    // Handle successful response (response.ok is true)
     try {
-      const data = (await response.json()) as GoogleGenAITokenResponse; // Use existing interface
+      const data = (await response.json()) as GoogleGenAITokenResponse;
       if (data && typeof data.totalTokens === 'number') {
         return data.totalTokens;
       } else {
-        // Successful response but unexpected structure
         this.logger.warn(
           `Unexpected successful response structure from countTokens: ${JSON.stringify(data)}. Using approximation.`
         );
-        // Throw an error here so the outer countTokens catch block returns approximation
         throw new Error('Invalid response structure from countTokens API.');
       }
     } catch (jsonParseError) {
-      // Error parsing the successful JSON response
       this.logger.warn(
         `Failed to parse successful countTokens response: ${jsonParseError instanceof Error ? jsonParseError.message : String(jsonParseError)}. Using approximation.`
       );
-      // Throw an error here so the outer countTokens catch block returns approximation
       throw new Error(
         `Failed to parse successful countTokens response: ${jsonParseError instanceof Error ? jsonParseError.message : String(jsonParseError)}`
       );
