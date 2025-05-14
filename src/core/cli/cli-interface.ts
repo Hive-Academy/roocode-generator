@@ -28,6 +28,11 @@ export class CliInterface implements ICliInterface {
       .name('roocode-generator')
       .description('CLI for the roocode-generator application')
       .version(this.getVersion(), '-v, --version', 'Output the current version')
+      .option(
+        '--log-level <level>',
+        'Set the logging level (e.g., error, warn, info, debug, trace)',
+        'info'
+      ) // Add global log-level option
       .helpOption('-h, --help', 'Display help for command');
 
     // Example command: generate
@@ -37,12 +42,15 @@ export class CliInterface implements ICliInterface {
 
     generateCommand.option(
       '-g, --generators <type>', // Changed from <names...>
-      'Specify which type of content to generate within ai-magic (roo, cursor)'
-    ); // Removed .choices()
+      'Specify the generator type (roo, cursor)',
+      'roo'
+    );
 
     // Adjust action handler to expect a single string or undefined and perform manual validation
-    generateCommand.action((options: Record<string, any>) => {
+    generateCommand.action((options: Record<string, any>, command: Command) => {
       this.parsedArgs.command = 'generate';
+      // Access global options from the parent command
+      const globalOptions = command.parent?.opts() || {};
       const generatorType = options.generators as string | undefined; // Expect single value
 
       const allowedGeneratorTypes = ['roo', 'cursor'];
@@ -58,8 +66,8 @@ export class CliInterface implements ICliInterface {
         return; // Stop further processing in this action handler
       }
 
-      // Store the single type in parsedArgs.options
-      this.parsedArgs.options = { ...options, generatorType };
+      // Store the single type in parsedArgs.options, merging with global options
+      this.parsedArgs.options = { ...globalOptions, ...options, generatorType };
       // Remove the old 'generators' array if it exists in options
       delete this.parsedArgs.options.generators;
     });
@@ -70,7 +78,8 @@ export class CliInterface implements ICliInterface {
       .description('Configure LLM settings through an interactive setup process')
       .action(() => {
         this.parsedArgs.command = 'config';
-        this.parsedArgs.options = {}; // No CLI options needed for interactive mode
+        // Merge global options for consistency, though 'config' might not use them
+        this.parsedArgs.options = { ...this.program.opts(), ...{} };
       });
   }
 

@@ -234,10 +234,13 @@ export class LLMAgent implements ILLMAgent {
   }
 
   async getProvider(): Promise<Result<ILLMProvider, LLMProviderError>> {
-    const providerResult = this.llmProviderRegistry.getProvider();
+    // LLMProviderRegistry.getProvider() is now async
+    const providerResult = await this.llmProviderRegistry.getProvider();
     if (providerResult.isErr()) {
+      // After providerResult.isErr(), providerResult.error is definitely LLMProviderError
       return Result.err<LLMProviderError>(providerResult.error!);
     }
-    return Promise.resolve(providerResult);
+    // After providerResult.isOk() (implied if not isErr()), providerResult.value is definitely ILLMProvider
+    return Result.ok(providerResult.value!);
   }
 }

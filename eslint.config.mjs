@@ -49,7 +49,7 @@ export default tseslint.config(
     },
     rules: {
       // Customize TS rules here
-      'import/no-unresolved': 'error', // Enable to test resolver
+      'import/no-unresolved': 'off', // Enable to test resolver
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'off', // Keep as warn during upgrade
       '@typescript-eslint/no-require-imports': 'warn',

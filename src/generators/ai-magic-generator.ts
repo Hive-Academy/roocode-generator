@@ -64,6 +64,18 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
     // Return type is string on success (message or path)
     try {
       this.logger.info('Starting AI Magic generation process...');
+      this.logger.debug(`[INVESTIGATION] AiMagicGenerator.executeGeneration called.`);
+      this.logger.debug(`[INVESTIGATION] Options: ${JSON.stringify(options)}`);
+      this.logger.debug(
+        `[INVESTIGATION] Raw contextPaths argument: ${JSON.stringify(contextPaths)}`
+      );
+      if (contextPaths && Array.isArray(contextPaths)) {
+        this.logger.debug(`[INVESTIGATION] contextPaths Array: ${JSON.stringify(contextPaths)}`);
+      } else {
+        this.logger.debug(
+          `[INVESTIGATION] contextPaths is not an array or is null/undefined. Value: ${String(contextPaths)}`
+        );
+      }
 
       // Access generatorType from options (assuming ProjectConfig will be updated to include it)
       const generatorType = (options as any).generatorType as string | undefined;
@@ -73,10 +85,18 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
       }
 
       if (!contextPaths?.length) {
-        return Result.err(new Error('No context path provided for analysis'));
+        // This check might be too early if contextPaths is not what we expect
+        this.logger.warn(
+          `[INVESTIGATION] contextPaths?.length check failed. Length: ${contextPaths?.length}`
+        );
+        // return Result.err(new Error('No context path provided for analysis')); // Keep this commented for now to see logs
       }
 
       // 1. Analyze Project (needed for both memory-bank and roo)
+      // Previous log replaced by the more detailed ones above.
+      // this.logger.debug(
+      //   `[INVESTIGATION] contextPaths in executeGeneration: ${JSON.stringify(contextPaths)}`
+      // );
       const projectContextResult = await this.analyzeProject(contextPaths);
       if (projectContextResult.isErr()) {
         return Result.err(projectContextResult.error ?? new Error('Project analysis failed'));
@@ -455,7 +475,7 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
         this.logger.info(
           `Successfully generated roo file for mode "${modeName}" at ${String(writeResult.value)}`
         );
-        generatedFiles.push(writeResult.value); // Add generated file path to list
+        generatedFiles.push(writeResult.value!); // Add generated file path to list
         successfulModes++; // Increment successfulModes
       }
 

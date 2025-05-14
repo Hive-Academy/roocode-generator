@@ -8,14 +8,14 @@ import { Result } from '../../../src/core/result/result'; // Relative path
 import { ILogger } from '../../../src/core/services/logger-service'; // Relative path
 import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
 import { LLMConfig } from '../../../types/shared'; // Relative path
-import { LLMProviderRegistry } from '../../../src/core/llm/provider-registry'; // Relative path
+// import { LLMProviderRegistry } from '../../../src/core/llm/provider-registry'; // No longer needed here
 
 describe('LLMConfigService', () => {
   let mockFileOps: jest.Mocked<IFileOperations>;
-  let mockLogger: jest.Mocked<ILogger>; // Keep declaration
+  let mockLogger: jest.Mocked<ILogger>;
   let mockInquirer: jest.Mock;
   let mockModelListerService: jest.Mocked<IModelListerService>;
-  let mockLLMProviderRegistry: jest.Mocked<LLMProviderRegistry>; // Added mock
+  // let mockLLMProviderRegistry: jest.Mocked<LLMProviderRegistry>; // Removed
 
   beforeEach(() => {
     // Setup mocks
@@ -31,21 +31,22 @@ describe('LLMConfigService', () => {
       copyDirectoryRecursive: jest.fn(),
     };
 
-    mockLogger = createMockLogger(); // Initialize mock logger here
+    mockLogger = createMockLogger();
 
     mockInquirer = jest.fn();
 
     mockModelListerService = {
       listModelsForProvider: jest.fn(),
+      getContextWindowSize: jest.fn(), // Added mock for new method
     };
 
-    mockLLMProviderRegistry = {
-      getProviderFactory: jest.fn(),
-      getProvider: jest.fn(),
-      initializeProvider: jest.fn(),
-      cachedProvider: null,
-      providerFactories: new Map(),
-    } as any as jest.Mocked<LLMProviderRegistry>;
+    // mockLLMProviderRegistry = { // Removed
+    //   getProviderFactory: jest.fn(),
+    //   getProvider: jest.fn(),
+    //   initializeProvider: jest.fn(),
+    //   cachedProvider: null,
+    //   providerFactories: new Map(),
+    // } as any as jest.Mocked<LLMProviderRegistry>;
   });
 
   // interactiveEditConfig tests have been moved to a separate file
@@ -62,13 +63,12 @@ describe('LLMConfigService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Provide the mocked inquirer instance during service creation
     service = new LLMConfigService(
       mockFileOps,
       mockLogger,
       mockInquirer,
-      mockModelListerService,
-      mockLLMProviderRegistry // Added registry
+      mockModelListerService
+      // mockLLMProviderRegistry // Removed
     );
   });
 
@@ -95,33 +95,7 @@ describe('LLMConfigService', () => {
     });
   });
 
-  // describe('Inquirer DI Injection and Interactive Flow', () => {
-  //   // These tests were testing internal implementation details and the mock itself,
-  //   // not the service's public behavior correctly after the refactor.
-  //   // The tests within 'interactiveEditConfig' cover the actual usage.
-  //   it('should call inquirer prompt with expected questions and return answers', async () => {
-  //     const questions = [{ type: 'input', name: 'provider', message: 'Enter LLM provider', default: 'openai' }];
-  //     const expectedAnswers = { provider: 'openai' };
-  //     mockInquirer.mockResolvedValue(expectedAnswers);
-  //
-  //     // Accessing private member 'inquirer' directly is not ideal test practice.
-  //     // const answers = await (service as any).inquirer(questions); // Corrected call if testing private
-  //
-  //     // Instead, test via public method like interactiveEditConfig
-  //     // expect(mockInquirer).toHaveBeenCalledWith(questions);
-  //     // expect(answers).toEqual(expectedAnswers);
-  //     expect(true).toBe(true); // Placeholder
-  //   });
-  //
-  //   it('should handle prompt rejection gracefully', async () => {
-  //     const questions = [{ type: 'input', name: 'provider', message: 'Enter LLM provider', default: 'openai' }];
-  //     const error = new Error('Prompt failed');
-  //     mockInquirer.mockRejectedValue(error);
-  //
-  //     // Accessing private member 'inquirer' directly is not ideal test practice.
-  //     // await expect((service as any).inquirer(questions)).rejects.toThrow('Prompt failed'); // Corrected call if testing private
-  //     expect(true).toBe(true); // Placeholder
-  //   });
+  // describe('Inquirer DI Injection and Interactive Flow', () => { // Commented out as per original
   // });
 
   // --- saveConfig ---
@@ -149,22 +123,21 @@ describe('LLMConfigService', () => {
         configPath,
         JSON.stringify(validConfig, null, 2)
       );
-      expect(mockLogger.error).not.toHaveBeenCalled(); // Error handled by caller
+      expect(mockLogger.error).not.toHaveBeenCalled();
     });
 
     it('should return error if JSON.stringify fails (unexpected)', async () => {
       const circularConfig: any = {};
-      circularConfig.myself = circularConfig; // Create circular reference
+      circularConfig.myself = circularConfig;
 
-      // No need to mock writeFile as stringify will throw
-      const result = await service.saveConfig(circularConfig as LLMConfig); // Cast to satisfy type, though it will fail at runtime
+      const result = await service.saveConfig(circularConfig as LLMConfig);
 
       expect(result.isErr()).toBe(true);
       expect(result.error?.message).toContain('circular structure');
       expect(mockFileOps.writeFile).not.toHaveBeenCalled();
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Failed to save LLM config',
-        expect.any(TypeError) // JSON.stringify throws TypeError for circular refs
+        expect.any(TypeError)
       );
     });
   });
@@ -189,7 +162,7 @@ describe('LLMConfigService', () => {
       expect(result.isErr()).toBe(true);
       expect(result.error).toBe(error);
       expect(mockFileOps.readFile).toHaveBeenCalledWith(configPath);
-      expect(mockLogger.error).not.toHaveBeenCalled(); // Error handled by caller
+      expect(mockLogger.error).not.toHaveBeenCalled();
     });
 
     it('should return error if JSON parsing fails', async () => {
@@ -198,7 +171,7 @@ describe('LLMConfigService', () => {
 
       expect(result.isErr()).toBe(true);
       expect(result.error).toBeInstanceOf(Error);
-      expect(result.error?.message).toContain('Unexpected token'); // JSON parse error message
+      expect(result.error?.message).toContain('Unexpected token');
       expect(mockFileOps.readFile).toHaveBeenCalledWith(configPath);
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Failed to load LLM config',
@@ -215,9 +188,7 @@ describe('LLMConfigService', () => {
       expect(result.error).toBeInstanceOf(Error);
       expect(result.error?.message).toContain("Invalid LLM config: Missing or invalid 'provider'");
       expect(mockFileOps.readFile).toHaveBeenCalledWith(configPath);
-      expect(mockLogger.error).not.toHaveBeenCalled(); // Validation error, not load error
+      expect(mockLogger.error).not.toHaveBeenCalled();
     });
   });
-
-  // --- interactiveEditConfig ---
 });

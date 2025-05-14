@@ -35,12 +35,17 @@ export function registerLlmModule(container: Container): void {
   container.registerFactory<(config: LLMConfig) => ChatGoogleGenerativeAI>(
     'GoogleGenAIClientFactory',
     () => {
-      return (config: LLMConfig) =>
-        new ChatGoogleGenerativeAI({
+      return (config: LLMConfig) => {
+        const reasonableMaxTokens =
+          typeof config.maxTokens === 'number' && config.maxTokens > 0 ? config.maxTokens : 4096; // Default to 4096 if not specified or invalid in config
+
+        return new ChatGoogleGenerativeAI({
           model: config.model,
           temperature: config.temperature,
           apiKey: config.apiKey,
+          maxOutputTokens: reasonableMaxTokens,
         });
+      };
     }
   );
 
@@ -54,37 +59,27 @@ export function registerLlmModule(container: Container): void {
 
   // Register factories for LLM providers that instantiate with config and client factory
   container.registerFactory<LLMProviderFactory>('ILLMProvider.OpenAI.Factory', () => {
-    const logger = resolveDependency<ILogger>(container, 'ILogger'); // Keep this one
-    // OpenAIProvider constructor was simplified and no longer takes a clientFactory.
-    // It instantiates ChatOpenAI internally.
-    // The clientFactory for ChatOpenAI ('OpenAIClientFactory') is not directly used by OpenAIProvider factory anymore.
-    // However, other services might still use 'OpenAIClientFactory' if they need a raw ChatOpenAI client.
-    // For the provider factory, we just need logger and config.
-    // const logger = resolveDependency<ILogger>(container, 'ILogger'); // REMOVE DUPLICATE
+    const logger = resolveDependency<ILogger>(container, 'ILogger');
     try {
       return function factory(config: LLMConfig): Result<ILLMProvider, LLMProviderError> {
-        // Changed Error to LLMProviderError
         try {
-          // OpenAIProvider now creates its own ChatOpenAI client.
           return Result.ok(new OpenAIProvider(config, logger));
         } catch (error) {
           logger.error(
             `Error creating OpenAI provider instance: ${error instanceof Error ? error.message : String(error)}`,
-            error as Error // Logger can take Error
+            error as Error
           );
           return Result.err(LLMProviderError.fromError(error, 'OpenAIFactory'));
         }
       };
     } catch (error) {
-      // This catch is for errors resolving the logger, less likely.
       logger.error(
         `Failed to resolve dependencies for OpenAI provider factory (e.g., logger): ${error instanceof Error ? error.message : String(error)}`,
-        error as Error // Logger can take Error
+        error as Error
       );
       return () =>
-        // This factory now needs to return Result<ILLMProvider, LLMProviderError>
         Result.err(
-          new LLMProviderError( // Changed to LLMProviderError
+          new LLMProviderError(
             `Failed to create OpenAI factory due to DI error: ${error instanceof Error ? error.message : String(error)}`,
             'FACTORY_INIT_ERROR',
             'OpenAIFactory'
@@ -102,7 +97,6 @@ export function registerLlmModule(container: Container): void {
       );
 
       return function factory(config: LLMConfig): Result<ILLMProvider, LLMProviderError> {
-        // Changed Error to LLMProviderError
         try {
           const client = clientFactory(config);
           return Result.ok(new GoogleGenAIProvider(config, logger, () => client));
@@ -121,7 +115,7 @@ export function registerLlmModule(container: Container): void {
       );
       return () =>
         Result.err(
-          new LLMProviderError( // Changed to LLMProviderError
+          new LLMProviderError(
             `Failed to create GoogleGenAI factory: ${error instanceof Error ? error.message : String(error)}`,
             'FACTORY_INIT_ERROR',
             'GoogleGenAIFactory'
@@ -139,7 +133,6 @@ export function registerLlmModule(container: Container): void {
       );
 
       return function factory(config: LLMConfig): Result<ILLMProvider, LLMProviderError> {
-        // Changed Error to LLMProviderError
         try {
           const client = clientFactory(config);
           return Result.ok(new AnthropicProvider(config, logger, () => client));
@@ -158,7 +151,7 @@ export function registerLlmModule(container: Container): void {
       );
       return () =>
         Result.err(
-          new LLMProviderError( // Changed to LLMProviderError
+          new LLMProviderError(
             `Failed to create Anthropic factory: ${error instanceof Error ? error.message : String(error)}`,
             'FACTORY_INIT_ERROR',
             'AnthropicFactory'
@@ -167,15 +160,10 @@ export function registerLlmModule(container: Container): void {
     }
   });
 
-  // Register OpenRouter provider factory
   container.registerFactory<LLMProviderFactory>('ILLMProvider.OpenRouter.Factory', () => {
-    const logger = resolveDependency<ILogger>(container, 'ILogger'); // Keep this one
-
-    // OpenRouterProvider constructor was simplified and no longer takes a clientFactory.
-    // const logger = resolveDependency<ILogger>(container, 'ILogger'); // REMOVE DUPLICATE
+    const logger = resolveDependency<ILogger>(container, 'ILogger');
     try {
       return function factory(config: LLMConfig): Result<ILLMProvider, LLMProviderError> {
-        // Changed Error to LLMProviderError
         try {
           return Result.ok(new OpenRouterProvider(config, logger));
         } catch (error) {
@@ -187,7 +175,6 @@ export function registerLlmModule(container: Container): void {
         }
       };
     } catch (error) {
-      // This catch is for errors resolving the logger.
       logger.error(
         `Failed to resolve dependencies for OpenRouter provider factory (e.g., logger): ${error instanceof Error ? error.message : String(error)}`,
         error as Error
@@ -201,6 +188,41 @@ export function registerLlmModule(container: Container): void {
           )
         );
     }
+  });
+
+  // Register ILLMConfigService first as LLMProviderRegistry depends on it.
+  container.registerFactory<ILLMConfigService>('ILLMConfigService', () => {
+    const fileOps = resolveDependency<IFileOperations>(container, 'IFileOperations');
+    const logger = resolveDependency<ILogger>(container, 'ILogger');
+    const inquirer = resolveDependency<ReturnType<typeof createPromptModule>>(
+      container,
+      'Inquirer'
+    );
+    const modelListerService = resolveDependency<IModelListerService>(
+      container,
+      'IModelListerService'
+    );
+
+    assertIsDefined(fileOps, 'IFileOperations dependency not found for LLMConfigService');
+    assertIsDefined(logger, 'ILogger dependency not found for LLMConfigService');
+    assertIsDefined(inquirer, 'Inquirer dependency not found for LLMConfigService');
+    assertIsDefined(
+      modelListerService,
+      'IModelListerService dependency not found for LLMConfigService'
+    );
+
+    const configService = new LLMConfigService(
+      fileOps,
+      logger,
+      inquirer,
+      modelListerService // Corrected: Removed providerRegistry from here
+    );
+
+    logger.debug(
+      '[INVESTIGATION] llm-module: LLMConfigService created. Provider initialization will be handled by LLMProviderRegistry.'
+    );
+
+    return configService;
   });
 
   // Register LLMProviderRegistry
@@ -217,7 +239,16 @@ export function registerLlmModule(container: Container): void {
         'ILLMProvider.OpenRouter.Factory'
       ),
     };
-    return new LLMProviderRegistry(providerFactories);
+    const logger = resolveDependency<ILogger>(container, 'ILogger');
+    const configService = resolveDependency<ILLMConfigService>(container, 'ILLMConfigService');
+
+    assertIsDefined(logger, 'ILogger dependency for LLMProviderRegistry not found');
+    assertIsDefined(
+      configService,
+      'ILLMConfigService dependency for LLMProviderRegistry not found'
+    );
+
+    return new LLMProviderRegistry(providerFactories, logger, configService);
   });
 
   // Register provider factories for ModelListerService
@@ -247,60 +278,6 @@ export function registerLlmModule(container: Container): void {
     assertIsDefined(logger, 'ILogger dependency not found');
     assertIsDefined(providerFactories, 'ILLMProviderFactories dependency not found');
     return new ModelListerService(providerFactories, logger);
-  });
-
-  container.registerFactory<ILLMConfigService>('ILLMConfigService', () => {
-    const fileOps = resolveDependency<IFileOperations>(container, 'IFileOperations');
-    const logger = resolveDependency<ILogger>(container, 'ILogger');
-    const inquirer = resolveDependency<ReturnType<typeof createPromptModule>>(
-      container,
-      'Inquirer'
-    );
-    const modelListerService = resolveDependency<IModelListerService>(
-      container,
-      'IModelListerService'
-    );
-    const providerRegistry = resolveDependency<LLMProviderRegistry>(
-      container,
-      'LLMProviderRegistry'
-    );
-
-    assertIsDefined(fileOps, 'IFileOperations dependency not found');
-    assertIsDefined(logger, 'ILogger dependency not found');
-    assertIsDefined(inquirer, 'Inquirer dependency not found');
-    assertIsDefined(modelListerService, 'IModelListerService dependency not found');
-    assertIsDefined(providerRegistry, 'LLMProviderRegistry dependency not found');
-
-    const configService = new LLMConfigService(
-      fileOps,
-      logger,
-      inquirer,
-      modelListerService,
-      providerRegistry
-    );
-
-    // Initialize provider with current config
-    configService
-      .loadConfig()
-      .then((configResult) => {
-        if (configResult.isOk() && configResult.value) {
-          const initResult = providerRegistry.initializeProvider(configResult.value);
-          if (initResult.isErr() && initResult.error) {
-            logger.error(
-              `Failed to initialize LLM provider: ${initResult.error.message}`,
-              initResult.error
-            );
-          }
-        }
-      })
-      .catch((error) => {
-        logger.error(
-          `Failed to load LLM config during initialization: ${error instanceof Error ? error.message : String(error)}`,
-          error as Error
-        );
-      });
-
-    return configService;
   });
 
   // Register LLMAgent
