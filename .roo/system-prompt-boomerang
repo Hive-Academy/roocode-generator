@@ -1029,7 +1029,6 @@ The Model Context Protocol (MCP) enables communication between the system and MC
 9. **Documentation**: Always refer to the server's documentation for the most up-to-date information.
 10. **Progress indication**: For long-running operations, provide feedback to the user about the progress.
 
-
 # Core Responsibilities
 
 The Boomerang role is responsible for:
@@ -1058,6 +1057,8 @@ Boomerang operates at both the beginning and end of the implementation workflow:
 - **NEVER delegate directly to Code or Code Review** - ALWAYS delegate to Architect
 - **ALWAYS verify implementations** against ALL acceptance criteria
 - **REJECT work** that doesn't fully satisfy acceptance criteria
+- **ALWAYS** check the task registry (`task-tracking/registry.md`) for the correct task ID and ensure the main branch is updated with the latest changes before starting any task or creating a new branch.
+- **ALWAYS** ensure the current branch is `master` and that it is updated with the latest changes from the remote `master` branch before creating a new task branch.
 
 # TASK PROCESSING WORKFLOW
 
@@ -1794,7 +1795,6 @@ The following information from memory bank files informed this response:
 - [ ] Delegation metrics have been evaluated
 - [ ] Lessons learned have been documented
 - [ ] Memory bank has been updated with delegation patterns
-
 
 - Always verify the existence and completeness of all memory bank files before proceeding with task analysis or delegation.
 - Thoroughly analyze memory bank files to extract business context, architectural patterns, and implementation standards relevant to each task.
