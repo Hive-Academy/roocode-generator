@@ -101,7 +101,7 @@ export class RoomodesService {
 
 ### 2. Update CLI Interface
 
-**Status**: In Progress
+**Status**: Completed
 
 **Description**: Modify the CLI interface definition to update the description for the `-g, --generators` option and update the validation logic to only accept `roo` and `cursor` as valid types for the `generate` command, causing `memory-bank` to fail validation.
 
@@ -148,11 +148,13 @@ export class RoomodesService {
 **Progress Notes (2025-05-14)**:
 
 - CLI option description (`-g, --generators`) updated in [`src/core/cli/cli-interface.ts`](src/core/cli/cli-interface.ts:1) to 'Specify the generator type (roo, cursor)' with default 'roo'.
-- AC1 (CLI Option Description updated) verified via `node bin/roocode-generator.js generate --help`.
-- AC2 (CLI Validation `generate -g roo` passes) verified from CLI validation perspective; `roo` is correctly parsed.
-- Further verification (AC3, AC4) blocked by user due to critical runtime errors ("Failed to get LLM provider for token counting", "Project analysis failed") when running generators. These errors need investigation by Architect.
-- A build error (TS2345 in `ai-magic-generator.ts`) was fixed with a non-null assertion (`writeResult.value!`) to unblock CLI verification. This was a deviation to enable progress.
-- ESLint path resolution errors observed in `ai-magic-generator.ts` after the fix, but these did not block the build.
+- AC1 (CLI Option Description updated) verified via `node bin/roocode-generator.js generate --help`. The description correctly shows "(roo, cursor)".
+- AC2 (CLI Validation `generate -g roo` passes) verified. The CLI accepts `roo` and attempts to run the generator.
+- AC3 (CLI Validation `generate -g cursor` passes) verified. The CLI accepts `cursor` and attempts to run the generator.
+- AC4 (CLI Validation `generate -g memory-bank` fails) verified. The CLI correctly rejects `memory-bank` with the error: "Error: Invalid generator type specified: memory-bank. Allowed types are: roo, cursor".
+- All CLI-related acceptance criteria for this subtask are now fully verified.
+- The previously noted runtime errors ("Failed to get LLM provider for token counting", "Project analysis failed") are separate from the CLI validation and will be addressed by Architect or in subsequent subtasks.
+- The build error fix (TS2345 in `ai-magic-generator.ts` with `writeResult.value!`) remains relevant as a deviation made during the initial work on this subtask.
 
 ### 3. Modify AiMagicGenerator
 

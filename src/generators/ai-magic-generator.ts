@@ -64,18 +64,6 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
     // Return type is string on success (message or path)
     try {
       this.logger.info('Starting AI Magic generation process...');
-      this.logger.debug(`[INVESTIGATION] AiMagicGenerator.executeGeneration called.`);
-      this.logger.debug(`[INVESTIGATION] Options: ${JSON.stringify(options)}`);
-      this.logger.debug(
-        `[INVESTIGATION] Raw contextPaths argument: ${JSON.stringify(contextPaths)}`
-      );
-      if (contextPaths && Array.isArray(contextPaths)) {
-        this.logger.debug(`[INVESTIGATION] contextPaths Array: ${JSON.stringify(contextPaths)}`);
-      } else {
-        this.logger.debug(
-          `[INVESTIGATION] contextPaths is not an array or is null/undefined. Value: ${String(contextPaths)}`
-        );
-      }
 
       // Access generatorType from options (assuming ProjectConfig will be updated to include it)
       const generatorType = (options as any).generatorType as string | undefined;
@@ -84,19 +72,6 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
         return Result.err(new Error('The --generators flag is required when using --generate.'));
       }
 
-      if (!contextPaths?.length) {
-        // This check might be too early if contextPaths is not what we expect
-        this.logger.warn(
-          `[INVESTIGATION] contextPaths?.length check failed. Length: ${contextPaths?.length}`
-        );
-        // return Result.err(new Error('No context path provided for analysis')); // Keep this commented for now to see logs
-      }
-
-      // 1. Analyze Project (needed for both memory-bank and roo)
-      // Previous log replaced by the more detailed ones above.
-      // this.logger.debug(
-      //   `[INVESTIGATION] contextPaths in executeGeneration: ${JSON.stringify(contextPaths)}`
-      // );
       const projectContextResult = await this.analyzeProject(contextPaths);
       if (projectContextResult.isErr()) {
         return Result.err(projectContextResult.error ?? new Error('Project analysis failed'));

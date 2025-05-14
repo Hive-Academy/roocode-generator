@@ -218,10 +218,6 @@ export function registerLlmModule(container: Container): void {
       modelListerService // Corrected: Removed providerRegistry from here
     );
 
-    logger.debug(
-      '[INVESTIGATION] llm-module: LLMConfigService created. Provider initialization will be handled by LLMProviderRegistry.'
-    );
-
     return configService;
   });
 

@@ -22,9 +22,7 @@ export class LLMProviderRegistry {
     @Inject('ILLMConfigService') configService: ILLMConfigService
   ) {
     this.providerFactories = new Map(Object.entries(providerFactories));
-    this.logger.debug(
-      '[INVESTIGATION] LLMProviderRegistry constructor: Kicking off initialization.'
-    );
+
     this.initializationPromise = this._loadConfigAndInitializeProvider(configService);
   }
 
@@ -32,15 +30,11 @@ export class LLMProviderRegistry {
     configService: ILLMConfigService
   ): Promise<Result<ILLMProvider, LLMProviderError>> {
     try {
-      this.logger.debug('[INVESTIGATION] _loadConfigAndInitializeProvider: Loading config...');
       const configResult = await configService.loadConfig();
 
       if (configResult.isErr()) {
         const configLoadError = configResult.error!;
-        this.logger.error(
-          `[INVESTIGATION] _loadConfigAndInitializeProvider: Failed to load config: ${configLoadError.message}`,
-          configLoadError
-        );
+
         // Wrap the generic Error from configService into an LLMProviderError
         // LLMProviderError.fromError typically takes (error: any, context: string)
         return Result.err(
@@ -53,15 +47,10 @@ export class LLMProviderRegistry {
           'CONFIG_ERROR',
           'LLMProviderRegistry'
         );
-        this.logger.error(
-          `[INVESTIGATION] _loadConfigAndInitializeProvider: ${noConfigValError.message}`
-        );
+
         return Result.err(noConfigValError);
       }
 
-      this.logger.debug(
-        '[INVESTIGATION] _loadConfigAndInitializeProvider: Config loaded, initializing provider with config.'
-      );
       return this._initializeProviderWithConfig(configResult.value);
     } catch (error) {
       const catchAllError = LLMProviderError.fromError(error, 'LLMProviderRegistry-LoadAndInit');
@@ -79,14 +68,9 @@ export class LLMProviderRegistry {
    * @returns Promise<Result> with provider or error
    */
   public async getProvider(): Promise<Result<ILLMProvider, LLMProviderError>> {
-    this.logger.debug(
-      '[INVESTIGATION] LLMProviderRegistry.getProvider CALLED. Awaiting initializationPromise.'
-    );
     const result = await this.initializationPromise;
 
-    if (result.isOk()) {
-      this.logger.debug('[INVESTIGATION] getProvider: initializationPromise resolved Ok.');
-    } else if (result.isErr()) {
+    if (result.isErr()) {
       this.logger.error(
         `[INVESTIGATION] getProvider: initializationPromise resolved with Error: ${result.error!.message}`,
         result.error
@@ -102,9 +86,6 @@ export class LLMProviderRegistry {
    * @returns Result with the initialized provider or error
    */
   private _initializeProviderWithConfig(config: LLMConfig): Result<ILLMProvider, LLMProviderError> {
-    this.logger.debug(
-      `[INVESTIGATION] LLMProviderRegistry._initializeProviderWithConfig CALLED. Config provider: ${config?.provider}`
-    );
     this.cachedProvider = null;
 
     try {
@@ -124,24 +105,16 @@ export class LLMProviderRegistry {
         );
       }
 
-      this.logger.debug(
-        `[INVESTIGATION] _initializeProviderWithConfig: Found factory for '${providerName}'. Invoking factory.`
-      );
       const providerResult = factory(config);
 
       if (providerResult.isOk()) {
         const provider: ILLMProvider = providerResult.value!;
         this.cachedProvider = provider;
-        this.logger.debug(
-          `[INVESTIGATION] _initializeProviderWithConfig: Provider '${provider.name}' initialized and cached successfully.`
-        );
+
         return Result.ok(provider);
       } else if (providerResult.isErr()) {
         const errorFromResult: LLMProviderError = providerResult.error!;
-        this.logger.error(
-          `[INVESTIGATION] _initializeProviderWithConfig: Factory for '${providerName}' failed. Error: ${errorFromResult.message}`,
-          errorFromResult
-        );
+
         return Result.err(errorFromResult);
       } else {
         const unknownError = new LLMProviderError(
