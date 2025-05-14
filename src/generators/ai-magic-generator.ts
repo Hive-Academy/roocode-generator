@@ -13,6 +13,7 @@ import { IRulesPromptBuilder } from '@generators/rules/interfaces';
 import { IContentProcessor } from '@memory-bank/interfaces';
 import { RooFileOpsHelper } from './roo-file-ops-helper';
 import { MarkdownListParser } from '@core/utils/markdown-list-parser';
+import { IRoomodesService } from '@core/services/roomodes.service';
 
 @Injectable()
 export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
@@ -29,7 +30,8 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
     @Inject('MemoryBankService') private readonly memoryBankService: MemoryBankService,
     @Inject('IRulesPromptBuilder') private readonly rulesPromptBuilder: IRulesPromptBuilder,
     @Inject('IContentProcessor') private readonly contentProcessor: IContentProcessor,
-    @Inject('RooFileOpsHelper') private readonly rooFileOpsHelper: RooFileOpsHelper
+    @Inject('RooFileOpsHelper') private readonly rooFileOpsHelper: RooFileOpsHelper,
+    @Inject('IRoomodesService') private readonly roomodesService: IRoomodesService
   ) {
     super(container);
     this.logger.debug(`${this.name} generator initialized`);
@@ -50,7 +52,8 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
       !this.memoryBankService ||
       !this.rulesPromptBuilder ||
       !this.contentProcessor ||
-      !this.rooFileOpsHelper
+      !this.rooFileOpsHelper ||
+      !this.roomodesService
     ) {
       return Result.err(new Error(`${this.name} generator is missing required dependencies.`));
     }
@@ -92,9 +95,16 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
             );
           }
 
-          // Memory bank content generated successfully, proceed with roo content generation
-          // using the same ProjectContext
-          return this.generateRooContent(projectContext, options);
+          // Then generate roomodes file
+          const roomodesResult = await this.roomodesService.generateStaticRoomodesFile();
+          if (roomodesResult.isErr()) {
+            return Result.err(
+              roomodesResult.error ?? new Error('Unknown error during roomodes generation')
+            );
+          }
+
+          // Finally, generate roo system prompts using the shared ProjectContext
+          return this.generateRooSystemPrompts(projectContext, options);
         }
         case 'cursor':
           // Keep cursor behavior unchanged
@@ -261,7 +271,7 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
     }
   }
 
-  private async generateRooContent(
+  private async generateRooSystemPrompts(
     projectContext: ProjectContext,
     _options: ProjectConfig
   ): Promise<Result<string, Error>> {
@@ -478,7 +488,7 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
           ? error.message
           : 'Unknown error during roo generation orchestration';
       const errorInstance = error instanceof Error ? error : new Error(message);
-      this.logger.error(`Error in generateRooContent: ${message}`, errorInstance);
+      this.logger.error(`Error in generateRooSystemPrompts: ${message}`, errorInstance);
       return Result.err(errorInstance);
     }
   }

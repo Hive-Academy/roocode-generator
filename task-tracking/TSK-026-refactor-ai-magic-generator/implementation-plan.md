@@ -158,7 +158,7 @@ export class RoomodesService {
 
 ### 3. Modify AiMagicGenerator
 
-**Status**: Not Started
+**Status**: Completed
 
 **Description**: Update the `AiMagicGenerator` to inject the new `RoomodesService`. Modify the `generate` method to handle the `roo` type by first generating memory bank content using the `ProjectContext` obtained from a single call to `projectAnalyzer.analyzeProject()`, then calling the new `RoomodesService` with the same `ProjectContext`. Remove the direct `case 'memory-bank':` handling. Ensure errors from memory bank generation halt the process.
 
