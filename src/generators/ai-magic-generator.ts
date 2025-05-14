@@ -83,17 +83,24 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
 
       switch (generatorType) {
         case 'roo': {
+          // First generate memory bank content using the shared ProjectContext
           const mbResult = await this.generateMemoryBankContent(projectContext, options);
           if (mbResult.isErr()) {
+            // Halt the roo flow if memory bank generation fails
             return Result.err(
               mbResult.error ?? new Error('Unknown error during memory bank generation')
             );
           }
+
+          // Memory bank content generated successfully, proceed with roo content generation
+          // using the same ProjectContext
           return this.generateRooContent(projectContext, options);
         }
         case 'cursor':
+          // Keep cursor behavior unchanged
           return this.handleCursorGenerationPlaceholder(projectContext, options);
         default: {
+          // Handle unknown generator types
           const errorMsg = `Unknown generator type: ${generatorType}`;
           this.logger.error(errorMsg);
           return Result.err(new Error(errorMsg));
