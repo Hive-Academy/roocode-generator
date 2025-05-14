@@ -1,0 +1,37 @@
+flowchart TD
+    MemoryBank[(Memory Bank)]
+    TaskDesc[Task Description]
+    ImplPlan[Implementation Plan]
+    SubtaskSpecs[Subtask Specifications]
+    CodeReview[Code Review Report]
+    Completion[Completion Report]
+    
+    MemoryBank --> TaskDesc
+    TaskDesc --> ImplPlan
+    ImplPlan --> SubtaskSpecs
+    SubtaskSpecs --> CodeReview
+    CodeReview --> Completion
+    Completion --> MemoryBank
+    
+    Boomerang(("🪃"))
+    Architect(("🏗️"))
+    SeniorDev(("💻"))
+    CodeReviewer(("🔍"))
+    
+    Boomerang -.-> TaskDesc
+    Architect -.-> ImplPlan
+    SeniorDev -.-> SubtaskSpecs
+    CodeReviewer -.-> CodeReview
+    Boomerang -.-> Completion
+    
+    style MemoryBank fill:#f6d365,stroke:#fda085,color:#333
+    style TaskDesc fill:#FF9A9E,stroke:#FAD0C4,color:#333
+    style ImplPlan fill:#A8EDEA,stroke:#FED6E3,color:#333
+    style SubtaskSpecs fill:#84FAB0,stroke:#8FD3F4,color:#333
+    style CodeReview fill:#E2B0FF,stroke:#9F44D3,color:#333
+    style Completion fill:#FF9A9E,stroke:#FAD0C4,color:#333
+    
+    style Boomerang fill:#FF9A9E,stroke:#FAD0C4,color:#333
+    style Architect fill:#A8EDEA,stroke:#FED6E3,color:#333
+    style SeniorDev fill:#84FAB0,stroke:#8FD3F4,color:#333
+    style CodeReviewer fill:#E2B0FF,stroke:#9F44D3,color:#333

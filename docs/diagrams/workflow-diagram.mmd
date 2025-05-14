@@ -1,0 +1,50 @@
+flowchart TB
+    %% Main workflow
+    Start([Task Request]) --> Boomerang1
+    Boomerang1["🪃 Boomerang\n Task Intake"] --> MemoryAnalysis["Memory Bank Analysis"]
+    MemoryAnalysis --> KnowledgeGap{"Knowledge\nGaps?"}
+    KnowledgeGap -->|Yes| Researcher["🔎 Researcher\nKnowledge Gathering"]
+    Researcher --> Boomerang2["🪃 Boomerang\nTask Description"]
+    KnowledgeGap -->|No| Boomerang2
+    
+    Boomerang2 --> Architect1["🏗️ Architect\nImplementation Planning"]
+    Architect1 --> SeniorDev1["💻 Senior Dev\nSubtask 1 Implementation"]
+    
+    %% Junior roles
+    SeniorDev1 --> JuniorDev["👨‍💻 Junior Coder\nComponent Implementation"]
+    SeniorDev1 --> JuniorTest["🧪 Junior Tester\nTest Implementation"]
+    JuniorDev --> SeniorDev2["💻 Senior Dev\nIntegration & Review"]
+    JuniorTest --> SeniorDev2
+    
+    %% Continue workflow
+    SeniorDev2 --> MoreTasks{"More\nSubtasks?"}
+    MoreTasks -->|Yes| SeniorDev1
+    MoreTasks -->|No| Architect2["🏗️ Architect\nVerification"]
+    
+    Architect2 --> CodeReview["🔍 Code Reviewer\nQuality Assurance"]
+    CodeReview --> PassReview{"Passes\nReview?"}
+    PassReview -->|No| Architect1
+    PassReview -->|Yes| Boomerang3["🪃 Boomerang\nFinal Verification"]
+    
+    Boomerang3 --> MemoryUpdate["Memory Bank Updates"]
+    MemoryUpdate --> Complete([Task Complete])
+    
+    classDef boomerang fill:#FF9A9E,stroke:#FAD0C4,color:#333
+    classDef architect fill:#A8EDEA,stroke:#FED6E3,color:#333
+    classDef senior fill:#84FAB0,stroke:#8FD3F4,color:#333
+    classDef junior fill:#D4FC79,stroke:#96E6A1,color:#333
+    classDef juniorTest fill:#CCFBFF,stroke:#EF96C5,color:#333
+    classDef reviewer fill:#E2B0FF,stroke:#9F44D3,color:#333
+    classDef researcher fill:#F5F7FA,stroke:#C3CFE2,color:#333
+    classDef memory fill:#f6d365,stroke:#fda085,color:#333
+    classDef decision fill:#f8f8f8,stroke:#666,color:#333
+    
+    class Boomerang1,Boomerang2,Boomerang3 boomerang
+    class Architect1,Architect2 architect
+    class SeniorDev1,SeniorDev2 senior
+    class JuniorDev junior
+    class JuniorTest juniorTest
+    class CodeReview reviewer
+    class Researcher researcher
+    class MemoryAnalysis,MemoryUpdate memory
+    class KnowledgeGap,MoreTasks,PassReview decision

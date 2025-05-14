@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RooCode Orchestrator Workflow</title>
+    <!-- External CDN resources -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/11.5.0/mermaid.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <!-- Custom styles -->
+    <link rel="stylesheet" href="css/styles.css" />
+
+    <!-- Mermaid initialization will happen in the mermaid-fix.js file -->
+  </head>
+  <body class="bg-gray-100 font-sans text-gray-800 scroll-container">
+    <!-- Slide 1: Introduction -->
+    <section
+      id="intro"
+      class="slide flex flex-col justify-center items-center p-8 bg-white"
+    >
+      <div class="container mx-auto text-center appear-animation">
+        <h1 class="text-5xl font-bold mb-6 text-indigo-700">
+          RooCode Orchestrator
+        </h1>
+        <h2 class="text-3xl font-semibold mb-8 text-indigo-500">
+          AI-Driven Agile Development Framework
+        </h2>
+        <p class="text-xl mb-10 max-w-3xl mx-auto text-gray-600">
+          A sophisticated workflow orchestration system that coordinates
+          multiple AI roles for efficient, high-quality software development.
+        </p>
+        <div class="flex flex-wrap justify-center gap-4 mb-10">
+          <span class="px-4 py-2 bg-indigo-100 rounded-full text-indigo-700"
+            >Agile Methodology</span
+          >
+          <span class="px-4 py-2 bg-green-100 rounded-full text-green-700"
+            >Trunk-Based Development</span
+          >
+          <span class="px-4 py-2 bg-amber-100 rounded-full text-amber-700"
+            >Open Source Guidelines</span
+          >
+        </div>
+        <div class="mt-12 text-gray-500">
+          <p>Scroll down to explore</p>
+          <svg
+            class="w-6 h-6 mx-auto mt-2 animate-bounce"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M19 14l-7 7m0 0l-7-7m7 7V3"
+            ></path>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 2: RooCode Orchestrator Architecture -->
+    <section id="architecture" class="slide p-8 bg-gray-50">
+      <div class="container mx-auto">
+        <h2
+          class="text-3xl font-bold mb-8 text-center text-indigo-700 appear-animation"
+        >
+          RooCode Orchestrator Architecture
+        </h2>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+          <div class="bg-white p-6 rounded-lg shadow-md appear-animation">
+            <h3 class="text-xl font-semibold mb-4 text-indigo-600">
+              Memory Bank System
+            </h3>
+            <p class="mb-4 text-gray-600">
+              Persistent knowledge repository that maintains project context
+              across all roles.
+            </p>
+            <ul class="list-disc pl-5 text-gray-700">
+              <li>ProjectOverview.md</li>
+              <li>TechnicalArchitecture.md</li>
+              <li>DeveloperGuide.md</li>
+            </ul>
+          </div>
+          <div
+            class="bg-white p-6 rounded-lg shadow-md appear-animation"
+            style="transition-delay: 0.2s"
+          >
+            <h3 class="text-xl font-semibold mb-4 text-indigo-600">
+              Specialized Roles
+            </h3>
+            <p class="mb-4 text-gray-600">
+              AI personas with specific responsibilities in the development
+              workflow.
+            </p>
+            <ul class="list-disc pl-5 text-gray-700">
+              <li>
+                Primary Roles: Boomerang, Architect, Senior Developer, Code
+                Reviewer
+              </li>
+              <li>Supporting Roles: Junior Coder, Junior Tester, Researcher</li>
+            </ul>
+          </div>
+          <div
+            class="bg-white p-6 rounded-lg shadow-md appear-animation"
+            style="transition-delay: 0.4s"
+          >
+            <h3 class="text-xl font-semibold mb-4 text-indigo-600">
+              Workflow Process
+            </h3>
+            <p class="mb-4 text-gray-600">
+              Structured stages from task intake to delivery with verification
+              at each step.
+            </p>
+            <ul class="list-disc pl-5 text-gray-700">
+              <li>Task Documentation</li>
+              <li>Delegation Strategy</li>
+              <li>Implementation & Review</li>
+              <li>Continuous Verification</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-md appear-animation">
+          <h3 class="text-xl font-semibold mb-4 text-center text-indigo-600">
+            Role Relationships
+          </h3>
+          <div id="roles-diagram" class="w-full overflow-auto">
+            <pre class="mermaid">
+                <!-- Role Diagram will be loaded from roles-diagram.mmd or rendered inline -->
+                flowchart TD MemoryBank("Memory Bank System") Boomerang("🪃
+                Boomerang (Technical Lead)") Architect("🏗️ Architect (Planning &
+                Design)") SeniorDev("💻 Senior Developer (Implementation)")
+                JuniorCoder("👨‍💻 Junior Coder (Component Implementation)")
+                JuniorTester("🧪 Junior Tester (Testing)") CodeReviewer("🔍 Code
+                Reviewer (Quality Assurance)") Researcher("🔎 Researcher
+                (Knowledge Gathering)") style MemoryBank
+                fill:#f6d365,stroke:#fda085,color:#333 style Boomerang
+                fill:#FF9A9E,stroke:#FAD0C4,color:#333 style Architect
+                fill:#A8EDEA,stroke:#FED6E3,color:#333 style SeniorDev
+                fill:#84FAB0,stroke:#8FD3F4,color:#333 style JuniorCoder
+                fill:#D4FC79,stroke:#96E6A1,color:#333 style JuniorTester
+                fill:#CCFBFF,stroke:#EF96C5,color:#333 style CodeReviewer
+                fill:#E2B0FF,stroke:#9F44D3,color:#333 style Researcher
+                fill:#F5F7FA,stroke:#C3CFE2,color:#333 MemoryBank --> Boomerang
+                MemoryBank --> Architect MemoryBank --> SeniorDev MemoryBank -->
+                CodeReviewer Boomerang --> Researcher Researcher --> Boomerang
+                Boomerang --> Architect Architect --> SeniorDev SeniorDev -->
+                JuniorCoder SeniorDev --> JuniorTester JuniorCoder --> SeniorDev
+                JuniorTester --> SeniorDev SeniorDev --> Architect Architect -->
+                CodeReviewer CodeReviewer --> Architect Architect --> Boomerang
+              </pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 3: Workflow Process -->
+    <section id="workflow" class="slide p-8 bg-white">
+      <div class="container mx-auto">
+        <h2
+          class="text-3xl font-bold mb-8 text-center text-indigo-700 appear-animation"
+        >
+          Detailed Workflow Process
+        </h2>
+
+        <div
+          class="bg-white rounded-lg shadow-md overflow-hidden appear-animation mb-8"
+        >
+          <div id="workflow-diagram" class="w-full overflow-auto p-4">
+            <pre class="mermaid">
+                <!-- Workflow Diagram will be loaded from workflow-diagram.mmd or rendered inline -->
+                flowchart TB %% Main workflow Start([Task Request]) -->
+                Boomerang1 Boomerang1["🪃 Boomerang Task Intake"] -->
+                MemoryAnalysis["Memory Bank Analysis"] MemoryAnalysis -->
+                KnowledgeGap{"Knowledge Gaps?"} KnowledgeGap -->|Yes|
+                Researcher["🔎 Researcher Knowledge Gathering"] Researcher -->
+                Boomerang2["🪃 Boomerang Task Description"] KnowledgeGap -->|No|
+                Boomerang2 Boomerang2 --> Architect1["🏗️ Architect
+                Implementation Planning"] Architect1 --> SeniorDev1["💻 Senior
+                Dev Subtask 1 Implementation"] %% Junior roles SeniorDev1 -->
+                JuniorDev["👨‍💻 Junior Coder Component Implementation"] SeniorDev1
+                --> JuniorTest["🧪 Junior Tester Test Implementation"] JuniorDev
+                --> SeniorDev2["💻 Senior Dev Integration & Review"] JuniorTest
+                --> SeniorDev2 %% Continue workflow SeniorDev2 -->
+                MoreTasks{"More Subtasks?"} MoreTasks -->|Yes| SeniorDev1
+                MoreTasks -->|No| Architect2["🏗️ Architect Verification"]
+                Architect2 --> CodeReview["🔍 Code Reviewer Quality Assurance"]
+                CodeReview --> PassReview{"Passes Review?"} PassReview -->|No|
+                Architect1 PassReview -->|Yes| Boomerang3["🪃 Boomerang Final
+                Verification"] Boomerang3 --> MemoryUpdate["Memory Bank
+                Updates"] MemoryUpdate --> Complete([Task Complete]) classDef
+                boomerang fill:#FF9A9E,stroke:#FAD0C4,color:#333 classDef
+                architect fill:#A8EDEA,stroke:#FED6E3,color:#333 classDef senior
+                fill:#84FAB0,stroke:#8FD3F4,color:#333 classDef junior
+                fill:#D4FC79,stroke:#96E6A1,color:#333 classDef juniorTest
+                fill:#CCFBFF,stroke:#EF96C5,color:#333 classDef reviewer
+                fill:#E2B0FF,stroke:#9F44D3,color:#333 classDef researcher
+                fill:#F5F7FA,stroke:#C3CFE2,color:#333 classDef memory
+                fill:#f6d365,stroke:#fda085,color:#333 classDef decision
+                fill:#f8f8f8,stroke:#666,color:#333 class
+                Boomerang1,Boomerang2,Boomerang3 boomerang class
+                Architect1,Architect2 architect class SeniorDev1,SeniorDev2
+                senior class JuniorDev junior class JuniorTest juniorTest class
+                CodeReview reviewer class Researcher researcher class
+                MemoryAnalysis,MemoryUpdate memory class
+                KnowledgeGap,MoreTasks,PassReview decision
+              </pre>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          <div class="bg-white p-6 rounded-lg shadow-md appear-animation">
+            <h3 class="text-xl font-semibold mb-4 text-indigo-600">
+              Task Intake & Analysis
+            </h3>
+            <p class="text-gray-600">
+              The Boomerang role analyzes the Memory Bank to understand project
+              context, identifies knowledge gaps, delegates research when
+              needed, and creates a detailed task description with clear
+              acceptance criteria.
+            </p>
+          </div>
+          <div
+            class="bg-white p-6 rounded-lg shadow-md appear-animation"
+            style="transition-delay: 0.2s"
+          >
+            <h3 class="text-xl font-semibold mb-4 text-indigo-600">
+              Implementation Planning
+            </h3>
+            <p class="text-gray-600">
+              The Architect creates a comprehensive implementation plan,
+              breaking the task into well-defined subtasks with clear
+              interfaces, dependencies, and delegation strategies for efficient
+              execution.
+            </p>
+          </div>
+          <div
+            class="bg-white p-6 rounded-lg shadow-md appear-animation"
+            style="transition-delay: 0.4s"
+          >
+            <h3 class="text-xl font-semibold mb-4 text-indigo-600">
+              Subtask Implementation
+            </h3>
+            <p class="text-gray-600">
+              The Senior Developer implements each subtask sequentially,
+              delegating appropriate components to Junior Coder and testing to
+              Junior Tester, then integrating and reviewing their work before
+              proceeding.
+            </p>
+          </div>
+          <div
+            class="bg-white p-6 rounded-lg shadow-md appear-animation"
+            style="transition-delay: 0.6s"
+          >
+            <h3 class="text-xl font-semibold mb-4 text-indigo-600">
+              Quality Assurance & Delivery
+            </h3>
+            <p class="text-gray-600">
+              The Code Reviewer performs thorough code review, the Architect
+              verifies all acceptance criteria are met, and finally Boomerang
+              performs ultimate verification and updates the Memory Bank with
+              new knowledge.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 4: Methodological Alignment -->
+    <section id="methodology" class="slide p-8 bg-gray-50">
+      <div class="container mx-auto">
+        <h2
+          class="text-3xl font-bold mb-8 text-center text-indigo-700 appear-animation"
+        >
+          Methodological Alignment
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          <div class="bg-white p-6 rounded-lg shadow-md appear-animation">
+            <h3 class="text-xl font-semibold mb-4 text-indigo-600">
+              Agile Methodology
+            </h3>
+            <ul class="list-disc pl-5 text-gray-700 space-y-2">
+              <li>Customer satisfaction through early & continuous delivery</li>
+              <li>Welcome changing requirements</li>
+              <li>Deliver working software frequently</li>
+              <li>Business & developers collaborate daily</li>
+              <li>Build projects around motivated individuals</li>
+              <li>Working software is the primary measure</li>
+              <li>Sustainable development pace</li>
+              <li>Technical excellence and good design</li>
+              <li>Simplicity is essential</li>
+              <li>Self-organizing teams</li>
+              <li>Regular adaptation to changing circumstances</li>
+            </ul>
+          </div>
+          <div
+            class="bg-white p-6 rounded-lg shadow-md appear-animation"
+            style="transition-delay: 0.2s"
+          >
+            <h3 class="text-xl font-semibold mb-4 text-indigo-600">
+              Trunk-Based Development
+            </h3>
+            <ul class="list-disc pl-5 text-gray-700 space-y-2">
+              <li>Single source of truth (main branch)</li>
+              <li>Frequent integration of code changes</li>
+              <li>Short-lived feature branches</li>
+              <li>Continuous integration & testing</li>
+              <li>Feature flags for incomplete features</li>
+              <li>Immediate code review</li>
+              <li>Automated testing as pre-review</li>
+              <li>Small, focused commits</li>
+              <li>Keep main branch always deployable</li>
+              <li>Branch by abstraction for larger changes</li>
+            </ul>
+          </div>
+          <div
+            class="bg-white p-6 rounded-lg shadow-md appear-animation"
+            style="transition-delay: 0.4s"
+          >
+            <h3 class="text-xl font-semibold mb-4 text-indigo-600">
+              Open Source Guidelines
+            </h3>
+            <ul class="list-disc pl-5 text-gray-700 space-y-2">
+              <li>Clear contribution guidelines</li>
+              <li>Focused, incremental changes</li>
+              <li>Create new branch for changes</li>
+              <li>Test changes thoroughly</li>
+              <li>Clear, concise commit messages</li>
+              <li>Thorough documentation</li>
+              <li>Code of conduct compliance</li>
+              <li>Pull requests for review</li>
+              <li>Respect existing patterns/styles</li>
+              <li>Issue tracking and references</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8 appear-animation">
+          <h3 class="text-xl font-semibold mb-6 text-center text-indigo-600">
+            RooCode Implementation
+          </h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="border border-gray-200 rounded-lg p-4 role-card">
+              <div class="text-4xl mb-2 text-center">🪃</div>
+              <h4 class="font-semibold mb-2 text-center">Memory Bank System</h4>
+              <p class="text-sm text-gray-600">
+                Central documentation ensures consistent knowledge across all
+                roles, creating a single source of truth for project context.
+              </p>
+            </div>
+
+            <div class="border border-gray-200 rounded-lg p-4 role-card">
+              <div class="text-4xl mb-2 text-center">🏗️</div>
+              <h4 class="font-semibold mb-2 text-center">
+                Role Specialization
+              </h4>
+              <p class="text-sm text-gray-600">
+                Clearly defined responsibilities for each role enable efficient
+                workflow and create a self-organizing team structure.
+              </p>
+            </div>
+
+            <div class="border border-gray-200 rounded-lg p-4 role-card">
+              <div class="text-4xl mb-2 text-center">💻</div>
+              <h4 class="font-semibold mb-2 text-center">
+                Sequential Subtasks
+              </h4>
+              <p class="text-sm text-gray-600">
+                Breaking work into small, manageable components allows for
+                frequent integration and continuous delivery of working
+                software.
+              </p>
+            </div>
+
+            <div class="border border-gray-200 rounded-lg p-4 role-card">
+              <div class="text-4xl mb-2 text-center">🧪</div>
+              <h4 class="font-semibold mb-2 text-center">Continuous Testing</h4>
+              <p class="text-sm text-gray-600">
+                Dedicated testing role and requirements ensure high-quality
+                implementation and early issue detection.
+              </p>
+            </div>
+
+            <div class="border border-gray-200 rounded-lg p-4 role-card">
+              <div class="text-4xl mb-2 text-center">🔍</div>
+              <h4 class="font-semibold mb-2 text-center">Code Review</h4>
+              <p class="text-sm text-gray-600">
+                Immediate and thorough review process ensures code quality and
+                maintains technical excellence.
+              </p>
+            </div>
+
+            <div class="border border-gray-200 rounded-lg p-4 role-card">
+              <div class="text-4xl mb-2 text-center">📝</div>
+              <h4 class="font-semibold mb-2 text-center">
+                Structured Documentation
+              </h4>
+              <p class="text-sm text-gray-600">
+                Formalized documentation at each stage captures requirements,
+                decisions, and knowledge for future reference.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 5: Context Flow & Benefits -->
+    <section id="benefits" class="slide p-8 bg-white">
+      <div class="container mx-auto">
+        <h2
+          class="text-3xl font-bold mb-8 text-center text-indigo-700 appear-animation"
+        >
+          Context Flow & Token Efficiency
+        </h2>
+
+        <div class="bg-white p-6 rounded-lg shadow-md mb-12 appear-animation">
+          <h3 class="text-xl font-semibold mb-6 text-center text-indigo-600">
+            Document Flow Between Roles
+          </h3>
+
+          <div id="document-flow" class="w-full overflow-auto">
+            <pre class="mermaid">
+                <!-- Document Flow Diagram will be loaded from document-flow.mmd or rendered inline -->
+                flowchart TD MemoryBank[(Memory Bank)] TaskDesc[Task
+                Description] ImplPlan[Implementation Plan] SubtaskSpecs[Subtask
+                Specifications] CodeReview[Code Review Report]
+                Completion[Completion Report] MemoryBank --> TaskDesc TaskDesc
+                --> ImplPlan ImplPlan --> SubtaskSpecs SubtaskSpecs -->
+                CodeReview CodeReview --> Completion Completion --> MemoryBank
+                Boomerang(("🪃")) Architect(("🏗️")) SeniorDev(("💻"))
+                CodeReviewer(("🔍")) Boomerang -.-> TaskDesc Architect -.->
+                ImplPlan SeniorDev -.-> SubtaskSpecs CodeReviewer -.->
+                CodeReview Boomerang -.-> Completion style MemoryBank
+                fill:#f6d365,stroke:#fda085,color:#333 style TaskDesc
+                fill:#FF9A9E,stroke:#FAD0C4,color:#333 style ImplPlan
+                fill:#A8EDEA,stroke:#FED6E3,color:#333 style SubtaskSpecs
+                fill:#84FAB0,stroke:#8FD3F4,color:#333 style CodeReview
+                fill:#E2B0FF,stroke:#9F44D3,color:#333 style Completion
+                fill:#FF9A9E,stroke:#FAD0C4,color:#333 style Boomerang
+                fill:#FF9A9E,stroke:#FAD0C4,color:#333 style Architect
+                fill:#A8EDEA,stroke:#FED6E3,color:#333 style SeniorDev
+                fill:#84FAB0,stroke:#8FD3F4,color:#333 style CodeReviewer
+                fill:#E2B0FF,stroke:#9F44D3,color:#333
+            </pre>
+          </div>
+        </div>
+
+        <div
+          class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8"
+          id="token-comparison"
+        >
+          <div class="bg-gray-50 p-6 rounded-lg shadow-md appear-animation">
+            <h3 class="text-xl font-semibold mb-4 text-indigo-600">
+              Traditional Approach
+            </h3>
+            <p class="mb-4 text-gray-600">
+              Passing entire context between LLM calls:
+            </p>
+            <div
+              class="h-48 bg-white rounded-lg shadow p-4 flex items-center justify-center h-auto"
+            >
+              <div class="flex justify-around w-full">
+                <div class="flex flex-col items-center justify-end">
+                  <div
+                    class="w-8 h-40 bg-red-400 rounded-t-lg flex items-center justify-center text-white font-bold traditional-bar"
+                    data-height="160"
+                  >
+                    15K
+                  </div>
+                  <span class="mt-2 text-sm">Task 1</span>
+                </div>
+                <div class="flex flex-col items-center justify-end">
+                  <div
+                    class="w-8 h-44 bg-red-400 rounded-t-lg flex items-center justify-center text-white font-bold traditional-bar"
+                    data-height="176"
+                  >
+                    16K
+                  </div>
+                  <span class="mt-2 text-sm">Task 2</span>
+                </div>
+                <div class="flex flex-col items-center justify-end">
+                  <div
+                    class="w-8 h-48 bg-red-400 rounded-t-lg flex items-center justify-center text-white font-bold traditional-bar"
+                    data-height="192"
+                  >
+                    17K
+                  </div>
+                  <span class="mt-2 text-sm">Task 3</span>
+                </div>
+                <div class="flex flex-col items-center justify-end">
+                  <div
+                    class="w-8 h-52 bg-red-400 rounded-t-lg flex items-center justify-center text-white font-bold traditional-bar"
+                    data-height="208"
+                  >
+                    18K
+                  </div>
+                  <span class="mt-2 text-sm">Task 4</span>
+                </div>
+              </div>
+            </div>
+            <p class="mt-4 text-center text-gray-600 font-medium">
+              Tokens increase with each handoff as context grows
+            </p>
+          </div>
+
+          <div
+            class="bg-gray-50 p-6 rounded-lg shadow-md appear-animation"
+            style="transition-delay: 0.2s"
+          >
+            <h3 class="text-xl font-semibold mb-4 text-indigo-600">
+              RooCode Orchestrator Approach
+            </h3>
+            <p class="mb-4 text-gray-600">
+              Memory Bank + role-specific documentation:
+            </p>
+            <div
+              class="h-48 bg-white rounded-lg shadow p-4 flex items-center justify-center"
+            >
+              <div class="flex justify-around w-full h-auto">
+                <div class="flex flex-col items-center">
+                  <div
+                    class="w-8 h-32 bg-green-400 rounded-t-lg flex items-center justify-center text-white font-bold roocode-bar"
+                    data-height="128"
+                  >
+                    10K
+                  </div>
+                  <span class="mt-2 text-sm">Boomerang</span>
+                </div>
+                <div class="flex flex-col items-center justify-end">
+                  <div
+                    class="w-8 h-24 bg-green-400 rounded-t-lg flex items-center justify-center text-white font-bold roocode-bar"
+                    data-height="96"
+                  >
+                    8K
+                  </div>
+                  <span class="mt-2 text-sm">Architect</span>
+                </div>
+                <div class="flex flex-col items-center justify-end">
+                  <div
+                    class="w-8 h-20 bg-green-400 rounded-t-lg flex items-center justify-center text-white font-bold roocode-bar"
+                    data-height="80"
+                  >
+                    7K
+                  </div>
+                  <span class="mt-2 text-sm">Developer</span>
+                </div>
+                <div class="flex flex-col items-center justify-end">
+                  <div
+                    class="w-8 h-16 bg-green-400 rounded-t-lg flex items-center justify-center text-white font-bold roocode-bar"
+                    data-height="64"
+                  >
+                    6K
+                  </div>
+                  <span class="mt-2 text-sm">Reviewer</span>
+                </div>
+              </div>
+            </div>
+            <p class="mt-4 text-center text-gray-600 font-medium">
+              Focused context with consistent Memory Bank reference
+            </p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div
+            class="bg-white p-6 rounded-lg shadow-md appear-animation benefit-card"
+          >
+            <div class="text-3xl mb-3 text-center text-indigo-600">📊</div>
+            <h3 class="text-lg font-semibold mb-2 text-center">
+              Token Efficiency
+            </h3>
+            <p class="text-gray-600 text-sm">
+              Role-specific documentation and Memory Bank reference enables
+              efficient token usage by focusing only on relevant information for
+              each role, reducing redundancy.
+            </p>
+          </div>
+
+          <div
+            class="bg-white p-6 rounded-lg shadow-md appear-animation benefit-card"
+            style="transition-delay: 0.2s"
+          >
+            <div class="text-3xl mb-3 text-center text-indigo-600">🔄</div>
+            <h3 class="text-lg font-semibold mb-2 text-center">
+              Context Consistency
+            </h3>
+            <p class="text-gray-600 text-sm">
+              All roles work from the same Memory Bank foundation, ensuring
+              consistent understanding of project architecture, patterns, and
+              requirements throughout the workflow.
+            </p>
+          </div>
+
+          <!-- This is the remaining HTML content to add to the index.html file -->
+
+          <div
+            class="bg-white p-6 rounded-lg shadow-md appear-animation benefit-card"
+            style="transition-delay: 0.4s"
+          >
+            <div class="text-3xl mb-3 text-center text-indigo-600">📈</div>
+            <h3 class="text-lg font-semibold mb-2 text-center">
+              Incremental Knowledge
+            </h3>
+            <p class="text-gray-600 text-sm">
+              Each workflow stage adds valuable information to project context.
+              The Memory Bank continuously updates with new patterns, solutions,
+              and insights to benefit future tasks.
+            </p>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-md appear-animation">
+          <h3 class="text-xl font-semibold mb-4 text-center text-indigo-600">
+            Benefits Comparison
+          </h3>
+          <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+              <thead>
+                <tr>
+                  <th
+                    class="py-2 px-4 border-b border-gray-200 bg-indigo-50 text-left text-sm font-semibold text-indigo-700"
+                  >
+                    Feature
+                  </th>
+                  <th
+                    class="py-2 px-4 border-b border-gray-200 bg-indigo-50 text-left text-sm font-semibold text-indigo-700"
+                  >
+                    Traditional Approach
+                  </th>
+                  <th
+                    class="py-2 px-4 border-b border-gray-200 bg-indigo-50 text-left text-sm font-semibold text-indigo-700"
+                  >
+                    RooCode Orchestrator
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="py-2 px-4 border-b border-gray-200 text-sm">
+                    Context Size
+                  </td>
+                  <td class="py-2 px-4 border-b border-gray-200 text-sm">
+                    Grows with each handoff
+                  </td>
+                  <td
+                    class="py-2 px-4 border-b border-gray-200 text-sm font-semibold bg-green-50"
+                  >
+                    Stays focused and relevant
+                  </td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-4 border-b border-gray-200 text-sm">
+                    Knowledge Preservation
+                  </td>
+                  <td class="py-2 px-4 border-b border-gray-200 text-sm">
+                    Often lost between sessions
+                  </td>
+                  <td
+                    class="py-2 px-4 border-b border-gray-200 text-sm font-semibold bg-green-50"
+                  >
+                    Maintained in Memory Bank
+                  </td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-4 border-b border-gray-200 text-sm">
+                    Token Usage
+                  </td>
+                  <td class="py-2 px-4 border-b border-gray-200 text-sm">
+                    High and increasing
+                  </td>
+                  <td
+                    class="py-2 px-4 border-b border-gray-200 text-sm font-semibold bg-green-50"
+                  >
+                    Optimized and stable
+                  </td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-4 border-b border-gray-200 text-sm">
+                    Reusability
+                  </td>
+                  <td class="py-2 px-4 border-b border-gray-200 text-sm">
+                    Limited, mostly one-off
+                  </td>
+                  <td
+                    class="py-2 px-4 border-b border-gray-200 text-sm font-semibold bg-green-50"
+                  >
+                    High through pattern documentation
+                  </td>
+                </tr>
+                <tr>
+                  <td class="py-2 px-4 border-b border-gray-200 text-sm">
+                    Documentation Quality
+                  </td>
+                  <td class="py-2 px-4 border-b border-gray-200 text-sm">
+                    Varies and inconsistent
+                  </td>
+                  <td
+                    class="py-2 px-4 border-b border-gray-200 text-sm font-semibold bg-green-50"
+                  >
+                    Structured and standardized
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slide 6: Conclusion -->
+    <section id="conclusion" class="slide p-8 bg-indigo-50">
+      <div class="container mx-auto">
+        <h2
+          class="text-3xl font-bold mb-8 text-center text-indigo-700 appear-animation"
+        >
+          Conclusion
+        </h2>
+
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8 appear-animation">
+          <h3 class="text-xl font-semibold mb-6 text-center text-indigo-600">
+            RooCode Orchestrator Business Value
+          </h3>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="border border-gray-200 rounded-lg p-4 role-card">
+              <div class="text-3xl mb-3 text-center text-indigo-600">📘</div>
+              <h4 class="font-semibold mb-2 text-center">
+                Well-Structured Documentation
+              </h4>
+              <p class="text-sm text-gray-600">
+                Comprehensive Memory Bank, specialized task documentation, and
+                knowledge preservation ensure consistent context and
+                understanding.
+              </p>
+            </div>
+
+            <div class="border border-gray-200 rounded-lg p-4 role-card">
+              <div class="text-3xl mb-3 text-center text-indigo-600">⚙️</div>
+              <h4 class="font-semibold mb-2 text-center">
+                Efficient Context Flow
+              </h4>
+              <p class="text-sm text-gray-600">
+                Token optimization through targeted documentation exchange and
+                role-specific information delivery reduces overhead.
+              </p>
+            </div>
+
+            <div class="border border-gray-200 rounded-lg p-4 role-card">
+              <div class="text-3xl mb-3 text-center text-indigo-600">🔄</div>
+              <h4 class="font-semibold mb-2 text-center">
+                Methodological Alignment
+              </h4>
+              <p class="text-sm text-gray-600">
+                Integration of agile development, trunk-based development, and
+                open source guidelines creates a robust and scalable framework.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+          <div class="bg-white p-6 rounded-lg shadow-md appear-animation">
+            <h3 class="text-xl font-semibold mb-4 text-indigo-600">
+              Current Implementation
+            </h3>
+            <p class="text-gray-600 mb-4">
+              RooCode Orchestrator demonstrates how specialized AI roles can
+              collaborate efficiently through structured workflows and context
+              maintenance.
+            </p>
+            <ul class="list-disc pl-5 text-gray-700 space-y-1">
+              <li>Memory Bank for persistent context</li>
+              <li>Role-specific workflow documentation</li>
+              <li>Continuous verification throughout process</li>
+              <li>Git integration for version control</li>
+              <li>Reusable knowledge patterns</li>
+            </ul>
+          </div>
+
+          <div
+            class="bg-white p-6 rounded-lg shadow-md appear-animation"
+            style="transition-delay: 0.2s"
+          >
+            <h3 class="text-xl font-semibold mb-4 text-indigo-600">
+              Future Directions
+            </h3>
+            <p class="text-gray-600 mb-4">
+              Potential enhancements to further improve the RooCode Orchestrator
+              framework:
+            </p>
+            <ul class="list-disc pl-5 text-gray-700 space-y-1">
+              <li>Enhanced Memory Bank with semantic indexing</li>
+              <li>Adaptive role specialization based on task types</li>
+              <li>Deeper CI/CD pipeline integration</li>
+              <li>Pattern recognition for automatic documentation</li>
+              <li>Cross-project knowledge sharing</li>
+            </ul>
+          </div>
+        </div>
+
+        <div
+          class="bg-white p-6 rounded-lg shadow-md appear-animation text-center"
+        >
+          <h3 class="text-xl font-semibold mb-4 text-indigo-600">
+            Ready to Transform Your Development Workflow?
+          </h3>
+          <p class="text-gray-600 mb-6">
+            RooCode Orchestrator provides a framework for high-quality,
+            collaborative software development that efficiently leverages the
+            capabilities of AI assistants.
+          </p>
+          <div
+            class="inline-block px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 transition-colors cursor-pointer"
+          >
+            Get Started with RooCode
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- JavaScript files -->
+    <script src="js/animations.js"></script>
+    <script src="js/mermaid-fix.js"></script>
+  </body>
+</html>

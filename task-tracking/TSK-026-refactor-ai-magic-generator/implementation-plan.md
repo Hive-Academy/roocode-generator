@@ -13,10 +13,11 @@ Files to be modified:
 - [`src/generators/roomodes.generator.ts`](src/generators/roomodes.generator.ts) (to be removed)
 - New file: `src/core/services/roomodes.service.ts`
 - Potentially a new DI module file for the `RoomodesService`.
+- [`src/core/di/modules/generator-module.ts`](src/core/di/modules/generator-module.ts) (to remove RoomodesGenerator registration)
 
 ## Implementation Strategy
 
-The implementation will proceed by first creating the new `RoomodesService` and migrating the relevant logic from the old generator. Then, the CLI interface will be updated to reflect the new valid generator types. Following that, the `AiMagicGenerator` will be modified to remove the direct `memory-bank` case, integrate the new `RoomodesService` for the `roo` flow, and ensure the `ProjectContext` is analyzed only once and shared. Finally, the old `RoomodesGenerator` file will be removed.
+The implementation will proceed by first creating the new `RoomodesService` and migrating the relevant logic from the old generator. Then, the CLI interface will be updated to reflect the new valid generator types. Following that, the `AiMagicGenerator` will be modified to remove the direct `memory-bank` case, integrate the new `RoomodesService` for the `roo` flow, and ensure the `ProjectContext` is analyzed only once and shared. Finally, the old `RoomodesGenerator` file will be removed, along with its registration in the DI container.
 
 Design decisions:
 
@@ -27,19 +28,20 @@ Technical challenges:
 
 - Ensuring correct DI setup for the new service.
 - Properly handling and propagating errors from the memory bank content generation step in the `roo` flow.
+- Ensuring all references to the removed generator are correctly cleaned up in the DI container and generator orchestration.
 
 ## Acceptance Criteria Mapping
 
 - AC1 (CLI Option Description): Modified in [`src/core/cli/cli-interface.ts`](src/core/cli/cli-interface.ts). Verified manually by checking the help output.
-- AC2 (CLI Validation `generate -g roo`): Modified in [`src/core/cli/cli-interface.ts`](src/core/cli/cli-interface.ts). Verified manually by running the command.
-- AC3 (CLI Validation `generate -g cursor`): Modified in [`src/core/cli/cli-interface.ts`](src/core/cli/cli-interface.ts). Verified manually by running the command.
+- AC2 (CLI Validation `generate -g roo` passes): Modified in [`src/core/cli/cli-interface.ts`](src/core/cli/cli-interface.ts). Verified manually by running the command.
+- AC3 (CLI Validation `generate -g cursor` passes): Modified in [`src/core/cli/cli-interface.ts`](src/core/cli/cli-interface.ts). Verified manually by running the command.
 - AC4 (CLI Validation `generate -g memory-bank` fails): Modified in [`src/core/cli/cli-interface.ts`](src/core/cli/cli-interface.ts). Verified manually by running the command and checking the error message.
-- AC5 (`generateMemoryBankContent` called first): Modified in [`src/generators/ai-magic-generator.ts`](src/generators/ai-magic-generator.ts). Verified by code review.
+- AC5 (`generateMemoryBankContent` called before new `RoomodesService` generation method for `roo` type): Modified in [`src/generators/ai-magic-generator.ts`](src/generators/ai-magic-generator.ts). Verified by code review.
 - AC6 (Shared `ProjectContext`): Modified in [`src/generators/ai-magic-generator.ts`](src/generators/ai-magic-generator.ts). Verified by code review.
-- AC7 (Error halts `roo` flow): Modified in [`src/generators/ai-magic-generator.ts`](src/generators/ai-magic-generator.ts). Verified by code review.
-- AC8 (`cursor` type unchanged): Verified by code review of [`src/generators/ai-magic-generator.ts`](src/generators/ai-magic-generator.ts).
+- AC7 (Error from `generateMemoryBankContent` halts `roo` flow and is returned): Modified in [`src/generators/ai-magic-generator.ts`](src/generators/ai-magic-generator.ts). Verified by code review.
+- AC8 (`cursor` type behavior unchanged): Verified by code review of [`src/generators/ai-magic-generator.ts`](src/generators/ai-magic-generator.ts).
 - AC9 (`case 'memory-bank':` removed): Modified in [`src/generators/ai-magic-generator.ts`](src/generators/ai-magic-generator.ts). Verified by code review.
-- AC10 (`RoomodesGenerator` removed): Verified by checking file system after removal.
+- AC10 (`RoomodesGenerator` removed): Verified by checking file system after removal and ensuring no references remain in DI or orchestration.
 - AC11 (`RoomodesService` created and used): Verified by checking file system and code review of [`src/generators/ai-magic-generator.ts`](src/generators/ai-magic-generator.ts) and the new service file.
 - AC12 (No automated tests): Verified by checking the `tests/` directory for any new or modified files related to this task.
 
@@ -55,7 +57,8 @@ Technical challenges:
 
 - `src/core/services/roomodes.service.ts` - Create new service file.
 - `src/generators/roomodes.generator.ts` - Copy logic from here.
-- Potentially a new DI module file (e.g., `src/core/di/roomodes.module.ts`) and update `src/core/di/app.module.ts` to include it.
+- `src/core/di/modules/roomodes-module.ts` - Create new DI module file.
+- `src/core/di/registrations.ts` - Update to include the new module.
 
 **Implementation Details**:
 
@@ -144,17 +147,6 @@ export class RoomodesService {
 - N/A
 
 **Redelegation History**: N/A
-
-**Progress Notes (2025-05-14)**:
-
-- CLI option description (`-g, --generators`) updated in [`src/core/cli/cli-interface.ts`](src/core/cli/cli-interface.ts:1) to 'Specify the generator type (roo, cursor)' with default 'roo'.
-- AC1 (CLI Option Description updated) verified via `node bin/roocode-generator.js generate --help`. The description correctly shows "(roo, cursor)".
-- AC2 (CLI Validation `generate -g roo` passes) verified. The CLI accepts `roo` and attempts to run the generator.
-- AC3 (CLI Validation `generate -g cursor` passes) verified. The CLI accepts `cursor` and attempts to run the generator.
-- AC4 (CLI Validation `generate -g memory-bank` fails) verified. The CLI correctly rejects `memory-bank` with the error: "Error: Invalid generator type specified: memory-bank. Allowed types are: roo, cursor".
-- All CLI-related acceptance criteria for this subtask are now fully verified.
-- The previously noted runtime errors ("Failed to get LLM provider for token counting", "Project analysis failed") are separate from the CLI validation and will be addressed by Architect or in subsequent subtasks.
-- The build error fix (TS2345 in `ai-magic-generator.ts` with `writeResult.value!`) remains relevant as a deviation made during the initial work on this subtask.
 
 ### 3. Modify AiMagicGenerator
 
@@ -262,29 +254,37 @@ export class AiMagicGenerator extends BaseGenerator {
 
 **Redelegation History**: N/A
 
-### 4. Remove RoomodesGenerator File
+### 4. Remove RoomodesGenerator and Clean Up References
 
-**Status**: Not Started
+**Status**: Completed
 
-**Description**: Delete the old `RoomodesGenerator` file as its logic has been migrated.
+**Description**: Delete the old `RoomodesGenerator` file as its logic has been migrated. Ensure all references to the `RoomodesGenerator` class and its registration in the DI container are removed.
 
 **Files to Modify**:
 
 - `src/generators/roomodes.generator.ts` - Delete this file.
+- [`src/core/di/modules/generator-module.ts`](src/core/di/modules/generator-module.ts) - Remove `RoomodesGenerator` from the list of provided generators.
+- [`src/core/di/registrations.ts`](src/core/di/registrations.ts) - Ensure no direct imports or references to `RoomodesGenerator` remain (it should be registered via `generator-module`).
+- [`src/core/application/generator-orchestrator.ts`](src/core/application/generator-orchestrator.ts) - Ensure no direct imports or references to `RoomodesGenerator` remain (it receives generators via DI).
+- [`src/core/cli/cli-interface.ts`](src/core/cli/cli-interface.ts) - Ensure no direct imports or references to `RoomodesGenerator` remain (it uses string names).
 
 **Implementation Details**:
 
-- Use a file system command to remove the file.
+- Use a file system command to remove the file `src/generators/roomodes.generator.ts`.
+- Edit `src/core/di/modules/app-module.ts` to remove the import, factory registration, and token list entry for `RoomodesGenerator`. (Note: Registration was found in `app-module.ts`, not `generator-module.ts` as initially presumed).
+- Review `src/core/di/registrations.ts`, `src/core/application/generator-orchestrator.ts`, and `src/core/cli/cli-interface.ts` to confirm no direct references to the `RoomodesGenerator` class exist.
 
 **Testing Requirements**:
 
-- Manual verification by checking the file system.
+- Manual verification by checking the file system to confirm `src/generators/roomodes.generator.ts` has been deleted.
+- Manual verification by code review of the modified DI and orchestration files to confirm references are removed.
+- Ensure the project still builds successfully after removing the file and references (this implicitly checks for any remaining references).
 
 **Related Acceptance Criteria**:
 
 - AC10 (`RoomodesGenerator` removed).
 
-**Estimated effort**: 5 minutes
+**Estimated effort**: 15-30 minutes
 
 **Required Delegation Components**:
 
@@ -301,7 +301,7 @@ export class AiMagicGenerator extends BaseGenerator {
 1.  **Create RoomodesService and Migrate Logic**: Establish the new service and move the core logic. This is a prerequisite for modifying the `AiMagicGenerator`.
 2.  **Update CLI Interface**: Modify the CLI options and validation. This can be done independently of the service and generator changes but is a clear, self-contained step.
 3.  **Modify AiMagicGenerator**: Integrate the new service and update the flow. This depends on the new service being created.
-4.  **Remove RoomodesGenerator File**: Clean up the old file after its logic has been migrated and the new service is integrated.
+4.  **Remove RoomodesGenerator and Clean Up References**: Clean up the old file and its registration after its logic has been migrated and the new service is integrated.
 
 ## Testing Strategy
 
@@ -310,3 +310,4 @@ As per AC12, automated testing is out of scope. The testing strategy will rely e
 - Running CLI commands to verify option descriptions and validation.
 - Code review to verify logic flow, service injection, `ProjectContext` sharing, and error handling within the `AiMagicGenerator`.
 - File system checks to confirm file creation and removal.
+- Code review of DI and orchestration files to confirm removal of generator references.

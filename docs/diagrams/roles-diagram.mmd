@@ -1,0 +1,37 @@
+flowchart TD
+    MemoryBank("Memory Bank System")
+    Boomerang("🪃 Boomerang\n(Technical Lead)")
+    Architect("🏗️ Architect\n(Planning & Design)")
+    SeniorDev("💻 Senior Developer\n(Implementation)")
+    JuniorCoder("👨‍💻 Junior Coder\n(Component Implementation)")
+    JuniorTester("🧪 Junior Tester\n(Testing)")
+    CodeReviewer("🔍 Code Reviewer\n(Quality Assurance)")
+    Researcher("🔎 Researcher\n(Knowledge Gathering)")
+
+    style MemoryBank fill:#f6d365,stroke:#fda085,color:#333
+    style Boomerang fill:#FF9A9E,stroke:#FAD0C4,color:#333
+    style Architect fill:#A8EDEA,stroke:#FED6E3,color:#333
+    style SeniorDev fill:#84FAB0,stroke:#8FD3F4,color:#333
+    style JuniorCoder fill:#D4FC79,stroke:#96E6A1,color:#333
+    style JuniorTester fill:#CCFBFF,stroke:#EF96C5,color:#333
+    style CodeReviewer fill:#E2B0FF,stroke:#9F44D3,color:#333
+    style Researcher fill:#F5F7FA,stroke:#C3CFE2,color:#333
+
+    MemoryBank --> Boomerang
+    MemoryBank --> Architect
+    MemoryBank --> SeniorDev
+    MemoryBank --> CodeReviewer
+    
+    Boomerang --> Researcher
+    Researcher --> Boomerang
+    
+    Boomerang --> Architect
+    Architect --> SeniorDev
+    SeniorDev --> JuniorCoder
+    SeniorDev --> JuniorTester
+    JuniorCoder --> SeniorDev
+    JuniorTester --> SeniorDev
+    SeniorDev --> Architect
+    Architect --> CodeReviewer
+    CodeReviewer --> Architect
+    Architect --> Boomerang
