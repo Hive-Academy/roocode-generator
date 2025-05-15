@@ -6,13 +6,20 @@ import type { BaseLanguageModelInput } from '@langchain/core/language_models/bas
 
 // TODO: This should ideally be moved to a shared types file (e.g., types/shared.d.ts)
 export interface LLMCompletionConfig {
+  /** Temperature for response generation (0-1) */
   temperature?: number;
-  maxTokens?: number; // Max tokens for the completion/output
-  stopSequences?: string[]; // Will be mapped to 'stop' in runtimeCallOptions
+  /** Maximum tokens for completion/output */
+  maxTokens?: number;
+  /** Stop sequences for completion */
+  stopSequences?: string[];
+  /** Top P sampling (0-1) */
   topP?: number;
+  /** Presence penalty (-2.0 to 2.0) */
   presencePenalty?: number;
+  /** Frequency penalty (-2.0 to 2.0) */
   frequencyPenalty?: number;
-  // Other parameters from ChatOpenAIParameters can be added here
+  /** Multiplier for available input tokens (e.g., 2.0 doubles the limit) */
+  tokenMarginOverride?: number;
 }
 
 export interface ILLMProvider {

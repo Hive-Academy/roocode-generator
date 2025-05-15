@@ -171,7 +171,16 @@ export class AnthropicProvider extends BaseLLMProvider {
       const maxOutputTokensForThisCall =
         completionConfig?.maxTokens ?? this.config.maxTokens ?? this.model.maxTokens ?? 2048;
       const limit = this.defaultContextSize; // Anthropic's total context window
-      const availableForInput = limit - maxOutputTokensForThisCall;
+
+      // Apply token margin override if provided
+      const tokenMargin = completionConfig?.tokenMarginOverride ?? 1.0;
+      const availableForInput = Math.floor((limit - maxOutputTokensForThisCall) * tokenMargin);
+
+      if (tokenMargin !== 1.0) {
+        this.logger.debug(
+          `AnthropicProvider: Token margin override of ${tokenMargin}x applied. Original limit: ${limit - maxOutputTokensForThisCall}, New limit: ${availableForInput}`
+        );
+      }
 
       this.logger.debug(
         `AnthropicProvider: Structured Input tokens: ${currentInputTokens}, Available for input: ${availableForInput} (Model Context: ${limit}, Reserved for Output: ${maxOutputTokensForThisCall}) for model ${this.config.model}`

@@ -54,6 +54,7 @@ export class OpenRouterProvider extends BaseLLMProvider {
   private readonly apiUrl: string;
   private readonly apiKey: string;
   private model: ChatOpenAI;
+  private readonly DEFAULT_TOKEN_MARGIN = 1.1;
 
   private readonly DEFAULT_API_URL = 'https://openrouter.ai/api/v1';
 
@@ -282,8 +283,9 @@ export class OpenRouterProvider extends BaseLLMProvider {
   }
 
   private async _validateInputTokens(
-    prompt: BaseLanguageModelInput, // Changed to BaseLanguageModelInput
-    maxOutputTokensConfig?: number
+    prompt: BaseLanguageModelInput,
+    maxOutputTokensConfig?: number,
+    completionConfig?: LLMCompletionConfig
   ): Promise<Result<void, LLMProviderError>> {
     let promptStringForTokenCount: string;
     if (typeof prompt === 'string') {
@@ -343,14 +345,25 @@ export class OpenRouterProvider extends BaseLLMProvider {
       const currentInputTokens = await this.countTokens(promptStringForTokenCount);
       const modelContextWindow = await this.getContextWindowSize();
       const maxOutputTokens = maxOutputTokensConfig ?? this.config.maxTokens ?? 1024; // Default if not set
-      const availableForInput = modelContextWindow - maxOutputTokens;
+      const baseAvailableForInput = modelContextWindow - maxOutputTokens;
+
+      // Use tokenMarginOverride from completionConfig if provided, otherwise use default margin
+      const tokenMargin = completionConfig?.tokenMarginOverride ?? this.DEFAULT_TOKEN_MARGIN;
+      const effectiveAvailableForInput = baseAvailableForInput * tokenMargin;
+      const marginAppliedInfo = `(Base: ${baseAvailableForInput}, Margin: ${tokenMargin}x applied)`;
 
       this.logger.debug(
-        `OpenRouterProvider (_validateInputTokens): Input tokens (approx): ${currentInputTokens}, Available for input: ${availableForInput} (Model Context: ${modelContextWindow}, Reserved for Output: ${maxOutputTokens}) for model ${this.config.model}. Context window source: ${this.config.modelParams?.context_length ? 'modelParams' : 'default fallback'}. Token count is an approximation.`
+        `OpenRouterProvider (_validateInputTokens): Input tokens (approx): ${currentInputTokens}, ` +
+          `Effective available for input: ${Math.floor(effectiveAvailableForInput)} ${marginAppliedInfo}, ` +
+          `Model Context: ${modelContextWindow}, Reserved for Output: ${maxOutputTokens} for model ${this.config.model}. ` +
+          `Context window source: ${this.config.modelParams?.context_length ? 'modelParams' : 'default fallback'}. Token count is an approximation.`
       );
 
-      if (currentInputTokens > availableForInput) {
-        const errorMsg = `Input prompt (approx. ${currentInputTokens} tokens) for OpenRouter structured completion exceeds model's available input token limit (${availableForInput} tokens). Model: ${this.config.model}, Total Context (potentially approx.): ${modelContextWindow}, Reserved for Output: ${maxOutputTokens}.`;
+      if (currentInputTokens > effectiveAvailableForInput) {
+        const errorMsg =
+          `Input prompt (approx. ${currentInputTokens} tokens) for OpenRouter structured completion exceeds model's ` +
+          `adjusted available input token limit (${Math.floor(effectiveAvailableForInput)} tokens after ${tokenMargin}x margin). ` +
+          `Base limit was ${baseAvailableForInput}. Model: ${this.config.model}, Total Context (potentially approx.): ${modelContextWindow}, Reserved for Output: ${maxOutputTokens}.`;
         this.logger.warn(errorMsg);
         return Result.err(new LLMProviderError(errorMsg, 'VALIDATION_ERROR', this.name));
       }
@@ -445,8 +458,9 @@ export class OpenRouterProvider extends BaseLLMProvider {
 
     // _validateInputTokens now takes BaseLanguageModelInput
     const tokenValidationResult = await this._validateInputTokens(
-      prompt, // Pass BaseLanguageModelInput directly
-      maxOutputTokensForThisCall
+      prompt,
+      maxOutputTokensForThisCall,
+      completionConfig
     );
     if (tokenValidationResult.isErr()) {
       return Result.err<LLMProviderError>(tokenValidationResult.error!);

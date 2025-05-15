@@ -211,7 +211,16 @@ export class GoogleGenAIProvider extends BaseLLMProvider {
       const limit = this.inputTokenLimit ?? this.FALLBACK_TOKEN_LIMIT;
       const maxOutputTokensForThisCall =
         completionConfig?.maxTokens ?? this.config.maxTokens ?? this.model.maxOutputTokens ?? 2048;
-      const availableForInput = limit - maxOutputTokensForThisCall;
+
+      // Apply token margin override if provided
+      const tokenMargin = completionConfig?.tokenMarginOverride ?? 1.0;
+      const availableForInput = Math.floor((limit - maxOutputTokensForThisCall) * tokenMargin);
+
+      if (tokenMargin !== 1.0) {
+        this.logger.debug(
+          `GoogleGenAIProvider: Token margin override of ${tokenMargin}x applied. Original limit: ${limit - maxOutputTokensForThisCall}, New limit: ${availableForInput}`
+        );
+      }
 
       this.logger.debug(
         `GoogleGenAIProvider: Structured Input tokens: ${currentInputTokens}, Available for input: ${availableForInput} (Model Limit: ${limit}, Reserved for Output: ${maxOutputTokensForThisCall}) for model ${this.config.model}`

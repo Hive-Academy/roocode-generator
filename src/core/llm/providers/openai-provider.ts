@@ -28,6 +28,7 @@ interface LLMCompletionConfig {
   topP?: number;
   presencePenalty?: number;
   frequencyPenalty?: number;
+  tokenMarginOverride?: number; // Multiplier for available input tokens (e.g., 2.0 doubles the limit)
   // Other parameters from ChatOpenAIParameters can be added here
 }
 // Removed duplicate LLMCompletionConfig and OpenAICallOptionsSubsetForBind
@@ -262,7 +263,8 @@ export class OpenAIProvider extends BaseLLMProvider {
 
   private async _validateInputTokens(
     prompt: string,
-    maxOutputTokensConfig?: number
+    maxOutputTokensConfig?: number,
+    completionConfig?: LLMCompletionConfig
   ): Promise<Result<void, LLMProviderError>> {
     try {
       const currentInputTokens = await this.countTokens(prompt);
@@ -281,8 +283,54 @@ export class OpenAIProvider extends BaseLLMProvider {
       }
       const modelContextWindow = contextWindowResult.value!;
 
-      const maxOutputTokens = maxOutputTokensConfig ?? this.config.maxTokens ?? 2048;
-      const availableForInput = modelContextWindow - maxOutputTokens;
+      let maxOutputTokens = maxOutputTokensConfig ?? this.config.maxTokens ?? 2048; // Default fallback
+
+      // If this.config.maxTokens is very large (e.g., >50% of context window), it might be misconfigured
+      // as a total window instead of an output budget. In such cases, use a more sensible default for output.
+      if (
+        !maxOutputTokensConfig && // only apply this logic if no per-call override
+        this.config.maxTokens &&
+        this.config.maxTokens > modelContextWindow * 0.5
+      ) {
+        this.logger.warn(
+          `OpenAIProvider: this.config.maxTokens (${this.config.maxTokens}) is >50% of modelContextWindow (${modelContextWindow}). ` +
+            `Assuming it might be misconfigured as total window. Using a default output reservation of 2048 instead.`
+        );
+        maxOutputTokens = 2048; // Or a fraction like Math.floor(modelContextWindow * 0.25)
+      }
+
+      // Ensure maxOutputTokens is not greater than the modelContextWindow itself, minus a small buffer for input
+      // This prevents availableForInput from being zero or negative.
+      if (maxOutputTokens >= modelContextWindow) {
+        this.logger.warn(
+          `OpenAIProvider: Calculated maxOutputTokens (${maxOutputTokens}) is >= modelContextWindow (${modelContextWindow}). ` +
+            `Adjusting to ${Math.floor(modelContextWindow * 0.75)} to ensure space for input.`
+        );
+        // Leave at least 25% for input, or a fixed amount like 1024 if 25% is too small
+        maxOutputTokens = Math.floor(modelContextWindow * 0.75);
+        if (modelContextWindow - maxOutputTokens < 1024 && modelContextWindow > 1024) {
+          maxOutputTokens = modelContextWindow - 1024;
+        } else if (modelContextWindow <= 1024) {
+          maxOutputTokens = Math.floor(modelContextWindow / 2); // Simple split for very small contexts
+        }
+      }
+
+      // And ensure it's at least a minimal value if calculations result in something too small or negative
+      if (maxOutputTokens <= 0) {
+        this.logger.warn(
+          `OpenAIProvider: Calculated maxOutputTokens (${maxOutputTokens}) is <= 0. Setting to a minimal default of 512.`
+        );
+        maxOutputTokens = 512;
+      }
+      // Apply token margin override if provided
+      const tokenMargin = completionConfig?.tokenMarginOverride ?? 1.0;
+      const availableForInput = Math.floor((modelContextWindow - maxOutputTokens) * tokenMargin);
+
+      if (tokenMargin !== 1.0) {
+        this.logger.debug(
+          `OpenAIProvider: Token margin override of ${tokenMargin}x applied. Original limit: ${modelContextWindow - maxOutputTokens}, New limit: ${availableForInput}`
+        );
+      }
 
       this.logger.debug(
         `OpenAIProvider: Input tokens: ${currentInputTokens}, Available for input: ${availableForInput} (Model Context: ${modelContextWindow}, Reserved for Output: ${maxOutputTokens}) for model ${this.config.model}`
@@ -321,7 +369,8 @@ export class OpenAIProvider extends BaseLLMProvider {
 
     const tokenValidationResult = await this._validateInputTokens(
       promptAsStringForValidation,
-      maxOutputTokensForThisCall
+      maxOutputTokensForThisCall,
+      completionConfig
     );
     if (tokenValidationResult.isErr()) {
       // Assuming tokenValidationResult.error is always LLMProviderError when isErr() is true
