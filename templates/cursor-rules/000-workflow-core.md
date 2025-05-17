@@ -111,9 +111,9 @@ Stating intent to request the `workflow-manager` MCP server to execute the `get_
 
 These commands allow a human user to interact with the AI managing the workflow:
 
-- `/role [role-name]`: Instructs the AI to _act as if_ it's in a specific role for the purpose of answering questions or performing a _dry run_ of that role's thinking. This does NOT typically execute formal MCP tool requests unless explicitly stated as a side effect. Its primary use is for inspection and "what-if" scenarios from the user's perspective.
-- `/workflow-status [taskId] [taskName]`: User requests the AI to query and display the current task status by stating its intent to request the `workflow-manager` MCP server to execute the `get_task_status` tool with parameters `taskId` and `taskName`, and then summarize.
-- `/research [topic]`: User requests Boomerang (or current role if appropriate) to consider initiating research. If Boomerang, it may lead to a formal delegation to the Researcher role by stating intent to make an MCP tool request.
+- `/role [role-name] [taskId]`: User makes a natural language request (e.g., "Act as Architect for TSK-001"). The AI will state its intent to request the `workflow-manager` MCP server to execute the `process_command` tool with parameters `command_string='/role [role-name] [taskId]'` (e.g., `command_string='/role architect TSK-001'`). This will internally trigger a transition to the specified role for the given task, primarily for inspection or guided interaction, and will reflect the role change in the task's state.
+- `/workflow-status [taskId] [taskName]`: User makes a natural language request (e.g., "What's the status of TSK-001, the CSV Export task?"). The AI will state its intent to request the `workflow-manager` MCP server to execute the `process_command` tool with parameters `command_string='/workflow-status [taskId] [taskName]'` (e.g., `command_string='/workflow-status TSK-001 \'CSV Export\''`). The `process_command` tool will then retrieve and summarize the status.
+- `/research [topic] [taskId]`: User makes a natural language request (e.g., "I need research on 'agile methods' for TSK-001"). The AI (usually Boomerang) will state its intent to request the `workflow-manager` MCP server to execute the `process_command` tool with parameters `command_string='/research [topic] [taskId]'` (e.g., `command_string='/research \'agile methods\' TSK-001'`). This will trigger the research process, likely involving a transition to the Researcher role for the specified task.
 
 ### Documentation and Artifacts
 

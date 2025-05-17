@@ -1,7 +1,7 @@
 ---
-description: 
+description: when implementing the subtasks and code changes we should load the senior developer rules 
 globs: 
-alwaysApply: true
+alwaysApply: false
 ---
 # Senior Developer Role Instructions
 

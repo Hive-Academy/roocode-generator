@@ -1,7 +1,7 @@
 ---
-description: 
+description: When assigning a task to the boomerang we should upload these rules to make sure we are following the correct workflow
 globs: 
-alwaysApply: true
+alwaysApply: false
 ---
 # Boomerang Role Instructions
 

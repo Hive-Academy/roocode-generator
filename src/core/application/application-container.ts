@@ -1,4 +1,4 @@
-import { LLMConfig } from '../../../types/shared';
+import { LLMConfig } from '@types*';
 import { ILLMConfigService } from '../config/interfaces';
 import { Inject, Injectable } from '../di/decorators';
 import { Result } from '../result/result';

@@ -55,35 +55,25 @@ jest.mock('@core/config/project-config.service', () => ({
 // Refined mock for FileOperations
 jest.mock('@core/file-operations/file-operations', () => ({
   FileOperations: jest.fn().mockImplementation(() => ({
-    // Mock methods used by other services or in tests
-    readFile: jest.fn().mockImplementation(() => Promise.resolve(Result.ok('mock file content'))),
-    writeFile: jest.fn().mockImplementation(() => Promise.resolve(Result.ok(undefined))),
-    pathExists: jest.fn().mockImplementation(() => Promise.resolve(Result.ok(true))),
-    findFiles: jest
-      .fn()
-      .mockImplementation(() => Promise.resolve(Result.ok(['file1.ts', 'file2.md']))),
-    createDirectory: jest.fn().mockImplementation(() => Promise.resolve(Result.ok(undefined))),
-    // Add other methods if needed by dependencies during registration/testing
+    readFile: jest.fn(),
+    writeFile: jest.fn(),
+    createDirectory: jest.fn(),
+    validatePath: jest.fn(),
+    normalizePath: jest.fn(),
+    readDir: jest.fn(),
+    exists: jest.fn(),
+    isDirectory: jest.fn(),
+    copyDirectoryRecursive: jest.fn(),
   })),
 }));
 jest.mock('@core/llm/llm-agent', () => ({
   LLMAgent: jest.fn().mockImplementation(() => ({
-    generateResponse: jest
-      .fn()
-      .mockImplementation(() => Promise.resolve(Result.ok('mock LLM response'))),
-    // Add other methods if needed
+    getCompletion: jest.fn(),
   })),
 }));
 jest.mock('@core/analysis/project-analyzer', () => ({
   ProjectAnalyzer: jest.fn().mockImplementation(() => ({
-    analyzeProject: jest.fn().mockImplementation(() =>
-      Promise.resolve(
-        Result.ok({
-          /* mock analysis */
-        })
-      )
-    ),
-    // Add other methods if needed
+    analyzeProject: jest.fn(),
   })),
 }));
 // Mock ResponseParser separately if needed by ProjectAnalyzer mock or tests
@@ -158,19 +148,14 @@ jest.mock('@core/ui/progress-indicator', () => ({
     start: jest.fn(),
     stop: jest.fn(),
     update: jest.fn(),
-    succeed: jest.fn(),
-    fail: jest.fn(),
   })),
 }));
 jest.mock('@core/services/logger-service', () => ({
   LoggerService: jest.fn().mockImplementation(() => ({
-    // Mock the class constructor
+    debug: jest.fn(),
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
-    debug: jest.fn(),
-    setLogLevel: jest.fn(),
-    getLogLevel: jest.fn(() => 'info'),
   })),
 }));
 
@@ -186,20 +171,65 @@ jest.mock('@langchain/anthropic', () => ({ ChatAnthropic: jest.fn() }));
 describe('Container', () => {
   let container: Container;
 
-  // Reset the container singleton before each test to prevent test interference
-  // This is necessary because Container uses the singleton pattern
   beforeEach(() => {
     (Container as any).instance = null; // Reset singleton instance
     container = Container.getInstance(); // Get fresh instance
     container.initialize(); // Initialize for testing
-    jest.clearAllMocks(); // Prevent mock interference
+  });
+
+  afterEach(() => {
+    container.clear();
+    jest.clearAllMocks();
+  });
+
+  @Injectable()
+  class TestService {
+    test = jest.fn();
+  }
+
+  it('should register and resolve a singleton', () => {
+    const regResult = container.registerSingleton('TestService', TestService);
+    expect(regResult.isOk()).toBe(true);
+
+    const resolveResult = container.resolve<TestService>('TestService');
+    expect(resolveResult.isOk()).toBe(true);
+    if (resolveResult.isOk()) {
+      expect(resolveResult.value).toBeInstanceOf(TestService);
+      expect(resolveResult.value?.test).toBeDefined();
+    }
+  });
+
+  it('should register and resolve a factory', () => {
+    const mockFactory = jest.fn().mockReturnValue(new TestService());
+    const regResult = container.registerFactory('TestService', mockFactory);
+    expect(regResult.isOk()).toBe(true);
+
+    const resolveResult = container.resolve<TestService>('TestService');
+    expect(resolveResult.isOk()).toBe(true);
+    if (resolveResult.isOk()) {
+      expect(mockFactory).toHaveBeenCalled();
+      expect(resolveResult.value).toBeInstanceOf(TestService);
+      expect(resolveResult.value?.test).toBeDefined();
+    }
+  });
+
+  it('should throw if resolving unregistered service', () => {
+    const resolveResult = container.resolve('UnregisteredService');
+    expect(resolveResult.isErr()).toBe(true);
+    expect(resolveResult.error).toBeInstanceOf(DIError);
+  });
+
+  it('should clear all registrations', () => {
+    const regResult = container.registerSingleton('TestService', TestService);
+    expect(regResult.isOk()).toBe(true);
+
+    container.clear();
+    const resolveResult = container.resolve('TestService');
+    expect(resolveResult.isErr()).toBe(true);
+    expect(resolveResult.error).toBeInstanceOf(DIError);
   });
 
   // --- Basic Container Tests ---
-  @Injectable() // Added decorator
-  class TestService {
-    public value = 'test';
-  }
   const TEST_TOKEN_FACTORY = 'TestServiceFactory';
   const TEST_TOKEN_SINGLETON = 'TestServiceSingleton';
 
@@ -211,7 +241,7 @@ describe('Container', () => {
       const resolveResult = container.resolve<TestService>(TEST_TOKEN_FACTORY);
       expect(resolveResult.isOk()).toBe(true);
       expect(resolveResult.value).toBeInstanceOf(TestService);
-      expect(resolveResult.value?.value).toBe('test');
+      expect(resolveResult.value?.test).toBeDefined();
     });
 
     it('should create a new instance for each resolve from factory', () => {

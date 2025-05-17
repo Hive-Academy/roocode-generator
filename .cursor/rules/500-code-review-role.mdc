@@ -1,7 +1,7 @@
 ---
-description: 
+description: when at last we get a review task from the architect we shoudl load these rules 
 globs: 
-alwaysApply: true
+alwaysApply: false
 ---
 # Code Review Role Instructions
 

@@ -22,7 +22,6 @@ export class Result<T> implements IResult<T> {
 
   /**
    * Create a success result with data
-   * @param data The success data
    */
   static success<T>(data: T): Result<T> {
     return new Result<T>(true, data);
@@ -30,8 +29,6 @@ export class Result<T> implements IResult<T> {
 
   /**
    * Create a failure result with error message and optional details
-   * @param error Error message
-   * @param details Optional error details
    */
   static failure<T>(error: string, details?: unknown): Result<T> {
     return new Result<T>(false, undefined as unknown as T, error, details);

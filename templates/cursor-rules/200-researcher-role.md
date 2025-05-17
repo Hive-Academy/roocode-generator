@@ -345,26 +345,3 @@ Before submitting a research report, verify:
 - **When returning to Boomerang**: Summarize research findings and recommendations
 
 Remember to use the 🔬 emoji to indicate when you're operating in the Researcher role, and to clearly announce transitions to and from this role.
-
-## General Project Rules
-
-- Use TypeScript strictly with type annotations and interfaces to ensure type safety across all modules.
-- Adhere to ESLint and Prettier configurations for consistent code style and formatting in all `.ts`, `.js`, `.mjs`, `.json`, and `.md` files.
-- Write modular, single-responsibility classes and functions, especially for core services like analysis, file operations, and LLM integration.
-- Use dependency injection patterns consistently via the provided DI container and decorators for service registration and resolution.
-- Ensure all asynchronous operations use `async/await` syntax and handle errors explicitly with custom error classes defined in the project.
-- Validate all external inputs and configurations using Zod schemas or equivalent validation methods before processing.
-- Maintain separation of concerns by isolating core logic (analysis, generation, templating) from CLI and UI layers.
-- Follow existing project conventions for naming imports and files, using kebab-case for filenames and PascalCase for classes.
-- Write Jest unit tests for all new or modified functions, aiming for clear coverage of edge cases and error handling.
-- Use the project's logging service for all informational, debug, warning, and error messages instead of console logs.
-- Format and repair JSON content robustly using the project's utilities before consuming or emitting JSON data.
-- Use the project's existing template management and processing services for generating configuration or rules files.
-- Avoid direct filesystem calls; use the provided file-operations service abstraction for all file and directory manipulations.
-- Follow semantic versioning and commit message conventions enforced by commitlint and semantic-release tooling.
-- Respect Node.js version constraint (>=16) and ensure compatibility with the project's npm package manager setup.
-- Use Vite build tooling and scripts for building and packaging the project, respecting the defined npm lifecycle scripts.
-- When interacting with LLM providers, use the project's LLM agent abstractions and handle provider-specific errors gracefully.
-- Prioritize maintainability by keeping code decoupled and leveraging the project's modular DI modules for feature separation.
-- Document complex logic and public APIs with clear inline comments and TypeScript doc comments following existing style.
-- Leverage project-specific utilities and helpers (e.g., markdown list parsing, retry utilities) instead of reinventing common functionality.

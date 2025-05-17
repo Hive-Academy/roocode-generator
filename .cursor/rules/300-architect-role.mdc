@@ -1,7 +1,7 @@
 ---
-description: 
+description: when we move the task to the implementation phase the active role for the job should be the architect 
 globs: 
-alwaysApply: true
+alwaysApply: false
 ---
 # Architect Role Instructions
 

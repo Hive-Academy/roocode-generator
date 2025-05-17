@@ -3,7 +3,7 @@ import { Result } from '@core/result/result';
 import { BaseLLMProvider } from '@core/llm/llm-provider';
 import { LLMProviderError } from '@core/llm/llm-provider-errors';
 import type { ILogger } from '@core/services/logger-service';
-import { LLMConfig } from 'types/shared';
+import { LLMConfig } from '@types';
 import { ChatAnthropic, type AnthropicInput } from '@langchain/anthropic';
 import { z } from 'zod';
 import { retryWithBackoff } from '@core/utils/retry-utils';

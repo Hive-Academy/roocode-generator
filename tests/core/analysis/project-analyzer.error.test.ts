@@ -10,9 +10,8 @@ import {
   IFilePrioritizer,
   ITreeSitterParserService,
 } from '../../../src/core/analysis/interfaces';
-import { ResponseParser } from '../../../src/core/analysis/response-parser';
 import { ITechStackAnalyzerService } from '../../../src/core/analysis/tech-stack-analyzer'; // Added
-import { GenericAstNode, ProjectContext } from '../../../src/core/analysis/types'; // Import GenericAstNode
+import { GenericAstNode } from '../../../src/core/analysis/types'; // Import GenericAstNode
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
 import { LLMAgent } from '../../../src/core/llm/llm-agent';
 import { LLMProviderError } from '../../../src/core/llm/llm-provider-errors';
@@ -22,7 +21,6 @@ import { createMockFileContentCollector } from '../../__mocks__/file-content-col
 import { createMockFileOperations } from '../../__mocks__/file-operations.mock';
 import { createMockFilePrioritizer } from '../../__mocks__/file-prioritizer.mock';
 import { createMockLLMAgent } from '../../__mocks__/llm-agent.mock';
-import { createMockResponseParser } from '../../__mocks__/response-parser.mock';
 import { createMockTechStackAnalyzerService } from '../../__mocks__/tech-stack-analyzer.mock'; // Added
 import { createMockTreeSitterParserService } from '../../__mocks__/tree-sitter-parser.service.mock';
 
@@ -30,7 +28,6 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
   let projectAnalyzer: MockProjectAnalyzer;
   let mockFileOps: jest.Mocked<IFileOperations>;
   let mockLlmAgent: jest.Mocked<LLMAgent>;
-  let mockResponseParser: jest.Mocked<ResponseParser>;
   let mockContentCollector: jest.Mocked<IFileContentCollector>;
   let mockFilePrioritizer: jest.Mocked<IFilePrioritizer>;
   let mockTreeSitterParserService: jest.Mocked<ITreeSitterParserService>;
@@ -41,7 +38,6 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
     // Use mock factories for all dependencies
     mockFileOps = createMockFileOperations();
     mockLlmAgent = createMockLLMAgent();
-    mockResponseParser = createMockResponseParser();
     mockContentCollector = createMockFileContentCollector();
     mockFilePrioritizer = createMockFilePrioritizer();
     mockTreeSitterParserService = createMockTreeSitterParserService();
@@ -225,11 +221,6 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
         // Mock successful LLM call
         mockLlmAgent.getCompletion.mockResolvedValueOnce(Result.ok('invalid json'));
         // Mock failing parser
-        const errorResult: Result<ProjectContext | undefined, Error> = Result.err(
-          new Error('Failed to parse JSON response')
-        );
-        // Ensure the mock returns the correctly typed Result object asynchronously
-        mockResponseParser.parseLlmResponse.mockResolvedValueOnce(errorResult);
 
         const result = await projectAnalyzer.analyzeProject(['/valid/path']);
         expect(result.isErr()).toBe(true);
@@ -262,10 +253,6 @@ describe('ProjectAnalyzer Error Handling Tests', () => {
         // Mock successful LLM call
         mockLlmAgent.getCompletion.mockResolvedValueOnce(Result.ok('valid json'));
         // Mock parser returning undefined value
-        const undefinedResult: Result<ProjectContext | undefined, Error> = Result.ok(undefined);
-        // Ensure the mock returns the correctly typed Result object asynchronously
-        mockResponseParser.parseLlmResponse.mockResolvedValueOnce(undefinedResult);
-
         const result = await projectAnalyzer.analyzeProject(['/valid/path']);
         expect(result.isErr()).toBe(true);
         if (result.isErr()) {

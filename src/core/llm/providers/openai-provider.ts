@@ -4,7 +4,7 @@ import { BaseLLMProvider } from '@core/llm/llm-provider';
 import { LLMProviderError } from '@core/llm/llm-provider-errors';
 import { ModelNotFoundError } from '../../errors/model-not-found-error';
 import type { ILogger } from '@core/services/logger-service';
-import { LLMConfig } from 'types/shared';
+import { LLMConfig } from '@types';
 import {
   ChatOpenAI,
   type ChatOpenAICallOptions,

@@ -9,7 +9,7 @@ import {
   type ChatOpenAICallOptions,
   type OpenAIInput,
 } from '@langchain/openai';
-import { LLMConfig } from 'types/shared';
+import { LLMConfig } from '@types';
 import { z } from 'zod';
 import { retryWithBackoff } from '@core/utils/retry-utils';
 import { type BaseLanguageModelInput } from '@langchain/core/language_models/base';

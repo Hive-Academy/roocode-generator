@@ -10,7 +10,7 @@ import { ILogger } from '@core/services/logger-service';
 import { IProjectAnalyzer, ProjectContext } from '@core/analysis/types';
 import { IFileOperations } from '@core/file-operations/interfaces';
 import { LLMAgent } from '@core/llm/llm-agent';
-import { ProjectConfig } from '../../types/shared';
+import { ProjectConfig } from '@types';
 import { MemoryBankService } from '@memory-bank/memory-bank-service';
 import { IRulesPromptBuilder } from '@generators/rules/interfaces';
 import { IContentProcessor } from '@memory-bank/interfaces';
@@ -108,9 +108,6 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
           // Finally, generate roo system prompts using the shared ProjectContext
           return this.generateRooSystemPrompts(projectContext, options);
         }
-        case 'cursor':
-          // Keep cursor behavior unchanged
-          return this.handleCursorGenerationPlaceholder(projectContext, options);
         default: {
           // Handle unknown generator types
           const errorMsg = `Unknown generator type: ${generatorType}`;
@@ -601,16 +598,5 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
       this.logger.error(`Error in buildModeRooPrompt: ${message}`, errorInstance);
       return Result.err(errorInstance);
     }
-  }
-
-  // Reinstated handleCursorGenerationPlaceholder method
-  private handleCursorGenerationPlaceholder(
-    _projectContext: ProjectContext,
-    _options: ProjectConfig
-  ): Result<string, Error> {
-    // Basic placeholder implementation
-    const message = 'Cursor generation functionality will be implemented in a future task.';
-    this.logger.info(message);
-    return Result.ok(message);
   }
 }

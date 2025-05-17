@@ -1,8 +1,9 @@
 import { Result } from '../result/result';
-import type { AnalysisResult, LLMConfig } from '../../../types/shared';
+import type { AnalysisResult } from '../../../src/types/project';
+import type { LLMConfig } from '../../../src/types/llm';
 import { LLMProviderError } from './llm-provider-errors';
-import { z } from 'zod'; // Added import for Zod
-import type { BaseLanguageModelInput } from '@langchain/core/language_models/base'; // Added import
+import { z } from 'zod';
+import type { BaseLanguageModelInput } from '@langchain/core/language_models/base';
 
 // TODO: This should ideally be moved to a shared types file (e.g., types/shared.d.ts)
 export interface LLMCompletionConfig {
@@ -27,12 +28,12 @@ export interface ILLMProvider {
   getCompletion(
     systemPrompt: string,
     userPrompt: string
-  ): Promise<Result<string, LLMProviderError>>; // Changed Error to LLMProviderError
+  ): Promise<Result<string, LLMProviderError>>;
   getStructuredCompletion<T extends z.ZodTypeAny>(
     prompt: BaseLanguageModelInput,
     schema: T,
     completionConfig?: LLMCompletionConfig
-  ): Promise<Result<z.infer<T>, LLMProviderError>>; // Return LLMProviderError
+  ): Promise<Result<z.infer<T>, LLMProviderError>>;
   listModels?(): Promise<Result<string[], LLMProviderError>>;
   getContextWindowSize(): Promise<number>;
   countTokens(text: string): Promise<number>;
@@ -48,15 +49,15 @@ export interface ILLMAgent {
   getCompletion(
     systemPrompt: string,
     userPrompt: string
-  ): Promise<Result<string, LLMProviderError>>; // Changed Error to LLMProviderError
+  ): Promise<Result<string, LLMProviderError>>;
   getStructuredCompletion<T extends z.ZodTypeAny>(
     prompt: BaseLanguageModelInput,
     schema: T,
     completionConfig?: LLMCompletionConfig
-  ): Promise<Result<z.infer<T>, LLMProviderError>>; // Return LLMProviderError
-  getModelContextWindow(): Promise<number>; // Updated to async
-  countTokens(text: string): Promise<number>; // Updated to async
-  getProvider(): Promise<Result<ILLMProvider, Error>>; // Updated to async
+  ): Promise<Result<z.infer<T>, LLMProviderError>>;
+  getModelContextWindow(): Promise<number>;
+  countTokens(text: string): Promise<number>;
+  getProvider(): Promise<Result<ILLMProvider, Error>>;
 }
 
 /**
@@ -72,7 +73,7 @@ export interface IModelListerService {
   listModelsForProvider(
     providerName: string,
     apiKey: string
-  ): Promise<Result<string[], LLMProviderError>>; // Changed Error to LLMProviderError
+  ): Promise<Result<string[], LLMProviderError>>;
 
   /**
    * Gets the context window size for a specific model of a given provider.
@@ -90,4 +91,4 @@ export interface IModelListerService {
   ): Promise<Result<number, LLMProviderError>>;
 }
 
-export type LLMProviderFactory = (config: LLMConfig) => Result<ILLMProvider, LLMProviderError>; // Changed Error to LLMProviderError
+export type LLMProviderFactory = (config: LLMConfig) => Result<ILLMProvider, LLMProviderError>;

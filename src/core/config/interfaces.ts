@@ -1,4 +1,5 @@
-import { LLMConfig, ProjectConfig } from '../../../types/shared';
+import { LLMConfig } from '../../../src/types/llm';
+import { ProjectConfig } from '../../../src/types/project';
 import { Result } from '../result/result';
 
 export interface ILLMConfigService {

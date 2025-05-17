@@ -5,7 +5,7 @@ import { Result } from '@core/result/result';
 import type { ILogger } from '@core/services/logger-service';
 import { retryWithBackoff } from '@core/utils/retry-utils';
 import { ChatGoogleGenerativeAI, type GoogleGenerativeAIChatInput } from '@langchain/google-genai';
-import { LLMConfig } from 'types/shared';
+import { LLMConfig } from '@types';
 import { z } from 'zod';
 import {
   GoogleGenAIErrorResponse,

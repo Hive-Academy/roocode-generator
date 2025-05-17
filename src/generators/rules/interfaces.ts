@@ -1,5 +1,5 @@
-import { ProjectConfig } from '../../../types/shared';
-import { Result } from '../../core/result/result';
+import { ProjectConfig } from '@types';
+import { Result } from '@core/result/result';
 
 export interface RulesMetadata {
   mode: string;

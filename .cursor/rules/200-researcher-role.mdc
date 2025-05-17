@@ -1,7 +1,7 @@
 ---
-description: 
+description: When the researcher role is been asked to do a task or a job these rules should be active
 globs: 
-alwaysApply: true
+alwaysApply: false
 ---
 # Researcher Role Instructions
 
