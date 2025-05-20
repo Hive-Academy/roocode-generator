@@ -1,44 +1,63 @@
 import { Injectable } from '../di/decorators';
-import ora, { Ora } from 'ora'; // Import ora for spinner functionality
+import type { Ora } from 'ora'; // Import only the type
 
 @Injectable()
 export class ProgressIndicator {
   private spinner: Ora | null = null;
+  private oraModule: any = null;
 
-  start(message: string): void {
-    // Ensure ora is properly imported before using
-    if (typeof ora === 'function') {
-      this.spinner = ora({
+  constructor() {
+    // Load ora dynamically
+    this.initOra();
+  }
+
+  private async initOra() {
+    try {
+      this.oraModule = await import('ora');
+    } catch (error) {
+      console.warn('Failed to load ora:', error);
+    }
+  }
+
+  async start(message: string): Promise<void> {
+    // Wait for ora to be loaded
+    if (!this.oraModule) {
+      await this.initOra();
+    }
+
+    if (this.oraModule?.default) {
+      this.spinner = this.oraModule.default({
         text: message,
         spinner: 'dots',
         color: 'blue',
       }).start();
     } else {
-      console.log(message); // Fallback if ora isn't available
+      // Fallback if ora isn't available
+      console.log(message);
     }
   }
 
-  update(message: string): void {
+  async update(message: string): Promise<void> {
     if (this.spinner) {
       this.spinner.text = message;
     }
   }
 
-  succeed(message?: string): void {
+  async succeed(message?: string): Promise<void> {
     if (this.spinner) {
       this.spinner.succeed(message);
       this.spinner = null;
     }
   }
 
-  fail(message?: string): void {
+  async fail(message?: string): Promise<void> {
     if (this.spinner) {
       this.spinner.fail(message);
       this.spinner = null;
     }
   }
 
-  stop(): void {
+  async stop(): Promise<void> {
     if (this.spinner) {
       this.spinner.stop();
       this.spinner = null;
