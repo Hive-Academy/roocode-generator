@@ -4,7 +4,7 @@
  */
 import { IServiceContainer } from '../di/interfaces';
 import { Result } from '../result/result'; // Updated import path
-import { isObject, getErrorMessage } from '../types/common'; // Added getErrorMessage
+import { isObject, getErrorMessage } from '@types'; // Added getErrorMessage
 import { ServiceToken } from '../di/types';
 
 export abstract class BaseService {

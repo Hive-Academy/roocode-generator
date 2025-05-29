@@ -17,3 +17,5 @@ coverage/
 /.eslintcache
 /test-output
 /.cache
+/.roo/mcp.json
+/mcp-server-log.txt

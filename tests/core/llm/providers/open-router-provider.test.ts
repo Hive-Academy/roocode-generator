@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { OpenRouterProvider } from '@core/llm/providers/open-router-provider';
-import { LLMConfig } from 'types/shared';
+import { LLMConfig } from '@types';
 import { LLMProviderError } from '@core/llm/llm-provider-errors';
 import { ILogger } from '@core/services/logger-service'; // Keep type import
 import { createMockLogger } from '../../../__mocks__/logger.mock'; // Import mock factory

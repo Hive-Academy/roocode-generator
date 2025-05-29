@@ -5,8 +5,6 @@ export enum MemoryBankFileType {
 }
 
 export enum TemplateType {
-  CompletionReport = 'completion-report',
   ImplementationPlan = 'implementation-plan',
-  ModeAcknowledgment = 'mode-acknowledgment',
   TaskDescription = 'task-description',
 }

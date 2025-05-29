@@ -1,4 +1,4 @@
-import { LLMConfig } from '../../../types/shared';
+import { LLMConfig } from '@types';
 import type { IModelListerService } from '../llm/interfaces';
 import { Inject, Injectable } from '../di/decorators';
 import { IFileOperations } from '../file-operations/interfaces';

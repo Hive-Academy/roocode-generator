@@ -1,4 +1,7 @@
 import path from 'path';
+import { z } from 'zod';
+import { HumanMessage, SystemMessage } from '@langchain/core/messages';
+import { BaseLanguageModelInput } from '@langchain/core/language_models/base';
 import { Inject, Injectable } from '@core/di/decorators';
 import { IServiceContainer } from '@core/di/interfaces';
 import { BaseGenerator } from '@core/generators/base-generator';
@@ -7,12 +10,11 @@ import { ILogger } from '@core/services/logger-service';
 import { IProjectAnalyzer, ProjectContext } from '@core/analysis/types';
 import { IFileOperations } from '@core/file-operations/interfaces';
 import { LLMAgent } from '@core/llm/llm-agent';
-import { ProjectConfig } from '../../types/shared';
+import { ProjectConfig } from '@types';
 import { MemoryBankService } from '@memory-bank/memory-bank-service';
 import { IRulesPromptBuilder } from '@generators/rules/interfaces';
 import { IContentProcessor } from '@memory-bank/interfaces';
 import { RooFileOpsHelper } from './roo-file-ops-helper';
-import { MarkdownListParser } from '@core/utils/markdown-list-parser';
 import { IRoomodesService } from '@core/services/roomodes.service';
 
 @Injectable()
@@ -106,9 +108,6 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
           // Finally, generate roo system prompts using the shared ProjectContext
           return this.generateRooSystemPrompts(projectContext, options);
         }
-        case 'cursor':
-          // Keep cursor behavior unchanged
-          return this.handleCursorGenerationPlaceholder(projectContext, options);
         default: {
           // Handle unknown generator types
           const errorMsg = `Unknown generator type: ${generatorType}`;
@@ -199,45 +198,35 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
    * @param rawContent The raw content from the LLM.
    * @returns Result containing the processed content or an error.
    */
-  private processRooContent(rawContent: string): Result<string, Error> {
+  private processRooContent(llmOutput: { rules: string[] } | undefined): Result<string, Error> {
     try {
-      // First strip any markdown code blocks
-      const strippedContentResult = this.contentProcessor.stripMarkdownCodeBlock(rawContent);
-      if (strippedContentResult.isErr()) {
-        return Result.err(
-          strippedContentResult.error ?? new Error('Unknown error stripping markdown')
-        );
+      if (!llmOutput || !llmOutput.rules || !Array.isArray(llmOutput.rules)) {
+        const errorMsg =
+          'Invalid structured LLM output received in processRooContent. Expected { rules: string[] }.';
+        this.logger.error(errorMsg, new Error(errorMsg + ' Payload: ' + JSON.stringify(llmOutput)));
+        return Result.err(new Error(errorMsg));
       }
 
-      const strippedContent = strippedContentResult.value;
-      if (!strippedContent || strippedContent.trim().length === 0) {
-        return Result.err(new Error('Stripped roo content is empty or undefined.'));
+      const rules = llmOutput.rules;
+
+      if (rules.length === 0) {
+        this.logger.warn('LLM returned an empty list of rules.');
+        // It's not an error to have zero rules if the LLM decided so,
+        // the calling function handles the MIN_RULES check and warning.
+        // We just return an empty string for the markdown list.
+        return Result.ok('');
       }
 
-      // Extract rules from the content using MarkdownListParser
-      const rulesResult = MarkdownListParser.extractListItems(strippedContent);
-      if (rulesResult.isErr()) {
-        return Result.err(rulesResult.error ?? new Error('Failed to extract rules from content'));
-      }
+      // Rule count check is now done in generateRooSystemPrompts after this function returns,
+      // based on the length of the `rules` array before formatting.
+      // This function's responsibility is to format the provided rules.
 
-      const rules = rulesResult.value;
-      if (!rules) {
-        return Result.err(new Error('Extracted rules array is undefined'));
-      }
+      // Convert rules array to a markdown list string
+      const formattedRules = rules.map((rule: string) => `- ${rule.trim()}`).join('\n');
 
-      // Validate minimum number of rules
-      const MIN_RULES = 100;
-      if (rules.length < MIN_RULES) {
-        this.logger.warn(
-          `LLM generated only ${rules.length} rules. Minimum required is ${MIN_RULES}. Proceeding with available rules.`
-        );
-      }
-
-      // Convert rules back to markdown list format
-      const formattedRules = rules.map((rule: string) => `- ${rule}`).join('\n');
-      if (!formattedRules) {
-        return Result.err(new Error('Failed to format rules as markdown list'));
-      }
+      // No need to check if formattedRules is empty because if rules array is not empty,
+      // map will produce a non-empty string (even if rules are empty strings, they'll become "- ")
+      // and join will work. An empty rules array is handled above.
 
       return Result.ok(formattedRules);
     } catch (error) {
@@ -350,34 +339,50 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
 
         // Build prompts for this mode
         this.logger.debug(`Building prompts for mode "${modeName}"`); // Added debug log
-        const promptResult = this.buildModeRooPrompt(
-          projectContext,
-          rulesContent,
-          templateContent,
-          modeName
-        ); // Pass modeName
-        if (promptResult.isErr()) {
-          const errorMessage = String(promptResult.error?.message ?? 'Unknown error');
+        // Combine rulesContent and templateContent to form the base for both LLM system prompt and final file
+        const baseCombinedContent = rulesContent + '\n' + templateContent;
+
+        this.logger.debug(
+          `Building structured prompts for mode "${modeName}" using combined base content.`
+        );
+        // Call buildModeRooPrompt with only projectContext and modeName
+        // rulesContent and templateContent are NOT sent to LLM for rule generation
+        const structuredPromptResult = this.buildModeRooPrompt(projectContext, modeName);
+
+        if (structuredPromptResult.isErr()) {
+          const errorMessage = String(structuredPromptResult.error?.message ?? 'Unknown error');
           this.logger.warn(
-            `Failed to build prompts for mode "${modeName}", skipping: ${errorMessage}`
+            `Failed to build structured prompts for mode "${modeName}", skipping: ${errorMessage}`
           );
           continue;
         }
 
-        // Safely access value after error check and ensure it's defined for TypeScript
-        const prompts = promptResult.value;
-        if (!prompts) {
-          // This case should ideally not be reached due to the Result type, but as a safeguard:
-          this.logger.warn(`Unexpected undefined prompts value for mode "${modeName}", skipping.`);
+        const promptsForLLM = structuredPromptResult.value;
+        if (!promptsForLLM) {
+          this.logger.warn(
+            `Unexpected undefined structured prompts value for mode "${modeName}", skipping.`
+          );
           continue;
         }
+        this.logger.debug(`Structured prompts built successfully for mode "${modeName}"`);
 
-        const { systemPrompt, userPrompt } = prompts;
-        this.logger.debug(`Prompts built successfully for mode "${modeName}"`); // Added debug log
+        // 2. Get Structured Completion from LLM
+        this.logger.debug(`Requesting LLM structured completion for mode "${modeName}"`);
 
-        // 2. Get Completion from LLM
-        this.logger.debug(`Requesting LLM completion for mode "${modeName}"`); // Added debug log
-        const completionResult = await this.getRooCompletion(systemPrompt, userPrompt);
+        const rulesSchema = z
+          .object({
+            rules: z.array(z.string()).min(1, 'Rules array cannot be empty.'),
+          })
+          .describe('An object containing a list of generated rules.');
+
+        // Add token margin override for Roo rule generation to handle larger content
+        const completionResult = await this.llmAgent.getStructuredCompletion(
+          promptsForLLM,
+          rulesSchema,
+          {
+            tokenMarginOverride: 2.0, // Double the available input tokens for Roo rules
+          }
+        );
         if (completionResult.isErr()) {
           const errorMessage = String(completionResult.error?.message ?? 'Unknown error');
           this.logger.warn(
@@ -386,20 +391,47 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
           continue; // Continue with next mode file
         }
 
-        const rawContent = completionResult.value;
-        this.logger.debug(`Received raw LLM content for mode "${modeName}"`); // Added debug log
-
-        // Check if rawContent is defined before processing (already present, good)
-        if (rawContent === undefined || rawContent === null || rawContent.trim().length === 0) {
-          this.logger.warn(
-            `LLM returned empty or null content for mode "${modeName}". Skipping file generation.`
-          );
-          continue; // Continue with next mode file
+        // completionResult.value will be of type { rules: string[] } | undefined if successful but schema failed or other issues
+        if (completionResult.isErr()) {
+          // This case should ideally be caught by the check at line 388,
+          // but as a safeguard. Explicitly check error existence.
+          if (completionResult.error) {
+            this.logger.warn(
+              `LLM structured completion failed for mode "${modeName}". Detail: ${completionResult.error.message}. Skipping file generation.`
+            );
+          } else {
+            this.logger.warn(
+              `LLM structured completion failed for mode "${modeName}" with an undefined error object. Skipping file generation.`
+            );
+          }
+          continue;
         }
 
-        // 3. Process Content
-        this.logger.debug(`Processing raw LLM content for mode "${modeName}"`); // Added debug log
-        const processedResult = this.processRooContent(rawContent);
+        // If we reach here, completionResult.isOk() is true, so completionResult.value should be defined.
+        // Now check if the value itself or its 'rules' property is missing/empty.
+        if (!completionResult.value || !completionResult.value.rules) {
+          this.logger.warn(
+            `LLM structured completion returned no 'rules' array or an empty/undefined value for mode "${modeName}". Skipping file generation.`
+          );
+          continue;
+        }
+
+        const llmGeneratedRulesObject = completionResult.value; // Type: { rules: string[] }, definitely defined here due to above check
+
+        if (llmGeneratedRulesObject.rules.length === 0) {
+          this.logger.warn(
+            `LLM returned an empty rules array for mode "${modeName}". Skipping file generation.`
+          );
+          continue;
+        }
+        this.logger.debug(
+          `Received ${llmGeneratedRulesObject.rules.length} rules from structured LLM content for mode "${modeName}"`
+        );
+
+        // 3. Process Content (now simpler)
+        // Pass the llmGeneratedRulesObject which is { rules: string[] }
+        this.logger.debug(`Processing structured LLM content for mode "${modeName}"`);
+        const processedResult = this.processRooContent(llmGeneratedRulesObject);
         if (processedResult.isErr()) {
           const errorMessage = String(processedResult.error?.message ?? 'Unknown error');
           this.logger.warn(
@@ -428,27 +460,23 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
         // This is a placeholder. The actual implementation will depend on the expected format
         // of the LLM-generated rules (e.g., line breaks, numbered list, markdown list).
         // A simple approach is to count lines if each rule is on a new line.
-        const ruleLines = processedLLMRules
-          .split('\n')
-          .filter((line: string) => line.trim().length > 0);
-        const ruleCount = ruleLines.length;
-
+        // Rule count check is now based on the array from the LLM before formatting
+        const ruleCount = llmGeneratedRulesObject.rules.length; // Use length of the array from LLM
         const MIN_RULES = 100;
 
         if (ruleCount < MIN_RULES) {
           this.logger.warn(
             `LLM generated only ${ruleCount} rules for mode "${modeName}". Minimum required is ${MIN_RULES}. Proceeding with available rules.`
           );
-          // As per the plan, a robust regeneration strategy is not required for this task,
-          // a warning is sufficient for now.
         } else {
           this.logger.info(`LLM generated ${ruleCount} rules for mode "${modeName}".`);
         }
         this.logger.debug(`Rule count verification complete for mode "${modeName}"`); // Added debug log
 
         // 5. Concatenate and Write File
-        const outputPath = path.join('.roo', `system-prompt-${modeName}`); // Define outputPath here
-        const finalContent = processedLLMRules;
+        const outputPath = path.join('.roo', `system-prompt-${modeName}.md`); // Corrected outputPath with .md extension
+        // Correctly assemble finalContent: baseCombinedContent + new rules
+        const finalContent = baseCombinedContent + '\n\n' + processedLLMRules;
         this.logger.debug(`Writing final content to ${outputPath} for mode "${modeName}"`); // Added debug log
 
         const writeResult = await this.writeRooFile(outputPath, finalContent); // Modify writeRooFile or create new method
@@ -503,47 +531,66 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
    */
   private buildModeRooPrompt(
     projectContext: ProjectContext,
-    _rooRulesContent: string, // Kept but unused to maintain interface compatibility
-    _modeTemplateContent: string, // Kept but unused to maintain interface compatibility
     modeName: string
-  ): Result<{ systemPrompt: string; userPrompt: string }, Error> {
+  ): Result<BaseLanguageModelInput, Error> {
     try {
-      this.logger.debug(`Building prompts for mode "${modeName}" with project context`);
+      this.logger.debug(
+        'Building structured prompts for LLM rule generation for mode "' + modeName + '".'
+      );
 
-      // Get system prompt from RulesPromptBuilder - this is now the only source of system prompt
-      const systemPromptResult = this.rulesPromptBuilder.buildSystemPrompt(modeName);
-      if (systemPromptResult.isErr()) {
-        return Result.err(systemPromptResult.error ?? new Error('Failed to build system prompt'));
-      }
+      // System prompt is now generic, not including roo-rules or mode-specific template.
+      const systemPromptContent =
+        'You are an AI assistant. Your task is to generate a list of specific, actionable rules relevant to a software development project and a particular operational mode. Ensure the rules are distinct and follow best practices.';
 
-      // Use the system prompt directly from RulesPromptBuilder
-      const systemPrompt = systemPromptResult.value;
-      this.logger.debug(`System prompt obtained from RulesPromptBuilder for mode "${modeName}"`);
+      const projectContextString = JSON.stringify(projectContext, null, 2);
 
-      // Convert project context to string for prompt inclusion
-      const contextString = JSON.stringify(projectContext, null, 2);
+      // User prompt instructing LLM to generate a JSON object with a "rules" array,
+      // based on modeName and projectContext.
+      const userPromptContent =
+        'For the operational mode "' +
+        modeName +
+        '", and considering the following project context:\n' +
+        '```json\n' +
+        projectContextString +
+        '\n```\n' +
+        'Generate a list of AT LEAST 100 new, distinct, actionable rules. ' +
+        "These rules should be tailored to the specified mode and project context. Incorporate principles like KISS (Keep It Simple, Stupid), SOLID, OOP (Object-Oriented Programming), and DRY (Don't Repeat Yourself). " +
+        'Your response MUST be a JSON object containing a single key "rules", where the value is an array of strings (each string being a rule). ' +
+        'Do not include any introductory text, concluding remarks, or any other content outside this JSON object. Each rule string should be a complete sentence or actionable statement.';
 
-      // Build mode-specific instructions
-      const modeInstructions = `Generate a list of distinct, context-aware rules specifically tailored for the "${modeName}" mode. Focus on rules that would be helpful for an AI assistant operating in this mode within this specific project.`;
+      this.logger.trace(
+        'System prompt for LLM (rule generation) for mode "' +
+          modeName +
+          '": ' +
+          systemPromptContent
+      );
+      this.logger.trace(
+        'User prompt for LLM (rule generation) for mode "' +
+          modeName +
+          '" (first 200 chars of project context): ' +
+          userPromptContent.substring(
+            0,
+            userPromptContent.indexOf(projectContextString) +
+              projectContextString.substring(0, 200).length +
+              10
+          ) +
+          '...'
+      );
 
-      // Get user prompt from RulesPromptBuilder
-      const userPromptResult = this.rulesPromptBuilder.buildPrompt(modeInstructions, contextString);
-      if (userPromptResult.isErr()) {
-        return Result.err(userPromptResult.error ?? new Error('Failed to build user prompt'));
-      }
+      this.logger.debug('--- LLM System Prompt for Rule Generation ---');
+      this.logger.debug(systemPromptContent);
+      this.logger.debug('--- End LLM System Prompt for Rule Generation ---');
 
-      const userPrompt = userPromptResult.value;
-      this.logger.debug(`User prompt constructed for mode "${modeName}"`);
+      this.logger.debug('--- LLM User Prompt for Rule Generation (Full) ---');
+      this.logger.debug(userPromptContent);
+      this.logger.debug('--- End LLM User Prompt for Rule Generation (Full) ---');
 
-      if (!systemPrompt || !userPrompt) {
-        return Result.err(
-          new Error(
-            'System or user prompt became undefined unexpectedly during mode-specific building.'
-          )
-        );
-      }
+      const messages: BaseLanguageModelInput = [
+        new SystemMessage(systemPromptContent),
+        new HumanMessage(userPromptContent),
+      ];
 
-      return Result.ok({ systemPrompt, userPrompt });
+      return Result.ok(messages);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unknown error building mode-specific prompts';
@@ -551,16 +598,5 @@ export class AiMagicGenerator extends BaseGenerator<ProjectConfig> {
       this.logger.error(`Error in buildModeRooPrompt: ${message}`, errorInstance);
       return Result.err(errorInstance);
     }
-  }
-
-  private handleCursorGenerationPlaceholder(
-    _projectContext: ProjectContext,
-    _options: ProjectConfig
-  ): Result<string, Error> {
-    // Added context and config parameters, changed return type
-    // Basic placeholder implementation
-    const message = 'Cursor generation functionality will be implemented in a future task.';
-    this.logger.info(message);
-    return Result.ok(message); // Return a string message
   }
 }

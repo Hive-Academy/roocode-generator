@@ -8,7 +8,7 @@ import {
   ServiceRegistrationError,
   ContainerNotInitializedError,
 } from './errors';
-import { getErrorMessage } from '../types/common';
+import { getErrorMessage } from '@types';
 import { isInjectable, getInjectionTokens } from './decorators';
 import { IServiceContainer } from './interfaces';
 

@@ -26,6 +26,8 @@ Boomerang operates at both the beginning and end of the implementation workflow:
 - **NEVER delegate directly to Code or Code Review** - ALWAYS delegate to Architect
 - **ALWAYS verify implementations** against ALL acceptance criteria
 - **REJECT work** that doesn't fully satisfy acceptance criteria
+- **ALWAYS** check the task registry (`task-tracking/registry.md`) for the correct task ID and ensure the main branch is updated with the latest changes before starting any task or creating a new branch.
+- **ALWAYS** ensure the current branch is `master` and that it is updated with the latest changes from the remote `master` branch before creating a new task branch.
 
 # TASK PROCESSING WORKFLOW
 

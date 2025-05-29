@@ -11,7 +11,7 @@ import { Result } from '../../../src/core/result/result';
 import { ILogger } from '../../../src/core/services/logger-service'; // Keep type import
 import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
 import { ProgressIndicator } from '../../../src/core/ui/progress-indicator';
-import { LLMConfig } from '../../../types/shared';
+import { LLMConfig } from '@types';
 
 // Mocks
 const mockGeneratorOrchestrator: jest.Mocked<IGeneratorOrchestrator> = {

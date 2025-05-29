@@ -1,61 +1,30 @@
-import { IProjectConfigService } from '@core/config/interfaces';
-import { Container } from '@core/di/container';
-import { resolveDependency, assertIsDefined } from '@core/di/utils'; // Import helpers from utils
+import { Container } from '../container';
+import { resolveDependency } from '../utils';
+import { assertIsDefined } from '../utils';
+import { ILogger } from '@core/services/logger-service';
 import { IFileOperations } from '@core/file-operations/interfaces';
 import { LLMAgent } from '@core/llm/llm-agent';
-import { ILogger } from '@core/services/logger-service';
-import { ContentProcessor } from '@memory-bank/content-processor';
 import {
-  IContentProcessor,
+  IMemoryBankOrchestrator,
+  IMemoryBankTemplateProcessor,
   IMemoryBankContentGenerator,
   IMemoryBankFileManager,
-  IMemoryBankOrchestrator,
   IMemoryBankTemplateManager,
-  IMemoryBankTemplateProcessor,
-  IMemoryBankValidator,
-  IProjectContextService,
-  IPromptBuilder,
+  IContentProcessor,
 } from '@memory-bank/interfaces';
+import { MemoryBankOrchestrator } from '@memory-bank/memory-bank-orchestrator';
+import { MemoryBankTemplateProcessor } from '@memory-bank/memory-bank-template-processor';
 import { MemoryBankContentGenerator } from '@memory-bank/memory-bank-content-generator';
 import { MemoryBankFileManager } from '@memory-bank/memory-bank-file-manager';
-// Removed import for deprecated MemoryBankGenerator
-import { MemoryBankOrchestrator } from '@memory-bank/memory-bank-orchestrator';
 import { MemoryBankTemplateManager } from '@memory-bank/memory-bank-template-manager';
-import { MemoryBankTemplateProcessor } from '@memory-bank/memory-bank-template-processor';
-import { MemoryBankValidator } from '@memory-bank/memory-bank-validator';
-import { ProjectContextService } from '@memory-bank/project-context-service';
-import { PromptBuilder } from '@memory-bank/prompt-builder';
-import { MemoryBankService } from '@memory-bank/memory-bank-service'; // Add import
+import { ContentProcessor } from '@memory-bank/content-processor';
+import { MemoryBankService } from '@memory-bank/memory-bank-service';
 
+/**
+ * Registers memory bank related services in the DI container
+ */
 export function registerMemoryBankModule(container: Container): void {
   // Register MemoryBank specific services
-  container.registerFactory<IMemoryBankValidator>('IMemoryBankValidator', () => {
-    const fileOps = resolveDependency<IFileOperations>(container, 'IFileOperations');
-    assertIsDefined(fileOps, 'IFileOperations dependency not found');
-    const logger = resolveDependency<ILogger>(container, 'ILogger');
-    assertIsDefined(logger, 'ILogger dependency not found');
-    return new MemoryBankValidator(fileOps, logger);
-  });
-
-  container.registerFactory<IProjectContextService>('IProjectContextService', () => {
-    const fileOps = resolveDependency<IFileOperations>(container, 'IFileOperations');
-    assertIsDefined(fileOps, 'IFileOperations dependency not found');
-    const projectConfigService = resolveDependency<IProjectConfigService>(
-      container,
-      'IProjectConfigService'
-    );
-    assertIsDefined(projectConfigService, 'IProjectConfigService dependency not found');
-    const logger = resolveDependency<ILogger>(container, 'ILogger');
-    assertIsDefined(logger, 'ILogger dependency not found');
-    return new ProjectContextService(fileOps, projectConfigService, logger);
-  });
-
-  container.registerFactory<IPromptBuilder>('IPromptBuilder', () => {
-    const logger = resolveDependency<ILogger>(container, 'ILogger');
-    assertIsDefined(logger, 'ILogger dependency not found');
-    return new PromptBuilder(logger);
-  });
-
   container.registerFactory<IMemoryBankFileManager>('IMemoryBankFileManager', () => {
     const fileOps = resolveDependency<IFileOperations>(container, 'IFileOperations');
     assertIsDefined(fileOps, 'IFileOperations dependency not found');
@@ -95,11 +64,11 @@ export function registerMemoryBankModule(container: Container): void {
   container.registerFactory<IMemoryBankContentGenerator>('IMemoryBankContentGenerator', () => {
     const llmAgent = resolveDependency<LLMAgent>(container, 'LLMAgent');
     assertIsDefined(llmAgent, 'LLMAgent dependency not found');
-    const contentProcessor = resolveDependency<IContentProcessor>(container, 'IContentProcessor'); // Resolve new dependency
+    const contentProcessor = resolveDependency<IContentProcessor>(container, 'IContentProcessor');
     assertIsDefined(contentProcessor, 'IContentProcessor dependency not found');
     const logger = resolveDependency<ILogger>(container, 'ILogger');
     assertIsDefined(logger, 'ILogger dependency not found');
-    return new MemoryBankContentGenerator(llmAgent, contentProcessor, logger); // Pass new dependency
+    return new MemoryBankContentGenerator(llmAgent, contentProcessor, logger);
   });
 
   // Register MemoryBankOrchestrator
@@ -138,6 +107,4 @@ export function registerMemoryBankModule(container: Container): void {
     assertIsDefined(logger, 'ILogger dependency not found for MemoryBankService');
     return new MemoryBankService(orchestrator, logger);
   });
-
-  // Removed registration for deprecated MemoryBankGenerator
 }

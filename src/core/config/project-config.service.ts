@@ -1,4 +1,4 @@
-import type { ProjectConfig } from '../../../types/shared';
+import type { ProjectConfig } from '@types';
 import { Inject, Injectable } from '@core/di/decorators';
 import { IFileOperations } from '@core/file-operations/interfaces';
 import { Result } from '@core/result/result';

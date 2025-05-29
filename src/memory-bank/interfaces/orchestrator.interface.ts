@@ -1,5 +1,5 @@
 import { Result } from '@core/result/result';
-import { ProjectConfig } from '../../../types/shared'; // Corrected relative path
+import { ProjectConfig } from '@types'; // Corrected relative path
 import { ProjectContext } from '@core/analysis/types'; // Import the structured context type
 
 // Remove GenerationOptions as it's no longer needed for this interface

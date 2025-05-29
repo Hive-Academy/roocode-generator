@@ -13,6 +13,7 @@ export default tseslint.config(
       'bin/',
       'old-code/', // Temporarily ignore generators folder during refactoring
       'docs/**', // Ignore docs folder
+      'workflow-mcp-source/**',
     ],
   },
   // Base JS config (applies to all non-ignored files initially)

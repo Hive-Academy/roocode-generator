@@ -1,10 +1,10 @@
 import { Injectable, Inject } from '../core/di/decorators';
-import { Result } from '../core/result/result';
-import { ProjectConfig } from '../../types/shared';
+import { Result } from '@core/result/result';
+import { ProjectConfig } from '@types';
 
-import { MemoryBankGenerationError } from '../core/errors/memory-bank-errors';
+import { MemoryBankGenerationError } from '@core/errors/memory-bank-errors';
 import { IMemoryBankOrchestrator } from './interfaces';
-import { ILogger } from '../core/services/logger-service';
+import { ILogger } from '@core/services/logger-service';
 import { ProjectContext } from '@core/analysis/types';
 
 /**

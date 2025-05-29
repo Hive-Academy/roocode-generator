@@ -41,7 +41,7 @@ export class CliInterface implements ICliInterface {
     // Add existing options for generate command
 
     generateCommand.option(
-      '-g, --generators <type>', // Changed from <names...>
+      '-g, --generators <type>',
       'Specify the generator type (roo, cursor)',
       'roo'
     );
@@ -51,19 +51,17 @@ export class CliInterface implements ICliInterface {
       this.parsedArgs.command = 'generate';
       // Access global options from the parent command
       const globalOptions = command.parent?.opts() || {};
-      const generatorType = options.generators as string | undefined; // Expect single value
+      const generatorType = options.generators as string | undefined;
 
       const allowedGeneratorTypes = ['roo', 'cursor'];
 
       if (generatorType && !allowedGeneratorTypes.includes(generatorType)) {
-        // Handle invalid generator type - log error and prevent further action
         console.error(
           `Error: Invalid generator type specified: ${generatorType}. Allowed types are: ${allowedGeneratorTypes.join(', ')}`
         );
-        // Set command to null or an error state to prevent execution in ApplicationContainer
         this.parsedArgs.command = null;
         this.parsedArgs.options = {};
-        return; // Stop further processing in this action handler
+        return;
       }
 
       // Store the single type in parsedArgs.options, merging with global options
