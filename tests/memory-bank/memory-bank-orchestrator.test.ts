@@ -10,7 +10,7 @@ import {
   MemoryBankFileType,
 } from '../../src/memory-bank/interfaces';
 import { MemoryBankOrchestrator } from '../../src/memory-bank/memory-bank-orchestrator';
-import { ProjectConfig } from '../../types/shared';
+import { ProjectConfig } from '@types';
 import { createMockLogger } from '../__mocks__/logger.mock'; // Import logger mock factory
 import { createMockProjectContext } from '../__mocks__/project-context.mock'; // Import context mock factory
 

@@ -1,5 +1,5 @@
 import { execSync } from 'child_process';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, rmSync } from 'fs';
 import { join } from 'path';
 import { createE2ETestSetup } from './setup';
 
@@ -15,7 +15,10 @@ describe('Generator System E2E Tests', () => {
   describe('Memory Bank Generation', () => {
     beforeEach(() => {
       // Clean previous generations
-      execSync('rm -rf .roocode/memory-bank', { stdio: 'inherit' });
+      const memoryBankDir = join(workingDir, '.roocode', 'memory-bank');
+      if (existsSync(memoryBankDir)) {
+        rmSync(memoryBankDir, { recursive: true, force: true });
+      }
     });
 
     it('should generate complete memory bank', () => {

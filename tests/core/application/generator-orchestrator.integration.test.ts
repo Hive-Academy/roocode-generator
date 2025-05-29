@@ -12,7 +12,7 @@ import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock f
 import { IGenerator } from '@core/generators/base-generator';
 import { Result } from '@core/result/result';
 import { IFileOperations } from '@core/file-operations/interfaces'; // Import IFileOperations
-import { ProjectConfig } from '../../../types/shared'; // Keep this for type definition
+import { ProjectConfig } from '@types'; // Keep this for type definition
 
 // Define the default config matching the service's private property
 const testDefaultConfig: ProjectConfig = {

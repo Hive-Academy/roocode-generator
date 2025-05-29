@@ -2,7 +2,7 @@ import { Inject, Injectable } from '../di/decorators';
 import { Result } from '../result/result';
 import { IModelListerService, LLMProviderFactory, ILLMProvider } from './interfaces'; // Added ILLMProvider
 import { ILogger } from '../services/logger-service';
-import { LLMConfig } from '../../../types/shared';
+import { LLMConfig } from '@types';
 import { LLMProviderError } from './llm-provider-errors';
 
 /**

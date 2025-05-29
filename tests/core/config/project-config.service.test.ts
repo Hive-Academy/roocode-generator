@@ -2,7 +2,7 @@
 import { ProjectConfigService } from '../../../src/core/config/project-config.service';
 import { IFileOperations } from '../../../src/core/file-operations/interfaces';
 import { Result } from '../../../src/core/result/result';
-import type { ProjectConfig } from '../../../types/shared';
+import type { ProjectConfig } from '@types';
 import { ILogger } from '@core/services/logger-service'; // Keep type import
 import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
 

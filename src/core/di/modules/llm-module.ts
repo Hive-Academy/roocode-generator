@@ -19,7 +19,7 @@ import { OpenAIProvider } from '@core/llm/providers/openai-provider';
 import { Result } from '@core/result/result';
 import { ILogger } from '@core/services/logger-service';
 import { createPromptModule } from 'inquirer';
-import { LLMConfig } from 'types/shared';
+import { LLMConfig } from '@types';
 
 export function registerLlmModule(container: Container): void {
   // Register client factory functions for each provider

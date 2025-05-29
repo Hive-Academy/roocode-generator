@@ -5,7 +5,7 @@ import { IModelListerService } from '../../../src/core/llm/interfaces';
 import { Result } from '../../../src/core/result/result';
 import { ILogger } from '../../../src/core/services/logger-service';
 import { createMockLogger } from '../../__mocks__/logger.mock';
-import { LLMConfig } from '../../../types/shared';
+import { LLMConfig } from '@types';
 import { LLMProviderError } from '../../../src/core/llm/llm-provider-errors';
 // import { LLMProviderRegistry } from '../../../src/core/llm/provider-registry'; // No longer needed here
 

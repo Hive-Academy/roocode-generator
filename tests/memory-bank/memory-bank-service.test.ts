@@ -4,7 +4,7 @@ import { Result } from '../../src/core/result/result';
 import { ILogger } from '../../src/core/services/logger-service'; // Keep ILogger type
 import { IMemoryBankOrchestrator } from '../../src/memory-bank/interfaces';
 import { MemoryBankService } from '../../src/memory-bank/memory-bank-service';
-import { ProjectConfig } from '../../types/shared';
+import { ProjectConfig } from '@types';
 import { createMockLogger } from '../__mocks__/logger.mock'; // Import logger mock factory
 import { createMockProjectContext } from '../__mocks__/project-context.mock'; // Import context mock factory
 

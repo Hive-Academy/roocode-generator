@@ -7,7 +7,7 @@ import { IModelListerService } from '../../../src/core/llm/interfaces'; // Relat
 import { Result } from '../../../src/core/result/result'; // Relative path
 import { ILogger } from '../../../src/core/services/logger-service'; // Relative path
 import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock factory
-import { LLMConfig } from '../../../types/shared'; // Relative path
+import { LLMConfig } from '@types'; // Relative path
 // import { LLMProviderRegistry } from '../../../src/core/llm/provider-registry'; // No longer needed here
 
 describe('LLMConfigService', () => {

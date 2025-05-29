@@ -39,6 +39,9 @@ export class E2ETestSetup {
     // Run npm install to ensure dependencies
     this.runNpmInstall();
 
+    // Run npm build to compile the project
+    this.runNpmBuild();
+
     console.log('E2E test environment setup complete');
   }
 
@@ -78,6 +81,19 @@ export class E2ETestSetup {
       console.log('Dependencies installed successfully');
     } catch (error: any) {
       throw new Error(`Failed to install dependencies: ${error}`);
+    }
+  }
+
+  /**
+   * Runs npm build to compile the project
+   */
+  private runNpmBuild(): void {
+    try {
+      console.log('Building project...');
+      execSync('npm run build', { stdio: 'inherit', cwd: this.config.workingDirectory });
+      console.log('Project built successfully');
+    } catch (error: any) {
+      throw new Error(`Failed to build project: ${error}`);
     }
   }
 

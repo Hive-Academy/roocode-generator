@@ -6,7 +6,7 @@ import { createMockLogger } from '../../__mocks__/logger.mock'; // Import mock f
 import { LLMProviderFactory } from '@core/llm/interfaces';
 import { Result } from '@core/result/result';
 import { LLMProviderError } from '@core/llm/llm-provider-errors';
-import { LLMConfig } from 'types/shared';
+import { LLMConfig } from '@types';
 
 describe('ModelListerService', () => {
   let service: ModelListerService;
